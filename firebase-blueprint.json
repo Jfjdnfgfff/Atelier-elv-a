@@ -1,0 +1,160 @@
+{
+  "entities": {
+    "Customer": {
+      "title": "Customer",
+      "description": "A gym member/subscriber.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 20 },
+        "gender": { "type": "string", "enum": ["male", "female"] },
+        "dob": { "type": "string" },
+        "age": { "type": "number" },
+        "weight": { "type": "number" },
+        "packageId": { "type": "string" },
+        "paymentStatus": { "type": "string", "enum": ["paid", "credit", "frozen"] },
+        "debtAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "frozen", "expired", "near_expiry"] },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "imageUrl": { "type": "string" },
+        "frozenRemainingDays": { "type": "number" }
+      },
+      "required": ["name"]
+    },
+    "Package": {
+      "title": "Package",
+      "description": "A subscription package.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "price": { "type": "number" },
+        "durationDays": { "type": "number" }
+      },
+      "required": ["name", "price", "durationDays"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "General business expense.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "desc": { "type": "string", "maxLength": 200 },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["desc", "amount", "date"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "An inventory item.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "barcode": { "type": "string", "maxLength": 50 },
+        "name": { "type": "string", "maxLength": 100 },
+        "weight": { "type": "string" },
+        "cost": { "type": "number" },
+        "price": { "type": "number" },
+        "stock": { "type": "number" },
+        "brand": { "type": "string" },
+        "imageUrl": { "type": "string" }
+      },
+      "required": ["name", "price", "stock"]
+    },
+    "Sale": {
+      "title": "Sale",
+      "description": "A POS transaction record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "prodId": { "type": "string" },
+        "prodName": { "type": "string" },
+        "qty": { "type": "number" },
+        "price": { "type": "number" },
+        "cost": { "type": "number" },
+        "total": { "type": "number" },
+        "profit": { "type": "number" },
+        "coachName": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["prodId", "qty", "total", "date"]
+    },
+    "StaffPayout": {
+      "title": "Staff Payout",
+      "description": "Payment to staff or coaches.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "notes": { "type": "string" }
+      },
+      "required": ["name", "amount", "date"]
+    },
+    "Credit": {
+      "title": "Credit",
+      "description": "A debt record (external).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "nickname": { "type": "string" },
+        "phone": { "type": "string" },
+        "desc": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "amount", "date"]
+    },
+    "CoachAbsence": {
+        "title": "Coach Absence",
+        "description": "Record of coach absence for compensation.",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "date": { "type": "string" },
+            "days": { "type": "number" }
+        },
+        "required": ["date", "days"]
+    }
+  },
+  "firestore": {
+    "/customers/{customerId}": {
+      "schema": "Customer",
+      "description": "Collection of gym members."
+    },
+    "/packages/{packageId}": {
+      "schema": "Package",
+      "description": "Collection of subscription packages."
+    },
+    "/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Collection of business expenses."
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of inventory items."
+    },
+    "/sales/{saleId}": {
+      "schema": "Sale",
+      "description": "Collection of POS transactions."
+    },
+    "/staffPayouts/{payoutId}": {
+      "schema": "StaffPayout",
+      "description": "Collection of staff payments."
+    },
+    "/credits/{creditId}": {
+      "schema": "Credit",
+      "description": "Collection of external debts."
+    },
+    "/coachAbsences/{absenceId}": {
+        "schema": "CoachAbsence",
+        "description": "Collection of coach absence records."
+    }
+  }
+}

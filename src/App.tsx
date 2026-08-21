@@ -1,0 +1,1690 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  ClothItem, 
+  Rental, 
+  Sale, 
+  Expense, 
+  Credit, 
+  StaffPayout, 
+  StaffMember,
+  StaffAbsence,
+  MaintenanceOrder,
+  MaintenanceStatus,
+  Supplier,
+  ViewType 
+} from './types';
+import { 
+  loadFromStorage, 
+  saveToStorage, 
+  generateId, 
+  STORAGE_KEYS, 
+  DEFAULT_STAFF,
+  DEFAULT_SUPPLIERS,
+  DEFAULT_MAINTENANCE,
+  initializeStorage 
+} from './storage';
+
+// Components
+import { BarcodeScanner } from './components/BarcodeScanner';
+import { FullReport } from './components/FullReport';
+import { NavButton, Modal } from './components/Shared';
+import { DashboardView } from './components/DashboardView';
+import { RentalsView } from './components/RentalsView';
+import { RentalModal } from './components/RentalModal';
+import { ReturnRentalModal } from './components/ReturnRentalModal';
+import { RentalReceiptModal } from './components/RentalReceiptModal';
+import { InventoryView } from './components/InventoryView';
+import { SalesPOSView } from './components/SalesPOSView';
+import { ExpensesView } from './components/ExpensesView';
+import { CreditsView } from './components/CreditsView';
+import { StaffPayoutsModal } from './components/StaffPayoutsModal';
+import { TailoringView } from './components/TailoringView';
+import { TailoringModal } from './components/TailoringModal';
+import { TailoringReceiptModal } from './components/TailoringReceiptModal';
+
+export default function App() {
+  // Initialize storage
+  const [clothes, setClothes] = useState<ClothItem[]>(() => {
+    initializeStorage();
+    return loadFromStorage<ClothItem[]>(STORAGE_KEYS.CLOTHES, []);
+  });
+  const [rentals, setRentals] = useState<Rental[]>(() => 
+    loadFromStorage<Rental[]>(STORAGE_KEYS.RENTALS, [])
+  );
+  const [sales, setSales] = useState<Sale[]>(() => 
+    loadFromStorage<Sale[]>(STORAGE_KEYS.SALES, [])
+  );
+  const [expenses, setExpenses] = useState<Expense[]>(() => 
+    loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, [])
+  );
+  const [credits, setCredits] = useState<Credit[]>(() => 
+    loadFromStorage<Credit[]>(STORAGE_KEYS.CREDITS, [])
+  );
+  const [staffPayouts, setStaffPayouts] = useState<StaffPayout[]>(() => 
+    loadFromStorage<StaffPayout[]>(STORAGE_KEYS.STAFF_PAYOUTS, [])
+  );
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => 
+    loadFromStorage<StaffMember[]>(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF)
+  );
+  const [staffAbsences, setStaffAbsences] = useState<StaffAbsence[]>(() => 
+    loadFromStorage<StaffAbsence[]>(STORAGE_KEYS.STAFF_ABSENCES, [])
+  );
+  const [maintenanceOrders, setMaintenanceOrders] = useState<MaintenanceOrder[]>(() => 
+    loadFromStorage<MaintenanceOrder[]>(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE)
+  );
+  const [suppliers, setSuppliers] = useState<Supplier[]>(() => 
+    loadFromStorage<Supplier[]>(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS)
+  );
+
+  // Sync back to local storage
+  useEffect(() => { saveToStorage(STORAGE_KEYS.CLOTHES, clothes); }, [clothes]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.RENTALS, rentals); }, [rentals]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.SALES, sales); }, [sales]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.EXPENSES, expenses); }, [expenses]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.CREDITS, credits); }, [credits]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, staffPayouts); }, [staffPayouts]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, staffMembers); }, [staffMembers]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, staffAbsences); }, [staffAbsences]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.MAINTENANCE, maintenanceOrders); }, [maintenanceOrders]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.SUPPLIERS, suppliers); }, [suppliers]);
+
+  // UI state
+  const [currentView, setCurrentView] = useState<ViewType>('dashboard');
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [hideFinances, setHideFinances] = useState(() => localStorage.getItem('bm_hideFinances') !== 'false');
+  const [toasts, setToasts] = useState<{ id: number; message: string; type: 'success' | 'error' }[]>([]);
+  const [isScanning, setIsScanning] = useState(false);
+
+  // Modal active subjects
+  const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
+  const [selectedTailoringOrder, setSelectedTailoringOrder] = useState<MaintenanceOrder | null>(null);
+  const [preselectedRentalItemId, setPreselectedRentalItemId] = useState<string | undefined>(undefined);
+  const [scannedItemAction, setScannedItemAction] = useState<ClothItem | null>(null);
+  const [unknownScannedCode, setUnknownScannedCode] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+  };
+
+  // Overdue count calculation (Only active handed-over rentals can be overdue; future reserved bookings do not count)
+  const overdueCount = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return rentals.filter(r => {
+      if (r.status !== 'active') return false;
+      const exp = new Date(r.expectedReturnDate);
+      const now = new Date(today);
+      return exp.getTime() < now.getTime();
+    }).length;
+  }, [rentals]);
+
+  // Pending absences count for staff badge
+  const pendingAbsencesCount = useMemo(() => {
+    return staffAbsences.filter(a => !a.isDeducted).length;
+  }, [staffAbsences]);
+
+  // Active maintenance count
+  const activeMaintenanceCount = useMemo(() => {
+    return maintenanceOrders.filter(o => o.status !== 'delivered').length;
+  }, [maintenanceOrders]);
+
+  // Global Financial Statistics
+  const stats = useMemo(() => {
+    const now = new Date();
+    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const currentYearStr = `${now.getFullYear()}`;
+
+    const isThisMonth = (dateStr?: string) => dateStr ? dateStr.startsWith(currentMonthStr) : false;
+    const isThisYear = (dateStr?: string) => dateStr ? dateStr.startsWith(currentYearStr) : false;
+
+    // --- Rentals ---
+    const totalRentalIncome = rentals.reduce((s, r) => s + (r.paidAmount || 0), 0);
+    const monthlyRentalIncome = rentals
+      .filter(r => isThisMonth(r.startDate || r.createdAt))
+      .reduce((s, r) => s + (r.paidAmount || 0), 0);
+    const yearlyRentalIncome = rentals
+      .filter(r => isThisYear(r.startDate || r.createdAt))
+      .reduce((s, r) => s + (r.paidAmount || 0), 0);
+
+    // --- Sales ---
+    const totalSalesRevenue = sales.reduce((s, sl) => s + (sl.totalAmount || 0), 0);
+    const monthlySalesRevenue = sales
+      .filter(s => isThisMonth(s.date))
+      .reduce((s, sl) => s + (sl.totalAmount || 0), 0);
+    const yearlySalesRevenue = sales
+      .filter(s => isThisYear(s.date))
+      .reduce((s, sl) => s + (sl.totalAmount || 0), 0);
+
+    const totalSalesProfit = sales.reduce((s, sl) => s + (sl.profit || 0), 0);
+    const monthlySalesProfit = sales
+      .filter(s => isThisMonth(s.date))
+      .reduce((s, sl) => s + (sl.profit || 0), 0);
+    const yearlySalesProfit = sales
+      .filter(s => isThisYear(s.date))
+      .reduce((s, sl) => s + (sl.profit || 0), 0);
+
+    // --- Tailoring & Maintenance ---
+    const totalTailoringIncome = maintenanceOrders.reduce((s, o) => s + (o.paidAmount || 0), 0);
+    const monthlyTailoringIncome = maintenanceOrders
+      .filter(o => isThisMonth(o.receivedDate || o.createdAt))
+      .reduce((s, o) => s + (o.paidAmount || 0), 0);
+    const yearlyTailoringIncome = maintenanceOrders
+      .filter(o => isThisYear(o.receivedDate || o.createdAt))
+      .reduce((s, o) => s + (o.paidAmount || 0), 0);
+    const totalTailoringCost = maintenanceOrders.reduce((s, o) => s + (o.cost || 0), 0);
+    const tailoringProfit = totalTailoringIncome - totalTailoringCost;
+
+    // --- Expenses ---
+    const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+    const monthlyExpenses = expenses
+      .filter(e => isThisMonth(e.date))
+      .reduce((s, e) => s + Number(e.amount || 0), 0);
+    const yearlyExpenses = expenses
+      .filter(e => isThisYear(e.date))
+      .reduce((s, e) => s + Number(e.amount || 0), 0);
+
+    // --- Staff Payouts ---
+    const totalStaff = staffPayouts.reduce((s, p) => s + Number(p.amount || 0), 0);
+    const monthlyStaff = staffPayouts
+      .filter(p => isThisMonth(p.date))
+      .reduce((s, p) => s + Number(p.amount || 0), 0);
+    const yearlyStaff = staffPayouts
+      .filter(p => isThisYear(p.date))
+      .reduce((s, p) => s + Number(p.amount || 0), 0);
+    
+    // --- Debts ---
+    const totalRentalDebt = rentals.reduce((s, r) => s + (r.status !== 'returned' ? (r.remainingAmount || 0) : 0), 0);
+    const totalTailoringDebt = maintenanceOrders.reduce((s, o) => s + (o.status !== 'delivered' ? (o.remainingAmount || 0) : 0), 0);
+    const totalDirectDebt = credits.reduce((s, c) => s + Number(c.amount || 0), 0);
+    const totalDebt = totalRentalDebt + totalDirectDebt + totalTailoringDebt;
+
+    // --- Net Profits ---
+    // Net profit = (Rental Income + Sales Profit + Tailoring Profit) - (Expenses + Staff)
+    const netProf = (totalRentalIncome + totalSalesProfit + totalTailoringIncome) - (totalExpenses + totalStaff + totalTailoringCost);
+    const monthlyNetProfit = (monthlyRentalIncome + monthlySalesProfit + monthlyTailoringIncome) - (monthlyExpenses + monthlyStaff);
+    const yearlyNetProfit = (yearlyRentalIncome + yearlySalesProfit + yearlyTailoringIncome) - (yearlyExpenses + yearlyStaff);
+
+    // --- Total Gross Revenues (Combined) ---
+    const totalGrossRevenue = totalRentalIncome + totalSalesRevenue + totalTailoringIncome;
+    const monthlyGrossRevenue = monthlyRentalIncome + monthlySalesRevenue + monthlyTailoringIncome;
+    const yearlyGrossRevenue = yearlyRentalIncome + yearlySalesRevenue + yearlyTailoringIncome;
+
+    return {
+      // Rental
+      totalRentalIncome,
+      monthlyRentalIncome,
+      yearlyRentalIncome,
+      // Sales
+      totalSalesRevenue,
+      monthlySalesRevenue,
+      yearlySalesRevenue,
+      totalSalesProfit,
+      monthlySalesProfit,
+      yearlySalesProfit,
+      // Tailoring
+      totalTailoringIncome,
+      monthlyTailoringIncome,
+      yearlyTailoringIncome,
+      totalTailoringCost,
+      tailoringProfit,
+      // Expenses & Staff
+      totalExpenses,
+      monthlyExpenses,
+      yearlyExpenses,
+      totalStaffPayouts: totalStaff,
+      monthlyStaffPayouts: monthlyStaff,
+      yearlyStaffPayouts: yearlyStaff,
+      // Combined Totals
+      totalGrossRevenue,
+      monthlyGrossRevenue,
+      yearlyGrossRevenue,
+      // Debts & Net Profits
+      totalDebt,
+      netProfit: netProf,
+      monthlyNetProfit,
+      yearlyNetProfit
+    };
+  }, [rentals, sales, expenses, staffPayouts, credits, maintenanceOrders]);
+
+  // ==========================
+  // RENTAL HANDLERS
+  // ==========================
+  const handleAddRental = (rentalData: any) => {
+    const newRental: Rental = { ...rentalData, id: generateId() };
+    
+    // Add rental to state
+    setRentals(prev => [newRental, ...prev]);
+
+    // If active, increment rented count. If reserved (future booking), DO NOT deduct stock until handover/deal finalization!
+    if (newRental.status === 'active') {
+      setClothes(prev => prev.map(c => {
+        if (c.id === rentalData.itemId) {
+          return { ...c, rentedCount: (c.rentedCount || 0) + (rentalData.qty || 1) };
+        }
+        return c;
+      }));
+      showToast('تم تسجيل الكراء الفوري بنجاح 👗');
+    } else {
+      showToast('تم تسجيل حجز الفستان مستقبلاً بنجاح 📅 (سيدخل في الكراء عند إتمام الصفقة وتسليمه)');
+    }
+
+    // If remaining amount > 0, add to credits/debts
+    if (rentalData.remainingAmount > 0) {
+      const newCredit: Credit = {
+        id: generateId(),
+        name: rentalData.customerName,
+        phone: rentalData.customerPhone,
+        type: newRental.status === 'reserved' ? 'متبقي حجز فستان' : 'دين كراء فستان',
+        desc: `${newRental.status === 'reserved' ? 'متبقي حجز' : 'متبقي كراء'}: ${rentalData.itemName}`,
+        amount: rentalData.remainingAmount,
+        date: new Date().toISOString(),
+        relatedRentalId: newRental.id
+      };
+      setCredits(prev => [newCredit, ...prev]);
+    }
+
+    setActiveModal(null);
+  };
+
+  const handleActivateRental = (rental: Rental, collectedAmount: number = 0, handoverNotes: string = '') => {
+    const newPaid = (rental.paidAmount || 0) + (collectedAmount || 0);
+    const newRemaining = Math.max(0, rental.rentPrice - newPaid);
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // 1. Activate rental and update payments
+    setRentals(prev => prev.map(r => {
+      if (r.id === rental.id) {
+        return {
+          ...r,
+          status: 'active',
+          paidAmount: newPaid,
+          remainingAmount: newRemaining,
+          handoverDate: todayStr,
+          notes: handoverNotes ? `${r.notes ? r.notes + ' | ' : ''}تسليم: ${handoverNotes}` : r.notes
+        };
+      }
+      return r;
+    }));
+
+    // 2. DEDUCT INVENTORY: Increment rented count upon deal finalization/handover!
+    setClothes(prev => prev.map(c => {
+      if (c.id === rental.itemId) {
+        return { ...c, rentedCount: (c.rentedCount || 0) + (rental.qty || 1) };
+      }
+      return c;
+    }));
+
+    // 3. Update or clear credit
+    setCredits(prev => {
+      const filtered = prev.filter(c => c.relatedRentalId !== rental.id);
+      if (newRemaining > 0) {
+        const updatedCredit: Credit = {
+          id: generateId(),
+          name: rental.customerName,
+          phone: rental.customerPhone,
+          type: 'دين كراء فستان',
+          desc: `متبقي كراء: ${rental.itemName}`,
+          amount: newRemaining,
+          date: new Date().toISOString(),
+          relatedRentalId: rental.id
+        };
+        return [updatedCredit, ...filtered];
+      }
+      return filtered;
+    });
+
+    showToast('✓ تمت الصفقة وتسليم الفستان بنجاح! دخل الفستان في الكراء الجاري وتم خصمه من المخزن 👗');
+  };
+
+  const handleUpdateRental = (id: string, updatedData: any) => {
+    const prevRental = rentals.find(r => r.id === id);
+    if (prevRental) {
+      const wasActive = prevRental.status === 'active';
+      const isNowActive = updatedData.status === 'active';
+      
+      if (!wasActive && isNowActive) {
+        // Transitioned to active -> increment item rentedCount
+        setClothes(prev => prev.map(c => {
+          if (c.id === updatedData.itemId) {
+            return { ...c, rentedCount: (c.rentedCount || 0) + (updatedData.qty || 1) };
+          }
+          return c;
+        }));
+      } else if (wasActive && !isNowActive) {
+        // Transitioned from active to reserved or returned -> decrement item rentedCount
+        setClothes(prev => prev.map(c => {
+          if (c.id === prevRental.itemId) {
+            return { ...c, rentedCount: Math.max(0, (c.rentedCount || 0) - (prevRental.qty || 1)) };
+          }
+          return c;
+        }));
+      }
+    }
+
+    setRentals(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+    showToast('تم تحديث بيانات الكراء');
+    setActiveModal(null);
+  };
+
+  const handleDeleteRental = (id: string) => {
+    const target = rentals.find(r => r.id === id);
+    if (!target) return;
+
+    setConfirmDelete({
+      title: target.status === 'reserved' ? 'إلغاء حجز الفستان' : 'حذف عملية الكراء',
+      message: target.status === 'reserved'
+        ? 'هل أنت متأكد من إلغاء وحذف حجز الفستان المستقبلي؟'
+        : 'هل أنت متأكد من حذف عملية الكراء؟ سيتم استرجاع القطعة إلى المخزن.',
+      onConfirm: () => {
+        if (target.status === 'active' || target.status === 'overdue') {
+          // Return item count to inventory only if it was active
+          setClothes(prev => prev.map(c => {
+            if (c.id === target.itemId) {
+              return { ...c, rentedCount: Math.max(0, (c.rentedCount || 0) - (target.qty || 1)) };
+            }
+            return c;
+          }));
+        }
+        setRentals(prev => prev.filter(r => r.id !== id));
+        setCredits(prev => prev.filter(c => c.relatedRentalId !== id));
+        showToast(target.status === 'reserved' ? 'تم إلغاء الحجز بنجاح' : 'تم حذف عملية الكراء بنجاح');
+        setConfirmDelete(null);
+      }
+    });
+  };
+
+  const handleConfirmReturn = (rentalId: string, returnData: any) => {
+    const target = rentals.find(r => r.id === rentalId);
+    if (!target) return;
+
+    // Update rental status
+    setRentals(prev => prev.map(r => {
+      if (r.id === rentalId) {
+        return {
+          ...r,
+          status: 'returned',
+          actualReturnDate: new Date().toISOString().split('T')[0],
+          conditionOnReturn: returnData.condition,
+          cautionStatus: returnData.cautionAction === 'refund' ? 'refunded' : 'deducted',
+          penaltyAmount: returnData.penaltyAmount,
+          paidAmount: r.paidAmount + (returnData.collectedRemaining || 0),
+          remainingAmount: Math.max(0, (r.remainingAmount || 0) - (returnData.collectedRemaining || 0)),
+          notes: returnData.notes ? `${r.notes ? r.notes + ' | ' : ''}إرجاع: ${returnData.notes}` : r.notes
+        };
+      }
+      return r;
+    }));
+
+    // Update inventory: decrease rentedCount, add to inCleaningCount if requested
+    setClothes(prev => prev.map(c => {
+      if (c.id === target.itemId) {
+        return {
+          ...c,
+          rentedCount: Math.max(0, (c.rentedCount || 0) - (target.qty || 1)),
+          inCleaningCount: returnData.sendToCleaning ? (c.inCleaningCount || 0) + (target.qty || 1) : (c.inCleaningCount || 0)
+        };
+      }
+      return c;
+    }));
+
+    // If penalty was deducted or caution kept as revenue/compensation
+    if (returnData.penaltyAmount > 0) {
+      showToast(`تم استرجاع الفستان وخصم غرامة بقيمة ${returnData.penaltyAmount} دج`);
+    } else {
+      showToast('تم تأكيد استرجاع الفستان وتسوية الحساب بنجاح ✓');
+    }
+
+    // Auto clear linked credit if collected
+    if (returnData.collectedRemaining > 0) {
+      setCredits(prev => prev.filter(c => c.relatedRentalId !== rentalId));
+    }
+
+    setActiveModal(null);
+  };
+
+  // ==========================
+  // CLOTHES & INVENTORY HANDLERS
+  // ==========================
+  const handleAddCloth = (itemData: any) => {
+    const newCloth: ClothItem = { ...itemData, id: generateId() };
+    setClothes(prev => [newCloth, ...prev]);
+    showToast('تمت إضافة قطعة الملابس للمخزن');
+  };
+
+  const handleUpdateCloth = (id: string, itemData: any) => {
+    setClothes(prev => prev.map(c => c.id === id ? { ...c, ...itemData } : c));
+    showToast('تم تحديث بيانات القطعة');
+  };
+
+  const handleDeleteCloth = (id: string) => {
+    setConfirmDelete({
+      title: 'حذف قطعة من المخزن',
+      message: 'هل أنت متأكد من حذف هذه القطعة من المخزن؟ لا يمكن التراجع عن هذا الإجراء.',
+      onConfirm: () => {
+        setClothes(prev => prev.filter(c => c.id !== id));
+        showToast('تم حذف القطعة من المخزن');
+        setConfirmDelete(null);
+      }
+    });
+  };
+
+  // ==========================
+  // SALES HANDLERS
+  // ==========================
+  const handleCompleteSale = (saleData: any) => {
+    const newSale: Sale = { ...saleData, id: generateId() };
+    setSales(prev => [newSale, ...prev]);
+
+    // Decrease inventory stock accurately from stock1 or stock2
+    saleData.items.forEach((item: any) => {
+      setClothes(prev => prev.map(c => {
+        if (c.id === item.itemId) {
+          const s1 = c.stock1 !== undefined ? c.stock1 : c.stock;
+          const s2 = c.stock2 !== undefined ? c.stock2 : 0;
+          let newS1 = s1;
+          let newS2 = s2;
+
+          if (item.stockSource === 'stock2') {
+            newS2 = Math.max(0, s2 - item.qty);
+          } else {
+            newS1 = Math.max(0, s1 - item.qty);
+          }
+
+          return { 
+            ...c, 
+            stock1: newS1,
+            stock2: newS2,
+            stock: newS1 + newS2 
+          };
+        }
+        return c;
+      }));
+    });
+
+    // If debt exists, add to credits
+    if (saleData.debtAmount > 0) {
+      const newCredit: Credit = {
+        id: generateId(),
+        name: saleData.customerName,
+        phone: saleData.customerPhone,
+        type: 'دين شراء ملابس',
+        desc: `متبقي فاتورة بيع ملابس`,
+        amount: saleData.debtAmount,
+        date: new Date().toISOString()
+      };
+      setCredits(prev => [newCredit, ...prev]);
+    }
+
+    showToast('تم إتمام عملية البيع بنجاح 🛍️');
+  };
+
+  const handleDeleteSale = (sale: Sale) => {
+    setConfirmDelete({
+      title: 'إلغاء عملية البيع',
+      message: 'هل تريد إلغاء عملية البيع واسترجاع القطع للمخزن؟',
+      onConfirm: () => {
+        setSales(prev => prev.filter(s => s.id !== sale.id));
+        sale.items.forEach(item => {
+          setClothes(prev => prev.map(c => {
+            if (c.id === item.itemId) {
+              const s1 = c.stock1 !== undefined ? c.stock1 : c.stock;
+              const s2 = c.stock2 !== undefined ? c.stock2 : 0;
+              let newS1 = s1;
+              let newS2 = s2;
+
+              if (item.stockSource === 'stock2') {
+                newS2 = s2 + item.qty;
+              } else {
+                newS1 = s1 + item.qty;
+              }
+
+              return { 
+                ...c, 
+                stock1: newS1,
+                stock2: newS2,
+                stock: newS1 + newS2 
+              };
+            }
+            return c;
+          }));
+        });
+        showToast('تم إلغاء البيع واسترجاع المخزون');
+        setConfirmDelete(null);
+      }
+    });
+  };
+
+  // ==========================
+  // EXPENSES, SUPPLIERS & CREDITS
+  // ==========================
+  const handleAddExpense = (expData: any) => {
+    const newExpId = generateId();
+    const newExp: Expense = { ...expData, id: newExpId };
+    setExpenses(prev => [newExp, ...prev]);
+
+    // If this is a supplier purchase with credit/debt remaining, auto-create a credit record
+    if (expData.isSupplierPurchase && expData.creditAmount > 0) {
+      const newCredit: Credit = {
+        id: generateId(),
+        name: expData.supplierName || 'مورد',
+        phone: expData.supplierPhone || '',
+        type: 'دين للمورد (كريدي سلعة)',
+        desc: `متبقي شراء: ${expData.goodsDescription || expData.desc}`,
+        amount: expData.creditAmount,
+        date: expData.date || new Date().toISOString(),
+        relatedExpenseId: newExpId,
+        supplierDebt: true,
+        supplierName: expData.supplierName,
+        goodsDescription: expData.goodsDescription,
+        totalInvoiceAmount: expData.totalInvoiceAmount,
+        paidAmount: expData.paidAmount
+      };
+      setCredits(prev => [newCredit, ...prev]);
+      showToast(`تم تسجيل مشتريات المورد (المسدد: ${expData.paidAmount?.toLocaleString()} دج + متبقي دين: ${expData.creditAmount?.toLocaleString()} دج) 🏢`);
+    } else if (expData.isSupplierPurchase) {
+      showToast(`تم تسجيل خلاص المورد بنجاح (${(expData.paidAmount || expData.amount)?.toLocaleString()} دج كاش) 🏢`);
+    } else {
+      showToast('تم تسجيل المصروف بنجاح 🧾');
+    }
+  };
+
+  const handleDeleteExpense = (id: string) => {
+    setExpenses(prev => prev.filter(e => e.id !== id));
+    setCredits(prev => prev.filter(c => c.relatedExpenseId !== id));
+    showToast('تم حذف سجل المصروف');
+  };
+
+  const handleSettleSupplierCredit = (expenseId: string, paidNow: number) => {
+    // 1. Update expense record
+    setExpenses(prev => prev.map(exp => {
+      if (exp.id === expenseId) {
+        const currentPaid = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
+        const currentCredit = exp.creditAmount || 0;
+        const newPaid = currentPaid + paidNow;
+        const newCredit = Math.max(0, currentCredit - paidNow);
+        return {
+          ...exp,
+          paidAmount: newPaid,
+          amount: newPaid,
+          creditAmount: newCredit
+        };
+      }
+      return exp;
+    }));
+
+    // 2. Update or settle linked credit record
+    setCredits(prev => {
+      return prev.map(c => {
+        if (c.relatedExpenseId === expenseId) {
+          const newAmount = Math.max(0, c.amount - paidNow);
+          return { ...c, amount: newAmount };
+        }
+        return c;
+      }).filter(c => c.amount > 0);
+    });
+
+    showToast(`تم خلاص وتسديد مبلغ ${paidNow.toLocaleString()} دج للمورد بنجاح ✓`);
+  };
+
+  const handleAddSupplier = (newSup: Supplier) => {
+    setSuppliers(prev => {
+      if (prev.some(s => s.name.trim().toLowerCase() === newSup.name.trim().toLowerCase())) return prev;
+      return [newSup, ...prev];
+    });
+  };
+
+  const handleAddCredit = (credData: any) => {
+    const newCred: Credit = { ...credData, id: generateId() };
+    setCredits(prev => [newCred, ...prev]);
+    showToast(credData.supplierDebt ? 'تم تسجيل دين للمورد 🏢' : 'تم تسجيل الدين على الزبون 👤');
+  };
+
+  const handleSettleCredit = (id: string) => {
+    const cred = credits.find(c => c.id === id);
+    if (cred && cred.relatedExpenseId) {
+      // Also update linked expense when settled from credits view
+      setExpenses(prev => prev.map(exp => {
+        if (exp.id === cred.relatedExpenseId) {
+          const currentPaid = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
+          const newPaid = currentPaid + cred.amount;
+          return {
+            ...exp,
+            paidAmount: newPaid,
+            amount: newPaid,
+            creditAmount: 0
+          };
+        }
+        return exp;
+      }));
+    }
+    setCredits(prev => prev.filter(c => c.id !== id));
+    showToast('تم تسديد وتصفية الدين بنجاح ✓');
+  };
+
+  const handleDeleteCredit = (id: string) => {
+    setCredits(prev => prev.filter(c => c.id !== id));
+    showToast('تم حذف السجل');
+  };
+
+  // ==========================
+  // STAFF & ABSENCES HANDLERS
+  // ==========================
+  const handleAddStaffPayout = (data: any, deductedAbsenceIds?: string[]) => {
+    const payoutId = generateId();
+    const newPayout: StaffPayout = { ...data, id: payoutId };
+    setStaffPayouts(prev => [newPayout, ...prev]);
+
+    // If absences were deducted in this payout, mark them as deducted
+    if (deductedAbsenceIds && deductedAbsenceIds.length > 0) {
+      setStaffAbsences(prev => prev.map(a => {
+        if (deductedAbsenceIds.includes(a.id)) {
+          return { ...a, isDeducted: true, payoutId };
+        }
+        return a;
+      }));
+    }
+
+    showToast('تم صرف الراتب وتطبيق خصم الغيابات بنجاح ✓');
+  };
+
+  const handleDeleteStaffPayout = (id: string) => {
+    setStaffPayouts(prev => prev.filter(p => p.id !== id));
+    // Restore deducted status if payout is deleted
+    setStaffAbsences(prev => prev.map(a => a.payoutId === id ? { ...a, isDeducted: false, payoutId: undefined } : a));
+    showToast('تم حذف سجل الراتب');
+  };
+
+  const handleAddStaffMember = (data: any) => {
+    const newMember: StaffMember = { ...data, id: generateId() };
+    setStaffMembers(prev => [...prev, newMember]);
+    showToast(`تمت إضافة العامل/ة ${data.name}`);
+  };
+
+  const handleUpdateStaffMember = (id: string, data: any) => {
+    setStaffMembers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+    showToast('تم تحديث بيانات العامل');
+  };
+
+  const handleDeleteStaffMember = (id: string) => {
+    setConfirmDelete({
+      title: 'حذف العامل',
+      message: 'هل تريد حذف هذا العامل من النظام؟',
+      onConfirm: () => {
+        setStaffMembers(prev => prev.filter(s => s.id !== id));
+        showToast('تم حذف العامل');
+        setConfirmDelete(null);
+      }
+    });
+  };
+
+  const handleAddAbsence = (data: any) => {
+    const newAbsence: StaffAbsence = { ...data, id: generateId() };
+    setStaffAbsences(prev => [newAbsence, ...prev]);
+    showToast(`تم تسجيل غياب ${data.staffName} بقيمة خصم ${data.deductionAmount} دج`);
+  };
+
+  const handleDeleteAbsence = (id: string) => {
+    setStaffAbsences(prev => prev.filter(a => a.id !== id));
+    showToast('تم حذف سجل الغياب');
+  };
+
+  // ==========================
+  // TAILORING & MAINTENANCE HANDLERS
+  // ==========================
+  const handleAddTailoringOrder = (data: Partial<MaintenanceOrder>) => {
+    const newOrder: MaintenanceOrder = {
+      id: generateId(),
+      orderNumber: `TAIL-${Math.floor(100 + Math.random() * 900)}`,
+      targetType: data.targetType || 'customer_order',
+      itemId: data.itemId,
+      itemName: data.itemName || 'فستان',
+      customerName: data.customerName,
+      customerPhone: data.customerPhone,
+      serviceType: data.serviceType || 'alteration',
+      description: data.description || '',
+      measurements: data.measurements,
+      tailorName: data.tailorName,
+      cost: Number(data.cost) || 0,
+      price: Number(data.price) || 0,
+      paidAmount: Number(data.paidAmount) || 0,
+      remainingAmount: Number(data.remainingAmount) || 0,
+      receivedDate: data.receivedDate || new Date().toISOString().split('T')[0],
+      expectedDeliveryDate: data.expectedDeliveryDate || new Date().toISOString().split('T')[0],
+      status: data.status || 'pending',
+      notes: data.notes,
+      createdAt: new Date().toISOString()
+    };
+
+    setMaintenanceOrders(prev => [newOrder, ...prev]);
+
+    if (newOrder.remainingAmount > 0 && newOrder.customerName) {
+      const newCredit: Credit = {
+        id: generateId(),
+        name: newOrder.customerName,
+        phone: newOrder.customerPhone || '',
+        type: 'دين خياطة وصيانة',
+        desc: `متبقي خياطة: ${newOrder.itemName} (طلب #${newOrder.orderNumber})`,
+        amount: newOrder.remainingAmount,
+        date: new Date().toISOString()
+      };
+      setCredits(prev => [newCredit, ...prev]);
+    }
+
+    showToast('تم تسجيل طلب الخياطة والصيانة بنجاح');
+    setActiveModal(null);
+  };
+
+  const handleUpdateTailoringOrder = (id: string, data: Partial<MaintenanceOrder>) => {
+    setMaintenanceOrders(prev => prev.map(o => o.id === id ? { ...o, ...data } : o));
+    showToast('تم تحديث بيانات طلب الخياطة');
+    setActiveModal(null);
+  };
+
+  const handleUpdateTailoringStatus = (id: string, newStatus: MaintenanceStatus) => {
+    setMaintenanceOrders(prev => prev.map(o => {
+      if (o.id === id) {
+        return { 
+          ...o, 
+          status: newStatus, 
+          actualDeliveryDate: newStatus === 'delivered' ? new Date().toISOString().split('T')[0] : o.actualDeliveryDate 
+        };
+      }
+      return o;
+    }));
+    showToast('تم تحديث حالة الطلب');
+  };
+
+  const handleDeleteTailoringOrder = (id: string) => {
+    setConfirmDelete({
+      title: 'حذف طلب الصيانة والخياطة',
+      message: 'هل أنت متأكد من حذف هذا الطلب من سجل الخياطة؟',
+      onConfirm: () => {
+        setMaintenanceOrders(prev => prev.filter(o => o.id !== id));
+        showToast('تم حذف الطلب بنجاح');
+        setConfirmDelete(null);
+      }
+    });
+  };
+
+  // ==========================
+  // MESSAGING (WHATSAPP / SMS)
+  // ==========================
+  const handleSendMessage = (rental: Rental, method: 'whatsapp' | 'sms') => {
+    const phone = rental.customerPhone.replace(/[^0-9]/g, '');
+    const cleanPhone = phone.startsWith('0') ? '213' + phone.substring(1) : phone;
+    
+    const isOverdue = new Date(rental.expectedReturnDate).getTime() < new Date().getTime();
+    let msgText = '';
+
+    if (rental.status === 'reserved') {
+      msgText = `سلام ${rental.customerName}، نذكروك بحجز فستان/قطعة (${rental.itemName}) لمناسبتكم القادمة بتاريخ ${rental.startDate}. يرجى الحضور لاستلام الفستان وإتمام الصفقة. نسعد دائماً بخدمتكم في بوتيك مانجر.`;
+    } else if (isOverdue) {
+      msgText = `سلام ${rental.customerName}، نذكروك بأن موعد إرجاع فستان/قطعة (${rental.itemName}) من بوتيك مانجر كان محدد بتاريخ ${rental.expectedReturnDate}. يرجى إرجاع القطعة في أقرب وقت. شكراً لتفهمكم.`;
+    } else {
+      msgText = `سلام ${rental.customerName}، نذكروك بموعد إرجاع فستان/قطعة (${rental.itemName}) المحدد بتاريخ ${rental.expectedReturnDate}. نسعد بخدمتك دائماً في بوتيك مانجر.`;
+    }
+
+    const encoded = encodeURIComponent(msgText);
+    if (method === 'whatsapp') {
+      window.open(`https://wa.me/${cleanPhone}?text=${encoded}`, '_blank');
+    } else {
+      window.open(`sms:${phone}?body=${encoded}`, '_blank');
+    }
+  };
+
+  // ==========================
+  // BACKUP & RESTORE
+  // ==========================
+  const handleExportBackup = () => {
+    const backupData = {
+      clothes,
+      rentals,
+      sales,
+      expenses,
+      credits,
+      staffPayouts,
+      exportedAt: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `نسخة_بوتيك_مانجر_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('تم تصدير النسخة الاحتياطية بنجاح');
+  };
+
+  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const parsed = JSON.parse(ev.target?.result as string);
+          if (parsed.clothes) setClothes(parsed.clothes);
+          if (parsed.rentals) setRentals(parsed.rentals);
+          if (parsed.sales) setSales(parsed.sales);
+          if (parsed.expenses) setExpenses(parsed.expenses);
+          if (parsed.credits) setCredits(parsed.credits);
+          if (parsed.staffPayouts) setStaffPayouts(parsed.staffPayouts);
+          showToast('تمت استعادة البيانات بنجاح!');
+          setActiveModal(null);
+        } catch (err) {
+          showToast('ملف غير صالح!', 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  return (
+    <div className="text-slate-900 w-full min-h-screen flex flex-col bg-slate-50 font-['Tajawal']" dir="rtl">
+      {/* Toast Notification Container */}
+      <div className="fixed bottom-4 left-4 z-[100] flex flex-col gap-2 pointer-events-none">
+        {toasts.map(t => (
+          <div 
+            key={t.id} 
+            className={`px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold text-white transition-all transform duration-300 ${
+              t.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'
+            }`}
+          >
+            {t.message}
+          </div>
+        ))}
+      </div>
+
+      {/* Main Top Header */}
+      <header className="bg-white border-b border-slate-200 px-3 sm:px-6 py-2.5 z-20 sticky top-0 shadow-xs safe-top">
+        <div className="max-w-6xl mx-auto flex flex-col gap-2">
+          {/* Top Row: Quick Tools & Actions */}
+          <div className="flex items-center justify-between gap-2">
+            {/* Action Tools */}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <button
+                onClick={() => setIsScanning(true)}
+                title="مسح الباركود"
+                aria-label="مسح الباركود"
+                className="h-9 px-2.5 sm:px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 flex items-center gap-1.5 transition-all text-xs font-bold"
+              >
+                <svg className="w-4 h-4 text-indigo-600 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M3 7V5a2 2 0 012-2h2" />
+                  <path d="M17 3h2a2 2 0 012 2v2" />
+                  <path d="M21 17v2a2 2 0 01-2 2h-2" />
+                  <path d="M7 21H5a2 2 0 01-2-2v-2" />
+                  <line x1="7" y1="12" x2="17" y2="12" />
+                </svg>
+                <span className="hidden sm:inline">مسح الباركود</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (hideFinances) {
+                    setActiveModal('privacyPassword');
+                  } else {
+                    setHideFinances(true);
+                    localStorage.setItem('bm_hideFinances', 'true');
+                  }
+                }}
+                title="إخفاء/إظهار المبالغ"
+                aria-label="إخفاء/إظهار المبالغ"
+                className={`h-9 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 transition-all active:scale-95 text-xs font-bold ${
+                  hideFinances ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  {hideFinances ? (
+                    <>
+                      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </>
+                  ) : (
+                    <>
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </>
+                  )}
+                </svg>
+                <span className="hidden sm:inline">{hideFinances ? 'إظهار المبالغ' : 'إخفاء المبالغ'}</span>
+              </button>
+
+              <button 
+                onClick={() => setActiveModal('fullReport')} 
+                title="التقرير المالي"
+                className="h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-xl transition-all shadow-xs active:scale-95"
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <polyline points="10 9 9 9 8 9" />
+                </svg>
+                <span className="hidden sm:inline">التقرير الشامل</span>
+              </button>
+
+              <button 
+                onClick={() => setActiveModal('backupModal')} 
+                title="النسخ الاحتياطي" 
+                aria-label="النسخ الاحتياطي"
+                className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 rounded-xl transition-colors active:scale-95"
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Primary Add Button */}
+            <button
+              onClick={() => setActiveModal('addRental')}
+              className="h-9 px-4 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-xl font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-100 shrink-0"
+            >
+              <span>+</span>
+              <span>كراء جديد</span>
+            </button>
+          </div>
+
+          {/* Bottom Row of Header: All 8 Navigation Icons in a single compact row */}
+          <nav className="grid grid-cols-8 gap-0.5 sm:gap-1.5 w-full pt-1 border-t border-slate-100" aria-label="أقسام التطبيق">
+            <NavButton 
+              icon="dashboard" 
+              label="الرئيسية" 
+              onClick={() => setCurrentView('dashboard')} 
+              active={currentView === 'dashboard'} 
+            />
+            <NavButton 
+              icon="rentals" 
+              label="الكراء" 
+              onClick={() => setCurrentView('rentals')} 
+              active={currentView === 'rentals'} 
+              badge={overdueCount}
+            />
+            <NavButton 
+              icon="inventory" 
+              label="المخزون" 
+              onClick={() => setCurrentView('inventory')} 
+              active={currentView === 'inventory'} 
+            />
+            <NavButton 
+              icon="sales" 
+              label="المبيعات" 
+              onClick={() => setCurrentView('sales')} 
+              active={currentView === 'sales'} 
+            />
+            <NavButton 
+              icon="tailoring" 
+              label="الخياطة" 
+              onClick={() => setCurrentView('tailoring')} 
+              active={currentView === 'tailoring'} 
+              badge={activeMaintenanceCount}
+            />
+            <NavButton 
+              icon="expenses" 
+              label="المصاريف" 
+              onClick={() => setCurrentView('expenses')} 
+              active={currentView === 'expenses'} 
+            />
+            <NavButton 
+              icon="credits" 
+              label="الكريدي" 
+              onClick={() => setCurrentView('credits')} 
+              active={currentView === 'credits'} 
+            />
+            <NavButton 
+              icon="staff" 
+              label="العمال" 
+              onClick={() => setActiveModal('staffPayouts')} 
+              badge={pendingAbsencesCount}
+            />
+          </nav>
+        </div>
+      </header>
+
+      {/* Main Views Container */}
+      <main className="flex-1 max-w-6xl mx-auto w-full px-3 sm:px-6 md:px-8 py-4 pb-12 overflow-y-auto">
+        {currentView === 'dashboard' && (
+          <DashboardView 
+            stats={stats} 
+            rentals={rentals} 
+            maintenanceOrders={maintenanceOrders}
+            clothes={clothes}
+            hideFinances={hideFinances}
+            onPrivacyToggle={() => {
+              if (hideFinances) {
+                setActiveModal('privacyPassword');
+              } else {
+                setHideFinances(true);
+                localStorage.setItem('bm_hideFinances', 'true');
+              }
+            }}
+            onNavigate={(v) => setCurrentView(v)}
+            onOpenAddRental={() => setActiveModal('addRental')}
+            onOpenReturnModal={(r) => { setSelectedRental(r); setActiveModal('returnRental'); }}
+            onSendMessage={(r) => { setSelectedRental(r); setActiveModal('messageModal'); }}
+          />
+        )}
+
+        {currentView === 'rentals' && (
+          <RentalsView 
+            rentals={rentals} 
+            clothes={clothes}
+            onAddRental={(itemId) => {
+              setPreselectedRentalItemId(itemId);
+              setActiveModal('addRental');
+            }}
+            onEditRental={(r) => { setSelectedRental(r); setActiveModal('editRental'); }}
+            onDeleteRental={handleDeleteRental}
+            onActivateRental={handleActivateRental}
+            onOpenReturnModal={(r) => { setSelectedRental(r); setActiveModal('returnRental'); }}
+            onOpenReceiptModal={(r) => { setSelectedRental(r); setActiveModal('receiptModal'); }}
+            onSendMessage={(r) => { setSelectedRental(r); setActiveModal('messageModal'); }}
+            onScanBarcode={() => setIsScanning(true)}
+          />
+        )}
+
+        {currentView === 'inventory' && (
+          <InventoryView 
+            clothes={clothes}
+            onAddCloth={handleAddCloth}
+            onUpdateCloth={handleUpdateCloth}
+            onDeleteCloth={handleDeleteCloth}
+            onScanBarcode={() => setIsScanning(true)}
+          />
+        )}
+
+        {currentView === 'sales' && (
+          <SalesPOSView 
+            clothes={clothes}
+            sales={sales}
+            onCompleteSale={handleCompleteSale}
+            onDeleteSale={handleDeleteSale}
+            onScanBarcode={() => setIsScanning(true)}
+          />
+        )}
+
+        {currentView === 'tailoring' && (
+          <TailoringView 
+            orders={maintenanceOrders}
+            clothes={clothes}
+            onOpenAddModal={() => setActiveModal('addTailoring')}
+            onEditOrder={(order) => { setSelectedTailoringOrder(order); setActiveModal('editTailoring'); }}
+            onDeleteOrder={handleDeleteTailoringOrder}
+            onUpdateStatus={handleUpdateTailoringStatus}
+            onOpenReceiptModal={(order) => { setSelectedTailoringOrder(order); setActiveModal('tailoringReceipt'); }}
+          />
+        )}
+
+        {currentView === 'expenses' && (
+          <ExpensesView 
+            expenses={expenses}
+            suppliers={suppliers}
+            credits={credits}
+            onAddExpense={handleAddExpense}
+            onDeleteExpense={handleDeleteExpense}
+            onSettleSupplierCredit={handleSettleSupplierCredit}
+            onAddSupplier={handleAddSupplier}
+          />
+        )}
+
+        {currentView === 'credits' && (
+          <CreditsView 
+            credits={credits}
+            suppliers={suppliers}
+            onAddCredit={handleAddCredit}
+            onSettleCredit={handleSettleCredit}
+            onDeleteCredit={handleDeleteCredit}
+          />
+        )}
+      </main>
+
+      {/* ================= MODALS ================= */}
+
+      {/* Add Tailoring Modal */}
+      {activeModal === 'addTailoring' && (
+        <TailoringModal
+          clothes={clothes}
+          staffMembers={staffMembers}
+          onSave={handleAddTailoringOrder}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {/* Edit Tailoring Modal */}
+      {activeModal === 'editTailoring' && selectedTailoringOrder && (
+        <TailoringModal
+          order={selectedTailoringOrder}
+          clothes={clothes}
+          staffMembers={staffMembers}
+          onSave={(data) => handleUpdateTailoringOrder(selectedTailoringOrder.id, data)}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {/* Tailoring Receipt Modal */}
+      {activeModal === 'tailoringReceipt' && selectedTailoringOrder && (
+        <TailoringReceiptModal
+          order={selectedTailoringOrder}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {/* Add Rental Modal */}
+      {activeModal === 'addRental' && (
+        <Modal title="تسجيل عملية كراء أو حجز مستقبلي 👗" onClose={() => { setActiveModal(null); setPreselectedRentalItemId(undefined); }}>
+          <RentalModal 
+            clothes={clothes} 
+            initialItemId={preselectedRentalItemId}
+            existingRentals={rentals}
+            onSubmit={(data) => {
+              handleAddRental(data);
+              setPreselectedRentalItemId(undefined);
+            }} 
+          />
+        </Modal>
+      )}
+
+      {/* Edit Rental Modal */}
+      {activeModal === 'editRental' && selectedRental && (
+        <Modal title="تعديل بيانات ومواعيد الكراء" onClose={() => setActiveModal(null)}>
+          <RentalModal 
+            clothes={clothes} 
+            rental={selectedRental}
+            existingRentals={rentals}
+            onSubmit={(data) => handleUpdateRental(selectedRental.id, data)} 
+          />
+        </Modal>
+      )}
+
+      {/* Return Rental Modal */}
+      {activeModal === 'returnRental' && selectedRental && (
+        <Modal title="استرجاع فستان / قطعة كراء" onClose={() => setActiveModal(null)}>
+          <ReturnRentalModal 
+            rental={selectedRental}
+            onConfirmReturn={handleConfirmReturn}
+            onCancel={() => setActiveModal(null)}
+          />
+        </Modal>
+      )}
+
+      {/* Rental Receipt Modal */}
+      {activeModal === 'receiptModal' && selectedRental && (
+        <Modal title="وصل وعقد الكراء 📄" onClose={() => setActiveModal(null)} wide>
+          <RentalReceiptModal 
+            rental={selectedRental}
+            onClose={() => setActiveModal(null)}
+          />
+        </Modal>
+      )}
+
+      {/* WhatsApp / SMS Messaging Modal */}
+      {activeModal === 'messageModal' && selectedRental && (
+        <Modal title="إرسال تذكير للزبون" onClose={() => setActiveModal(null)}>
+          <div className="space-y-4 text-right">
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+              <h4 className="font-black text-slate-800 text-xs mb-1">الزبون: {selectedRental.customerName}</h4>
+              <p className="text-xs text-slate-600">القطعة: {selectedRental.itemName}</p>
+              <p className="text-xs text-rose-700 font-bold mt-1">تاريخ الإرجاع: {selectedRental.expectedReturnDate}</p>
+            </div>
+
+            <div className="flex gap-3">
+              <button 
+                onClick={() => { handleSendMessage(selectedRental, 'whatsapp'); setActiveModal(null); }} 
+                className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-emerald-100"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.007c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.275.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.043.073.043.419-.101.824z"/></svg>
+                إرسال عبر واتساب
+              </button>
+              <button 
+                onClick={() => { handleSendMessage(selectedRental, 'sms'); setActiveModal(null); }} 
+                className="flex-1 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-100"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" strokeWidth="2"></path></svg>
+                إرسال SMS
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Staff Payouts & Absences Modal */}
+      {activeModal === 'staffPayouts' && (
+        <Modal title="رواتب، غيابات وخلاص عمال البوتيك" onClose={() => setActiveModal(null)} wide>
+          <StaffPayoutsModal 
+            staffPayouts={staffPayouts} 
+            staffMembers={staffMembers}
+            staffAbsences={staffAbsences}
+            onAddPayout={handleAddStaffPayout} 
+            onDeletePayout={handleDeleteStaffPayout} 
+            onAddStaffMember={handleAddStaffMember}
+            onUpdateStaffMember={handleUpdateStaffMember}
+            onDeleteStaffMember={handleDeleteStaffMember}
+            onAddAbsence={handleAddAbsence}
+            onDeleteAbsence={handleDeleteAbsence}
+            hideFinances={hideFinances} 
+          />
+        </Modal>
+      )}
+
+      {/* Privacy Password Modal */}
+      {activeModal === 'privacyPassword' && (
+        <Modal title="كلمة المرور لإظهار الحسابات" onClose={() => setActiveModal(null)}>
+          <div className="space-y-4 text-center">
+            <p className="text-xs text-slate-500 font-medium">أدخل كلمة المرور (الافتراضية: 0000)</p>
+            <input 
+              type="password" 
+              autoFocus 
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-center text-xl font-black outline-none tracking-widest focus:border-rose-500" 
+              placeholder="••••" 
+              maxLength={4} 
+              onKeyDown={(e) => { 
+                if (e.key === 'Enter') {
+                  const val = (e.target as HTMLInputElement).value;
+                  if (val === '0000') {
+                    setHideFinances(false); 
+                    localStorage.setItem('bm_hideFinances', 'false'); 
+                    setActiveModal(null);
+                    showToast('تم إلغاء وضع الخصوصية');
+                  } else {
+                    showToast('كلمة المرور خاطئة', 'error');
+                  }
+                }
+              }} 
+            />
+            <p className="text-[11px] text-slate-400">اضغط Enter للتأكيد</p>
+          </div>
+        </Modal>
+      )}
+
+      {/* Backup & Restore Modal */}
+      {activeModal === 'backupModal' && (
+        <Modal title="النسخ الاحتياطي واستعادة البيانات" onClose={() => setActiveModal(null)}>
+          <div className="space-y-4">
+            <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl">
+              <h4 className="font-bold text-sm text-rose-900 mb-1">حفظ نسخة احتياطية من بيانات البوتيك</h4>
+              <p className="text-xs text-rose-700 mb-3">تنزيل ملف يحتوي على كافة ملابس المخزن، عمليات الكراء، المبيعات، والمصاريف.</p>
+              <button 
+                onClick={handleExportBackup} 
+                className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-100"
+              >
+                تنزيل النسخة الاحتياطية (JSON)
+              </button>
+            </div>
+
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-emerald-700 text-base">🌐</span>
+                <h4 className="font-bold text-sm text-emerald-900">تطبيق الصفحة الواحدة المستقل (index.html)</h4>
+              </div>
+              <p className="text-xs text-emerald-800 mb-2 leading-relaxed">
+                تم تهيئة المشروع لتوليد ملف <strong>index.html</strong> كامل ومستقل يشمل كافة الأكواد، التصاميم، والمكتبات داخل ملف واحد بدون أي ملفات خارجية منفصلة، جاهز للرفع المباشر على <strong>GitHub / GitHub Pages</strong>.
+              </p>
+              <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-300/80 text-[11px] font-mono text-emerald-950 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold">أمر التجميع لملف واحد:</span>
+                  <span className="bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded font-black">npm run build</span>
+                </div>
+                <div className="text-[10px] text-emerald-700 font-sans">
+                  ينتج الملف النهائي داخل مجلد: <code className="font-bold">dist/index.html</code>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+              <h4 className="font-bold text-sm text-slate-800 mb-1">استعادة البيانات من ملف</h4>
+              <p className="text-xs text-slate-500 mb-3">يمكنك رفع ملف نسخة احتياطية تم تصديره مسبقاً لاسترجاع كافة البيانات في ثوانٍ.</p>
+              <label className="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer">
+                اختيار ملف النسخة الاحتياطية
+                <input type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
+              </label>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Full Financial Report */}
+      {activeModal === 'fullReport' && (
+        <Modal title="تقرير البوتيك الشامل" onClose={() => setActiveModal(null)} wide>
+          <FullReport 
+            clothes={clothes}
+            rentals={rentals}
+            sales={sales}
+            expenses={expenses}
+            credits={credits}
+            staffPayouts={staffPayouts}
+            hideFinances={hideFinances}
+          />
+        </Modal>
+      )}
+
+      {/* Barcode Scanner */}
+      {isScanning && (
+        <BarcodeScanner 
+          onScan={(code) => {
+            const cleanCode = code.trim().toLowerCase();
+            const item = clothes.find(c => c.barcode.trim().toLowerCase() === cleanCode);
+            setIsScanning(false);
+
+            if (item) {
+              showToast(`تم التعرف على: ${item.name} (${item.size})`);
+
+              if (currentView === 'sales') {
+                if (item.stock - item.rentedCount <= 0) {
+                  showToast(`القطعة "${item.name}" نفدت من المخزن`, 'error');
+                } else {
+                  handleCompleteSale({
+                    customerName: 'زبون عام',
+                    items: [{
+                      itemId: item.id,
+                      name: item.name,
+                      size: item.size,
+                      color: item.color,
+                      qty: 1,
+                      price: item.sellPrice,
+                      cost: item.buyCost,
+                      total: item.sellPrice,
+                      imageUrl: item.imageUrl
+                    }],
+                    totalAmount: item.sellPrice,
+                    paidAmount: item.sellPrice,
+                    debtAmount: 0,
+                    profit: item.sellPrice - item.buyCost,
+                    date: new Date().toISOString()
+                  });
+                }
+              } else if (currentView === 'rentals') {
+                setPreselectedRentalItemId(item.id);
+                setActiveModal('addRental');
+              } else {
+                // Open action chooser for this scanned item
+                setScannedItemAction(item);
+              }
+            } else {
+              // Code not in database -> prompt to add
+              setUnknownScannedCode(code.trim());
+            }
+          }} 
+          onClose={() => setIsScanning(false)} 
+        />
+      )}
+
+      {/* Scanned Item Action Modal (When scanned from Dashboard / Top Bar) */}
+      {scannedItemAction && (
+        <Modal 
+          title="إجراءات سريعة للقطعة الممسوحة ⚡" 
+          onClose={() => setScannedItemAction(null)}
+        >
+          <div className="space-y-4 py-1 text-slate-800" dir="rtl">
+            {/* Item Card */}
+            <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+              {scannedItemAction.imageUrl ? (
+                <img 
+                  src={scannedItemAction.imageUrl} 
+                  alt={scannedItemAction.name} 
+                  className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shrink-0" 
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-3xl font-bold shrink-0">
+                  👗
+                </div>
+              )}
+
+              <div className="flex-1">
+                <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-bold">
+                  {scannedItemAction.category}
+                </span>
+                <h4 className="font-black text-slate-900 text-sm mt-1">{scannedItemAction.name}</h4>
+                <div className="flex flex-wrap gap-2 text-xs text-slate-500 font-bold mt-1">
+                  <span>مقاس: {scannedItemAction.size}</span>
+                  <span>•</span>
+                  <span>اللون: {scannedItemAction.color}</span>
+                  <span>•</span>
+                  <span className="font-mono text-indigo-700">#{scannedItemAction.barcode}</span>
+                </div>
+                <div className="text-xs font-black text-emerald-700 mt-1">
+                  المتوفر بالمخزن: {scannedItemAction.stock - scannedItemAction.rentedCount} من {scannedItemAction.stock} قطعة
+                </div>
+              </div>
+            </div>
+
+            {/* 3 Main Action Choices */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {/* Rent Action */}
+              {(scannedItemAction.purpose === 'rent' || scannedItemAction.purpose === 'both') && (
+                <button
+                  onClick={() => {
+                    const item = scannedItemAction;
+                    setScannedItemAction(null);
+                    setPreselectedRentalItemId(item.id);
+                    setCurrentView('rentals');
+                    setActiveModal('addRental');
+                  }}
+                  className="p-3.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-2xl text-center transition-all flex flex-col items-center justify-between gap-2 active:scale-95 group"
+                >
+                  <span className="text-2xl group-hover:scale-110 transition-transform">👗</span>
+                  <div>
+                    <span className="block font-black text-xs text-rose-900">كراء الفستان</span>
+                    <span className="text-[10px] text-rose-700 font-bold">{(scannedItemAction.rentPrice || 0).toLocaleString()} دج</span>
+                  </div>
+                </button>
+              )}
+
+              {/* Sell Action */}
+              {(scannedItemAction.purpose === 'sell' || scannedItemAction.purpose === 'both') && (
+                <button
+                  onClick={() => {
+                    const item = scannedItemAction;
+                    setScannedItemAction(null);
+                    setCurrentView('sales');
+                    handleCompleteSale({
+                      customerName: 'زبون عام',
+                      items: [{
+                        itemId: item.id,
+                        name: item.name,
+                        size: item.size,
+                        color: item.color,
+                        qty: 1,
+                        stockSource: (item.stock1 && item.stock1 > 0) ? 'stock1' : 'stock2',
+                        price: item.sellPrice,
+                        cost: item.buyCost,
+                        total: item.sellPrice,
+                        imageUrl: item.imageUrl
+                      }],
+                      totalAmount: item.sellPrice,
+                      paidAmount: item.sellPrice,
+                      debtAmount: 0,
+                      profit: item.sellPrice - item.buyCost,
+                      date: new Date().toISOString()
+                    });
+                  }}
+                  className="p-3.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-2xl text-center transition-all flex flex-col items-center justify-between gap-2 active:scale-95 group"
+                >
+                  <span className="text-2xl group-hover:scale-110 transition-transform">🛍️</span>
+                  <div>
+                    <span className="block font-black text-xs text-indigo-900">بيع مباشر</span>
+                    <span className="text-[10px] text-indigo-700 font-bold">{(scannedItemAction.sellPrice || 0).toLocaleString()} دج</span>
+                  </div>
+                </button>
+              )}
+
+              {/* Stock Management */}
+              <button
+                onClick={() => {
+                  setScannedItemAction(null);
+                  setCurrentView('inventory');
+                }}
+                className="p-3.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-2xl text-center transition-all flex flex-col items-center justify-between gap-2 active:scale-95 group"
+              >
+                <span className="text-2xl group-hover:scale-110 transition-transform">📦</span>
+                <div>
+                  <span className="block font-black text-xs text-emerald-900">إدارة المخزون</span>
+                  <span className="text-[10px] text-emerald-700 font-bold">{scannedItemAction.stock} قطعة</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Unknown Barcode Scanned Modal */}
+      {unknownScannedCode && (
+        <Modal 
+          title="الباركود غير مسجل في المخزن ⚠️" 
+          onClose={() => setUnknownScannedCode(null)}
+        >
+          <div className="space-y-4 py-2 text-center" dir="rtl">
+            <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-3xl mx-auto font-bold">
+              📷
+            </div>
+            <div>
+              <h4 className="font-black text-slate-900 text-sm">لم يتم العثور على قطعة مسجلة بهذا الرمز</h4>
+              <p className="text-xs text-slate-500 font-mono mt-1 bg-slate-100 py-1.5 px-3 rounded-xl inline-block">
+                #{unknownScannedCode}
+              </p>
+            </div>
+            <p className="text-xs text-slate-600">
+              هل ترغب في تسجيل هذا الباركود وإضافة قطعة ملابس / فستان جديد للمخزن الآن؟
+            </p>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => {
+                  setUnknownScannedCode(null);
+                  setCurrentView('inventory');
+                }}
+                className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black transition-all shadow-md shadow-rose-200 active:scale-95"
+              >
+                + إضافة قطعة جديدة بهذا الباركود
+              </button>
+              <button
+                onClick={() => setUnknownScannedCode(null)}
+                className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Mobile More Sheet Modal */}
+      {activeModal === 'mobileMore' && (
+        <Modal title="المزيد من الأقسام والخدمات ⚡" onClose={() => setActiveModal(null)}>
+          <div className="grid grid-cols-2 gap-3 py-2">
+            <button
+              onClick={() => { setCurrentView('expenses'); setActiveModal(null); }}
+              className="p-4 bg-amber-50 hover:bg-amber-100 rounded-2xl border border-amber-200 text-right transition-all flex flex-col justify-between active:scale-95"
+            >
+              <div className="w-10 h-10 rounded-xl bg-amber-200 text-amber-900 flex items-center justify-center text-lg mb-2">
+                🧼
+              </div>
+              <div>
+                <h4 className="font-black text-amber-950 text-xs">المصاريف والغسيل</h4>
+                <p className="text-[10px] text-amber-800 mt-0.5">Pressing وكراء المحل</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => { setCurrentView('credits'); setActiveModal(null); }}
+              className="p-4 bg-rose-50 hover:bg-rose-100 rounded-2xl border border-rose-200 text-right transition-all flex flex-col justify-between active:scale-95"
+            >
+              <div className="w-10 h-10 rounded-xl bg-rose-200 text-rose-900 flex items-center justify-center text-lg mb-2">
+                💳
+              </div>
+              <div>
+                <h4 className="font-black text-rose-950 text-xs">الديون والكريدي</h4>
+                <p className="text-[10px] text-rose-800 mt-0.5">متابعة حسابات الزبائن</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => { setActiveModal('staffPayouts'); }}
+              className="p-4 bg-indigo-50 hover:bg-indigo-100 rounded-2xl border border-indigo-200 text-right transition-all flex flex-col justify-between active:scale-95"
+            >
+              <div className="w-10 h-10 rounded-xl bg-indigo-200 text-indigo-900 flex items-center justify-center text-lg mb-2">
+                👥
+              </div>
+              <div>
+                <h4 className="font-black text-indigo-950 text-xs">رواتب وخلاص العمال</h4>
+                <p className="text-[10px] text-indigo-800 mt-0.5">سجل دفعات الموظفين</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => { setActiveModal('fullReport'); }}
+              className="p-4 bg-emerald-50 hover:bg-emerald-100 rounded-2xl border border-emerald-200 text-right transition-all flex flex-col justify-between active:scale-95"
+            >
+              <div className="w-10 h-10 rounded-xl bg-emerald-200 text-emerald-900 flex items-center justify-center text-lg mb-2">
+                📊
+              </div>
+              <div>
+                <h4 className="font-black text-emerald-950 text-xs">التقرير المالي الشامل</h4>
+                <p className="text-[10px] text-emerald-800 mt-0.5">طباعة وإحصائيات كاملة</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => { setActiveModal('backupModal'); }}
+              className="p-4 bg-slate-100 hover:bg-slate-200 rounded-2xl border border-slate-200 text-right transition-all flex flex-col justify-between active:scale-95 col-span-2"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-800 text-white flex items-center justify-center text-lg shrink-0">
+                  💾
+                </div>
+                <div>
+                  <h4 className="font-black text-slate-900 text-xs">النسخ الاحتياطي واستعادة البيانات</h4>
+                  <p className="text-[10px] text-slate-500 mt-0.5">تصدير أو استرجاع بيانات المحل (JSON)</p>
+                </div>
+              </div>
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* In-App Delete Confirmation Modal */}
+      {confirmDelete && (
+        <Modal title={confirmDelete.title} onClose={() => setConfirmDelete(null)}>
+          <div className="space-y-4 py-2 text-center sm:text-right" dir="rtl">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto sm:mx-0">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-black text-slate-800 leading-relaxed">
+                {confirmDelete.message}
+              </p>
+              <span className="text-xs text-slate-400 font-bold block mt-1">
+                تأكيد حذف البيانات بشكل فوري وآمن.
+              </span>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={confirmDelete.onConfirm}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white py-3 rounded-2xl font-black text-xs sm:text-sm transition-all shadow-md shadow-rose-200 min-h-[44px]"
+              >
+                تأكيد الحذف
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all min-h-[44px]"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}

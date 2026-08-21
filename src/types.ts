@@ -1,0 +1,207 @@
+export type PurposeType = 'sell' | 'rent' | 'both';
+export type RentalStatus = 'reserved' | 'active' | 'overdue' | 'returned' | 'cleaning' | 'cancelled';
+export type CautionStatus = 'held' | 'refunded' | 'deducted';
+
+export interface ClothItem {
+  id: string;
+  name: string;
+  barcode: string;
+  category: string;
+  purpose: PurposeType;
+  buyCost: number;
+  sellPrice: number;
+  rentPrice: number;
+  cautionAmount: number;
+  size: string;
+  color: string;
+  stock: number; // Total stock (stock1 + stock2)
+  stock1?: number; // Stock 1 (e.g. المحل / صالة العرض)
+  stock2?: number; // Stock 2 (e.g. المستودع / التخزين)
+  rentedCount: number;
+  inCleaningCount: number;
+  imageUrl?: string;
+  description?: string;
+}
+
+export interface Rental {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  customerIdNumber?: string;
+  itemId: string;
+  itemName: string;
+  itemSize: string;
+  itemColor: string;
+  qty: number;
+  stockSource?: 'stock1' | 'stock2'; // Source stock: Stock 1 or Stock 2
+  startDate: string;
+  expectedReturnDate: string;
+  actualReturnDate?: string;
+  // Pricing breakdown: Dress + Accessories
+  dressRentPrice?: number; // سعر كراء الفستان الأساسي
+  hasAccessories?: boolean; // هل تم إضافة إكسسوارات مع الفستان
+  accessoryName?: string; // بيان الإكسسوار (تاج، حزام، حقيبة، شال، مجوهرات...)
+  accessoryPrice?: number; // سعر كراء الإكسسوارات الإضافية
+  rentPrice: number; // السعر الكلي الإجمالي (الفستان + الإكسسوار)
+  paidAmount: number;
+  remainingAmount: number;
+  cautionAmount: number;
+  cautionStatus: CautionStatus;
+  status: RentalStatus;
+  handoverDate?: string; // Date when deal is finalized and dress is physically handed over
+  bookingDate?: string; // Date of reservation
+  conditionOnReturn?: 'perfect' | 'needs_cleaning' | 'damaged';
+  penaltyAmount?: number;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface SaleItem {
+  itemId: string;
+  name: string;
+  size: string;
+  color: string;
+  qty: number;
+  stockSource?: 'stock1' | 'stock2'; // Source stock: Stock 1 or Stock 2
+  price: number;
+  cost: number;
+  total: number;
+  imageUrl?: string;
+}
+
+export interface Sale {
+  id: string;
+  customerName?: string;
+  customerPhone?: string;
+  items: SaleItem[];
+  totalAmount: number;
+  paidAmount: number;
+  debtAmount: number;
+  profit: number;
+  date: string;
+  notes?: string;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  phone?: string;
+  addressOrCity?: string;
+  category?: string;
+  notes?: string;
+}
+
+export interface Expense {
+  id: string;
+  category: string;
+  desc: string;
+  amount: number;
+  date: string;
+  // Supplier purchase specific fields
+  isSupplierPurchase?: boolean;
+  supplierName?: string;
+  supplierPhone?: string;
+  goodsDescription?: string; // ماذا شريت عليه (تفاصيل السلعة المشتراة)
+  totalInvoiceAmount?: number; // إجمالي مبلغ الفاتورة / السلعة
+  paidAmount?: number; // شحال خلصته
+  creditAmount?: number; // شحال كريدي / دين متبقي للمورد
+  invoiceNumber?: string; // رقم الفاتورة أو الوصل
+  notes?: string;
+}
+
+export interface Credit {
+  id: string;
+  name: string;
+  phone: string;
+  type: string;
+  desc: string;
+  amount: number;
+  date: string;
+  relatedRentalId?: string;
+  relatedExpenseId?: string;
+  supplierDebt?: boolean; // هل هو دين للمورد (علينا للمورد)
+  supplierName?: string;
+  goodsDescription?: string;
+  totalInvoiceAmount?: number;
+  paidAmount?: number;
+}
+
+export interface StaffMember {
+  id: string;
+  name: string;
+  role: string;
+  phone?: string;
+  baseSalary: number;
+  salaryType: 'monthly' | 'daily';
+  workDaysPerMonth: number;
+  dailyRate?: number;
+  joinDate?: string;
+  notes?: string;
+}
+
+export interface StaffAbsence {
+  id: string;
+  staffId: string;
+  staffName: string;
+  date: string;
+  daysCount: number; // 1 for full day, 0.5 for half day
+  reason?: string;
+  deductionAmount: number;
+  isDeducted: boolean;
+  payoutId?: string;
+}
+
+export interface StaffPayout {
+  id: string;
+  staffId?: string;
+  name: string;
+  amount: number;
+  baseAmount?: number;
+  absenceDeduction?: number;
+  advancesDeduction?: number;
+  bonus?: number;
+  absencesCount?: number;
+  type: string;
+  date: string;
+  notes?: string;
+}
+
+export interface CustomerProfile {
+  id: string;
+  name: string;
+  phone: string;
+  idNumber?: string;
+  measurements?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export type MaintenanceStatus = 'pending' | 'in_progress' | 'ready' | 'delivered';
+export type MaintenanceServiceType = 'alteration' | 'repair' | 'custom_sewing' | 'ironing_prep' | 'other';
+export type MaintenanceTargetType = 'internal_stock' | 'customer_order';
+
+export interface MaintenanceOrder {
+  id: string;
+  orderNumber: string;
+  targetType: MaintenanceTargetType;
+  itemId?: string;
+  itemName: string;
+  customerName?: string;
+  customerPhone?: string;
+  serviceType: MaintenanceServiceType;
+  description: string;
+  measurements?: string;
+  tailorName?: string;
+  cost: number;
+  price: number;
+  paidAmount: number;
+  remainingAmount: number;
+  receivedDate: string;
+  expectedDeliveryDate: string;
+  actualDeliveryDate?: string;
+  status: MaintenanceStatus;
+  notes?: string;
+  createdAt: string;
+}
+
+export type ViewType = 'dashboard' | 'rentals' | 'inventory' | 'sales' | 'expenses' | 'credits' | 'tailoring' | 'customers';
