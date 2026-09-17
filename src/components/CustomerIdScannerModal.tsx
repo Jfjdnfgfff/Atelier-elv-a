@@ -512,6 +512,18 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
     };
   }, [activeTab, extractedData, decodeBarcodeFrame, handleBarcodeDecoded]);
 
+  // Refs for tracking state inside continuous intervals
+  const isProcessingAIRef = useRef<boolean>(false);
+  const extractedDataRef = useRef<ExtractedCustomerData | null>(null);
+
+  useEffect(() => {
+    isProcessingAIRef.current = isProcessingAI;
+  }, [isProcessingAI]);
+
+  useEffect(() => {
+    extractedDataRef.current = extractedData;
+  }, [extractedData]);
+
   // High-Resolution ID Card capture for crystal-clear OCR
   const cropAndCompressIDCard = (video: HTMLVideoElement): string | null => {
     try {
@@ -519,15 +531,9 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
       const vh = video.videoHeight;
       if (!vw || !vh) return null;
 
-      // Crop the card area in the center with margin to ensure no numbers are clipped
-      const cropW = Math.min(vw, vw * 0.94);
-      const cropH = Math.min(vh, vh * 0.75);
-      const cropX = Math.max(0, (vw - cropW) / 2);
-      const cropY = Math.max(0, (vh - cropH) / 2);
-
-      // High-res target resolution for accurate Arabic & number extraction
-      const targetW = Math.min(1280, Math.round(cropW));
-      const targetH = Math.round((targetW * cropH) / cropW);
+      // Full frame high-resolution target (up to 1280px wide) to capture all names & NIN without cropping
+      const targetW = Math.min(1280, vw);
+      const targetH = Math.round((targetW * vh) / vw);
 
       const canvas = document.createElement('canvas');
       canvas.width = targetW;
@@ -537,7 +543,7 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
 
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, targetW, targetH);
+      ctx.drawImage(video, 0, 0, vw, vh, 0, 0, targetW, targetH);
       return canvas.toDataURL('image/jpeg', 0.88);
     } catch {
       return null;
@@ -546,7 +552,7 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
 
   // Capture Photo and run Ultra-Fast Gemini Flash OCR (<0.2s)
   const captureAndExtractWithAI = async (customBase64?: string, isAuto = false) => {
-    if (isProcessingAI) return;
+    if (isProcessingAIRef.current) return;
 
     let base64ToUse = customBase64;
 
@@ -566,12 +572,12 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
         }
       } catch {}
 
-      // Fast cropped capture (~25KB)
+      // Capture full frame
       base64ToUse = cropAndCompressIDCard(video) || '';
       if (!base64ToUse) return;
     }
 
-    setPreviewPhoto(base64ToUse);
+    if (!isAuto) setPreviewPhoto(base64ToUse);
     setIsProcessingAI(true);
     setOcrStatusMessage(isAuto ? '⚡ جاري المسح والتلقائي لبطاقة الهوية...' : '⚡ جاري القراءة الفورية...');
 
@@ -636,25 +642,23 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
     }
   };
 
-  // Auto Trigger OCR scan for ID cards after camera starts and stabilizes
-  const autoScanTimerRef = useRef<NodeJS.Timeout | null>(null);
-
+  // Continuous Auto-Scan Interval for ID Cards (runs every 2.5 seconds until extracted)
   useEffect(() => {
-    if (activeTab !== 'id_card' || isInitializing || extractedData || isProcessingAI) {
-      if (autoScanTimerRef.current) clearTimeout(autoScanTimerRef.current);
-      return;
-    }
+    if (activeTab !== 'id_card' || isInitializing || extractedData) return;
 
-    autoScanTimerRef.current = setTimeout(() => {
-      if (!isProcessingAI && !extractedData && videoRef.current && videoRef.current.readyState >= 2) {
+    const interval = setInterval(() => {
+      if (
+        !isProcessingAIRef.current &&
+        !extractedDataRef.current &&
+        videoRef.current &&
+        videoRef.current.readyState >= 2
+      ) {
         captureAndExtractWithAI(undefined, true);
       }
-    }, 1400);
+    }, 2500);
 
-    return () => {
-      if (autoScanTimerRef.current) clearTimeout(autoScanTimerRef.current);
-    };
-  }, [activeTab, isInitializing, extractedData, isProcessingAI]);
+    return () => clearInterval(interval);
+  }, [activeTab, isInitializing, extractedData]);
 
   // Handle File Upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
