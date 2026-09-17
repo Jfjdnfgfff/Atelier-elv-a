@@ -74,16 +74,16 @@ async function startServer() {
       }
 
       parts.push({
-        text: `You are an expert AI document scanner specializing in Algerian Biometric National ID Cards (بطاقة التعريف الوطنية البيومترية), Passports, Driver Licenses, and Identity Documents.
-Analyze the provided image of the identity card carefully.
+        text: `You are an expert AI document scanner specializing in Algerian Biometric National ID Cards (بطاقة التعريف الوطنية البيومترية), Passports, Driver Licenses, and Photocopied Identity Documents (نسخ فوطوكوبي أبيض وأسود أو ملونة).
+Analyze the provided image carefully. Note: The document may be an original colored card OR a black & white / grayscale paper photocopy (فوطوكوبي أبيض وأسود).
 
-Extract the following fields accurately:
-1. name: Full Name (الاسم واللقب معاً) in Arabic (e.g. "بن علي فاطمة الزهراء" or "بوجمعة محمد أمين"). If Arabic text is not visible, extract French/Latin name (e.g. "BENALI FATIMA ZOHRA"). DO NOT include labels like "الاسم", "اللقب", "Nom", "Prénom".
-2. idNumber: National Identification Number (NIN / رقم التعريف الوطني). On Algerian biometric ID cards, this is an 18-digit number (e.g. 109823456789012345). On passports or licenses, extract the official document/NIN number. Ensure ALL 18 digits are captured correctly without dropping digits.
-3. phone: Phone number if visible on the document.
+Extract the following fields accurately regardless of color, monochrome, or photocopy paper format:
+1. name: Full Name (الاسم واللقب معاً) in Arabic (e.g. "بن علي فاطمة الزهراء" or "بوجمعة محمد أمين"). If Arabic text is faint or not present, extract French/Latin name (e.g. "BENALI FATIMA ZOHRA"). DO NOT include labels like "الاسم", "اللقب", "Nom", "Prénom".
+2. idNumber: National Identification Number (NIN / رقم التعريف الوطني). On Algerian biometric ID cards & photocopies, this is an 18-digit number (e.g. 109823456789012345). On passports or licenses, extract the official document/NIN number. Capture all 18 digits accurately.
+3. phone: Phone number if visible or handwritten on the copy.
 4. birthDate: Date of Birth (YYYY-MM-DD or DD/MM/YYYY as written).
 5. address: Address/City if visible.
-6. documentType: Document type in Arabic (e.g. "بطاقة تعريف وطنية بيومترية", "جواز سفر بيومتري", "رخصة سياقة").
+6. documentType: Document type in Arabic (e.g. "بطاقة تعريف وطنية بيومترية", "نسخة فوطوكوبي أبيض وأسود", "جواز سفر").
 
 Output pure JSON adhering to the schema.`
       });

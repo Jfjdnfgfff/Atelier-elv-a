@@ -543,7 +543,9 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
 
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
+      ctx.filter = 'contrast(1.08) brightness(1.02)';
       ctx.drawImage(video, 0, 0, vw, vh, 0, 0, targetW, targetH);
+      ctx.filter = 'none';
       return canvas.toDataURL('image/jpeg', 0.88);
     } catch {
       return null;
