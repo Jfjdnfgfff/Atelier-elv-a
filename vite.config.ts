@@ -50,7 +50,7 @@ function geminiOcrApiPlugin(): Plugin {
                 return;
               }
 
-              const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+              const apiKey = process.env.GEMINI_API_KEY;
               if (!apiKey) {
                 res.statusCode = 200;
                 res.setHeader('Content-Type', 'application/json');
@@ -172,6 +172,7 @@ export default defineConfig(() => {
     server: {
       host: '0.0.0.0',
       port: 3000,
+      allowedHosts: true as const,
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',

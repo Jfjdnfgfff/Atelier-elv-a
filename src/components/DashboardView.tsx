@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Rental, ClothItem, ViewType, MaintenanceOrder } from '../types';
+import { Rental, ClothItem, ViewType, MaintenanceOrder, DailyCaisseClosure, Sale, Expense, StaffPayout } from '../types';
 import { StatCard } from './Shared';
 
 interface DashboardViewProps {
@@ -7,6 +7,10 @@ interface DashboardViewProps {
   rentals: Rental[];
   maintenanceOrders?: MaintenanceOrder[];
   clothes: ClothItem[];
+  caisseClosures?: DailyCaisseClosure[];
+  sales?: Sale[];
+  expenses?: Expense[];
+  staffPayouts?: StaffPayout[];
   hideFinances: boolean;
   onPrivacyToggle: () => void;
   onNavigate: (view: ViewType) => void;
@@ -20,6 +24,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   rentals,
   maintenanceOrders = [],
   clothes,
+  caisseClosures = [],
+  sales = [],
+  expenses = [],
+  staffPayouts = [],
   hideFinances,
   onPrivacyToggle,
   onNavigate,
@@ -91,6 +99,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     ? (stats.yearlyNetProfit || 0)
     : (stats.netProfit || 0);
 
+  // Today's Caisse calculations for dashboard banner
+  const todaySales = sales.filter(s => s.date && s.date.startsWith(today)).reduce((sum, s) => sum + (s.paidAmount !== undefined ? s.paidAmount : s.totalAmount || 0), 0);
+  const todayRentals = rentals.filter(r => (r.createdAt && r.createdAt.startsWith(today)) || (r.startDate && r.startDate.startsWith(today))).reduce((sum, r) => sum + (r.paidAmount || 0), 0);
+  const todayTailoring = maintenanceOrders.filter(o => (o.receivedDate && o.receivedDate.startsWith(today)) || (o.createdAt && o.createdAt.startsWith(today))).reduce((sum, o) => sum + (o.paidAmount || 0), 0);
+  const todayExpenses = expenses.filter(e => e.date && e.date.startsWith(today)).reduce((sum, e) => sum + Number(e.amount || 0), 0);
+  const todayStaff = staffPayouts.filter(p => p.date && p.date.startsWith(today)).reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const todayIncome = todaySales + todayRentals + todayTailoring;
+  const todayExpectedCash = todayIncome - (todayExpenses + todayStaff);
+
+  const todayClosure = caisseClosures.find(c => c.date === today);
+  const currentMonth = today.substring(0, 7);
+  const monthClosures = caisseClosures.filter(c => c.date.startsWith(currentMonth));
+  const monthVariance = monthClosures.reduce((s, c) => s + (c.difference || 0), 0);
+
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6" dir="rtl">
       {/* Top Welcome & Controls Bar */}
@@ -157,6 +179,76 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             className="flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-black transition-all shadow-md shadow-rose-100 min-h-[38px] active:scale-95"
           >
             + كراء جديد 👗
+          </button>
+        </div>
+      </div>
+
+      {/* Daily Cash Register & Shortage Monitoring Banner (La Caisse du Jour) */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-700/50 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 bg-rose-500/20 text-rose-300 rounded-xl text-sm font-black border border-rose-500/30">
+              ⚖️
+            </span>
+            <h3 className="text-base sm:text-lg font-black text-white">
+              صندوق اليومية ومتابعة العجز (La Caisse)
+            </h3>
+            {todayClosure ? (
+              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black px-2 py-0.5 rounded-full">
+                تم إقفال صندوق اليوم ✓
+              </span>
+            ) : (
+              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-black px-2 py-0.5 rounded-full">
+                الصندوق مفتوح قيد النشاط
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-300 font-medium">
+            متابعة إجمالي مدخول اليوم وتسجيل المبلغ الفعلي في الدرج لاحتساب فارق وعجز الصندوق (اليوم، الشهر، والسنة)
+          </p>
+        </div>
+
+        {/* 3 Quick stats and CTA button */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="bg-white/10 backdrop-blur-xs px-3 py-2 rounded-2xl border border-white/10 text-center min-w-[95px]">
+            <div className="text-[10px] text-slate-300 font-bold">مدخول اليوم:</div>
+            <div className="text-sm font-black text-emerald-400 font-mono">
+              {hideFinances ? '••••' : `${todayIncome.toLocaleString()} دج`}
+            </div>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-xs px-3 py-2 rounded-2xl border border-white/10 text-center min-w-[105px]">
+            <div className="text-[10px] text-slate-300 font-bold">
+              {todayClosure ? 'فارق اليوم:' : 'المتوقع في الدرج:'}
+            </div>
+            <div className={`text-sm font-black font-mono ${
+              todayClosure ? (todayClosure.difference < 0 ? 'text-rose-400' : todayClosure.difference > 0 ? 'text-blue-300' : 'text-emerald-400') : 'text-indigo-200'
+            }`}>
+              {hideFinances ? '••••' : (
+                todayClosure ? (
+                  todayClosure.difference > 0 ? `+${todayClosure.difference.toLocaleString()} دج` : `${todayClosure.difference.toLocaleString()} دج`
+                ) : `${todayExpectedCash.toLocaleString()} دج`
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-xs px-3 py-2 rounded-2xl border border-white/10 text-center min-w-[105px]">
+            <div className="text-[10px] text-slate-300 font-bold">عجز/فارق الشهر:</div>
+            <div className={`text-sm font-black font-mono ${
+              monthVariance < 0 ? 'text-rose-400' : monthVariance > 0 ? 'text-blue-300' : 'text-slate-200'
+            }`}>
+              {hideFinances ? '••••' : (
+                monthVariance > 0 ? `+${monthVariance.toLocaleString()} دج` : `${monthVariance.toLocaleString()} دج`
+              )}
+            </div>
+          </div>
+
+          <button
+            onClick={() => onNavigate('caisse')}
+            className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-black text-xs rounded-2xl transition-all shadow-md shadow-rose-900/40 flex items-center gap-1.5 shrink-0"
+          >
+            <span>⚖️</span>
+            <span>فتح الصندوق اليومي</span>
           </button>
         </div>
       </div>

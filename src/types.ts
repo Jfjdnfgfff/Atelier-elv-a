@@ -204,4 +204,25 @@ export interface MaintenanceOrder {
   createdAt: string;
 }
 
-export type ViewType = 'dashboard' | 'rentals' | 'inventory' | 'sales' | 'expenses' | 'credits' | 'tailoring' | 'customers';
+export interface DailyCaisseClosure {
+  id: string;
+  date: string; // YYYY-MM-DD
+  openingBalance: number; // رصيد بداية اليوم (فوند دو كيس - Fond de caisse)
+  salesIncome: number; // مدخول مبيعات اليوم
+  rentalsIncome: number; // مدخول كراء اليوم
+  tailoringIncome: number; // مدخول خياطة وتعديل اليوم
+  cautionsReceived: number; // مبالغ الضمان المستلمة كاش
+  expensesPaid: number; // مصاريف المحل المسددة كاش اليوم
+  staffPayoutsPaid: number; // دفعات العمال المسددة كاش اليوم
+  cautionsRefunded: number; // ضمانات تم إرجاعها للزبائن كاش
+  totalInflow: number; // إجمالي المدخول
+  totalOutflow: number; // إجمالي المصاريف
+  theoreticalAmount: number; // المبلغ النظري المتوقع في الصندوق
+  actualAmount: number; // المبلغ الفعلي الموجود في الصندوق (compté)
+  difference: number; // الفارق: actualAmount - theoreticalAmount (سالب = عجز / manque، موجب = فائض / excédent)
+  status: 'balanced' | 'shortage' | 'surplus'; // مطابق | عجز | فائض
+  notes?: string;
+  closedAt: string;
+}
+
+export type ViewType = 'dashboard' | 'rentals' | 'inventory' | 'sales' | 'expenses' | 'credits' | 'tailoring' | 'customers' | 'caisse';

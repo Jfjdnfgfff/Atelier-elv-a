@@ -9,7 +9,8 @@ import {
   StaffAbsence,
   CustomerProfile,
   MaintenanceOrder,
-  Supplier
+  Supplier,
+  DailyCaisseClosure
 } from './types';
 
 export const STORAGE_KEYS = {
@@ -24,6 +25,7 @@ export const STORAGE_KEYS = {
   CUSTOMERS: 'boutique_customers',
   MAINTENANCE: 'boutique_maintenance',
   SUPPLIERS: 'boutique_suppliers',
+  CAISSE_CLOSURES: 'boutique_caisse_closures',
   STORE_CONFIG: 'boutique_store_config'
 };
 
@@ -308,6 +310,29 @@ export const DEFAULT_EXPENSES: Expense[] = [
   { id: 'exp_3', category: 'تغليف وأكياس ملابس', desc: 'شراء أكياس فساتين فاخرة ومقابض خشبية', amount: 2800, date: new Date().toISOString() }
 ];
 
+export const DEFAULT_CAISSE_CLOSURES: DailyCaisseClosure[] = [
+  {
+    id: 'caisse_prev_1',
+    date: getYesterday(),
+    openingBalance: 15000,
+    salesIncome: 17000,
+    rentalsIncome: 11000,
+    tailoringIncome: 2500,
+    cautionsReceived: 9000,
+    expensesPaid: 3200,
+    staffPayoutsPaid: 0,
+    cautionsRefunded: 4000,
+    totalInflow: 39500,
+    totalOutflow: 7200,
+    theoreticalAmount: 47300,
+    actualAmount: 47000,
+    difference: -300,
+    status: 'shortage',
+    notes: 'عجز طفيف في الصرف مع نهاية اليوم',
+    closedAt: new Date(Date.now() - 86400000).toISOString()
+  }
+];
+
 export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
   try {
     const item = localStorage.getItem(key);
@@ -395,5 +420,8 @@ export const initializeStorage = () => {
   }
   if (!localStorage.getItem(STORAGE_KEYS.MAINTENANCE)) {
     saveToStorage(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE);
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.CAISSE_CLOSURES)) {
+    saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES);
   }
 };

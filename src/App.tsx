@@ -11,7 +11,8 @@ import {
   MaintenanceOrder,
   MaintenanceStatus,
   Supplier,
-  ViewType 
+  ViewType,
+  DailyCaisseClosure
 } from './types';
 import { 
   loadFromStorage, 
@@ -21,6 +22,7 @@ import {
   DEFAULT_STAFF,
   DEFAULT_SUPPLIERS,
   DEFAULT_MAINTENANCE,
+  DEFAULT_CAISSE_CLOSURES,
   initializeStorage 
 } from './storage';
 
@@ -41,6 +43,7 @@ import { StaffPayoutsModal } from './components/StaffPayoutsModal';
 import { TailoringView } from './components/TailoringView';
 import { TailoringModal } from './components/TailoringModal';
 import { TailoringReceiptModal } from './components/TailoringReceiptModal';
+import { CaisseView } from './components/CaisseView';
 
 export default function App() {
   // Initialize storage
@@ -75,6 +78,9 @@ export default function App() {
   const [suppliers, setSuppliers] = useState<Supplier[]>(() => 
     loadFromStorage<Supplier[]>(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS)
   );
+  const [caisseClosures, setCaisseClosures] = useState<DailyCaisseClosure[]>(() => 
+    loadFromStorage<DailyCaisseClosure[]>(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES)
+  );
 
   // Sync back to local storage
   useEffect(() => { saveToStorage(STORAGE_KEYS.CLOTHES, clothes); }, [clothes]);
@@ -87,6 +93,7 @@ export default function App() {
   useEffect(() => { saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, staffAbsences); }, [staffAbsences]);
   useEffect(() => { saveToStorage(STORAGE_KEYS.MAINTENANCE, maintenanceOrders); }, [maintenanceOrders]);
   useEffect(() => { saveToStorage(STORAGE_KEYS.SUPPLIERS, suppliers); }, [suppliers]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, caisseClosures); }, [caisseClosures]);
 
   // UI state
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
@@ -673,6 +680,29 @@ export default function App() {
   };
 
   // ==========================
+  // CAISSE (CASH REGISTER) HANDLERS
+  // ==========================
+  const handleSaveCaisseClosure = (closure: DailyCaisseClosure) => {
+    setCaisseClosures(prev => {
+      const filtered = prev.filter(c => c.date !== closure.date);
+      return [closure, ...filtered];
+    });
+    showToast(`تم إقفال وحفظ صندوق يوم ${closure.date} بنجاح ⚖️`);
+  };
+
+  const handleDeleteCaisseClosure = (id: string) => {
+    setConfirmDelete({
+      title: 'حذف إقفال الصندوق',
+      message: 'هل أنت متأكد من حذف هذا السجل لصندوق اليومية؟',
+      onConfirm: () => {
+        setCaisseClosures(prev => prev.filter(c => c.id !== id));
+        showToast('تم حذف سجل إقفال الصندوق');
+        setConfirmDelete(null);
+      }
+    });
+  };
+
+  // ==========================
   // STAFF & ABSENCES HANDLERS
   // ==========================
   const handleAddStaffPayout = (data: any, deductedAbsenceIds?: string[]) => {
@@ -970,6 +1000,20 @@ export default function App() {
               </button>
 
               <button 
+                onClick={() => setCurrentView('caisse')} 
+                title="صندوق اليومية ومتابعة العجز (La Caisse)"
+                className={`h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold rounded-xl transition-all shadow-xs active:scale-95 ${
+                  currentView === 'caisse'
+                    ? 'bg-rose-600 text-white'
+                    : 'text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/80'
+                }`}
+              >
+                <span className="text-sm">⚖️</span>
+                <span className="hidden sm:inline">الصندوق اليومي</span>
+                <span className="sm:hidden">الصندوق</span>
+              </button>
+
+              <button 
                 onClick={() => setActiveModal('backupModal')} 
                 title="النسخ الاحتياطي" 
                 aria-label="النسخ الاحتياطي"
@@ -993,8 +1037,8 @@ export default function App() {
             </button>
           </div>
 
-          {/* Bottom Row of Header: All 8 Navigation Icons in a single compact row */}
-          <nav className="grid grid-cols-8 gap-0.5 sm:gap-1.5 w-full pt-1 border-t border-slate-100" aria-label="أقسام التطبيق">
+          {/* Bottom Row of Header: All Navigation Icons in a single compact row */}
+          <nav className="grid grid-cols-9 gap-0.5 sm:gap-1 w-full pt-1 border-t border-slate-100" aria-label="أقسام التطبيق">
             <NavButton 
               icon="dashboard" 
               label="الرئيسية" 
@@ -1040,6 +1084,12 @@ export default function App() {
               active={currentView === 'credits'} 
             />
             <NavButton 
+              icon="caisse" 
+              label="الصندوق" 
+              onClick={() => setCurrentView('caisse')} 
+              active={currentView === 'caisse'} 
+            />
+            <NavButton 
               icon="staff" 
               label="العمال" 
               onClick={() => setActiveModal('staffPayouts')} 
@@ -1057,6 +1107,10 @@ export default function App() {
             rentals={rentals} 
             maintenanceOrders={maintenanceOrders}
             clothes={clothes}
+            caisseClosures={caisseClosures}
+            sales={sales}
+            expenses={expenses}
+            staffPayouts={staffPayouts}
             hideFinances={hideFinances}
             onPrivacyToggle={() => {
               if (hideFinances) {
@@ -1142,6 +1196,28 @@ export default function App() {
             onAddCredit={handleAddCredit}
             onSettleCredit={handleSettleCredit}
             onDeleteCredit={handleDeleteCredit}
+          />
+        )}
+
+        {currentView === 'caisse' && (
+          <CaisseView 
+            sales={sales}
+            rentals={rentals}
+            expenses={expenses}
+            staffPayouts={staffPayouts}
+            maintenanceOrders={maintenanceOrders}
+            caisseClosures={caisseClosures}
+            onSaveClosure={handleSaveCaisseClosure}
+            onDeleteClosure={handleDeleteCaisseClosure}
+            hideFinances={hideFinances}
+            onPrivacyToggle={() => {
+              if (hideFinances) {
+                setActiveModal('privacyPassword');
+              } else {
+                setHideFinances(true);
+                localStorage.setItem('bm_hideFinances', 'true');
+              }
+            }}
           />
         )}
       </main>
