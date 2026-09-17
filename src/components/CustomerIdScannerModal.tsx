@@ -545,7 +545,7 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
   };
 
   // Capture Photo and run Ultra-Fast Gemini Flash OCR (<0.2s)
-  const captureAndExtractWithAI = async (customBase64?: string) => {
+  const captureAndExtractWithAI = async (customBase64?: string, isAuto = false) => {
     if (isProcessingAI) return;
 
     let base64ToUse = customBase64;
@@ -553,7 +553,7 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
     if (!base64ToUse) {
       const video = videoRef.current;
       if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
-        alert('الكاميرا غير جاهزة بعد، يرجى الانتظار ثانية...');
+        if (!isAuto) alert('الكاميرا غير جاهزة بعد، يرجى الانتظار ثانية...');
         return;
       }
 
@@ -573,7 +573,7 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
 
     setPreviewPhoto(base64ToUse);
     setIsProcessingAI(true);
-    setOcrStatusMessage('⚡ جاري القراءة الفورية...');
+    setOcrStatusMessage(isAuto ? '⚡ جاري المسح والتلقائي لبطاقة الهوية...' : '⚡ جاري القراءة الفورية...');
 
     try {
       const response = await fetch('/api/ocr-id', {
@@ -587,23 +587,31 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
 
       const resJson = await response.json();
       if (resJson.success && resJson.data) {
-        playBeep();
-        if (navigator.vibrate) {
-          try { navigator.vibrate([60, 40, 60]); } catch {}
-        }
-
         const info = resJson.data;
-        setExtractedData({
-          name: info.name || '',
-          idNumber: info.idNumber || '',
-          phone: info.phone || '',
-          birthDate: info.birthDate || '',
-          address: info.address || '',
-          documentType: info.documentType || 'بطاقة هوية / وثيقة رسمية',
-          notes: info.notes || ''
-        });
-        setOcrStatusMessage('✓ تم استخراج الاسم ورقم التعريف فوراً!');
-      } else {
+        const cleanName = (info.name || '').replace(/^(الاسم واللقب|الاسم|اللقب|Nom|Prénom)[\s:]*/i, '').trim();
+        const cleanId = (info.idNumber || '').replace(/^(NIN|رقم التعريف|بطاقة|ID)[\s:]*/i, '').trim();
+
+        if (cleanName || cleanId || info.phone) {
+          playBeep();
+          if (navigator.vibrate) {
+            try { navigator.vibrate([60, 40, 60]); } catch {}
+          }
+
+          setExtractedData({
+            name: cleanName,
+            idNumber: cleanId,
+            phone: info.phone || '',
+            birthDate: info.birthDate || '',
+            address: info.address || '',
+            documentType: info.documentType || 'بطاقة هوية / وثيقة رسمية',
+            notes: info.notes || ''
+          });
+          setOcrStatusMessage('✓ تم قراءة الاسم واللقب ورقم التعريف بنجاح!');
+          return;
+        }
+      }
+      
+      if (!isAuto) {
         setExtractedData({
           name: '',
           idNumber: '',
@@ -614,17 +622,39 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
       }
     } catch (err: any) {
       console.warn('OCR Fetch Note:', err);
-      setExtractedData({
-        name: '',
-        idNumber: '',
-        phone: '',
-        notes: 'تم التقاط الصورة، يرجى كتابة الاسم ورقم الهوية لتأكيد العملية'
-      });
-      setOcrStatusMessage('يمكنك كتابة بيانات الزبونة وتأكيدها مباشرة');
+      if (!isAuto) {
+        setExtractedData({
+          name: '',
+          idNumber: '',
+          phone: '',
+          notes: 'تم التقاط الصورة، يرجى كتابة الاسم ورقم الهوية لتأكيد العملية'
+        });
+        setOcrStatusMessage('يمكنك كتابة بيانات الزبونة وتأكيدها مباشرة');
+      }
     } finally {
       setIsProcessingAI(false);
     }
   };
+
+  // Auto Trigger OCR scan for ID cards after camera starts and stabilizes
+  const autoScanTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (activeTab !== 'id_card' || isInitializing || extractedData || isProcessingAI) {
+      if (autoScanTimerRef.current) clearTimeout(autoScanTimerRef.current);
+      return;
+    }
+
+    autoScanTimerRef.current = setTimeout(() => {
+      if (!isProcessingAI && !extractedData && videoRef.current && videoRef.current.readyState >= 2) {
+        captureAndExtractWithAI(undefined, true);
+      }
+    }, 1400);
+
+    return () => {
+      if (autoScanTimerRef.current) clearTimeout(autoScanTimerRef.current);
+    };
+  }, [activeTab, isInitializing, extractedData, isProcessingAI]);
 
   // Handle File Upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

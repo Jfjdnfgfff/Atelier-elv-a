@@ -74,18 +74,18 @@ async function startServer() {
       }
 
       parts.push({
-        text: `You are an ultra-fast high accuracy ID, Passport, and Driver License OCR reader for retail stores.
-Analyze the provided image of the identity document (e.g. Algerian Biometric ID card, Passport, Driver License, or Arab/International ID).
+        text: `You are an expert AI document scanner specializing in Algerian Biometric National ID Cards (بطاقة التعريف الوطنية البيومترية), Passports, Driver Licenses, and Identity Documents.
+Analyze the provided image of the identity card carefully.
 
-Extract:
-1. name: Full Name (الاسم واللقب) in Arabic (e.g. "فاطمة الزهراء بن علي" or "محمد أمين") if visible, or in French/Latin if no Arabic.
-2. idNumber: National Identification Number (NIN / رقم التعريف الوطني - 18 digits on Algerian biometric cards) or Document/Passport number.
-3. phone: Phone number if visible.
-4. birthDate: Birth date (YYYY-MM-DD or as written).
+Extract the following fields accurately:
+1. name: Full Name (الاسم واللقب معاً) in Arabic (e.g. "بن علي فاطمة الزهراء" or "بوجمعة محمد أمين"). If Arabic text is not visible, extract French/Latin name (e.g. "BENALI FATIMA ZOHRA"). DO NOT include labels like "الاسم", "اللقب", "Nom", "Prénom".
+2. idNumber: National Identification Number (NIN / رقم التعريف الوطني). On Algerian biometric ID cards, this is an 18-digit number (e.g. 109823456789012345). On passports or licenses, extract the official document/NIN number. Ensure ALL 18 digits are captured correctly without dropping digits.
+3. phone: Phone number if visible on the document.
+4. birthDate: Date of Birth (YYYY-MM-DD or DD/MM/YYYY as written).
 5. address: Address/City if visible.
 6. documentType: Document type in Arabic (e.g. "بطاقة تعريف وطنية بيومترية", "جواز سفر بيومتري", "رخصة سياقة").
 
-Return pure JSON only. If a field is not found, return empty string "".`
+Output pure JSON adhering to the schema.`
       });
 
       const ai = getAiClient();

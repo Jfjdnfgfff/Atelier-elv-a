@@ -82,11 +82,16 @@ export const RentalModal: React.FC<RentalModalProps> = ({
 
   // Handle extracted customer data from ID / Barcode
   const handleCustomerExtracted = (data: ExtractedCustomerData) => {
-    if (data.name) setCustomerName(data.name);
-    if (data.phone) setCustomerPhone(data.phone);
-    if (data.idNumber) setCustomerIdNumber(data.idNumber);
+    const cleanName = (data.name || '').replace(/^(الاسم واللقب|الاسم|اللقب|Nom|Prénom)[\s:]*/i, '').trim();
+    const cleanId = (data.idNumber || '').replace(/^(NIN|رقم التعريف|بطاقة|ID)[\s:]*/i, '').trim();
+    const cleanPhone = (data.phone || '').trim();
+
+    if (cleanName) setCustomerName(cleanName);
+    if (cleanPhone) setCustomerPhone(cleanPhone);
+    if (cleanId) setCustomerIdNumber(cleanId);
     if (data.notes && !notes) setNotes(data.notes);
-    setScanNotice(`تم استخراج وتعبئة بيانات الزبون (${data.name || data.idNumber}) بنجاح`);
+
+    setScanNotice(`✓ تم تعبئة بيانات الزبونة: ${cleanName || cleanId} بنجاح`);
     setTimeout(() => setScanNotice(null), 4000);
   };
 
