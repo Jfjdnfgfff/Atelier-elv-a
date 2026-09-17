@@ -89,6 +89,9 @@ export async function saveToFirebase<T>(key: string, data: T): Promise<boolean> 
     success = true;
   } catch (firestoreError: any) {
     console.warn(`[Firebase Firestore save error on ${key}]:`, firestoreError?.message || firestoreError);
+    if (firestoreError?.message?.includes('Missing or insufficient permissions')) {
+      alert('خطأ في الصلاحيات (Firestore): الرجاء تعديل قواعد الأمان (Security Rules) في Firebase للسماح بالكتابة والقراءة.');
+    }
   }
 
   // 2. Also try Realtime Database (RTDB) as reliable parallel cloud sync
@@ -101,6 +104,9 @@ export async function saveToFirebase<T>(key: string, data: T): Promise<boolean> 
     success = true;
   } catch (rtdbError: any) {
     console.warn(`[Firebase RTDB save error on ${key}]:`, rtdbError?.message || rtdbError);
+    if (rtdbError?.message?.includes('Permission denied')) {
+      alert('خطأ في الصلاحيات (Realtime Database): الرجاء تعديل قواعد الأمان في Firebase للسماح بالكتابة.');
+    }
   }
 
   if (success) {
@@ -136,9 +142,15 @@ export function subscribeToFirebaseKey<T>(
             updateStatus('connected');
           }
         }
+      } else {
+        // Initial empty state, trigger empty array to allow seeding
+        onDataReceived([] as unknown as T);
       }
-    }, (err) => {
+    }, (err: any) => {
       console.warn(`[Firestore listener error for ${key}]:`, err.message);
+      if (err.message?.includes('Missing or insufficient permissions')) {
+        console.error('Firestore Permission Denied on read.');
+      }
     });
   } catch (e) {
     console.warn(`[Firestore subscribe failed for ${key}]:`, e);
@@ -157,8 +169,10 @@ export function subscribeToFirebaseKey<T>(
             updateStatus('connected');
           }
         }
+      } else {
+        onDataReceived([] as unknown as T);
       }
-    }, (err) => {
+    }, (err: any) => {
       console.warn(`[RTDB listener error for ${key}]:`, err.message);
     });
   } catch (e) {
