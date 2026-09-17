@@ -1,6 +1,7 @@
 import React from 'react';
 import html2canvas from 'html2canvas';
 import { DailyCaisseClosure } from '../types';
+import { Download, Printer, Scale, Calendar, AlertTriangle, TrendingUp, CheckCircle } from 'lucide-react';
 
 interface CaisseReceiptModalProps {
   closure: DailyCaisseClosure;
@@ -45,16 +46,16 @@ export const CaisseReceiptModal: React.FC<CaisseReceiptModalProps> = ({ closure,
         <div className="flex gap-2">
           <button
             onClick={exportAsImage}
-            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
           >
-            <span>📥</span>
+            <Download className="w-3.5 h-3.5" />
             <span>حفظ كصورة</span>
           </button>
           <button
             onClick={handlePrint}
-            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
+            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
           >
-            <span>🖨️</span>
+            <Printer className="w-3.5 h-3.5 text-slate-700" />
             <span>طباعة الوصل</span>
           </button>
         </div>
@@ -67,28 +68,43 @@ export const CaisseReceiptModal: React.FC<CaisseReceiptModalProps> = ({ closure,
       >
         {/* Receipt Header */}
         <div className="text-center pb-4 border-b-2 border-dashed border-slate-300">
-          <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl mx-auto flex items-center justify-center text-xl font-black mb-1 border border-rose-100">
-            ⚖️
+          <div className="w-12 h-12 bg-slate-100 text-slate-700 rounded-2xl mx-auto flex items-center justify-center text-xl font-bold mb-1 border border-slate-200">
+            <Scale className="w-6 h-6 text-slate-700" />
           </div>
           <h2 className="text-lg font-black text-slate-900">بوتيك مانجر برو</h2>
           <p className="text-xs font-bold text-slate-500">وصل إقفال ومطابقة الصندوق اليومي (Ticket de Caisse)</p>
-          <div className="mt-2 inline-flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full text-xs font-black text-slate-700">
-            <span>📅 تاريخ الصندوق:</span>
-            <span>{closure.date}</span>
+          <div className="mt-2 inline-flex items-center gap-1.5 bg-slate-100 px-3 py-1 rounded-full text-xs font-bold text-slate-700">
+            <Calendar className="w-3.5 h-3.5 text-slate-500" />
+            <span>تاريخ الصندوق: {closure.date}</span>
           </div>
         </div>
 
         {/* Status Banner */}
         <div className={`mt-4 p-3 rounded-xl text-center border ${
-          isShortage ? 'bg-rose-50 border-rose-200 text-rose-800' :
-          isSurplus ? 'bg-blue-50 border-blue-200 text-blue-800' :
-          'bg-emerald-50 border-emerald-200 text-emerald-800'
+          isShortage ? 'bg-slate-50 border-slate-300 text-slate-900' :
+          isSurplus ? 'bg-slate-50 border-slate-300 text-slate-900' :
+          'bg-slate-50 border-slate-200 text-slate-900'
         }`}>
           <div className="text-xs font-bold text-slate-600">حالة الصندوق المحسوبة:</div>
-          <div className="text-base font-black mt-0.5">
-            {isShortage && `⚠️ عجز في الصندوق (Manque): ${Math.abs(closure.difference).toLocaleString()} دج`}
-            {isSurplus && `📈 فائض في الصندوق (Excédent): +${closure.difference.toLocaleString()} دج`}
-            {isBalanced && `✅ الصندوق مطابق تماماً (0 دج فارق)`}
+          <div className="text-sm font-bold mt-1 flex items-center justify-center gap-1.5">
+            {isShortage && (
+              <>
+                <AlertTriangle className="w-4 h-4 text-slate-700" />
+                <span>عجز في الصندوق (Manque): {Math.abs(closure.difference).toLocaleString()} دج</span>
+              </>
+            )}
+            {isSurplus && (
+              <>
+                <TrendingUp className="w-4 h-4 text-slate-700" />
+                <span>فائض في الصندوق (Excédent): +{closure.difference.toLocaleString()} دج</span>
+              </>
+            )}
+            {isBalanced && (
+              <>
+                <CheckCircle className="w-4 h-4 text-emerald-600" />
+                <span>الصندوق مطابق تماماً (0 دج فارق)</span>
+              </>
+            )}
           </div>
         </div>
 

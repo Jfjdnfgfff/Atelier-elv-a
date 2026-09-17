@@ -44,6 +44,21 @@ import { TailoringView } from './components/TailoringView';
 import { TailoringModal } from './components/TailoringModal';
 import { TailoringReceiptModal } from './components/TailoringReceiptModal';
 import { CaisseView } from './components/CaisseView';
+import { 
+  Scale, 
+  Shirt, 
+  ShoppingBag, 
+  Package, 
+  Sparkles, 
+  AlertTriangle, 
+  Camera, 
+  Droplets, 
+  CreditCard as CreditCardIcon, 
+  Users, 
+  BarChart3, 
+  Save, 
+  Globe 
+} from 'lucide-react';
 
 export default function App() {
   // Initialize storage
@@ -276,9 +291,9 @@ export default function App() {
         }
         return c;
       }));
-      showToast('تم تسجيل الكراء الفوري بنجاح 👗');
+      showToast('تم تسجيل الكراء الفوري بنجاح');
     } else {
-      showToast('تم تسجيل حجز الفستان مستقبلاً بنجاح 📅 (سيدخل في الكراء عند إتمام الصفقة وتسليمه)');
+      showToast('تم تسجيل حجز الفستان مستقبلاً بنجاح (سيدخل في الكراء عند إتمام الصفقة وتسليمه)');
     }
 
     // If remaining amount > 0, add to credits/debts
@@ -346,7 +361,7 @@ export default function App() {
       return filtered;
     });
 
-    showToast('✓ تمت الصفقة وتسليم الفستان بنجاح! دخل الفستان في الكراء الجاري وتم خصمه من المخزن 👗');
+    showToast('تمت الصفقة وتسليم الفستان بنجاح! دخل الفستان في الكراء الجاري وتم خصمه من المخزن');
   };
 
   const handleUpdateRental = (id: string, updatedData: any) => {
@@ -444,7 +459,7 @@ export default function App() {
     if (returnData.penaltyAmount > 0) {
       showToast(`تم استرجاع الفستان وخصم غرامة بقيمة ${returnData.penaltyAmount} دج`);
     } else {
-      showToast('تم تأكيد استرجاع الفستان وتسوية الحساب بنجاح ✓');
+      showToast('تم تأكيد استرجاع الفستان وتسوية الحساب بنجاح');
     }
 
     // Auto clear linked credit if collected
@@ -528,7 +543,7 @@ export default function App() {
       setCredits(prev => [newCredit, ...prev]);
     }
 
-    showToast('تم إتمام عملية البيع بنجاح 🛍️');
+    showToast('تم إتمام عملية البيع بنجاح');
   };
 
   const handleDeleteSale = (sale: Sale) => {
@@ -593,11 +608,11 @@ export default function App() {
         paidAmount: expData.paidAmount
       };
       setCredits(prev => [newCredit, ...prev]);
-      showToast(`تم تسجيل مشتريات المورد (المسدد: ${expData.paidAmount?.toLocaleString()} دج + متبقي دين: ${expData.creditAmount?.toLocaleString()} دج) 🏢`);
+      showToast(`تم تسجيل مشتريات المورد (المسدد: ${expData.paidAmount?.toLocaleString()} دج + متبقي دين: ${expData.creditAmount?.toLocaleString()} دج)`);
     } else if (expData.isSupplierPurchase) {
-      showToast(`تم تسجيل خلاص المورد بنجاح (${(expData.paidAmount || expData.amount)?.toLocaleString()} دج كاش) 🏢`);
+      showToast(`تم تسجيل خلاص المورد بنجاح (${(expData.paidAmount || expData.amount)?.toLocaleString()} دج كاش)`);
     } else {
-      showToast('تم تسجيل المصروف بنجاح 🧾');
+      showToast('تم تسجيل المصروف بنجاح');
     }
   };
 
@@ -636,7 +651,7 @@ export default function App() {
       }).filter(c => c.amount > 0);
     });
 
-    showToast(`تم خلاص وتسديد مبلغ ${paidNow.toLocaleString()} دج للمورد بنجاح ✓`);
+    showToast(`تم خلاص وتسديد مبلغ ${paidNow.toLocaleString()} دج للمورد بنجاح`);
   };
 
   const handleAddSupplier = (newSup: Supplier) => {
@@ -649,7 +664,7 @@ export default function App() {
   const handleAddCredit = (credData: any) => {
     const newCred: Credit = { ...credData, id: generateId() };
     setCredits(prev => [newCred, ...prev]);
-    showToast(credData.supplierDebt ? 'تم تسجيل دين للمورد 🏢' : 'تم تسجيل الدين على الزبون 👤');
+    showToast(credData.supplierDebt ? 'تم تسجيل دين للمورد' : 'تم تسجيل الدين على الزبون');
   };
 
   const handleSettleCredit = (id: string) => {
@@ -671,7 +686,7 @@ export default function App() {
       }));
     }
     setCredits(prev => prev.filter(c => c.id !== id));
-    showToast('تم تسديد وتصفية الدين بنجاح ✓');
+    showToast('تم تسديد وتصفية الدين بنجاح');
   };
 
   const handleDeleteCredit = (id: string) => {
@@ -687,7 +702,7 @@ export default function App() {
       const filtered = prev.filter(c => c.date !== closure.date);
       return [closure, ...filtered];
     });
-    showToast(`تم إقفال وحفظ صندوق يوم ${closure.date} بنجاح ⚖️`);
+    showToast(`تم إقفال وحفظ صندوق يوم ${closure.date} بنجاح`);
   };
 
   const handleDeleteCaisseClosure = (id: string) => {
@@ -720,7 +735,7 @@ export default function App() {
       }));
     }
 
-    showToast('تم صرف الراتب وتطبيق خصم الغيابات بنجاح ✓');
+    showToast('تم صرف الراتب وتطبيق خصم الغيابات بنجاح');
   };
 
   const handleDeleteStaffPayout = (id: string) => {
@@ -1010,7 +1025,7 @@ export default function App() {
                     : 'text-slate-700 bg-slate-100/90 hover:bg-slate-200/90 border-slate-200/70'
                 }`}
               >
-                <span className="text-sm">⚖️</span>
+                <Scale className="w-4 h-4 shrink-0" />
                 <span className="hidden sm:inline">الصندوق اليومي</span>
                 <span className="sm:hidden">الصندوق</span>
               </button>
@@ -1257,7 +1272,7 @@ export default function App() {
 
       {/* Add Rental Modal */}
       {activeModal === 'addRental' && (
-        <Modal title="تسجيل عملية كراء أو حجز مستقبلي 👗" onClose={() => { setActiveModal(null); setPreselectedRentalItemId(undefined); }}>
+        <Modal title="تسجيل عملية كراء أو حجز مستقبلي" onClose={() => { setActiveModal(null); setPreselectedRentalItemId(undefined); }}>
           <RentalModal 
             clothes={clothes} 
             initialItemId={preselectedRentalItemId}
@@ -1295,7 +1310,7 @@ export default function App() {
 
       {/* Rental Receipt Modal */}
       {activeModal === 'receiptModal' && selectedRental && (
-        <Modal title="وصل وعقد الكراء 📄" onClose={() => setActiveModal(null)} wide>
+        <Modal title="وصل وعقد الكراء" onClose={() => setActiveModal(null)} wide>
           <RentalReceiptModal 
             rental={selectedRental}
             onClose={() => setActiveModal(null)}
@@ -1397,20 +1412,20 @@ export default function App() {
               </button>
             </div>
 
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-emerald-700 text-base">🌐</span>
-                <h4 className="font-bold text-sm text-emerald-900">تطبيق الصفحة الواحدة المستقل (index.html)</h4>
+                <Globe className="w-4 h-4 text-slate-700" />
+                <h4 className="font-bold text-sm text-slate-900">تطبيق الصفحة الواحدة المستقل (index.html)</h4>
               </div>
-              <p className="text-xs text-emerald-800 mb-2 leading-relaxed">
+              <p className="text-xs text-slate-700 mb-2 leading-relaxed">
                 تم تهيئة المشروع لتوليد ملف <strong>index.html</strong> كامل ومستقل يشمل كافة الأكواد، التصاميم، والمكتبات داخل ملف واحد بدون أي ملفات خارجية منفصلة، جاهز للرفع المباشر على <strong>GitHub / GitHub Pages</strong>.
               </p>
-              <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-300/80 text-[11px] font-mono text-emerald-950 space-y-1">
+              <div className="bg-white/80 p-2.5 rounded-xl border border-slate-200 text-[11px] font-mono text-slate-900 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="font-bold">أمر التجميع لملف واحد:</span>
-                  <span className="bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded font-black">npm run build</span>
+                  <span className="bg-slate-100 text-slate-900 px-2 py-0.5 rounded font-bold">npm run build</span>
                 </div>
-                <div className="text-[10px] text-emerald-700 font-sans">
+                <div className="text-[10px] text-slate-600 font-sans">
                   ينتج الملف النهائي داخل مجلد: <code className="font-bold">dist/index.html</code>
                 </div>
               </div>
@@ -1497,7 +1512,7 @@ export default function App() {
       {/* Scanned Item Action Modal (When scanned from Dashboard / Top Bar) */}
       {scannedItemAction && (
         <Modal 
-          title="إجراءات سريعة للقطعة الممسوحة ⚡" 
+          title="إجراءات سريعة للقطعة الممسوحة" 
           onClose={() => setScannedItemAction(null)}
         >
           <div className="space-y-4 py-1 text-slate-800" dir="rtl">
@@ -1510,8 +1525,8 @@ export default function App() {
                   className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shrink-0" 
                 />
               ) : (
-                <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-3xl font-bold shrink-0">
-                  👗
+                <div className="w-16 h-16 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+                  <Shirt className="w-8 h-8 text-slate-500" />
                 </div>
               )}
 
@@ -1525,9 +1540,9 @@ export default function App() {
                   <span>•</span>
                   <span>اللون: {scannedItemAction.color}</span>
                   <span>•</span>
-                  <span className="font-mono text-indigo-700">#{scannedItemAction.barcode}</span>
+                  <span className="font-mono text-slate-700">#{scannedItemAction.barcode}</span>
                 </div>
-                <div className="text-xs font-black text-emerald-700 mt-1">
+                <div className="text-xs font-black text-slate-800 mt-1">
                   المتوفر بالمخزن: {scannedItemAction.stock - scannedItemAction.rentedCount} من {scannedItemAction.stock} قطعة
                 </div>
               </div>
@@ -1545,12 +1560,12 @@ export default function App() {
                     setCurrentView('rentals');
                     setActiveModal('addRental');
                   }}
-                  className="p-3.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-2xl text-center transition-all flex flex-col items-center justify-between gap-2 active:scale-95 group"
+                  className="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl text-center transition-all flex flex-col items-center justify-between gap-2 active:scale-95 group"
                 >
-                  <span className="text-2xl group-hover:scale-110 transition-transform">👗</span>
+                  <Shirt className="w-6 h-6 text-slate-700 group-hover:scale-110 transition-transform" />
                   <div>
-                    <span className="block font-black text-xs text-rose-900">كراء الفستان</span>
-                    <span className="text-[10px] text-rose-700 font-bold">{(scannedItemAction.rentPrice || 0).toLocaleString()} دج</span>
+                    <span className="block font-black text-xs text-slate-900">كراء الفستان</span>
+                    <span className="text-[10px] text-slate-600 font-bold">{(scannedItemAction.rentPrice || 0).toLocaleString()} دج</span>
                   </div>
                 </button>
               )}
@@ -1583,12 +1598,12 @@ export default function App() {
                       date: new Date().toISOString()
                     });
                   }}
-                  className="p-3.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-2xl text-center transition-all flex flex-col items-center justify-between gap-2 active:scale-95 group"
+                  className="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl text-center transition-all flex flex-col items-center justify-between gap-2 active:scale-95 group"
                 >
-                  <span className="text-2xl group-hover:scale-110 transition-transform">🛍️</span>
+                  <ShoppingBag className="w-6 h-6 text-slate-700 group-hover:scale-110 transition-transform" />
                   <div>
-                    <span className="block font-black text-xs text-indigo-900">بيع مباشر</span>
-                    <span className="text-[10px] text-indigo-700 font-bold">{(scannedItemAction.sellPrice || 0).toLocaleString()} دج</span>
+                    <span className="block font-black text-xs text-slate-900">بيع مباشر</span>
+                    <span className="text-[10px] text-slate-600 font-bold">{(scannedItemAction.sellPrice || 0).toLocaleString()} دج</span>
                   </div>
                 </button>
               )}
@@ -1599,12 +1614,12 @@ export default function App() {
                   setScannedItemAction(null);
                   setCurrentView('inventory');
                 }}
-                className="p-3.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-2xl text-center transition-all flex flex-col items-center justify-between gap-2 active:scale-95 group"
+                className="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl text-center transition-all flex flex-col items-center justify-between gap-2 active:scale-95 group"
               >
-                <span className="text-2xl group-hover:scale-110 transition-transform">📦</span>
+                <Package className="w-6 h-6 text-slate-700 group-hover:scale-110 transition-transform" />
                 <div>
-                  <span className="block font-black text-xs text-emerald-900">إدارة المخزون</span>
-                  <span className="text-[10px] text-emerald-700 font-bold">{scannedItemAction.stock} قطعة</span>
+                  <span className="block font-black text-xs text-slate-900">إدارة المخزون</span>
+                  <span className="text-[10px] text-slate-600 font-bold">{scannedItemAction.stock} قطعة</span>
                 </div>
               </button>
             </div>
@@ -1615,12 +1630,12 @@ export default function App() {
       {/* Unknown Barcode Scanned Modal */}
       {unknownScannedCode && (
         <Modal 
-          title="الباركود غير مسجل في المخزن ⚠️" 
+          title="الباركود غير مسجل في المخزن" 
           onClose={() => setUnknownScannedCode(null)}
         >
           <div className="space-y-4 py-2 text-center" dir="rtl">
-            <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-3xl mx-auto font-bold">
-              📷
+            <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mx-auto">
+              <Camera className="w-7 h-7 text-slate-700" />
             </div>
             <div>
               <h4 className="font-black text-slate-900 text-sm">لم يتم العثور على قطعة مسجلة بهذا الرمز</h4>
@@ -1638,7 +1653,7 @@ export default function App() {
                   setUnknownScannedCode(null);
                   setCurrentView('inventory');
                 }}
-                className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black transition-all shadow-md shadow-rose-200 active:scale-95"
+                className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition-all shadow-xs active:scale-95"
               >
                 + إضافة قطعة جديدة بهذا الباركود
               </button>
@@ -1655,67 +1670,67 @@ export default function App() {
 
       {/* Mobile More Sheet Modal */}
       {activeModal === 'mobileMore' && (
-        <Modal title="المزيد من الأقسام والخدمات ⚡" onClose={() => setActiveModal(null)}>
+        <Modal title="المزيد من الأقسام والخدمات" onClose={() => setActiveModal(null)}>
           <div className="grid grid-cols-2 gap-3 py-2">
             <button
               onClick={() => { setCurrentView('expenses'); setActiveModal(null); }}
-              className="p-4 bg-amber-50 hover:bg-amber-100 rounded-2xl border border-amber-200 text-right transition-all flex flex-col justify-between active:scale-95"
+              className="p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-200 text-right transition-all flex flex-col justify-between active:scale-95"
             >
-              <div className="w-10 h-10 rounded-xl bg-amber-200 text-amber-900 flex items-center justify-center text-lg mb-2">
-                🧼
+              <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-800 flex items-center justify-center mb-2">
+                <Droplets className="w-5 h-5 text-slate-700" />
               </div>
               <div>
-                <h4 className="font-black text-amber-950 text-xs">المصاريف والغسيل</h4>
-                <p className="text-[10px] text-amber-800 mt-0.5">Pressing وكراء المحل</p>
+                <h4 className="font-black text-slate-900 text-xs">المصاريف والغسيل</h4>
+                <p className="text-[10px] text-slate-500 mt-0.5">Pressing وكراء المحل</p>
               </div>
             </button>
 
             <button
               onClick={() => { setCurrentView('credits'); setActiveModal(null); }}
-              className="p-4 bg-rose-50 hover:bg-rose-100 rounded-2xl border border-rose-200 text-right transition-all flex flex-col justify-between active:scale-95"
+              className="p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-200 text-right transition-all flex flex-col justify-between active:scale-95"
             >
-              <div className="w-10 h-10 rounded-xl bg-rose-200 text-rose-900 flex items-center justify-center text-lg mb-2">
-                💳
+              <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-800 flex items-center justify-center mb-2">
+                <CreditCardIcon className="w-5 h-5 text-slate-700" />
               </div>
               <div>
-                <h4 className="font-black text-rose-950 text-xs">الديون والكريدي</h4>
-                <p className="text-[10px] text-rose-800 mt-0.5">متابعة حسابات الزبائن</p>
+                <h4 className="font-black text-slate-900 text-xs">الديون والكريدي</h4>
+                <p className="text-[10px] text-slate-500 mt-0.5">متابعة حسابات الزبائن</p>
               </div>
             </button>
 
             <button
               onClick={() => { setActiveModal('staffPayouts'); }}
-              className="p-4 bg-indigo-50 hover:bg-indigo-100 rounded-2xl border border-indigo-200 text-right transition-all flex flex-col justify-between active:scale-95"
+              className="p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-200 text-right transition-all flex flex-col justify-between active:scale-95"
             >
-              <div className="w-10 h-10 rounded-xl bg-indigo-200 text-indigo-900 flex items-center justify-center text-lg mb-2">
-                👥
+              <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-800 flex items-center justify-center mb-2">
+                <Users className="w-5 h-5 text-slate-700" />
               </div>
               <div>
-                <h4 className="font-black text-indigo-950 text-xs">رواتب وخلاص العمال</h4>
-                <p className="text-[10px] text-indigo-800 mt-0.5">سجل دفعات الموظفين</p>
+                <h4 className="font-black text-slate-900 text-xs">رواتب وخلاص العمال</h4>
+                <p className="text-[10px] text-slate-500 mt-0.5">سجل دفعات الموظفين</p>
               </div>
             </button>
 
             <button
               onClick={() => { setActiveModal('fullReport'); }}
-              className="p-4 bg-emerald-50 hover:bg-emerald-100 rounded-2xl border border-emerald-200 text-right transition-all flex flex-col justify-between active:scale-95"
+              className="p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-200 text-right transition-all flex flex-col justify-between active:scale-95"
             >
-              <div className="w-10 h-10 rounded-xl bg-emerald-200 text-emerald-900 flex items-center justify-center text-lg mb-2">
-                📊
+              <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-800 flex items-center justify-center mb-2">
+                <BarChart3 className="w-5 h-5 text-slate-700" />
               </div>
               <div>
-                <h4 className="font-black text-emerald-950 text-xs">التقرير المالي الشامل</h4>
-                <p className="text-[10px] text-emerald-800 mt-0.5">طباعة وإحصائيات كاملة</p>
+                <h4 className="font-black text-slate-900 text-xs">التقرير المالي الشامل</h4>
+                <p className="text-[10px] text-slate-500 mt-0.5">طباعة وإحصائيات كاملة</p>
               </div>
             </button>
 
             <button
               onClick={() => { setActiveModal('backupModal'); }}
-              className="p-4 bg-slate-100 hover:bg-slate-200 rounded-2xl border border-slate-200 text-right transition-all flex flex-col justify-between active:scale-95 col-span-2"
+              className="p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-200 text-right transition-all flex flex-col justify-between active:scale-95 col-span-2"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-800 text-white flex items-center justify-center text-lg shrink-0">
-                  💾
+                <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                  <Save className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <h4 className="font-black text-slate-900 text-xs">النسخ الاحتياطي واستعادة البيانات</h4>

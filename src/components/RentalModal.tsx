@@ -2,6 +2,20 @@ import React, { useState, useMemo } from 'react';
 import { ClothItem, Rental } from '../types';
 import { BarcodeScanner } from './BarcodeScanner';
 import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
+import { 
+  Shirt, 
+  Calendar, 
+  Camera, 
+  User, 
+  Crown, 
+  Check, 
+  Building2, 
+  Package, 
+  DollarSign, 
+  Clock, 
+  Info,
+  Barcode
+} from 'lucide-react';
 
 interface RentalModalProps {
   clothes: ClothItem[];
@@ -72,7 +86,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
     if (data.phone) setCustomerPhone(data.phone);
     if (data.idNumber) setCustomerIdNumber(data.idNumber);
     if (data.notes && !notes) setNotes(data.notes);
-    setScanNotice(`✓ تم استخراج وتعبئة بيانات الزبون (${data.name || data.idNumber}) بنجاح!`);
+    setScanNotice(`تم استخراج وتعبئة بيانات الزبون (${data.name || data.idNumber}) بنجاح`);
     setTimeout(() => setScanNotice(null), 4000);
   };
 
@@ -147,12 +161,12 @@ export const RentalModal: React.FC<RentalModalProps> = ({
   const remainingAmount = Math.max(0, totalRentPrice - paidAmount);
 
   const accessorySuggestions = [
-    '👑 تاج عروس ملكي فاخر',
-    '💎 حزام مجوهرات مرصع',
-    '👛 حقيبة سهرة كلاتش (Clutch)',
-    '🧣 شال / برنوس مطرز',
-    '✨ طاقم إكسسوارات كامل (عقد وأقراط)',
-    '🌸 طرحة عروس مطرزة'
+    'تاج عروس ملكي فاخر',
+    'حزام مجوهرات مرصع',
+    'حقيبة سهرة كلاتش (Clutch)',
+    'شال / برنوس مطرز',
+    'طاقم إكسسوارات كامل (عقد وأقراط)',
+    'طرحة عروس مطرزة'
   ];
 
   const handleQuickAccessorySelect = (tag: string) => {
@@ -191,7 +205,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
     const found = rentalClothes.find(c => c.barcode.trim().toLowerCase() === cleanCode || c.name.toLowerCase().includes(cleanCode));
     if (found) {
       handleItemChange(found.id);
-      setScanNotice(`✓ تم اختيار: ${found.name} (${found.size}) بالباركود`);
+      setScanNotice(`تم اختيار: ${found.name} (${found.size}) بالباركود`);
       setTimeout(() => setScanNotice(null), 3000);
       setShowBarcodeScanner(false);
     } else {
@@ -260,9 +274,9 @@ export const RentalModal: React.FC<RentalModalProps> = ({
       {/* Booking Mode Selector (كراء فوري مباشر vs مستأجرة مستقبلاً) */}
       <div className="bg-slate-900 text-white p-3.5 rounded-3xl shadow-xs space-y-2">
         <div className="flex justify-between items-center">
-          <span className="text-xs font-black text-slate-200">نوع العملية والتسليم:</span>
+          <span className="text-xs font-bold text-slate-200">نوع العملية والتسليم:</span>
           <span className="text-[10px] bg-white/10 text-slate-300 px-2 py-0.5 rounded-md font-bold">
-            {bookingType === 'reserved' ? '📅 حجز لمناسبة قادمة' : '👗 تسليم فوري مباشر'}
+            {bookingType === 'reserved' ? 'حجز لمناسبة قادمة' : 'تسليم فوري مباشر'}
           </span>
         </div>
 
@@ -270,13 +284,13 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           <button
             type="button"
             onClick={() => setBookingType('active')}
-            className={`p-2.5 rounded-2xl text-xs font-black transition-all flex flex-col items-center gap-1 border ${
+            className={`p-2.5 rounded-2xl text-xs font-bold transition-all flex flex-col items-center gap-1 border ${
               bookingType === 'active'
-                ? 'bg-rose-600 border-rose-500 text-white shadow-md'
-                : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-800'
+                ? 'bg-slate-800 border-slate-600 text-white shadow-xs'
+                : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:bg-slate-800/50'
             }`}
           >
-            <span className="text-base">👗</span>
+            <Shirt className="w-5 h-5 text-slate-200" />
             <span>كراء فوري مباشر</span>
             <span className="text-[9px] font-normal opacity-80">تسليم الفستان الآن</span>
           </button>
@@ -284,28 +298,28 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           <button
             type="button"
             onClick={() => setBookingType('reserved')}
-            className={`p-2.5 rounded-2xl text-xs font-black transition-all flex flex-col items-center gap-1 border ${
+            className={`p-2.5 rounded-2xl text-xs font-bold transition-all flex flex-col items-center gap-1 border ${
               bookingType === 'reserved'
-                ? 'bg-indigo-600 border-indigo-500 text-white shadow-md'
-                : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-800'
+                ? 'bg-slate-800 border-slate-600 text-white shadow-xs'
+                : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:bg-slate-800/50'
             }`}
           >
-            <span className="text-base">📅</span>
+            <Calendar className="w-5 h-5 text-slate-200" />
             <span>مستأجرة مستقبلاً (حجز)</span>
             <span className="text-[9px] font-normal opacity-80">لمناسبة قادمة + عربون</span>
           </button>
         </div>
 
         {bookingType === 'reserved' ? (
-          <div className="bg-indigo-950/60 border border-indigo-500/30 p-2.5 rounded-xl text-[11px] text-indigo-200 flex items-start gap-2">
-            <span className="text-sm shrink-0">💡</span>
+          <div className="bg-slate-800/80 border border-slate-700/60 p-2.5 rounded-xl text-[11px] text-slate-300 flex items-start gap-2">
+            <Info className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
             <span>
-              <strong>مستأجرة مستقبلاً:</strong> يُسجل الحجز والعربون، <u>ولا يدخل الفستان في الكراء الجاري ولا ينقص من مخزن المحل الفعلي</u> حتى يحين موعد الاستلام وتتم الصفقة وتسليم الفستان للزبونة.
+              <strong>مستأجرة مستقبلاً:</strong> يُسجل الحجز والعربون، ولا يدخل الفستان في الكراء الجاري ولا ينقص من مخزن المحل الفعلي حتى يحين موعد الاستلام وتتم الصفقة وتسليم الفستان للزبونة.
             </span>
           </div>
         ) : (
-          <div className="bg-rose-950/60 border border-rose-500/30 p-2.5 rounded-xl text-[11px] text-rose-200 flex items-start gap-2">
-            <span className="text-sm shrink-0">⚡</span>
+          <div className="bg-slate-800/80 border border-slate-700/60 p-2.5 rounded-xl text-[11px] text-slate-300 flex items-start gap-2">
+            <Info className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
             <span>
               <strong>كراء فوري:</strong> يتم تسليم الفستان الآن ويدخل مباشرة في الكراء الجاري ويتم خصمه من المخزن المتوفر.
             </span>
@@ -314,10 +328,13 @@ export const RentalModal: React.FC<RentalModalProps> = ({
       </div>
 
       {/* Dress Selector with Quick Barcode Scan */}
-      <div className="bg-rose-50/70 border border-rose-100 p-3.5 rounded-2xl space-y-2.5">
+      <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl space-y-2.5">
         <div className="flex justify-between items-center">
-          <label className="block text-xs font-black text-rose-900">اختر الفستان أو الزي للكراء *</label>
-          <span className="text-[10px] text-rose-600 font-bold bg-rose-100 px-2 py-0.5 rounded-md">⚡ مسح باركود سريع</span>
+          <label className="block text-xs font-bold text-slate-900">اختر الفستان أو الزي للكراء *</label>
+          <span className="text-[10px] text-slate-700 font-bold bg-slate-200/70 px-2 py-0.5 rounded-md flex items-center gap-1">
+            <Barcode className="w-3 h-3" />
+            <span>مسح باركود سريع</span>
+          </span>
         </div>
 
         {/* Quick Barcode/Search Input + Camera Scanner Button */}
@@ -332,30 +349,30 @@ export const RentalModal: React.FC<RentalModalProps> = ({
                 handleQuickBarcodeSearch(e);
               }
             }}
-            placeholder="⚡ امسح بالليزر أو اكتب الباركود..."
-            className="flex-1 bg-white border border-rose-200 focus:border-rose-500 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 placeholder:font-sans placeholder:text-slate-400 focus:outline-none"
+            placeholder="امسح بالليزر أو اكتب الباركود..."
+            className="flex-1 bg-white border border-slate-200 focus:border-slate-400 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 placeholder:font-sans placeholder:text-slate-400 focus:outline-none"
           />
           <button
             type="button"
             onClick={handleQuickBarcodeSearch}
-            className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 shrink-0"
+            className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 shrink-0"
           >
             تحديد ↵
           </button>
           <button
             type="button"
             onClick={() => setShowBarcodeScanner(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 shrink-0 flex items-center gap-1 shadow-xs"
+            className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 shrink-0 flex items-center gap-1.5 shadow-xs"
             title="مسح باركود الفستان بالكاميرا"
           >
-            <span>📷</span>
+            <Camera className="w-3.5 h-3.5 text-slate-600" />
             <span className="hidden sm:inline">مسح بالكاميرا</span>
           </button>
         </div>
 
         {/* Scanned notification */}
         {scanNotice && (
-          <div className="bg-emerald-600 text-white text-xs font-bold p-2 rounded-xl text-center animate-pulse">
+          <div className="bg-slate-900 text-white text-xs font-bold p-2 rounded-xl text-center">
             {scanNotice}
           </div>
         )}
@@ -363,7 +380,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
         <select
           value={selectedItemId}
           onChange={(e) => handleItemChange(e.target.value)}
-          className="w-full bg-white border border-rose-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:border-rose-500 shadow-xs"
+          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:border-slate-400 shadow-xs"
         >
           {rentalClothes.map(item => {
             const s1 = getItemStock1(item);
@@ -377,16 +394,16 @@ export const RentalModal: React.FC<RentalModalProps> = ({
         </select>
         
         {selectedItem && (
-          <div className="flex items-center gap-3 mt-2.5 pt-2.5 border-t border-rose-200/60 text-[11px] font-bold text-rose-800">
+          <div className="flex items-center gap-3 mt-2.5 pt-2.5 border-t border-slate-200 text-[11px] font-bold text-slate-700">
             {selectedItem.imageUrl ? (
               <img 
                 src={selectedItem.imageUrl} 
                 alt={selectedItem.name} 
-                className="w-12 h-12 rounded-xl object-cover border border-rose-200 shadow-xs shrink-0" 
+                className="w-12 h-12 rounded-xl object-cover border border-slate-200 shadow-xs shrink-0" 
               />
             ) : (
-              <div className="w-12 h-12 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-xl shrink-0">
-                👗
+              <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-xl shrink-0">
+                <Shirt className="w-6 h-6 text-slate-500" />
               </div>
             )}
             <div className="flex-1 flex flex-wrap gap-x-2.5 gap-y-1">
@@ -394,39 +411,39 @@ export const RentalModal: React.FC<RentalModalProps> = ({
               <span>•</span>
               <span>الباركود: {selectedItem.barcode}</span>
               <span>•</span>
-              <span className="text-indigo-900">🏬 مخزون 1: {getItemStock1(selectedItem)}</span>
+              <span className="text-slate-800 font-bold">مخزون 1: {getItemStock1(selectedItem)}</span>
               <span>•</span>
-              <span className="text-amber-900">📦 مخزون 2: {getItemStock2(selectedItem)}</span>
+              <span className="text-slate-800 font-bold">مخزون 2: {getItemStock2(selectedItem)}</span>
             </div>
           </div>
         )}
 
         {/* Stock Source Selection Buttons */}
-        <div className="pt-2 border-t border-rose-200/60 flex items-center justify-between gap-2">
-          <span className="text-[11px] font-black text-slate-700">المخزن المراد الكراء منه:</span>
+        <div className="pt-2 border-t border-slate-200 flex items-center justify-between gap-2">
+          <span className="text-[11px] font-bold text-slate-700">المخزن المراد الكراء منه:</span>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setStockSource('stock1')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
                 stockSource === 'stock1' 
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' 
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs' 
                   : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
               }`}
             >
-              <span>🏬</span>
+              <Building2 className="w-3.5 h-3.5" />
               <span>المخزون 1 ({getItemStock1(selectedItem)})</span>
             </button>
             <button
               type="button"
               onClick={() => setStockSource('stock2')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
                 stockSource === 'stock2' 
-                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs' 
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs' 
                   : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
               }`}
             >
-              <span>📦</span>
+              <Package className="w-3.5 h-3.5" />
               <span>المخزون 2 ({getItemStock2(selectedItem)})</span>
             </button>
           </div>
@@ -479,14 +496,14 @@ export const RentalModal: React.FC<RentalModalProps> = ({
       </div>
 
       {/* Customer Information with Smart ID & Barcode Scanner */}
-      <div className="bg-gradient-to-br from-slate-50 to-rose-50/30 p-4 rounded-3xl border border-slate-200 shadow-xs space-y-3">
+      <div className="bg-slate-50 p-4 rounded-3xl border border-slate-200 shadow-xs space-y-3">
         <div className="flex flex-wrap justify-between items-center gap-2">
           <div className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center text-sm font-bold">
-              👤
+            <span className="w-7 h-7 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center text-sm font-bold">
+              <User className="w-4 h-4" />
             </span>
             <div>
-              <span className="text-xs font-black text-slate-800 block">معلومات وهوية الزبونة / الزبون</span>
+              <span className="text-xs font-bold text-slate-900 block">معلومات وهوية الزبونة / الزبون</span>
               <span className="text-[10px] text-slate-500 font-medium">يمكنك الكتابة يدوياً أو المسح المباشر بالكاميرا</span>
             </div>
           </div>
@@ -494,10 +511,10 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           <button
             type="button"
             onClick={() => setShowCustomerIdScanner(true)}
-            className="bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 active:scale-95 text-white px-3.5 py-2 rounded-2xl text-xs font-black transition-all shadow-md shadow-rose-200 flex items-center gap-2 border border-rose-500"
+            className="bg-slate-900 hover:bg-slate-800 active:scale-95 text-white px-3.5 py-2 rounded-2xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 border border-slate-800"
             title="مسح بطاقة التعريف الوطنية أو رخصة السياقة أو باركود الزبون بالكاميرا"
           >
-            <span className="text-sm">📷</span>
+            <Camera className="w-4 h-4 text-slate-300" />
             <span>مسح بطاقة الهوية بالكاميرا (AI OCR)</span>
           </button>
         </div>
@@ -514,7 +531,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="الاسم واللقب الكامل..."
-                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:border-rose-500 focus:outline-none shadow-2xs"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:border-slate-400 focus:outline-none shadow-2xs"
               />
             </div>
           </div>
@@ -529,7 +546,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
               placeholder="05 / 06 / 07..."
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:border-rose-500 focus:outline-none shadow-2xs"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:border-slate-400 focus:outline-none shadow-2xs"
             />
           </div>
 
@@ -539,9 +556,9 @@ export const RentalModal: React.FC<RentalModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowCustomerIdScanner(true)}
-                className="text-[10px] text-rose-600 font-bold hover:underline flex items-center gap-0.5"
+                className="text-[10px] text-slate-600 font-bold hover:underline flex items-center gap-1"
               >
-                <span>📷</span>
+                <Camera className="w-3 h-3 text-slate-500" />
                 <span>مسح</span>
               </button>
             </div>
@@ -551,15 +568,15 @@ export const RentalModal: React.FC<RentalModalProps> = ({
                 value={customerIdNumber}
                 onChange={(e) => setCustomerIdNumber(e.target.value)}
                 placeholder="رقم البطاقة الوطنية أو الضمانة..."
-                className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs font-bold font-mono text-slate-900 focus:border-rose-500 focus:outline-none shadow-2xs"
+                className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs font-bold font-mono text-slate-900 focus:border-slate-400 focus:outline-none shadow-2xs"
               />
               <button
                 type="button"
                 onClick={() => setShowCustomerIdScanner(true)}
-                className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors"
+                className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
                 title="مسح بطاقة الهوية بالكاميرا"
               >
-                📷
+                <Camera className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -569,17 +586,17 @@ export const RentalModal: React.FC<RentalModalProps> = ({
       {/* Accessories & Extras Section (كراء إكسسوار مع الفستان) */}
       <div className={`p-4 rounded-3xl border transition-all ${
         hasAccessories 
-          ? 'bg-amber-50/70 border-amber-300 shadow-xs' 
-          : 'bg-slate-50/80 border-slate-200'
+          ? 'bg-slate-50 border-slate-300 shadow-xs' 
+          : 'bg-slate-50/60 border-slate-200'
       }`}>
         <div className="flex justify-between items-center pb-2 border-b border-slate-200/80">
           <div className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-sm font-black">
-              👑
+            <span className="w-7 h-7 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center text-sm font-bold">
+              <Crown className="w-4 h-4" />
             </span>
             <div>
-              <span className="text-xs font-black text-slate-900 block">إضافة إكسسوارات مع الفستان (تاج، حزام، حقيبة، شال...)</span>
-              <span className="text-[10px] text-slate-500 font-bold">يمكنك تحديد الإكسسوار وسعره ليُحسب السعر الإجمالي تلقائياً</span>
+              <span className="text-xs font-bold text-slate-900 block">إضافة إكسسوارات مع الفستان (تاج، حزام، حقيبة، شال...)</span>
+              <span className="text-[10px] text-slate-500 font-medium">يمكنك تحديد الإكسسوار وسعره ليُحسب السعر الإجمالي تلقائياً</span>
             </div>
           </div>
 
@@ -589,25 +606,32 @@ export const RentalModal: React.FC<RentalModalProps> = ({
               const nextVal = !hasAccessories;
               setHasAccessories(nextVal);
               if (nextVal && !accessoryName) {
-                setAccessoryName('👑 تاج عروس ملكي فاخر');
+                setAccessoryName('تاج عروس ملكي فاخر');
                 setAccessoryPrice(1500);
               }
             }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 active:scale-95 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 ${
               hasAccessories
-                ? 'bg-amber-600 text-white shadow-xs'
+                ? 'bg-slate-900 text-white shadow-xs'
                 : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
             }`}
           >
-            <span>{hasAccessories ? '✓ تم تفعيل الإكسسوار' : '+ إضافة إكسسوار'}</span>
+            {hasAccessories ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <span>تم تفعيل الإكسسوار</span>
+              </>
+            ) : (
+              <span>+ إضافة إكسسوار</span>
+            )}
           </button>
         </div>
 
         {hasAccessories && (
-          <div className="mt-3 space-y-3 animate-fadeIn">
+          <div className="mt-3 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2">
-                <label className="block text-[11px] font-black text-amber-950 mb-1">
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
                   اسم / بيان الإكسسوار المرفق *
                 </label>
                 <input
@@ -616,12 +640,12 @@ export const RentalModal: React.FC<RentalModalProps> = ({
                   value={accessoryName}
                   onChange={(e) => setAccessoryName(e.target.value)}
                   placeholder="مثال: تاج ملكي فاخر + حزام مجوهرات..."
-                  className="w-full bg-white border border-amber-300 rounded-xl px-3 py-2 text-xs font-bold text-amber-950 focus:outline-none focus:border-amber-500"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-black text-amber-950 mb-1">
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
                   سعر كراء الإكسسوار (دج) *
                 </label>
                 <input
@@ -634,21 +658,21 @@ export const RentalModal: React.FC<RentalModalProps> = ({
                     setAccessoryPrice(val);
                   }}
                   placeholder="0"
-                  className="w-full bg-white border-2 border-amber-400 rounded-xl px-3 py-2 text-xs font-black text-amber-900 focus:outline-none focus:border-amber-600"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400"
                 />
               </div>
             </div>
 
             {/* Quick Accessory Suggestions */}
             <div>
-              <span className="text-[10px] text-amber-900 font-bold block mb-1">اقتراحات سريعة للإكسسوارات:</span>
+              <span className="text-[10px] text-slate-600 font-bold block mb-1">اقتراحات سريعة للإكسسوارات:</span>
               <div className="flex flex-wrap gap-1.5">
                 {accessorySuggestions.map(tag => (
                   <button
                     key={tag}
                     type="button"
                     onClick={() => handleQuickAccessorySelect(tag)}
-                    className="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all"
+                    className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all"
                   >
                     + {tag}
                   </button>
@@ -660,25 +684,22 @@ export const RentalModal: React.FC<RentalModalProps> = ({
       </div>
 
       {/* Dynamic Financial Calculation Summary Box (سعر الفستان + الإكسسوار = السعر الكلي) */}
-      <div className={`p-4 rounded-3xl border-2 space-y-3 ${
-        bookingType === 'reserved' 
-          ? 'bg-gradient-to-br from-indigo-50/80 via-white to-amber-50/60 border-indigo-200' 
-          : 'bg-gradient-to-br from-rose-50/80 via-white to-amber-50/60 border-rose-200'
-      }`}>
+      <div className="p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3">
         {/* Dynamic Formula Header */}
         <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-slate-200">
-          <div className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-            <span>💰 الحساب المالي لكراء الفستان</span>
+          <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+            <DollarSign className="w-4 h-4 text-slate-600" />
+            <span>الحساب المالي لكراء الفستان</span>
             {hasAccessories && (
-              <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-md font-bold">
+              <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-bold">
                 (فستان + إكسسوار)
               </span>
             )}
           </div>
 
-          <div className="bg-slate-900 text-white px-3 py-1 rounded-xl text-xs font-black flex items-center gap-2">
+          <div className="bg-slate-900 text-white px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-2">
             <span className="text-[11px] text-slate-300 font-normal">السعر الكلي الإجمالي:</span>
-            <span className="text-emerald-400 font-mono text-sm">{totalRentPrice.toLocaleString()} دج</span>
+            <span className="font-mono text-sm">{totalRentPrice.toLocaleString()} دج</span>
           </div>
         </div>
 
@@ -686,8 +707,8 @@ export const RentalModal: React.FC<RentalModalProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {/* 1. Dress Base Price */}
           <div>
-            <label className="block text-[11px] font-black text-slate-700 mb-1">
-              👗 سعر كراء الفستان (دج) *
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              سعر كراء الفستان (دج) *
             </label>
             <input
               type="number"
@@ -695,14 +716,14 @@ export const RentalModal: React.FC<RentalModalProps> = ({
               required
               value={dressRentPrice}
               onChange={(e) => setDressRentPrice(Number(e.target.value))}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-rose-700 focus:outline-none focus:border-rose-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400"
             />
           </div>
 
           {/* 2. Accessory Price (Read or Edit) */}
           <div>
-            <label className="block text-[11px] font-black text-slate-700 mb-1">
-              👑 سعر الإكسسوار (دج)
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              سعر الإكسسوار (دج)
             </label>
             <input
               type="number"
@@ -715,9 +736,9 @@ export const RentalModal: React.FC<RentalModalProps> = ({
                 }
               }}
               placeholder={hasAccessories ? "0" : "بدون إكسسوار"}
-              className={`w-full border rounded-xl px-3 py-2 text-xs font-black focus:outline-none ${
+              className={`w-full border rounded-xl px-3 py-2 text-xs font-bold focus:outline-none ${
                 hasAccessories
-                  ? 'bg-amber-50 border-amber-300 text-amber-900 focus:border-amber-500'
+                  ? 'bg-white border-slate-300 text-slate-900 focus:border-slate-400'
                   : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
               }`}
             />
@@ -726,13 +747,13 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           {/* 3. Paid Amount / Deposit */}
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-[11px] font-black text-slate-700">
+              <label className="block text-[11px] font-bold text-slate-700">
                 {bookingType === 'reserved' ? 'العربون / التسبيق (دج) *' : 'المدفوع مسبقاً (دج) *'}
               </label>
               <button
                 type="button"
                 onClick={() => setPaidAmount(totalRentPrice)}
-                className="text-[10px] text-emerald-700 font-bold underline"
+                className="text-[10px] text-slate-700 font-bold underline hover:text-slate-900"
               >
                 دفع كامل
               </button>
@@ -743,23 +764,33 @@ export const RentalModal: React.FC<RentalModalProps> = ({
               required
               value={paidAmount}
               onChange={(e) => setPaidAmount(Number(e.target.value))}
-              className="w-full bg-white border-2 border-emerald-300 rounded-xl px-3 py-2 text-xs font-black text-emerald-700 focus:outline-none focus:border-emerald-500"
+              className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400"
             />
           </div>
 
           {/* 4. Remaining Amount (المتبقي) */}
           <div>
-            <label className="block text-[11px] font-black text-slate-700 mb-1">
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">
               {bookingType === 'reserved' ? 'المتبقي عند استلام الفستان' : 'المتبقي (دين/كريدي)'}
             </label>
-            <div className={`w-full rounded-xl px-3 py-2 text-xs font-black border flex items-center justify-between ${
+            <div className={`w-full rounded-xl px-3 py-2 text-xs font-bold border flex items-center justify-between ${
               remainingAmount > 0 
-                ? 'bg-rose-50 border-rose-200 text-rose-800' 
-                : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                ? 'bg-slate-100 border-slate-200 text-slate-800' 
+                : 'bg-slate-50 border-slate-200 text-slate-600'
             }`}>
               <span>{remainingAmount.toLocaleString()} دج</span>
-              <span className="text-[10px] font-bold">
-                {remainingAmount > 0 ? 'متبقي ⏳' : 'خالص 0 دج ✓'}
+              <span className="text-[10px] font-medium flex items-center gap-1">
+                {remainingAmount > 0 ? (
+                  <>
+                    <Clock className="w-3 h-3 text-slate-500" />
+                    <span>متبقي</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3 h-3 text-emerald-600" />
+                    <span>خالص 0 دج</span>
+                  </>
+                )}
               </span>
             </div>
           </div>
@@ -767,14 +798,14 @@ export const RentalModal: React.FC<RentalModalProps> = ({
 
         {/* Breakdown Calculation Banner */}
         {hasAccessories && safeAccPrice > 0 && (
-          <div className="bg-white p-2.5 rounded-xl border border-amber-200 text-xs flex flex-wrap items-center justify-between gap-2">
+          <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-xs flex flex-wrap items-center justify-between gap-2">
             <span className="text-slate-600 font-bold">تفاصيل مجموع الكراء:</span>
             <div className="flex items-center gap-2 font-mono text-xs">
-              <span className="text-rose-700 font-bold">👗 فستان: {safeDressPrice.toLocaleString()} دج</span>
+              <span className="text-slate-800 font-bold">فستان: {safeDressPrice.toLocaleString()} دج</span>
               <span className="text-slate-400 font-bold">+</span>
-              <span className="text-amber-800 font-bold">👑 إكسسوار: {safeAccPrice.toLocaleString()} دج</span>
+              <span className="text-slate-800 font-bold">إكسسوار: {safeAccPrice.toLocaleString()} دج</span>
               <span className="text-slate-400 font-bold">=</span>
-              <span className="text-emerald-700 font-black bg-emerald-50 px-2 py-0.5 rounded-md">
+              <span className="text-slate-900 font-bold bg-slate-100 px-2 py-0.5 rounded-md">
                 الإجمالي: {totalRentPrice.toLocaleString()} دج
               </span>
             </div>
@@ -784,7 +815,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
         {/* Caution Amount (الضمان المالي) */}
         <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div>
-            <span className="text-xs font-black text-amber-900 block">الضمان المالي (Caution):</span>
+            <span className="text-xs font-bold text-slate-800 block">الضمان المالي (Caution):</span>
             <span className="text-[10px] text-slate-500 font-medium">مبلغ مسترجع للزبونة عند إعادة الفستان والإكسسوار سليمين.</span>
           </div>
           <div className="w-full sm:w-48">
@@ -793,7 +824,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
               min="0"
               value={cautionAmount}
               onChange={(e) => setCautionAmount(Number(e.target.value))}
-              className="w-full bg-white border border-amber-300 rounded-xl px-3 py-1.5 text-xs font-black text-amber-900 focus:outline-none focus:border-amber-500"
+              className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400"
             />
           </div>
         </div>
@@ -807,22 +838,18 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
           placeholder="أي تفاصيل خاصة بالمقاس، التضييق، أو موعد التسليم..."
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-800 focus:outline-none focus:border-rose-500"
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-800 focus:outline-none focus:border-slate-400"
         />
       </div>
 
       <button
         type="submit"
-        className={`w-full py-3.5 active:scale-[0.98] text-white rounded-2xl font-black text-xs sm:text-sm shadow-md transition-all min-h-[44px] flex items-center justify-center gap-2 ${
-          bookingType === 'reserved'
-            ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'
-            : 'bg-rose-600 hover:bg-rose-700 shadow-rose-200'
-        }`}
+        className="w-full py-3.5 active:scale-[0.98] bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-xs sm:text-sm shadow-xs transition-all min-h-[44px] flex items-center justify-center gap-2"
       >
-        <span>{bookingType === 'reserved' ? '📅' : '👗'}</span>
+        <Check className="w-4 h-4 text-slate-200" />
         <span>
           {rental 
-            ? 'حفظ تعديلات العملية ✓' 
+            ? 'حفظ تعديلات العملية' 
             : bookingType === 'reserved'
             ? 'تأكيد وحفظ حجز الفستان مستقبلاً (تسجيل العربون)'
             : 'تأكيد وتسجيل الكراء الفوري (تسليم الفستان)'}
@@ -832,7 +859,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
       {/* Embedded Barcode Scanner Camera Modal for Clothes */}
       {showBarcodeScanner && (
         <BarcodeScanner
-          title="مسح باركود فستان الكراء 👗"
+          title="مسح باركود فستان الكراء"
           onScan={(code) => handleBarcodeScanned(code)}
           onClose={() => setShowBarcodeScanner(false)}
         />
@@ -841,7 +868,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
       {/* Smart Customer ID & Barcode Scanner Modal */}
       {showCustomerIdScanner && (
         <CustomerIdScannerModal
-          title="مسح بطاقة تعريف أو باركود الزبونة 🆔"
+          title="مسح بطاقة تعريف أو باركود الزبونة"
           onExtract={handleCustomerExtracted}
           onClose={() => setShowCustomerIdScanner(false)}
         />

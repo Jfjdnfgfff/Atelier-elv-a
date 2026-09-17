@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ClothItem, PurposeType } from '../types';
 import { BarcodeScanner } from './BarcodeScanner';
+import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2 } from 'lucide-react';
 
 interface InventoryViewProps {
   clothes: ClothItem[];
@@ -681,12 +682,12 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
               <span>•</span>
               <span>لون: {item.color}</span>
             </div>
-            <div className="text-[11px] font-bold text-slate-700 mt-1 flex gap-2">
-              <span className="text-indigo-700 font-black">🏬 مخزون 1: {stock1}</span>
+            <div className="text-[11px] font-bold text-slate-700 mt-1 flex gap-2 items-center">
+              <span className="text-slate-800 font-bold flex items-center gap-1"><Store className="w-3 h-3 text-slate-500" /> مخزون 1: {stock1}</span>
               <span>|</span>
-              <span className="text-amber-700 font-black">📦 مخزون 2: {stock2}</span>
+              <span className="text-slate-800 font-bold flex items-center gap-1"><Warehouse className="w-3 h-3 text-slate-500" /> مخزون 2: {stock2}</span>
               <span>|</span>
-              <span className="text-emerald-700 font-black">المجموع: {stock1 + stock2}</span>
+              <span className="text-slate-900 font-bold">المجموع: {stock1 + stock2}</span>
             </div>
           </div>
         </div>
@@ -699,26 +700,26 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
               <button
                 type="button"
                 onClick={() => setTargetStock('stock1')}
-                className={`py-2.5 px-3 rounded-2xl font-black text-xs transition-all border flex items-center justify-center gap-2 ${
+                className={`py-2.5 px-3 rounded-2xl font-bold text-xs transition-all border flex items-center justify-center gap-2 ${
                   targetStock === 'stock1' 
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100' 
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-sm' 
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
               >
-                <span>🏬</span>
+                <Store className="w-4 h-4" />
                 <span>المخزون 1 (المحل)</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setTargetStock('stock2')}
-                className={`py-2.5 px-3 rounded-2xl font-black text-xs transition-all border flex items-center justify-center gap-2 ${
+                className={`py-2.5 px-3 rounded-2xl font-bold text-xs transition-all border flex items-center justify-center gap-2 ${
                   targetStock === 'stock2' 
-                    ? 'bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-100' 
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-sm' 
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
               >
-                <span>📦</span>
+                <Warehouse className="w-4 h-4" />
                 <span>المخزون 2 (المستودع)</span>
               </button>
             </div>
@@ -803,9 +804,10 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
 
           <button
             type="submit"
-            className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md shadow-emerald-200 transition-all min-h-[44px]"
+            className="w-full py-3 bg-slate-900 hover:bg-black active:scale-95 text-white rounded-2xl font-bold text-xs sm:text-sm shadow-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5"
           >
-            تأكيد وحفظ كميات المخزنين (المجموع: {stock1 + stock2}) ✓
+            <Check className="w-4 h-4" />
+            <span>تأكيد وحفظ كميات المخزنين (المجموع: {stock1 + stock2})</span>
           </button>
         </form>
       </div>
@@ -842,30 +844,30 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
       <div className="bg-white rounded-3xl w-full max-w-md max-w-full p-5 sm:p-6 shadow-2xl border border-slate-100 overflow-x-hidden animate-in fade-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center pb-3 mb-4 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <span className="w-9 h-9 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center text-lg font-bold">
-              ⇄
+            <span className="w-9 h-9 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center text-base font-bold">
+              <ArrowLeftRight className="w-4 h-4 text-slate-700" />
             </span>
             <div>
-              <h3 className="font-black text-slate-900 text-sm sm:text-base">تحويل المخزون بين المخزن 1 و 2</h3>
-              <p className="text-[10px] text-slate-400 font-medium">نقل سريع للقطع بين المحل والمستودع</p>
+              <h3 className="font-bold text-slate-900 text-sm sm:text-base">تحويل المخزون بين المخزن 1 و 2</h3>
+              <p className="text-[10px] text-slate-500 font-medium">نقل سريع للقطع بين المحل والمستودع</p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Item Info */}
         <div className="flex items-center gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200 mb-4">
           <div className="flex-1">
-            <h4 className="font-black text-slate-900 text-sm">{item.name}</h4>
+            <h4 className="font-bold text-slate-900 text-sm">{item.name}</h4>
             <div className="flex items-center gap-3 text-xs font-bold text-slate-600 mt-1">
-              <span className="text-indigo-800">🏬 المخزون 1: {s1} قطعة</span>
+              <span className="text-slate-800 flex items-center gap-1"><Store className="w-3.5 h-3.5 text-slate-500" /> المخزون 1: {s1} قطعة</span>
               <span>•</span>
-              <span className="text-amber-800">📦 المخزون 2: {s2} قطعة</span>
+              <span className="text-slate-800 flex items-center gap-1"><Warehouse className="w-3.5 h-3.5 text-slate-500" /> المخزون 2: {s2} قطعة</span>
             </div>
           </div>
         </div>
@@ -873,31 +875,31 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Direction Select */}
           <div>
-            <label className="block text-xs font-black text-slate-700 mb-2">اتجاه التحويل:</label>
+            <label className="block text-xs font-bold text-slate-700 mb-2">اتجاه التحويل:</label>
             <div className="space-y-2">
               <button
                 type="button"
                 onClick={() => { setDirection('2_to_1'); setQty(1); }}
-                className={`w-full py-3 px-4 rounded-2xl font-black text-xs transition-all border flex items-center justify-between ${
+                className={`w-full py-3 px-4 rounded-2xl font-bold text-xs transition-all border flex items-center justify-between ${
                   direction === '2_to_1' 
-                    ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-100' 
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-sm' 
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
               >
-                <span>📦 من المخزون 2 (المستودع) ➔ 🏬 إلى المخزون 1 (المحل)</span>
+                <span>من المخزون 2 (المستودع) ➔ إلى المخزون 1 (المحل)</span>
                 <span className="text-[11px] opacity-80">(المتاح: {s2})</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => { setDirection('1_to_2'); setQty(1); }}
-                className={`w-full py-3 px-4 rounded-2xl font-black text-xs transition-all border flex items-center justify-between ${
+                className={`w-full py-3 px-4 rounded-2xl font-bold text-xs transition-all border flex items-center justify-between ${
                   direction === '1_to_2' 
-                    ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-100' 
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-sm' 
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
               >
-                <span>🏬 من المخزون 1 (المحل) ➔ 📦 إلى المخزون 2 (المستودع)</span>
+                <span>من المخزون 1 (المحل) ➔ إلى المخزون 2 (المستودع)</span>
                 <span className="text-[11px] opacity-80">(المتاح: {s1})</span>
               </button>
             </div>
@@ -905,7 +907,7 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
 
           {/* Transfer Qty */}
           <div>
-            <label className="block text-xs font-black text-slate-700 mb-1.5">الكمية المراد تحويلها:</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">الكمية المراد تحويلها:</label>
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -914,7 +916,7 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
                 value={qty}
                 onChange={(e) => setQty(Math.max(1, Math.min(maxAvailable, Number(e.target.value) || 1)))}
                 disabled={maxAvailable <= 0}
-                className="flex-1 border-2 border-purple-400 rounded-xl p-2.5 text-center font-black text-lg text-slate-900 focus:outline-none"
+                className="flex-1 border border-slate-300 rounded-xl p-2.5 text-center font-bold text-base text-slate-900 focus:outline-none focus:border-slate-500"
               />
               <button
                 type="button"
@@ -928,11 +930,12 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
           </div>
 
           {maxAvailable <= 0 ? (
-            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold rounded-2xl text-center">
-              ⚠️ لا توجد كمية متاحة في المخزن المصدري للتحويل!
+            <div className="p-3 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-2xl text-center flex items-center justify-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 text-slate-500" />
+              <span>لا توجد كمية متاحة في المخزن المصدري للتحويل!</span>
             </div>
           ) : (
-            <div className="bg-purple-50 p-3 rounded-2xl border border-purple-100 text-xs text-purple-900 font-bold flex justify-between">
+            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs text-slate-800 font-bold flex justify-between">
               <span>النتيجة بعد التحويل:</span>
               <span>
                 مخزون 1: {direction === '2_to_1' ? s1 + qty : s1 - qty} | مخزون 2: {direction === '2_to_1' ? s2 - qty : s2 + qty}
@@ -1078,14 +1081,14 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
             aria-label="إغلاق"
             className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-sm"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4">
           {/* Image Upload Area */}
           <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
-            <label className="block text-xs font-bold text-slate-700">صورة المنتج / الفستان 📸</label>
+            <label className="block text-xs font-bold text-slate-700">صورة المنتج / الفستان</label>
             
             <div className="flex items-center gap-3">
               {/* Preview Thumbnail */}
@@ -1096,13 +1099,14 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                     <button
                       type="button"
                       onClick={() => setImageUrl('')}
-                      className="absolute inset-0 bg-rose-600/80 text-white font-bold text-[10px] opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                      className="absolute inset-0 bg-slate-900/80 text-white font-bold text-[10px] opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity"
                     >
-                      حذف ✕
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>حذف</span>
                     </button>
                   </>
                 ) : (
-                  <span className="text-2xl text-slate-300">👗</span>
+                  <Shirt className="w-8 h-8 text-slate-300" />
                 )}
               </div>
 
@@ -1119,9 +1123,9 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isProcessingImage}
-                  className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                  className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95"
                 >
-                  <span>📷</span>
+                  <Upload className="w-3.5 h-3.5 text-slate-600" />
                   <span>{isProcessingImage ? 'جاري تجهيز الصورة...' : 'رفع صورة من الهاتف / الكمبيوتر'}</span>
                 </button>
 
@@ -1130,7 +1134,7 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
                   placeholder="أو ضع رابط صورة إنترنت (URL)..."
-                  className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-[11px] focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-[11px] focus:outline-none focus:border-slate-400"
                 />
               </div>
             </div>
@@ -1171,10 +1175,10 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
               <button
                 type="button"
                 onClick={() => setShowInFormScanner(true)}
-                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1 shrink-0 active:scale-95"
+                className="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 active:scale-95"
                 title="مسح الباركود بالكاميرا لتعبئة الكود"
               >
-                <span>📷</span>
+                <Camera className="w-3.5 h-3.5 text-slate-600" />
                 <span>مسح</span>
               </button>
             </div>
@@ -1186,7 +1190,7 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:border-rose-500 focus:outline-none"
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:border-slate-400 focus:outline-none"
               >
                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -1196,11 +1200,11 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
               <select
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value as PurposeType)}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:border-rose-500 focus:outline-none text-rose-700 font-black"
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:border-slate-400 focus:outline-none text-slate-900 font-bold"
               >
                 <option value="both">كراء + بيع</option>
-                <option value="rent">كراء فقط 👗</option>
-                <option value="sell">بيع فقط 🏷️</option>
+                <option value="rent">كراء فقط</option>
+                <option value="sell">بيع فقط</option>
               </select>
             </div>
           </div>
@@ -1229,21 +1233,21 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
           </div>
 
           {/* Two Stocks Section (Stock 1 & Stock 2) */}
-          <div className="bg-gradient-to-r from-indigo-50/70 via-purple-50/50 to-amber-50/70 p-3.5 rounded-2xl border border-indigo-200/80 space-y-2.5">
+          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
             <div className="flex justify-between items-center">
-              <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                <span>📦</span>
+              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Package className="w-3.5 h-3.5 text-slate-600" />
                 <span>كميات المخزون في المخزنين (Stock 1 & Stock 2)</span>
               </label>
-              <span className="text-[11px] font-black bg-white border border-purple-200 text-purple-900 px-2.5 py-0.5 rounded-xl">
+              <span className="text-[11px] font-bold bg-white border border-slate-200 text-slate-800 px-2.5 py-0.5 rounded-xl">
                 المجموع: {totalCalculatedStock} قطعة
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white p-2.5 rounded-xl border border-indigo-200">
-                <label className="block text-[11px] font-black text-indigo-900 mb-1 flex items-center gap-1">
-                  <span>🏬</span>
+              <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                <label className="block text-[11px] font-bold text-slate-800 mb-1 flex items-center gap-1">
+                  <Store className="w-3.5 h-3.5 text-slate-600" />
                   <span>المخزون 1 (المحل / المعرض)</span>
                 </label>
                 <input
@@ -1251,13 +1255,13 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                   min="0"
                   value={stock1}
                   onChange={(e) => setStock1(Number(e.target.value))}
-                  className="w-full border border-indigo-300 rounded-xl px-2.5 py-1.5 text-sm font-black text-indigo-900 text-center focus:outline-none focus:border-indigo-600"
+                  className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 text-sm font-bold text-slate-900 text-center focus:outline-none focus:border-slate-400"
                 />
               </div>
 
-              <div className="bg-white p-2.5 rounded-xl border border-amber-200">
-                <label className="block text-[11px] font-black text-amber-900 mb-1 flex items-center gap-1">
-                  <span>📦</span>
+              <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                <label className="block text-[11px] font-bold text-slate-800 mb-1 flex items-center gap-1">
+                  <Warehouse className="w-3.5 h-3.5 text-slate-600" />
                   <span>المخزون 2 (المستودع)</span>
                 </label>
                 <input
@@ -1327,16 +1331,16 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
 
           <button
             type="submit"
-            className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-black text-xs transition-all shadow-lg shadow-rose-200 active:scale-[0.98] min-h-[44px]"
+            className="w-full py-3.5 bg-slate-900 hover:bg-black text-white rounded-2xl font-bold text-xs transition-all shadow-sm active:scale-[0.98] min-h-[44px]"
           >
-            {item ? 'تحديث بيانات وصورة القطعة' : 'إضافة القطعة للمخزن ✓'}
+            {item ? 'تحديث بيانات وصورة القطعة' : 'إضافة القطعة للمخزن'}
           </button>
         </form>
       </div>
 
       {showInFormScanner && (
         <BarcodeScanner
-          title="مسح باركود القطعة 📷"
+          title="مسح باركود القطعة"
           onScan={(code) => {
             setBarcode(code.trim());
             setShowInFormScanner(false);

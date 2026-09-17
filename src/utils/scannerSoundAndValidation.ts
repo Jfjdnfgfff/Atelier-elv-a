@@ -1,4 +1,4 @@
-// 🔊 Professional POS Laser Barcode Scanner Audio Engine & Validation Suite
+// Professional POS Laser Barcode Scanner Audio Engine & Validation Suite
 
 let globalAudioCtx: AudioContext | null = null;
 
@@ -33,7 +33,7 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * 🔊 Authentic Handheld POS Laser Scanner Beep (Honeywell / Zebra Symbol signature beep)
+ * Authentic Handheld POS Laser Scanner Beep
  * Crisp, high-frequency, crystal clear 60ms pulse with no latency.
  */
 export const playPosScannerBeep = (style: 'classic' | 'modern' | 'soft' = 'classic') => {
@@ -50,7 +50,7 @@ export const playPosScannerBeep = (style: 'classic' | 'modern' | 'soft' = 'class
     const gain = ctx.createGain();
 
     if (style === 'classic') {
-      // 🏷️ Authentic POS Laser Scanner Beep (2650Hz sharp sine)
+      // Authentic POS Laser Scanner Beep (2650Hz sharp sine)
       osc.type = 'sine';
       osc.frequency.setValueAtTime(2650, now);
 
@@ -65,7 +65,7 @@ export const playPosScannerBeep = (style: 'classic' | 'modern' | 'soft' = 'class
       osc.start(now);
       osc.stop(now + 0.08);
     } else if (style === 'modern') {
-      // ⚡ High-speed Cash Register Chirp (1900Hz -> 2800Hz instant chirp)
+      // High-speed Cash Register Chirp (1900Hz -> 2800Hz instant chirp)
       osc.type = 'sine';
       osc.frequency.setValueAtTime(1900, now);
       osc.frequency.exponentialRampToValueAtTime(2800, now + 0.04);
@@ -80,7 +80,7 @@ export const playPosScannerBeep = (style: 'classic' | 'modern' | 'soft' = 'class
       osc.start(now);
       osc.stop(now + 0.07);
     } else {
-      // ✨ Soft POS chime
+      // Soft POS chime
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(2200, now);
 
@@ -95,7 +95,7 @@ export const playPosScannerBeep = (style: 'classic' | 'modern' | 'soft' = 'class
       osc.stop(now + 0.1);
     }
 
-    // 📳 Haptic vibration feedback for mobile devices
+    // Haptic vibration feedback for mobile devices
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       try {
         navigator.vibrate(40);
@@ -107,7 +107,7 @@ export const playPosScannerBeep = (style: 'classic' | 'modern' | 'soft' = 'class
 };
 
 /**
- * ❌ Error Buzz tone (when barcode is invalid or item not found in stock)
+ * Error Buzz tone (when barcode is invalid or item not found in stock)
  */
 export const playPosErrorBeep = () => {
   try {

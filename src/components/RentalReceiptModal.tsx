@@ -1,6 +1,7 @@
 import React from 'react';
 import html2canvas from 'html2canvas';
 import { Rental } from '../types';
+import { Shirt, Crown, Download, Printer } from 'lucide-react';
 
 interface RentalReceiptModalProps {
   rental: Rental;
@@ -36,16 +37,16 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
         <div className="flex gap-2">
           <button
             onClick={exportAsImage}
-            className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+            className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" strokeWidth="2"></path></svg>
+            <Download className="w-4 h-4" />
             حفظ كصورة للواتساب
           </button>
           <button
             onClick={handlePrint}
-            className="flex items-center gap-1 bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+            className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" strokeWidth="2"></path></svg>
+            <Printer className="w-4 h-4" />
             طباعة الوصل
           </button>
         </div>
@@ -60,13 +61,13 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
         <div className="border-b-2 border-slate-900 pb-4 flex justify-between items-start">
           <div>
             <h2 className="text-xl font-black text-slate-900">
-              {rental.status === 'reserved' ? 'وصل حجز فستان لمناسبة قادمة 📅' : 'وصل استلام وتأجير 👗'}
+              {rental.status === 'reserved' ? 'وصل حجز فستان لمناسبة قادمة' : 'وصل استلام وتأجير'}
             </h2>
             <p className="text-xs text-slate-500 font-bold">لكراء وبيع أرقى فساتين السهرة والأزياء والأطقم الرسمية</p>
           </div>
           <div className="text-left">
             <span className={`inline-block text-white text-xs font-black px-3 py-1 rounded-md ${
-              rental.status === 'reserved' ? 'bg-indigo-700' : 'bg-slate-900'
+              rental.status === 'reserved' ? 'bg-slate-800' : 'bg-slate-900'
             }`}>
               {rental.status === 'reserved' ? 'وصل حجز رسمي' : 'وصل كراء رسمي'}
             </span>
@@ -90,8 +91,8 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
               {rental.status === 'reserved' ? 'تاريخ الحجز والمناسبة: ' : 'تاريخ الاستلام: '}
               <span className="font-black text-slate-900">{rental.startDate}</span>
             </div>
-            <div className="font-bold text-rose-700 mt-0.5">
-              تاريخ الإرجاع: <span className="font-black text-rose-800 underline">{rental.expectedReturnDate}</span>
+            <div className="font-bold text-slate-700 mt-0.5">
+              تاريخ الإرجاع: <span className="font-black text-slate-900 underline">{rental.expectedReturnDate}</span>
             </div>
           </div>
         </div>
@@ -108,7 +109,12 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
           </thead>
           <tbody className="divide-y divide-slate-100">
             <tr>
-              <td className="p-3 font-black text-slate-800">👗 {rental.itemName}</td>
+              <td className="p-3 font-black text-slate-800">
+                <div className="flex items-center gap-1.5">
+                  <Shirt className="w-3.5 h-3.5 text-slate-500" />
+                  <span>{rental.itemName}</span>
+                </div>
+              </td>
               <td className="p-3 text-center font-bold text-slate-600">{rental.itemSize} / {rental.itemColor}</td>
               <td className="p-3 text-center font-bold text-slate-700">{rental.qty}</td>
               <td className="p-3 text-left font-black text-slate-900">
@@ -117,16 +123,16 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
             </tr>
 
             {rental.hasAccessories && rental.accessoryPrice && rental.accessoryPrice > 0 && (
-              <tr className="bg-amber-50/50">
-                <td className="p-3 font-black text-amber-900">
+              <tr className="bg-slate-50">
+                <td className="p-3 font-black text-slate-900">
                   <div className="flex items-center gap-1.5">
-                    <span>👑</span>
+                    <Crown className="w-3.5 h-3.5 text-slate-600" />
                     <span>{rental.accessoryName || 'إكسسوارات إضافية مرفقة مع الفستان'}</span>
                   </div>
                 </td>
-                <td className="p-3 text-center font-bold text-amber-800">إكسسوار مرفق</td>
-                <td className="p-3 text-center font-bold text-amber-900">1</td>
-                <td className="p-3 text-left font-black text-amber-900">
+                <td className="p-3 text-center font-bold text-slate-700">إكسسوار مرفق</td>
+                <td className="p-3 text-center font-bold text-slate-700">1</td>
+                <td className="p-3 text-left font-black text-slate-900">
                   {rental.accessoryPrice.toLocaleString()} دج
                 </td>
               </tr>

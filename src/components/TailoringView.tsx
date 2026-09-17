@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { MaintenanceOrder, MaintenanceStatus, MaintenanceTargetType, ClothItem } from '../types';
+import { Plus, AlertTriangle, AlertCircle, MessageSquare, Mail, Phone, Trash2, FileText, Edit3 } from 'lucide-react';
 
 interface TailoringViewProps {
   orders: MaintenanceOrder[];
@@ -106,7 +107,7 @@ export const TailoringView: React.FC<TailoringViewProps> = ({
     
     let msg = `السلام عليكم ${order.customerName || 'سيدتي'}،\n`;
     if (order.status === 'ready') {
-      msg += `نحيطكِ علماً بأن طلب الخياطة والتعديل (${order.itemName}) أصبح جاهزاً للاستلام في البوتيك ✨.\n`;
+      msg += `نحيطكِ علماً بأن طلب الخياطة والتعديل (${order.itemName}) أصبح جاهزاً للاستلام في البوتيك.\n`;
     } else {
       msg += `نحيطكِ علماً بأن طلب الخياطة (${order.itemName}) موعد تسليمه المتوقع هو: ${order.expectedDeliveryDate}.\n`;
     }
@@ -139,9 +140,9 @@ export const TailoringView: React.FC<TailoringViewProps> = ({
 
           <button
             onClick={onOpenAddModal}
-            className="bg-slate-900 hover:bg-slate-800 active:scale-95 text-white px-4 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all min-h-[40px]"
+            className="bg-slate-900 hover:bg-slate-800 active:scale-95 text-white px-4 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all min-h-[40px] shadow-xs"
           >
-            <span>+</span>
+            <Plus className="w-4 h-4" />
             <span>طلب خياطة جديد</span>
           </button>
         </div>
@@ -150,19 +151,19 @@ export const TailoringView: React.FC<TailoringViewProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 pt-3 border-t border-slate-100 text-xs">
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
             <span className="text-slate-500 block font-medium">طلبات بالورشة</span>
-            <span className="text-base font-black text-slate-900">{stats.activeCount}</span>
+            <span className="text-base font-bold text-slate-900">{stats.activeCount}</span>
           </div>
-          <div className="bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/70">
-            <span className="text-amber-800 block font-bold">تسليم قريب (≤ 10 أيام)</span>
-            <span className="text-base font-black text-amber-900">{stats.dueSoonCount} طلب</span>
+          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
+            <span className="text-slate-600 block font-bold">تسليم قريب (≤ 10 أيام)</span>
+            <span className="text-base font-bold text-slate-900">{stats.dueSoonCount} طلب</span>
           </div>
-          <div className="bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-200/70">
-            <span className="text-emerald-800 block font-bold">جاهزة للتسليم</span>
-            <span className="text-base font-black text-emerald-900">{stats.readyCount}</span>
+          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
+            <span className="text-slate-600 block font-bold">جاهزة للتسليم</span>
+            <span className="text-base font-bold text-slate-900">{stats.readyCount}</span>
           </div>
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
             <span className="text-slate-500 block font-medium">المتبقي (ديون)</span>
-            <span className="text-base font-black text-slate-900">{stats.totalRemaining.toLocaleString()} دج</span>
+            <span className="text-base font-bold text-slate-900">{stats.totalRemaining.toLocaleString()} دج</span>
           </div>
         </div>
       </div>
@@ -181,7 +182,7 @@ export const TailoringView: React.FC<TailoringViewProps> = ({
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
           {[
             { id: 'all', label: 'الكل' },
-            { id: 'due_soon', label: `⚠️ تسليم خلال 10 أيام (${stats.dueSoonCount})` },
+            { id: 'due_soon', label: `تسليم خلال 10 أيام (${stats.dueSoonCount})` },
             { id: 'pending', label: 'في الانتظار' },
             { id: 'in_progress', label: 'قيد الإنجاز' },
             { id: 'ready', label: 'جاهزة' },
@@ -222,21 +223,24 @@ export const TailoringView: React.FC<TailoringViewProps> = ({
               >
                 {/* 10-Days Due Alert Notification Banner */}
                 {isDueSoon && (
-                  <div className="bg-amber-50 border border-amber-200 text-amber-900 px-3 py-1.5 rounded-xl flex items-center justify-between text-xs font-bold">
+                  <div className="bg-slate-100 border border-slate-200 text-slate-800 px-3 py-1.5 rounded-xl flex items-center justify-between text-xs font-bold">
                     <span className="flex items-center gap-1.5">
-                      <span>⚠️</span>
+                      <AlertTriangle className="w-3.5 h-3.5 text-slate-600" />
                       <span>موعد التسليم قريب جداً:</span>
                     </span>
-                    <span className="font-black bg-amber-200/80 px-2 py-0.5 rounded-md text-[11px]">
+                    <span className="font-bold bg-white px-2 py-0.5 rounded-md text-[11px] border border-slate-200">
                       {daysLeft === 0 ? 'اليوم!' : daysLeft === 1 ? 'غداً (+1)' : `متبقي ${daysLeft} أيام`}
                     </span>
                   </div>
                 )}
 
                 {isOverdue && (
-                  <div className="bg-rose-50 border border-rose-200 text-rose-800 px-3 py-1.5 rounded-xl flex items-center justify-between text-xs font-bold">
-                    <span>🚨 تنبيه: تجاوز موعد التسليم المحدد!</span>
-                    <span className="font-black">متأخر بـ {Math.abs(daysLeft)} يوم</span>
+                  <div className="bg-slate-100 border border-slate-300 text-slate-800 px-3 py-1.5 rounded-xl flex items-center justify-between text-xs font-bold">
+                    <span className="flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                      <span>تنبيه: تجاوز موعد التسليم المحدد!</span>
+                    </span>
+                    <span className="font-bold">متأخر بـ {Math.abs(daysLeft)} يوم</span>
                   </div>
                 )}
 
@@ -274,26 +278,26 @@ export const TailoringView: React.FC<TailoringViewProps> = ({
                         <div className="flex items-center gap-1 shrink-0">
                           <button
                             onClick={() => handleSendMessage(order, 'whatsapp')}
-                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-md text-[11px] flex items-center gap-1 transition-all"
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-2 py-1 rounded-md text-[11px] flex items-center gap-1 transition-all"
                             title="إرسال رسالة واتساب للزبونة"
                           >
-                            <span>💬</span>
+                            <MessageSquare className="w-3.5 h-3.5 text-slate-600" />
                             <span>واتساب</span>
                           </button>
                           <button
                             onClick={() => handleSendMessage(order, 'sms')}
-                            className="bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-md text-[11px] flex items-center gap-1 transition-all"
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-2 py-1 rounded-md text-[11px] flex items-center gap-1 transition-all"
                             title="إرسال رسالة SMS للزبونة"
                           >
-                            <span>✉️</span>
+                            <Mail className="w-3.5 h-3.5 text-slate-600" />
                             <span>SMS</span>
                           </button>
                           <a
                             href={`tel:${order.customerPhone}`}
-                            className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-1.5 py-0.5 rounded-md text-[11px] transition-all"
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold p-1 rounded-md transition-all flex items-center"
                             title="اتصال هاتفي"
                           >
-                            📞
+                            <Phone className="w-3.5 h-3.5" />
                           </a>
                         </div>
                       )}
@@ -353,24 +357,24 @@ export const TailoringView: React.FC<TailoringViewProps> = ({
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => onOpenReceiptModal(order)}
-                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all"
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all flex items-center gap-1"
                     >
-                      وصل
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>وصل</span>
                     </button>
                     <button
                       onClick={() => onEditOrder(order)}
-                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all"
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all flex items-center gap-1"
                     >
-                      تعديل
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>تعديل</span>
                     </button>
                     <button
                       onClick={() => onDeleteOrder(order.id)}
                       className="p-1 text-slate-400 hover:text-rose-600 transition-all"
                       title="حذف"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>

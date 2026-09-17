@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { StaffPayout, StaffMember, StaffAbsence } from '../types';
+import { Banknote, Calendar, Users, History, AlertCircle, Check, UserPlus, X, Plus } from 'lucide-react';
 
 interface StaffPayoutsModalProps {
   staffPayouts: StaffPayout[];
@@ -182,55 +183,55 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('payout')}
-          className={`py-2 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 ${
+          className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'payout'
-              ? 'bg-white text-indigo-700 shadow-xs'
+              ? 'bg-white text-slate-900 shadow-xs'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <span>💵</span>
+          <Banknote className="w-4 h-4 text-slate-600" />
           <span>صرف الراتب</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('absences')}
-          className={`py-2 px-2 rounded-xl text-xs font-black transition-all relative flex items-center justify-center gap-1 ${
+          className={`py-2 px-2 rounded-xl text-xs font-bold transition-all relative flex items-center justify-center gap-1.5 ${
             activeTab === 'absences'
-              ? 'bg-white text-rose-600 shadow-xs'
+              ? 'bg-white text-slate-900 shadow-xs'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <span>📅</span>
+          <Calendar className="w-4 h-4 text-slate-600" />
           <span>تسجيل الغياب</span>
           {staffAbsences.filter(a => !a.isDeducted).length > 0 && (
-            <span className="w-2 h-2 bg-rose-500 rounded-full animate-ping"></span>
+            <span className="w-2 h-2 bg-slate-900 rounded-full animate-pulse"></span>
           )}
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('staff')}
-          className={`py-2 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 ${
+          className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'staff'
-              ? 'bg-white text-emerald-700 shadow-xs'
+              ? 'bg-white text-slate-900 shadow-xs'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <span>👥</span>
+          <Users className="w-4 h-4 text-slate-600" />
           <span>العمال والرواتب</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('history')}
-          className={`py-2 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 ${
+          className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'history'
-              ? 'bg-white text-slate-800 shadow-xs'
+              ? 'bg-white text-slate-900 shadow-xs'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <span>📜</span>
+          <History className="w-4 h-4 text-slate-600" />
           <span>السجل</span>
         </button>
       </div>
@@ -242,8 +243,8 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
         <form onSubmit={handlePayoutSubmit} className="space-y-3">
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="font-black text-slate-800 text-xs flex items-center gap-1.5">
-                <span>💰</span>
+              <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                <Banknote className="w-4 h-4 text-slate-600" />
                 <span>حساب الراتب وتطبيق خصم الغيابات تلقائياً</span>
               </h4>
               {currentStaff && (
@@ -260,7 +261,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                 <select
                   value={selectedStaffId}
                   onChange={(e) => setSelectedStaffId(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-black text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-slate-800"
                 >
                   {staffMembers.map(s => (
                     <option key={s.id} value={s.id}>
@@ -280,7 +281,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                     value={customName}
                     onChange={(e) => setCustomName(e.target.value)}
                     placeholder="الاسم الكامل..."
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none focus:border-slate-800"
                   />
                 </div>
               )}
@@ -290,7 +291,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                 <select
                   value={payoutType}
                   onChange={(e) => setPayoutType(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none focus:border-slate-800"
                 >
                   <option value="راتب شهري">راتب شهري</option>
                   <option value="نسبة مبيعات/كراء">نسبة مبيعات/كراء</option>
@@ -313,16 +314,16 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                     min="0"
                     value={baseAmount}
                     onChange={(e) => setBaseAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-black text-slate-800 focus:outline-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-slate-800"
                   />
                 </div>
 
                 {/* 2. Absence Deduction */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <label className="text-[10px] font-bold text-rose-600">خصم الغيابات (-)</label>
+                    <label className="text-[10px] font-bold text-slate-700">خصم الغيابات (-)</label>
                     {pendingAbsenceDays > 0 && (
-                      <span className="text-[9px] font-black bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded">
+                      <span className="text-[9px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">
                         {pendingAbsenceDays} يوم
                       </span>
                     )}
@@ -332,56 +333,59 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                     min="0"
                     value={absenceDeduction}
                     onChange={(e) => setAbsenceDeduction(Number(e.target.value) || 0)}
-                    className="w-full bg-rose-50/60 border border-rose-200 rounded-xl px-2.5 py-2 text-xs font-black text-rose-700 focus:outline-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-800"
                   />
                 </div>
 
                 {/* 3. Advances / Deductions */}
                 <div>
-                  <label className="block text-[10px] font-bold text-amber-600 mb-1">خصم تسبيقات سابقة (-)</label>
+                  <label className="block text-[10px] font-bold text-slate-700 mb-1">خصم تسبيقات سابقة (-)</label>
                   <input
                     type="number"
                     min="0"
                     value={advancesDeduction}
                     onChange={(e) => setAdvancesDeduction(Number(e.target.value) || 0)}
                     placeholder="0"
-                    className="w-full bg-amber-50/60 border border-amber-200 rounded-xl px-2.5 py-2 text-xs font-black text-amber-700 focus:outline-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-800"
                   />
                 </div>
 
                 {/* 4. Bonus */}
                 <div>
-                  <label className="block text-[10px] font-bold text-emerald-600 mb-1">مكافأة تشجيعية (+)</label>
+                  <label className="block text-[10px] font-bold text-slate-700 mb-1">مكافأة تشجيعية (+)</label>
                   <input
                     type="number"
                     min="0"
                     value={bonusAmount}
                     onChange={(e) => setBonusAmount(Number(e.target.value) || 0)}
                     placeholder="0"
-                    className="w-full bg-emerald-50/60 border border-emerald-200 rounded-xl px-2.5 py-2 text-xs font-black text-emerald-700 focus:outline-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-800"
                   />
                 </div>
               </div>
 
               {/* Pending Absences Notice */}
               {pendingAbsences.length > 0 ? (
-                <div className="p-2.5 bg-rose-50 rounded-xl border border-rose-200 text-xs space-y-1">
-                  <div className="font-bold text-rose-800 flex items-center justify-between">
-                    <span>⚠️ أيام غياب مسجلة لم يتم خصمها بعد ({pendingAbsences.length} أيام):</span>
-                    <span className="font-black text-rose-600">خصم مقترح: {absenceDeduction.toLocaleString()} دج</span>
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
+                  <div className="font-bold text-slate-800 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 text-slate-500" />
+                      <span>أيام غياب مسجلة لم يتم خصمها بعد ({pendingAbsences.length} أيام):</span>
+                    </span>
+                    <span className="font-bold text-slate-900">خصم مقترح: {absenceDeduction.toLocaleString()} دج</span>
                   </div>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {pendingAbsences.map(a => (
-                      <span key={a.id} className="text-[10px] bg-white px-2 py-0.5 rounded-md border border-rose-200 text-slate-700">
-                        📅 {a.date} ({a.daysCount === 0.5 ? 'نصف يوم' : `${a.daysCount} يوم`}) - {a.reason || 'بدون سبب'}
+                      <span key={a.id} className="text-[10px] bg-white px-2 py-0.5 rounded-md border border-slate-200 text-slate-700">
+                        {a.date} ({a.daysCount === 0.5 ? 'نصف يوم' : `${a.daysCount} يوم`}) - {a.reason || 'بدون سبب'}
                       </span>
                     ))}
                   </div>
                 </div>
               ) : (
                 currentStaff && (
-                  <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-100 text-[11px] text-emerald-700 font-bold flex items-center gap-1.5">
-                    <span>✓</span>
+                  <div className="p-2 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 font-medium flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-slate-500" />
                     <span>لا توجد أي أيام غياب مسجلة غير مخصومة لهذا العامل.</span>
                   </div>
                 )
@@ -394,20 +398,20 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="ملاحظات حول الدفعة أو تفاصيل الخصم..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-slate-800"
                 />
               </div>
             </div>
 
             {/* Net Salary Summary */}
-            <div className="flex items-center justify-between p-3.5 bg-indigo-50 border border-indigo-200 rounded-xl">
+            <div className="flex items-center justify-between p-3.5 bg-slate-100 border border-slate-200 rounded-xl">
               <div>
-                <span className="text-xs font-bold text-indigo-900 block">الصافي المستحق للدفع (Net Payout):</span>
+                <span className="text-xs font-bold text-slate-900 block">الصافي المستحق للدفع (Net Payout):</span>
                 <span className="text-[10px] text-slate-500">
                   الأساسي ({Number(baseAmount) || 0}) - غيابات ({absenceDeduction}) - سلفيات ({advancesDeduction}) + مكافأة ({bonusAmount})
                 </span>
               </div>
-              <div className="text-lg font-black text-indigo-700">
+              <div className="text-lg font-bold text-slate-900">
                 {hideFinances ? '•••• دج' : `${netPayoutAmount.toLocaleString()} دج`}
               </div>
             </div>
@@ -415,9 +419,9 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
             <button
               type="submit"
               disabled={netPayoutAmount <= 0}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-98 disabled:opacity-50 text-white rounded-xl text-xs font-black transition-all shadow-md shadow-indigo-100 flex items-center justify-center gap-1.5"
+              className="w-full py-3 bg-slate-900 hover:bg-slate-800 active:scale-98 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5"
             >
-              <span>✓</span>
+              <Check className="w-4 h-4" />
               <span>تأكيد صرف الراتب وخصم أيام الغياب</span>
             </button>
           </div>
@@ -431,8 +435,8 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
         <div className="space-y-3">
           {/* New Absence Form */}
           <form onSubmit={handleAbsenceSubmit} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-            <h4 className="font-black text-slate-800 text-xs flex items-center gap-1.5">
-              <span>📅</span>
+            <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-slate-600" />
               <span>تسجيل غياب جديد لعامل لحساب الخصم</span>
             </h4>
 
@@ -443,7 +447,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                   required
                   value={absStaffId}
                   onChange={(e) => setAbsStaffId(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
                 >
                   {staffMembers.map(s => (
                     <option key={s.id} value={s.id}>{s.name} ({s.role})</option>
@@ -458,7 +462,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                   required
                   value={absDate}
                   onChange={(e) => setAbsDate(e.target.value)}
-                  className="w-[145px] sm:w-[155px] bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold focus:outline-none"
+                  className="w-[145px] sm:w-[155px] bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
                 />
               </div>
 
@@ -467,7 +471,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                 <select
                   value={absDaysCount}
                   onChange={(e) => setAbsDaysCount(Number(e.target.value))}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
                 >
                   <option value={1}>يوم كامل (1.0)</option>
                   <option value={0.5}>نصف يوم (0.5)</option>
@@ -483,7 +487,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                 <select
                   value={absReason}
                   onChange={(e) => setAbsReason(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
                 >
                   <option value="غياب غير مبرر">غياب غير مبرر (يُخصم)</option>
                   <option value="عطلة مرضية">عطلة مرضية</option>
@@ -502,7 +506,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                     value={absCustomReason}
                     onChange={(e) => setAbsCustomReason(e.target.value)}
                     placeholder="سبب الغياب..."
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
                   />
                 </div>
               )}
@@ -510,9 +514,10 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-98 text-white rounded-xl text-xs font-black transition-all shadow-xs"
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 active:scale-98 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5"
             >
-              + إضافة الغياب للسجل
+              <Plus className="w-4 h-4" />
+              <span>إضافة الغياب للسجل</span>
             </button>
           </form>
 
@@ -528,30 +533,30 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                 {staffAbsences.map(a => (
                   <div key={a.id} className="p-3 flex justify-between items-center text-xs">
                     <div>
-                      <div className="font-black text-slate-800 flex items-center gap-1.5">
+                      <div className="font-bold text-slate-800 flex items-center gap-1.5">
                         <span>{a.staffName}</span>
                         {a.isDeducted ? (
-                          <span className="text-[9px] font-black bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">
-                            تم الخصم ✓
+                          <span className="text-[9px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">
+                            تم الخصم
                           </span>
                         ) : (
-                          <span className="text-[9px] font-black bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded">
-                            معلق للخصم ⏳
+                          <span className="text-[9px] font-bold bg-slate-200 text-slate-800 px-1.5 py-0.5 rounded">
+                            معلق للخصم
                           </span>
                         )}
                       </div>
                       <div className="text-[10px] text-slate-400 mt-0.5">
-                        📅 {a.date} • المدة: {a.daysCount === 0.5 ? 'نصف يوم' : `${a.daysCount} يوم`} • السبب: {a.reason || 'بدون سبب'}
+                        {a.date} • المدة: {a.daysCount === 0.5 ? 'نصف يوم' : `${a.daysCount} يوم`} • السبب: {a.reason || 'بدون سبب'}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-black text-rose-600">-{a.deductionAmount.toLocaleString()} دج</span>
+                      <span className="font-bold text-slate-700">-{a.deductionAmount.toLocaleString()} دج</span>
                       <button 
                         onClick={() => onDeleteAbsence(a.id)} 
                         title="حذف الغياب"
-                        className="text-slate-300 hover:text-rose-600 p-1 text-sm font-bold"
+                        className="text-slate-300 hover:text-rose-600 p-1"
                       >
-                        ✕
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -569,8 +574,8 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
         <div className="space-y-3">
           {/* Add Staff Member Form */}
           <form onSubmit={handleNewStaffSubmit} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-            <h4 className="font-black text-slate-800 text-xs flex items-center gap-1.5">
-              <span>👤</span>
+            <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+              <UserPlus className="w-4 h-4 text-slate-600" />
               <span>إضافة عامل / مساعدة جديدة وتحديد الراتب وأيام العمل</span>
             </h4>
 
@@ -583,7 +588,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                   value={newStaffName}
                   onChange={(e) => setNewStaffName(e.target.value)}
                   placeholder="مثال: ياسمين بن علي..."
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
                 />
               </div>
 
@@ -595,7 +600,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                   value={newStaffRole}
                   onChange={(e) => setNewStaffRole(e.target.value)}
                   placeholder="مساعدة بيع، خياطة..."
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
                 />
               </div>
 
@@ -606,7 +611,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                   value={newStaffPhone}
                   onChange={(e) => setNewStaffPhone(e.target.value)}
                   placeholder="05XXXXXXXX"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
                 />
               </div>
             </div>
@@ -621,7 +626,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                   value={newStaffSalary}
                   onChange={(e) => setNewStaffSalary(e.target.value === '' ? '' : Number(e.target.value))}
                   placeholder="35000"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-indigo-700 focus:outline-none"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-800"
                 />
               </div>
 
@@ -635,16 +640,17 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                   value={newStaffWorkDays}
                   onChange={(e) => setNewStaffWorkDays(Number(e.target.value))}
                   placeholder="26"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
                 />
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white rounded-xl text-xs font-black transition-all shadow-xs"
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 active:scale-98 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5"
             >
-              + حفظ بيانات العامل
+              <Plus className="w-4 h-4" />
+              <span>حفظ بيانات العامل</span>
             </button>
           </form>
 
@@ -662,30 +668,30 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                   <div key={s.id} className="p-3.5 bg-white border border-slate-200 rounded-2xl space-y-2 shadow-xs">
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="font-black text-slate-800 text-xs">{s.name}</div>
+                        <div className="font-bold text-slate-800 text-xs">{s.name}</div>
                         <div className="text-[10px] text-slate-400">{s.role} {s.phone ? `• ${s.phone}` : ''}</div>
                       </div>
                       <button
                         onClick={() => onDeleteStaffMember(s.id)}
-                        className="text-slate-300 hover:text-rose-600 text-xs"
+                        className="text-slate-300 hover:text-rose-600 p-1"
                         title="حذف العامل"
                       >
-                        ✕
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
 
                     <div className="flex justify-between items-center text-[11px] bg-slate-50 p-2 rounded-xl border border-slate-100">
                       <div>
                         <span className="text-slate-500 block text-[9px]">الراتب الشهري</span>
-                        <span className="font-black text-slate-800">{s.baseSalary.toLocaleString()} دج</span>
+                        <span className="font-bold text-slate-800">{s.baseSalary.toLocaleString()} دج</span>
                       </div>
                       <div>
                         <span className="text-slate-500 block text-[9px]">سعر اليومية ({days} يوم)</span>
-                        <span className="font-black text-indigo-700">{daily.toLocaleString()} دج</span>
+                        <span className="font-bold text-slate-800">{daily.toLocaleString()} دج</span>
                       </div>
                       <div>
                         <span className="text-slate-500 block text-[9px]">غيابات معلقة</span>
-                        <span className={`font-black ${pendingCount > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        <span className="font-bold text-slate-700">
                           {pendingCount} يوم
                         </span>
                       </div>
@@ -708,7 +714,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
             <div className="flex gap-2">
               <span>الصافي المدفوع: {hideFinances ? '••••' : `${totalPayouts.toLocaleString()} دج`}</span>
               {totalDeductions > 0 && (
-                <span className="text-rose-600">(إجمالي الخصومات: {totalDeductions.toLocaleString()} دج)</span>
+                <span className="text-slate-600">(إجمالي الخصومات: {totalDeductions.toLocaleString()} دج)</span>
               )}
             </div>
           </div>
@@ -722,7 +728,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
               {staffPayouts.map(p => (
                 <div key={p.id} className="p-3 flex justify-between items-center text-xs">
                   <div>
-                    <div className="font-black text-slate-800">{p.name}</div>
+                    <div className="font-bold text-slate-800">{p.name}</div>
                     <div className="text-[10px] text-slate-400 mt-0.5">
                       {p.type} • {new Date(p.date).toLocaleDateString('ar-DZ')}
                       {p.absencesCount ? ` • خصم ${p.absencesCount} يوم غياب` : ''}
@@ -731,17 +737,17 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-left">
-                      <div className="font-black text-indigo-700">{p.amount.toLocaleString()} دج</div>
+                      <div className="font-bold text-slate-900">{p.amount.toLocaleString()} دج</div>
                       {p.absenceDeduction ? (
-                        <div className="text-[9px] text-rose-500">خصم: -{p.absenceDeduction.toLocaleString()} دج</div>
+                        <div className="text-[9px] text-slate-500">خصم: -{p.absenceDeduction.toLocaleString()} دج</div>
                       ) : null}
                     </div>
                     <button 
                       onClick={() => onDeletePayout(p.id)} 
                       title="حذف السجل"
-                      className="text-slate-300 hover:text-rose-600 p-1 text-sm font-bold"
+                      className="text-slate-300 hover:text-rose-600 p-1"
                     >
-                      ✕
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -753,3 +759,4 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
     </div>
   );
 };
+

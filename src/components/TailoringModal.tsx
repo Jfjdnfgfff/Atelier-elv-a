@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { MaintenanceOrder, MaintenanceServiceType, MaintenanceTargetType, MaintenanceStatus, ClothItem, StaffMember } from '../types';
 import { Modal } from './Shared';
 import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
+import { User, Tag, CreditCard } from 'lucide-react';
 
 interface TailoringModalProps {
   order?: MaintenanceOrder | null;
@@ -126,7 +127,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
   };
 
   return (
-    <Modal title={order ? 'تعديل طلب خياطة وصيانة' : 'تسجيل طلب خياطة وصيانة جديد 🧵'} onClose={onClose}>
+    <Modal title={order ? 'تعديل طلب خياطة وصيانة' : 'تسجيل طلب خياطة وصيانة جديد'} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4" dir="rtl">
         {/* Target Type Selector */}
         <div>
@@ -138,13 +139,14 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
                 setTargetType('customer_order');
                 if (!itemName) setItemName('');
               }}
-              className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
+              className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all text-center flex items-center justify-center gap-1.5 ${
                 targetType === 'customer_order'
-                  ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-2xs'
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
-              👗 طلب زبونة خارجية (خدمة مدفوعة)
+              <User className="w-3.5 h-3.5" />
+              <span>طلب زبونة خارجية (خدمة مدفوعة)</span>
             </button>
             <button
               type="button"
@@ -156,13 +158,14 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
                   setItemName(first.name);
                 }
               }}
-              className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
+              className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all text-center flex items-center justify-center gap-1.5 ${
                 targetType === 'internal_stock'
-                  ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-2xs'
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
-              🏷️ صيانة قطعة من المخزن الداخلي
+              <Tag className="w-3.5 h-3.5" />
+              <span>صيانة قطعة من المخزن الداخلي</span>
             </button>
           </div>
         </div>
@@ -174,7 +177,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
             <select
               value={selectedItemId}
               onChange={(e) => handleInternalClothSelect(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-indigo-500 focus:outline-none"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
             >
               {clothes.map(item => (
                 <option key={item.id} value={item.id}>
@@ -192,7 +195,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
               value={itemName}
               onChange={(e) => setItemName(e.target.value)}
               placeholder="مثال: فستان سهرة مخمل أزرق ملكي"
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
             />
           </div>
         )}
@@ -205,9 +208,9 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowCustomerIdScanner(true)}
-                className="bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 active:scale-95 px-2.5 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1 shadow-2xs"
+                className="bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 active:scale-95 px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
               >
-                <span>💳</span>
+                <CreditCard className="w-3.5 h-3.5 text-slate-500" />
                 <span>مسح بطاقة الهوية / الباركود (AI OCR)</span>
               </button>
             </div>
@@ -247,13 +250,13 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
             <select
               value={serviceType}
               onChange={(e) => setServiceType(e.target.value as MaintenanceServiceType)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
             >
-              <option value="alteration">✂️ تعديل مقاس (تضييق / توسيع / تقصير)</option>
-              <option value="repair">🧵 تصليح وترقيع (سحاب / أزرار / تمزق)</option>
-              <option value="custom_sewing">👗 خياطة وتفصيل جديد</option>
-              <option value="ironing_prep">🧼 غسيل وكي وتجهيز فاخر</option>
-              <option value="other">🔧 صيانة وأعمال أخرى</option>
+              <option value="alteration">تعديل مقاس (تضييق / توسيع / تقصير)</option>
+              <option value="repair">تصليح وترقيع (سحاب / أزرار / تمزق)</option>
+              <option value="custom_sewing">خياطة وتفصيل جديد</option>
+              <option value="ironing_prep">غسيل وكي وتجهيز فاخر</option>
+              <option value="other">صيانة وأعمال أخرى</option>
             </select>
           </div>
 
@@ -266,7 +269,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
                 value={tailorName}
                 onChange={(e) => setTailorName(e.target.value)}
                 placeholder="اسم الخياطة"
-                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
               />
               <datalist id="staff-list">
                 {staffMembers.map(s => (
@@ -286,7 +289,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="مثال: تضييق من الخصر بمقدار 2 سم وتقصير 3 سم مع تثبيت حزام الساتان..."
-            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
           />
         </div>
 
@@ -297,7 +300,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
             value={measurements}
             onChange={(e) => setMeasurements(e.target.value)}
             placeholder="مثال: الصدر: 90 سم | الخصر: 72 سم | الأكتاف: 38 سم | الطول: 140 سم"
-            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
           />
         </div>
 
@@ -310,7 +313,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
               required
               value={receivedDate}
               onChange={(e) => handleReceivedDateChange(e.target.value)}
-              className="w-[145px] sm:w-[155px] bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+              className="w-[145px] sm:w-[155px] bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
             />
           </div>
 
@@ -323,7 +326,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
               required
               value={durationDays}
               onChange={(e) => handleDurationChange(Number(e.target.value))}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
             />
           </div>
 
@@ -334,7 +337,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
               required
               value={expectedDeliveryDate}
               onChange={(e) => handleDeliveryDateChange(e.target.value)}
-              className="w-[145px] sm:w-[155px] bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+              className="w-[145px] sm:w-[155px] bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
             />
           </div>
         </div>
@@ -349,7 +352,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
               value={cost}
               onChange={(e) => setCost(Number(e.target.value))}
               placeholder="500"
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
             />
           </div>
 
@@ -368,7 +371,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
                     if (paidAmount > p) setPaidAmount(p);
                   }}
                   placeholder="1500"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
                 />
               </div>
 
@@ -381,7 +384,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
                   value={paidAmount}
                   onChange={(e) => setPaidAmount(Number(e.target.value))}
                   placeholder="1000"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
                 />
               </div>
             </>
@@ -394,12 +397,12 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as MaintenanceStatus)}
-            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
           >
-            <option value="pending">🟡 قيد الانتظار (في الورشة)</option>
-            <option value="in_progress">🔵 جاري العمل (تحت الإبرة)</option>
-            <option value="ready">🟢 جاهزة للتسليم / تم الإصلاح</option>
-            <option value="delivered">✅ تم التسليم بنجاح</option>
+            <option value="pending">قيد الانتظار (في الورشة)</option>
+            <option value="in_progress">جاري العمل (تحت الإبرة)</option>
+            <option value="ready">جاهزة للتسليم / تم الإصلاح</option>
+            <option value="delivered">تم التسليم بنجاح</option>
           </select>
         </div>
 
@@ -407,7 +410,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
         <div className="flex gap-2 pt-3">
           <button
             type="submit"
-            className="flex-1 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white py-3 rounded-2xl font-black text-xs sm:text-sm transition-all shadow-md shadow-rose-200 min-h-[44px]"
+            className="flex-1 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-xs min-h-[44px]"
           >
             {order ? 'حفظ التعديلات' : 'حفظ وتسجيل الطلب'}
           </button>
@@ -424,7 +427,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
       {/* Smart Customer ID Scanner */}
       {showCustomerIdScanner && (
         <CustomerIdScannerModal
-          title="مسح بطاقة تعريف أو باركود الزبونة 🧵"
+          title="مسح بطاقة تعريف أو باركود الزبونة"
           onExtract={handleCustomerExtracted}
           onClose={() => setShowCustomerIdScanner(false)}
         />

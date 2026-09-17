@@ -1,4 +1,21 @@
 import React, { useState } from 'react';
+import {
+  Sparkles,
+  Scissors,
+  ShoppingBag,
+  Receipt,
+  CreditCard,
+  Users,
+  TrendingUp,
+  AlertTriangle,
+  Scale,
+  Eye,
+  EyeOff,
+  Plus,
+  MessageCircle,
+  Phone,
+  ArrowLeft,
+} from 'lucide-react';
 import { Rental, ClothItem, ViewType, MaintenanceOrder, DailyCaisseClosure, Sale, Expense, StaffPayout } from '../types';
 import { StatCard } from './Shared';
 
@@ -137,7 +154,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 financePeriod === 'monthly' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              📅 هذا الشهر
+              هذا الشهر
             </button>
             <button
               onClick={() => setFinancePeriod('yearly')}
@@ -145,7 +162,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 financePeriod === 'yearly' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              🗓️ هذه السنة
+              هذه السنة
             </button>
             <button
               onClick={() => setFinancePeriod('all')}
@@ -153,7 +170,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 financePeriod === 'all' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              📈 الإجمالي
+              الإجمالي
             </button>
           </div>
 
@@ -164,13 +181,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             }`}
             title={hideFinances ? 'إظهار الأرقام' : 'إخفاء الأرقام'}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {hideFinances ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              )}
-            </svg>
+            {hideFinances ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             <span>{hideFinances ? 'إظهار' : 'إخفاء'}</span>
           </button>
 
@@ -178,7 +189,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={onOpenAddRental}
             className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs min-h-[38px] active:scale-95"
           >
-            + كراء جديد 👗
+            <Plus className="w-4 h-4" />
+            <span>كراء جديد</span>
           </button>
         </div>
       </div>
@@ -188,14 +200,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="p-1.5 bg-slate-100 text-slate-700 rounded-xl text-sm border border-slate-200/80">
-              ⚖️
+              <Scale className="w-4 h-4 text-slate-700" />
             </span>
             <h3 className="text-sm sm:text-base font-bold text-slate-900">
               صندوق اليومية ومتابعة العجز (La Caisse)
             </h3>
             {todayClosure ? (
               <span className="bg-slate-100 text-emerald-800 border border-emerald-200/80 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                تم إقفال صندوق اليوم ✓
+                تم إقفال صندوق اليوم
               </span>
             ) : (
               <span className="bg-slate-100 text-amber-800 border border-amber-200/80 text-[10px] font-bold px-2 py-0.5 rounded-md">
@@ -247,7 +259,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={() => onNavigate('caisse')}
             className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 shrink-0"
           >
-            <span>⚖️</span>
+            <Scale className="w-3.5 h-3.5" />
             <span>فتح الصندوق</span>
           </button>
         </div>
@@ -262,7 +274,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           subtitle={financePeriod === 'monthly' ? 'هذا الشهر' : financePeriod === 'yearly' ? 'هذه السنة' : 'الإجمالي'}
           hideValue={hideFinances}
           onClick={() => onNavigate('rentals')}
-          icon={<span>👗</span>}
+          icon={<Sparkles className="w-4 h-4 text-slate-700" />}
         />
 
         {/* 2. مداخيل الخياطة الشهرية */}
@@ -272,7 +284,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           subtitle="هذا الشهر"
           hideValue={hideFinances}
           onClick={() => onNavigate('tailoring')}
-          icon={<span>🧵</span>}
+          icon={<Scissors className="w-4 h-4 text-slate-700" />}
         />
 
         {/* 3. مداخيل الخياطة السنوية */}
@@ -282,7 +294,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           subtitle="هذه السنة"
           hideValue={hideFinances}
           onClick={() => onNavigate('tailoring')}
-          icon={<span>🪡</span>}
+          icon={<Scissors className="w-4 h-4 text-slate-700" />}
         />
 
         {/* 4. مداخيل مبيعات الملابس */}
@@ -292,7 +304,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           subtitle={financePeriod === 'monthly' ? 'هذا الشهر' : financePeriod === 'yearly' ? 'هذه السنة' : 'الإجمالي'}
           hideValue={hideFinances}
           onClick={() => onNavigate('sales')}
-          icon={<span>🛒</span>}
+          icon={<ShoppingBag className="w-4 h-4 text-slate-700" />}
         />
 
         {/* 5. المصاريف والغسيل */}
@@ -302,7 +314,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           subtitle={financePeriod === 'monthly' ? 'هذا الشهر' : financePeriod === 'yearly' ? 'هذه السنة' : 'الإجمالي'}
           hideValue={hideFinances}
           onClick={() => onNavigate('expenses')}
-          icon={<span>🧼</span>}
+          icon={<Receipt className="w-4 h-4 text-slate-700" />}
         />
 
         {/* 6. الديون والكريدي المتبقي */}
@@ -312,7 +324,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           subtitle="متبقي على الزبائن"
           hideValue={hideFinances}
           onClick={() => onNavigate('credits')}
-          icon={<span>💳</span>}
+          icon={<CreditCard className="w-4 h-4 text-slate-700" />}
         />
 
         {/* 7. رواتب ومستحقات العمال */}
@@ -322,7 +334,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           subtitle={financePeriod === 'monthly' ? 'هذا الشهر' : financePeriod === 'yearly' ? 'هذه السنة' : 'الإجمالي'}
           hideValue={hideFinances}
           onClick={() => onNavigate('customers')}
-          icon={<span>👥</span>}
+          icon={<Users className="w-4 h-4 text-slate-700" />}
         />
 
         {/* 8. صافي الأرباح الكلية */}
@@ -332,7 +344,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           subtitle="بعد كل التكاليف"
           hideValue={hideFinances}
           onClick={() => onNavigate('dashboard')}
-          icon={<span>📈</span>}
+          icon={<TrendingUp className="w-4 h-4 text-slate-700" />}
         />
       </div>
 
@@ -341,7 +353,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-5 shadow-xs space-y-3">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <span className="text-xl">⚠️</span>
+              <span className="p-1 bg-amber-100 rounded-lg text-amber-700">
+                <AlertTriangle className="w-5 h-5" />
+              </span>
               <div>
                 <h3 className="font-black text-amber-950 text-sm">
                   تنبيهات إرجاع الملابس والمواعيد العاجلة ({urgentRentals.length})
@@ -371,12 +385,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {cloth?.imageUrl ? (
                       <img src={cloth.imageUrl} alt={rental.itemName} className="w-10 h-10 rounded-xl object-cover border border-amber-200 shrink-0" />
                     ) : (
-                      <div className="w-10 h-10 rounded-xl bg-amber-100/60 text-amber-700 flex items-center justify-center text-base shrink-0">👗</div>
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                        <Sparkles className="w-5 h-5 text-slate-600" />
+                      </div>
                     )}
                     <div className="min-w-0">
                       <div className="font-black text-slate-800 truncate">{rental.itemName}</div>
-                      <div className="text-slate-500 text-[11px] font-bold truncate">
-                        {rental.customerName} (📞 {rental.customerPhone})
+                      <div className="text-slate-500 text-[11px] font-bold truncate flex items-center gap-1">
+                        <span>{rental.customerName}</span>
+                        <span>(</span>
+                        <Phone className="w-3 h-3 text-slate-400" />
+                        <span>{rental.customerPhone})</span>
                       </div>
                       <div className="text-[10px] text-amber-700 font-bold mt-0.5">
                         {isOverdue ? `متأخر بـ ${Math.abs(diff)} أيام عن الموعد` : 'موعد الإرجاع اليوم!'}
@@ -393,9 +412,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </button>
                     <button
                       onClick={() => onSendMessage(rental)}
-                      className="bg-emerald-50 text-emerald-700 p-1.5 rounded-xl text-xs font-bold hover:bg-emerald-100"
+                      className="bg-emerald-50 text-emerald-700 px-2 py-1.5 rounded-xl text-xs font-bold hover:bg-emerald-100 flex items-center gap-1"
                     >
-                      واتساب
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>واتساب</span>
                     </button>
                   </div>
                 </div>
@@ -410,7 +430,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="bg-amber-50/80 border border-amber-300 rounded-3xl p-5 shadow-xs space-y-3">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <span className="text-xl">🧵</span>
+              <span className="p-1 bg-amber-100 rounded-lg text-amber-700">
+                <Scissors className="w-5 h-5" />
+              </span>
               <div>
                 <h3 className="font-black text-amber-950 text-sm">
                   تنبيهات تسليم طلبات الخياطة والصيانة ({urgentTailoringOrders.length})
@@ -491,7 +513,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {cloth?.imageUrl ? (
                       <img src={cloth.imageUrl} alt={rental.itemName} className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0" />
                     ) : (
-                      <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-base shrink-0">👗</div>
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+                        <Sparkles className="w-5 h-5 text-slate-500" />
+                      </div>
                     )}
                     <div className="min-w-0">
                       <div className="font-black text-slate-800 text-sm sm:text-xs truncate">{rental.itemName}</div>

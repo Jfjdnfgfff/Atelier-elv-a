@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import { DecodeHintType, BarcodeFormat } from '@zxing/library';
 import { playPosScannerBeep, playPosErrorBeep } from '../utils/scannerSoundAndValidation';
+import { Camera, RefreshCw, Check, Zap } from 'lucide-react';
 
 interface BarcodeScannerProps {
   onScan: (barcode: string) => void;
@@ -423,14 +424,14 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           
           {errorMsg ? (
             <div className="p-4 text-center space-y-2.5 z-20">
-              <div className="text-3xl">📷</div>
+              <Camera className="w-8 h-8 text-slate-400 mx-auto" />
               <p className="text-xs text-amber-200 font-bold leading-relaxed">{errorMsg}</p>
               <button
                 type="button"
                 onClick={restartBarcodeScanner}
-                className="py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+                className="py-2 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
               >
-                إعادة المحاولة 🔄
+                إعادة المحاولة
               </button>
             </div>
           ) : (
@@ -479,9 +480,10 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
 
               {/* Scanned Badge */}
               {recentScanned && (
-                <div className="absolute top-3 inset-x-4 bg-emerald-600 text-white text-xs font-black p-2 rounded-xl text-center shadow-xl animate-bounce flex items-center justify-center gap-1.5 z-30 border border-emerald-300">
-                  <span>✓ تم التقاط الباركود:</span>
-                  <span className="font-mono bg-emerald-950/60 px-2 py-0.5 rounded">{recentScanned}</span>
+                <div className="absolute top-3 inset-x-4 bg-slate-900 text-white text-xs font-bold p-2 rounded-xl text-center shadow-xl flex items-center justify-center gap-1.5 z-30 border border-slate-700">
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span>تم التقاط الباركود:</span>
+                  <span className="font-mono bg-slate-800 px-2 py-0.5 rounded">{recentScanned}</span>
                 </div>
               )}
 
@@ -490,9 +492,9 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                 <button
                   type="button"
                   onClick={switchBarcodeCamera}
-                  className="bg-black/75 hover:bg-black text-white px-2.5 py-1.5 rounded-xl text-xs font-bold backdrop-blur-xs transition-all active:scale-95 flex items-center gap-1 border border-white/15"
+                  className="bg-black/75 hover:bg-black text-white px-2.5 py-1.5 rounded-xl text-xs font-bold backdrop-blur-xs transition-all active:scale-95 flex items-center gap-1.5 border border-white/15"
                 >
-                  <span>🔄</span>
+                  <RefreshCw className="w-3.5 h-3.5 text-slate-300" />
                   <span>تبديل الكاميرا</span>
                 </button>
               </div>
@@ -530,11 +532,12 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                       type="button"
                       id="barcodeTorchBtn"
                       onClick={toggleBarcodeTorch}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold backdrop-blur-xs transition-all active:scale-95 flex items-center gap-1 border ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold backdrop-blur-xs transition-all active:scale-95 flex items-center gap-1.5 border ${
                         torchOn ? 'bg-amber-400 text-black border-amber-300' : 'bg-black/70 text-white border-white/10'
                       }`}
                     >
-                      <span>{torchOn ? '🔦 شغال' : '💡 فلاش'}</span>
+                      <Zap className="w-3.5 h-3.5" />
+                      <span>{torchOn ? 'فلاش شغال' : 'فلاش'}</span>
                     </button>
                   </div>
                 )}
@@ -549,8 +552,8 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             type="text"
             value={manualInput}
             onChange={(e) => setManualInput(e.target.value)}
-            placeholder="🔢 أو أدخل رقم الباركود يدوياً..."
-            className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-emerald-500"
+            placeholder="أو أدخل رقم الباركود يدوياً..."
+            className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-slate-400"
           />
           <button
             type="submit"
