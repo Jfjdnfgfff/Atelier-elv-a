@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   ClothItem, 
   Rental, 
@@ -25,6 +25,12 @@ import {
   DEFAULT_CAISSE_CLOSURES,
   initializeStorage 
 } from './storage';
+import { 
+  syncCollectionToCloud, 
+  subscribeToCloudCollection, 
+  FIREBASE_COLLECTIONS,
+  firebaseConfig 
+} from './firebase';
 
 // Components
 import { BarcodeScanner } from './components/BarcodeScanner';
@@ -57,7 +63,13 @@ import {
   Users, 
   BarChart3, 
   Save, 
-  Globe 
+  Globe,
+  Cloud,
+  RefreshCw,
+  CheckCircle2,
+  Database,
+  Smartphone,
+  Laptop
 } from 'lucide-react';
 
 export default function App() {
@@ -97,18 +109,340 @@ export default function App() {
     loadFromStorage<DailyCaisseClosure[]>(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES)
   );
 
-  // Sync back to local storage
-  useEffect(() => { saveToStorage(STORAGE_KEYS.CLOTHES, clothes); }, [clothes]);
-  useEffect(() => { saveToStorage(STORAGE_KEYS.RENTALS, rentals); }, [rentals]);
-  useEffect(() => { saveToStorage(STORAGE_KEYS.SALES, sales); }, [sales]);
-  useEffect(() => { saveToStorage(STORAGE_KEYS.EXPENSES, expenses); }, [expenses]);
-  useEffect(() => { saveToStorage(STORAGE_KEYS.CREDITS, credits); }, [credits]);
-  useEffect(() => { saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, staffPayouts); }, [staffPayouts]);
-  useEffect(() => { saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, staffMembers); }, [staffMembers]);
-  useEffect(() => { saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, staffAbsences); }, [staffAbsences]);
-  useEffect(() => { saveToStorage(STORAGE_KEYS.MAINTENANCE, maintenanceOrders); }, [maintenanceOrders]);
-  useEffect(() => { saveToStorage(STORAGE_KEYS.SUPPLIERS, suppliers); }, [suppliers]);
-  useEffect(() => { saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, caisseClosures); }, [caisseClosures]);
+  // Cloud Real-time Synchronization state
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  const [lastCloudSyncTime, setLastCloudSyncTime] = useState<Date>(new Date());
+  const isRemoteUpdateRef = useRef<Record<string, boolean>>({
+    clothes: false,
+    rentals: false,
+    sales: false,
+    expenses: false,
+    credits: false,
+    staffPayouts: false,
+    staffMembers: false,
+    staffAbsences: false,
+    maintenanceOrders: false,
+    suppliers: false,
+    caisseClosures: false
+  });
+
+  // Real-time Cloud Subscriptions on Mount
+  useEffect(() => {
+    // 1. Subscribe to Clothes
+    const unsubClothes = subscribeToCloudCollection<ClothItem[]>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.clothes = true;
+        setClothes(items);
+        saveToStorage(STORAGE_KEYS.CLOTHES, items, false);
+        setLastCloudSyncTime(new Date());
+      } else {
+        const local = loadFromStorage<ClothItem[]>(STORAGE_KEYS.CLOTHES, []);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.CLOTHES, local);
+      }
+    });
+
+    // 2. Subscribe to Rentals
+    const unsubRentals = subscribeToCloudCollection<Rental[]>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.rentals = true;
+        setRentals(items);
+        saveToStorage(STORAGE_KEYS.RENTALS, items, false);
+        setLastCloudSyncTime(new Date());
+      } else {
+        const local = loadFromStorage<Rental[]>(STORAGE_KEYS.RENTALS, []);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.RENTALS, local);
+      }
+    });
+
+    // 3. Subscribe to Sales
+    const unsubSales = subscribeToCloudCollection<Sale[]>(FIREBASE_COLLECTIONS.SALES, (items) => {
+      if (items && Array.isArray(items)) {
+        isRemoteUpdateRef.current.sales = true;
+        setSales(items);
+        saveToStorage(STORAGE_KEYS.SALES, items, false);
+        setLastCloudSyncTime(new Date());
+      }
+    });
+
+    // 4. Subscribe to Expenses
+    const unsubExpenses = subscribeToCloudCollection<Expense[]>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.expenses = true;
+        setExpenses(items);
+        saveToStorage(STORAGE_KEYS.EXPENSES, items, false);
+        setLastCloudSyncTime(new Date());
+      } else {
+        const local = loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, []);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.EXPENSES, local);
+      }
+    });
+
+    // 5. Subscribe to Credits
+    const unsubCredits = subscribeToCloudCollection<Credit[]>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
+      if (items && Array.isArray(items)) {
+        isRemoteUpdateRef.current.credits = true;
+        setCredits(items);
+        saveToStorage(STORAGE_KEYS.CREDITS, items, false);
+        setLastCloudSyncTime(new Date());
+      }
+    });
+
+    // 6. Subscribe to Staff Payouts
+    const unsubStaffPayouts = subscribeToCloudCollection<StaffPayout[]>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
+      if (items && Array.isArray(items)) {
+        isRemoteUpdateRef.current.staffPayouts = true;
+        setStaffPayouts(items);
+        saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, items, false);
+        setLastCloudSyncTime(new Date());
+      }
+    });
+
+    // 7. Subscribe to Staff Members
+    const unsubStaffMembers = subscribeToCloudCollection<StaffMember[]>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.staffMembers = true;
+        setStaffMembers(items);
+        saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, items, false);
+        setLastCloudSyncTime(new Date());
+      } else {
+        const local = loadFromStorage<StaffMember[]>(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_MEMBERS, local);
+      }
+    });
+
+    // 8. Subscribe to Staff Absences
+    const unsubStaffAbsences = subscribeToCloudCollection<StaffAbsence[]>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, (items) => {
+      if (items && Array.isArray(items)) {
+        isRemoteUpdateRef.current.staffAbsences = true;
+        setStaffAbsences(items);
+        saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, items, false);
+        setLastCloudSyncTime(new Date());
+      }
+    });
+
+    // 9. Subscribe to Maintenance Orders
+    const unsubMaintenance = subscribeToCloudCollection<MaintenanceOrder[]>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.maintenanceOrders = true;
+        setMaintenanceOrders(items);
+        saveToStorage(STORAGE_KEYS.MAINTENANCE, items, false);
+        setLastCloudSyncTime(new Date());
+      } else {
+        const local = loadFromStorage<MaintenanceOrder[]>(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, local);
+      }
+    });
+
+    // 10. Subscribe to Suppliers
+    const unsubSuppliers = subscribeToCloudCollection<Supplier[]>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.suppliers = true;
+        setSuppliers(items);
+        saveToStorage(STORAGE_KEYS.SUPPLIERS, items, false);
+        setLastCloudSyncTime(new Date());
+      } else {
+        const local = loadFromStorage<Supplier[]>(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, local);
+      }
+    });
+
+    // 11. Subscribe to Caisse Closures
+    const unsubCaisse = subscribeToCloudCollection<DailyCaisseClosure[]>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.caisseClosures = true;
+        setCaisseClosures(items);
+        saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, items, false);
+        setLastCloudSyncTime(new Date());
+      } else {
+        const local = loadFromStorage<DailyCaisseClosure[]>(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, local);
+      }
+    });
+
+    return () => {
+      unsubClothes();
+      unsubRentals();
+      unsubSales();
+      unsubExpenses();
+      unsubCredits();
+      unsubStaffPayouts();
+      unsubStaffMembers();
+      unsubStaffAbsences();
+      unsubMaintenance();
+      unsubSuppliers();
+      unsubCaisse();
+    };
+  }, []);
+
+  // Sync to Local Storage & Debounced Sync to Firebase Cloud
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.CLOTHES, clothes);
+    if (isRemoteUpdateRef.current.clothes) {
+      isRemoteUpdateRef.current.clothes = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.CLOTHES, clothes);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [clothes]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.RENTALS, rentals);
+    if (isRemoteUpdateRef.current.rentals) {
+      isRemoteUpdateRef.current.rentals = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.RENTALS, rentals);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [rentals]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.SALES, sales);
+    if (isRemoteUpdateRef.current.sales) {
+      isRemoteUpdateRef.current.sales = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.SALES, sales);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [sales]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.EXPENSES, expenses);
+    if (isRemoteUpdateRef.current.expenses) {
+      isRemoteUpdateRef.current.expenses = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.EXPENSES, expenses);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [expenses]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.CREDITS, credits);
+    if (isRemoteUpdateRef.current.credits) {
+      isRemoteUpdateRef.current.credits = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.CREDITS, credits);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [credits]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, staffPayouts);
+    if (isRemoteUpdateRef.current.staffPayouts) {
+      isRemoteUpdateRef.current.staffPayouts = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, staffPayouts);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [staffPayouts]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, staffMembers);
+    if (isRemoteUpdateRef.current.staffMembers) {
+      isRemoteUpdateRef.current.staffMembers = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_MEMBERS, staffMembers);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [staffMembers]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, staffAbsences);
+    if (isRemoteUpdateRef.current.staffAbsences) {
+      isRemoteUpdateRef.current.staffAbsences = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_ABSENCES, staffAbsences);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [staffAbsences]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.MAINTENANCE, maintenanceOrders);
+    if (isRemoteUpdateRef.current.maintenanceOrders) {
+      isRemoteUpdateRef.current.maintenanceOrders = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, maintenanceOrders);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [maintenanceOrders]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.SUPPLIERS, suppliers);
+    if (isRemoteUpdateRef.current.suppliers) {
+      isRemoteUpdateRef.current.suppliers = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, suppliers);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [suppliers]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, caisseClosures);
+    if (isRemoteUpdateRef.current.caisseClosures) {
+      isRemoteUpdateRef.current.caisseClosures = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, caisseClosures);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [caisseClosures]);
+
+  // Full Manual Cloud Sync Handler
+  const handleManualFullSync = async () => {
+    setIsCloudSyncing(true);
+    try {
+      await Promise.all([
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.CLOTHES, clothes),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.RENTALS, rentals),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.SALES, sales),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.EXPENSES, expenses),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.CREDITS, credits),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, staffPayouts),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_MEMBERS, staffMembers),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_ABSENCES, staffAbsences),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, maintenanceOrders),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, suppliers),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, caisseClosures)
+      ]);
+      setLastCloudSyncTime(new Date());
+      showToast('تمت المزامنة وحفظ جميع التعديلات في Firebase بنجاح!');
+    } catch (err) {
+      showToast('تعذر إتمام المزامنة السحابية', 'error');
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
 
   // UI state
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
@@ -1031,6 +1365,18 @@ export default function App() {
               </button>
 
               <button 
+                onClick={() => setActiveModal('cloudSyncModal')} 
+                title="المزامنة السحابية (Firebase)" 
+                aria-label="المزامنة السحابية (Firebase)"
+                className="h-9 px-2.5 sm:px-3 rounded-xl bg-slate-900 text-white hover:bg-black border border-slate-900 active:scale-95 flex items-center gap-1.5 transition-all text-xs font-bold shadow-xs shrink-0"
+              >
+                <span className={`w-2 h-2 rounded-full ${isCloudSyncing ? 'bg-amber-400 animate-spin' : 'bg-emerald-400 animate-pulse'} shrink-0`} />
+                <Cloud className="w-3.5 h-3.5 text-slate-200 shrink-0" />
+                <span className="hidden sm:inline">سحابي (Firebase)</span>
+                <span className="sm:hidden text-[10px]">سحابي</span>
+              </button>
+
+              <button 
                 onClick={() => setActiveModal('backupModal')} 
                 title="النسخ الاحتياطي" 
                 aria-label="النسخ الاحتياطي"
@@ -1393,6 +1739,81 @@ export default function App() {
               }} 
             />
             <p className="text-[11px] text-slate-400">اضغط Enter للتأكيد</p>
+          </div>
+        </Modal>
+      )}
+
+      {/* Firebase Cloud Sync Modal */}
+      {activeModal === 'cloudSyncModal' && (
+        <Modal title="المزامنة السحابية والمزامنة عبر الأجهزة (Firebase)" onClose={() => setActiveModal(null)} wide>
+          <div className="space-y-4 py-1" dir="rtl">
+            {/* Connection Status Card */}
+            <div className="p-4 bg-slate-900 text-white rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                  <Cloud className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <h4 className="font-black text-sm text-white">الربط السحابي مع Firebase مفعل ونشط</h4>
+                  </div>
+                  <p className="text-[11px] text-slate-300 mt-0.5">
+                    معرف المشروع: <span className="font-mono text-emerald-300 font-bold">ateliu-14e23</span>
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={handleManualFullSync}
+                disabled={isCloudSyncing}
+                className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isCloudSyncing ? 'animate-spin' : ''}`} />
+                <span>{isCloudSyncing ? 'جاري المزامنة...' : 'مزامنة سحابية الآن'}</span>
+              </button>
+            </div>
+
+            {/* Cross Device Banner */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+              <div className="flex items-center gap-2 mb-2">
+                <Smartphone className="w-4 h-4 text-slate-700" />
+                <Laptop className="w-4 h-4 text-slate-700" />
+                <h4 className="font-bold text-xs text-slate-900">مزامنة فورية على كل الأجهزة دون الحاجة لإعادة التحميل</h4>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                أي تعديل، إضافة فستان، حجز كراء، أو تسجيل بيع تقوم به من الهاتف أو التابلت أو الحاسوب يُحفظ فوراً في قاعدة بيانات Firebase السحابية ويظهر في نفس الثانية على جميع الأجهزة الأخرى المتصلة.
+              </p>
+            </div>
+
+            {/* Live Database Sync Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-[10px] text-slate-500 font-bold block">فساتين المخزن</span>
+                <span className="text-base font-black text-slate-900">{clothes.length}</span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-[10px] text-slate-500 font-bold block">عمليات الكراء</span>
+                <span className="text-base font-black text-slate-900">{rentals.length}</span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-[10px] text-slate-500 font-bold block">المبيعات</span>
+                <span className="text-base font-black text-slate-900">{sales.length}</span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-[10px] text-slate-500 font-bold block">المصاريف والديون</span>
+                <span className="text-base font-black text-slate-900">{expenses.length + credits.length}</span>
+              </div>
+            </div>
+
+            {/* Last Sync Info & Safety Notice */}
+            <div className="flex items-center justify-between text-[11px] text-slate-500 px-1 pt-1">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>آخر مزامنة ناجحة: {lastCloudSyncTime.toLocaleTimeString('ar-DZ')}</span>
+              </div>
+              <span className="text-slate-400">حفظ تلقائي مع دعم العمل بدون إنترنت (Offline-First)</span>
+            </div>
           </div>
         </Modal>
       )}

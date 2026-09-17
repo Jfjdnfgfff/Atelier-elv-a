@@ -12,6 +12,7 @@ import {
   Supplier,
   DailyCaisseClosure
 } from './types';
+import { saveToFirebase } from './firebase';
 
 export const STORAGE_KEYS = {
   CLOTHES: 'boutique_clothes',
@@ -344,11 +345,16 @@ export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
   }
 };
 
-export const saveToStorage = <T>(key: string, data: T): void => {
+export const saveToStorage = <T>(key: string, data: T, syncFirebase: boolean = true): void => {
   try {
     localStorage.setItem(key, JSON.stringify(data));
   } catch (e) {
     console.error(`Error saving key ${key} to storage:`, e);
+  }
+  if (syncFirebase) {
+    saveToFirebase(key, data).catch((err) => {
+      console.warn(`[Firebase sync warning for ${key}]:`, err);
+    });
   }
 };
 
