@@ -1,14 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
-  getFirestore, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  onSnapshot, 
-  collection,
-  enableIndexedDbPersistence 
-} from 'firebase/firestore';
-import { 
   getDatabase, 
   ref, 
   set, 
@@ -30,8 +21,7 @@ export const firebaseConfig = {
 // Initialize Firebase App singleton
 export const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize Firestore & Realtime Database
-export const db = getFirestore(firebaseApp);
+// Initialize Realtime Database only
 export const rtdb = getDatabase(firebaseApp);
 
 export type SyncStatus = 'connected' | 'syncing' | 'offline' | 'error';
@@ -78,23 +68,6 @@ export async function saveToFirebase<T>(key: string, data: T): Promise<boolean> 
 
   let success = false;
 
-  // 1. Try Firestore
-  try {
-    const docRef = doc(db, 'boutique_data', key);
-    await setDoc(docRef, { 
-      items: data,
-      updatedAt: new Date().toISOString(),
-      updatedByDevice: navigator.userAgent
-    }, { merge: true });
-    success = true;
-  } catch (firestoreError: any) {
-    console.warn(`[Firebase Firestore save error on ${key}]:`, firestoreError?.message || firestoreError);
-    if (firestoreError?.message?.includes('Missing or insufficient permissions')) {
-      alert('خطأ في الصلاحيات (Firestore): الرجاء تعديل قواعد الأمان (Security Rules) في Firebase للسماح بالكتابة والقراءة.');
-    }
-  }
-
-  // 2. Also try Realtime Database (RTDB) as reliable parallel cloud sync
   try {
     const rtdbRef = ref(rtdb, `boutique_store/${key}`);
     await set(rtdbRef, {
@@ -105,7 +78,7 @@ export async function saveToFirebase<T>(key: string, data: T): Promise<boolean> 
   } catch (rtdbError: any) {
     console.warn(`[Firebase RTDB save error on ${key}]:`, rtdbError?.message || rtdbError);
     if (rtdbError?.message?.includes('Permission denied')) {
-      alert('خطأ في الصلاحيات (Realtime Database): الرجاء تعديل قواعد الأمان في Firebase للسماح بالكتابة.');
+      alert('خطأ في الصلاحيات (Realtime Database): الرجاء تعديل قواعد الأمان في Firebase.');
     }
   }
 
@@ -125,38 +98,8 @@ export function subscribeToFirebaseKey<T>(
   key: string, 
   onDataReceived: (data: T) => void
 ): () => void {
-  let unsubFirestore: (() => void) | null = null;
   let unsubRTDB: (() => void) | null = null;
 
-  // Try Firestore Listener
-  try {
-    const docRef = doc(db, 'boutique_data', key);
-    unsubFirestore = onSnapshot(docRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const val = snapshot.data();
-        if (val && val.items !== undefined) {
-          // Check if this was a recent local write echo (within 2 seconds)
-          const lastWrite = pendingLocalWrites.get(key) || 0;
-          if (Date.now() - lastWrite > 1200) {
-            onDataReceived(val.items as T);
-            updateStatus('connected');
-          }
-        }
-      } else {
-        // Initial empty state, trigger empty array to allow seeding
-        onDataReceived([] as unknown as T);
-      }
-    }, (err: any) => {
-      console.warn(`[Firestore listener error for ${key}]:`, err.message);
-      if (err.message?.includes('Missing or insufficient permissions')) {
-        console.error('Firestore Permission Denied on read.');
-      }
-    });
-  } catch (e) {
-    console.warn(`[Firestore subscribe failed for ${key}]:`, e);
-  }
-
-  // Try Realtime Database Listener as backup/parallel sync
   try {
     const rtdbRef = ref(rtdb, `boutique_store/${key}`);
     unsubRTDB = onValue(rtdbRef, (snapshot) => {
@@ -180,7 +123,6 @@ export function subscribeToFirebaseKey<T>(
   }
 
   return () => {
-    if (unsubFirestore) unsubFirestore();
     if (unsubRTDB) unsubRTDB();
   };
 }
@@ -189,18 +131,6 @@ export function subscribeToFirebaseKey<T>(
  * Fetch initial cloud state for all keys once
  */
 export async function fetchInitialFirebaseData<T>(key: string): Promise<T | null> {
-  // 1. Try Firestore first
-  try {
-    const docRef = doc(db, 'boutique_data', key);
-    const snap = await getDoc(docRef);
-    if (snap.exists() && snap.data()?.items !== undefined) {
-      return snap.data().items as T;
-    }
-  } catch (e) {
-    console.warn(`[Firestore initial fetch failed for ${key}]:`, e);
-  }
-
-  // 2. Try RTDB
   try {
     const rtdbRef = ref(rtdb, `boutique_store/${key}`);
     const snap = await get(rtdbRef);
@@ -210,7 +140,6 @@ export async function fetchInitialFirebaseData<T>(key: string): Promise<T | null
   } catch (e) {
     console.warn(`[RTDB initial fetch failed for ${key}]:`, e);
   }
-
   return null;
 }
 
