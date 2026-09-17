@@ -70,8 +70,10 @@ export async function saveToFirebase<T>(key: string, data: T): Promise<boolean> 
 
   try {
     const rtdbRef = ref(rtdb, `boutique_store/${key}`);
+    const cleanData = JSON.parse(JSON.stringify(data));
+    
     await set(rtdbRef, {
-      items: data,
+      items: cleanData,
       updatedAt: new Date().toISOString()
     });
     success = true;
@@ -105,15 +107,20 @@ export function subscribeToFirebaseKey<T>(
     unsubRTDB = onValue(rtdbRef, (snapshot) => {
       if (snapshot.exists()) {
         const val = snapshot.val();
-        if (val && val.items !== undefined) {
-          const lastWrite = pendingLocalWrites.get(key) || 0;
-          if (Date.now() - lastWrite > 1200) {
+        const lastWrite = pendingLocalWrites.get(key) || 0;
+        if (Date.now() - lastWrite > 1200) {
+          if (val && val.items !== undefined) {
             onDataReceived(val.items as T);
-            updateStatus('connected');
+          } else {
+            onDataReceived([] as unknown as T);
           }
+          updateStatus('connected');
         }
       } else {
-        onDataReceived([] as unknown as T);
+        const lastWrite = pendingLocalWrites.get(key) || 0;
+        if (Date.now() - lastWrite > 1200) {
+          onDataReceived([] as unknown as T);
+        }
       }
     }, (err: any) => {
       console.warn(`[RTDB listener error for ${key}]:`, err.message);

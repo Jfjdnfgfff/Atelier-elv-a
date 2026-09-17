@@ -1,0 +1,1 @@
+import { rtdb } from './src/firebase.js'; import { ref, set } from 'firebase/database'; async function test() { try { await set(ref(rtdb, 'test'), { items: [{ a: 1, b: undefined }] }); console.log('success'); } catch(e) { console.error('ERROR:', e.message); } process.exit(); }; test();
