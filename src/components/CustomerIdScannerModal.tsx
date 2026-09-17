@@ -662,11 +662,12 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
     return () => clearInterval(interval);
   }, [activeTab, isInitializing, extractedData]);
 
-  // Handle File Upload
+  // Handle File Upload (Direct photo or folded paper document upload)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setOcrStatusMessage('🔍 جاري التحليل المعمق واسترجاع النصوص من الورقة المطوية / الفوطوكوبي...');
     const reader = new FileReader();
     reader.onload = (evt) => {
       const result = evt.target?.result as string;
@@ -1210,13 +1211,14 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                   type="button"
                   disabled={isProcessingAI}
                   onClick={() => nativeCameraInputRef.current?.click()}
-                  className="py-2.5 px-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                  className="py-2.5 px-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-2xs"
+                  title="التقاط صورة ثابتة عالية الدقة بحكام الكاميرا الأصلية للهاتف"
                 >
                   <span>📷</span>
-                  <span>تصوير فائق الدقة HD</span>
+                  <span>تصوير ثابت عالي الدقة HD</span>
                 </button>
 
-                {/* File Upload from Gallery */}
+                {/* File Upload from Gallery / Paper Copy */}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -1228,10 +1230,11 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                   type="button"
                   disabled={isProcessingAI}
                   onClick={() => fileInputRef.current?.click()}
-                  className="py-2.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                  className="py-2.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-2xs"
+                  title="اختيار صورة ورقة مطوية أو فوطوكوبي مخزنة في المعرض"
                 >
                   <span>📁</span>
-                  <span>صورة من المعرض</span>
+                  <span>ورقة مطوية / فوطوكوبي</span>
                 </button>
               </div>
 
