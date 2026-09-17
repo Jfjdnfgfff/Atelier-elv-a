@@ -450,6 +450,7 @@ export default function App() {
   const [hideFinances, setHideFinances] = useState(() => localStorage.getItem('bm_hideFinances') !== 'false');
   const [toasts, setToasts] = useState<{ id: number; message: string; type: 'success' | 'error' }[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+  const [posScannedBarcode, setPosScannedBarcode] = useState<string | null>(null);
 
   // Modal active subjects
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
@@ -1500,6 +1501,8 @@ export default function App() {
             onCompleteSale={handleCompleteSale}
             onDeleteSale={handleDeleteSale}
             onScanBarcode={() => setIsScanning(true)}
+            scannedCode={posScannedBarcode}
+            onClearScannedCode={() => setPosScannedBarcode(null)}
           />
         )}
 
@@ -1691,30 +1694,55 @@ export default function App() {
       {/* Privacy Password Modal */}
       {activeModal === 'privacyPassword' && (
         <Modal title="كلمة المرور لإظهار الحسابات" onClose={() => setActiveModal(null)}>
-          <div className="space-y-4 text-center">
-            <p className="text-xs text-slate-500 font-medium">أدخل كلمة المرور (الافتراضية: 0000)</p>
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              const input = (e.currentTarget.elements.namedItem('pinCode') as HTMLInputElement);
+              if (input && input.value === '9296') {
+                setHideFinances(false); 
+                localStorage.setItem('bm_hideFinances', 'false'); 
+                setActiveModal(null);
+                showToast('تم إظهار التفاصيل والمبالغ المالية');
+              } else {
+                showToast('رمز المرور غير صحيح', 'error');
+              }
+            }}
+            className="space-y-4 text-center"
+          >
+            <p className="text-xs text-slate-500 font-medium">أدخل رمز المرور المخصص لإظهار التفاصيل المالية</p>
             <input 
+              name="pinCode"
+              id="privacy-pin-input"
               type="password" 
               autoFocus 
-              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-center text-xl font-black outline-none tracking-widest focus:border-blue-500" 
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-center text-2xl font-black outline-none tracking-widest focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" 
               placeholder="••••" 
-              maxLength={4} 
-              onKeyDown={(e) => { 
-                if (e.key === 'Enter') {
-                  const val = (e.target as HTMLInputElement).value;
-                  if (val === '0000') {
-                    setHideFinances(false); 
-                    localStorage.setItem('bm_hideFinances', 'false'); 
-                    setActiveModal(null);
-                    showToast('تم إلغاء وضع الخصوصية');
-                  } else {
-                    showToast('كلمة المرور خاطئة', 'error');
-                  }
+              maxLength={6}
+              onChange={(e) => {
+                if (e.target.value === '9296') {
+                  setHideFinances(false); 
+                  localStorage.setItem('bm_hideFinances', 'false'); 
+                  setActiveModal(null);
+                  showToast('تم إظهار التفاصيل والمبالغ المالية');
                 }
               }} 
             />
-            <p className="text-[11px] text-slate-400">اضغط Enter للتأكيد</p>
-          </div>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
+              >
+                تأكيد الرمز
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
+              >
+                إلغاء
+              </button>
+            </div>
+          </form>
         </Modal>
       )}
 
@@ -1866,29 +1894,7 @@ export default function App() {
               showToast(`تم التعرف على: ${item.name} (${item.size})`);
 
               if (currentView === 'sales') {
-                if (item.stock - item.rentedCount <= 0) {
-                  showToast(`القطعة "${item.name}" نفدت من المخزن`, 'error');
-                } else {
-                  handleCompleteSale({
-                    customerName: 'زبون عام',
-                    items: [{
-                      itemId: item.id,
-                      name: item.name,
-                      size: item.size,
-                      color: item.color,
-                      qty: 1,
-                      price: item.sellPrice,
-                      cost: item.buyCost,
-                      total: item.sellPrice,
-                      imageUrl: item.imageUrl
-                    }],
-                    totalAmount: item.sellPrice,
-                    paidAmount: item.sellPrice,
-                    debtAmount: 0,
-                    profit: item.sellPrice - item.buyCost,
-                    date: new Date().toISOString()
-                  });
-                }
+                setPosScannedBarcode(cleanCode);
               } else if (currentView === 'rentals') {
                 setPreselectedRentalItemId(item.id);
                 setActiveModal('addRental');

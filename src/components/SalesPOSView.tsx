@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ClothItem, Sale, SaleItem } from '../types';
 import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
+import { BarcodeScanner } from './BarcodeScanner';
 import { 
   playPosScannerBeep, 
   playPosErrorBeep, 
@@ -17,7 +18,11 @@ import {
   Search, 
   X, 
   Check,
-  Calendar
+  Calendar,
+  Camera,
+  Barcode,
+  Plus,
+  Minus
 } from 'lucide-react';
 
 interface SalesPOSViewProps {
@@ -26,13 +31,17 @@ interface SalesPOSViewProps {
   onCompleteSale: (saleData: any) => void;
   onDeleteSale: (sale: Sale) => void;
   onScanBarcode: () => void;
+  scannedCode?: string | null;
+  onClearScannedCode?: () => void;
 }
 
 export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
   clothes,
   sales,
   onCompleteSale,
-  onDeleteSale
+  onDeleteSale,
+  scannedCode,
+  onClearScannedCode
 }) => {
   const getItemStock1 = (c: ClothItem) => c.stock1 !== undefined ? c.stock1 : (c.stock || 0);
   const getItemStock2 = (c: ClothItem) => c.stock2 !== undefined ? c.stock2 : 0;
@@ -47,6 +56,13 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [showCustomerIdScanner, setShowCustomerIdScanner] = useState(false);
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
+  const [scannedItemModal, setScannedItemModal] = useState<{
+    item: ClothItem;
+    qty: number;
+    stockSource: 'stock1' | 'stock2';
+  } | null>(null);
+
   const [paidAmount, setPaidAmount] = useState<number | ''>('');
   
   // Date selector for the sale
@@ -90,11 +106,92 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
     'أخرى'
   ];
 
+  // Process barcode scan and open quantity modal
+  const handleBarcodeCode = (rawCode: string) => {
+    const validation = validateAndSanitizeBarcode(rawCode.trim());
+    const code = validation.isValid ? validation.code : rawCode.trim();
+    if (!code) return;
+
+    const matched = clothes.find(c => c.barcode.trim().toLowerCase() === code.toLowerCase());
+    if (matched) {
+      const s1 = getItemStock1(matched);
+      const s2 = getItemStock2(matched);
+      const totalAvailable = s1 + s2 - (matched.rentedCount || 0);
+
+      if (totalAvailable <= 0) {
+        playPosErrorBeep();
+        alert(`القطعة "${matched.name}" نفدت من كلا المخزنين.`);
+      } else {
+        playPosScannerBeep('classic');
+        const defaultSource = s1 > 0 ? 'stock1' : 'stock2';
+        setScannedItemModal({
+          item: matched,
+          qty: 1,
+          stockSource: defaultSource
+        });
+        setBarcodeInput('');
+      }
+    } else {
+      playPosErrorBeep();
+      alert(`لم يتم العثور على قطعة بالباركود: ${code}`);
+    }
+  };
+
+  // React to externally scanned barcode prop from App.tsx
+  useEffect(() => {
+    if (scannedCode) {
+      handleBarcodeCode(scannedCode);
+      if (onClearScannedCode) onClearScannedCode();
+    }
+  }, [scannedCode]);
+
+  const addCustomQtyToCart = (item: ClothItem, qtyToAdd: number, stockSource: 'stock1' | 'stock2') => {
+    const s1 = getItemStock1(item);
+    const s2 = getItemStock2(item);
+    const maxAvailable = stockSource === 'stock1' ? s1 : s2;
+
+    const existing = cart.find(ci => ci.itemId === item.id && ci.stockSource === stockSource);
+    const currentQtyInCart = existing ? existing.qty : 0;
+    const finalQty = currentQtyInCart + qtyToAdd;
+
+    if (finalQty > maxAvailable) {
+      playPosErrorBeep();
+      alert(`الكمية المحددة للبيع (${finalQty}) تتجاوز المتوفر بالمخزون المحدد (${maxAvailable} قطعة)`);
+      return;
+    }
+
+    if (existing) {
+      setCart(prev => prev.map(ci => (ci.itemId === item.id && ci.stockSource === stockSource) 
+        ? { ...ci, qty: finalQty, total: finalQty * ci.price } 
+        : ci
+      ));
+    } else {
+      setCart(prev => [
+        ...prev,
+        {
+          itemId: item.id,
+          name: item.name,
+          size: item.size,
+          color: item.color,
+          qty: qtyToAdd,
+          stockSource,
+          price: item.sellPrice,
+          cost: item.buyCost,
+          total: qtyToAdd * item.sellPrice,
+          imageUrl: item.imageUrl
+        }
+      ]);
+    }
+
+    playPosScannerBeep('classic');
+    setLastScannedItem(`${item.name} (${qtyToAdd} قطعة)`);
+    setTimeout(() => setLastScannedItem(null), 2500);
+  };
+
   const addToCart = (item: ClothItem, preferredStock?: 'stock1' | 'stock2') => {
     const s1 = getItemStock1(item);
     const s2 = getItemStock2(item);
 
-    // Determine stock source: preferred, or where available
     let chosenStock: 'stock1' | 'stock2' = preferredStock || (s1 > 0 ? 'stock1' : 'stock2');
     if (!preferredStock && s1 <= 0 && s2 > 0) {
       chosenStock = 'stock2';
@@ -105,7 +202,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
 
     if (existing) {
       if (existing.qty >= targetStockMax) {
-        // If current stock depleted, check if other stock has quantity
         const otherStock: 'stock1' | 'stock2' = chosenStock === 'stock1' ? 'stock2' : 'stock1';
         const otherMax = otherStock === 'stock1' ? s1 : s2;
         const existingOther = cart.find(ci => ci.itemId === item.id && ci.stockSource === otherStock);
@@ -146,35 +242,16 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
       ]);
     }
 
-    // 🔊 Authentic POS Laser Scanner Beep
     playPosScannerBeep('classic');
     setLastScannedItem(item.name);
     setTimeout(() => setLastScannedItem(null), 2500);
   };
 
-  // Instant barcode search and add
+  // Instant barcode search and trigger quantity modal
   const handleBarcodeSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const raw = barcodeInput.trim();
-    if (!raw) return;
-
-    const validation = validateAndSanitizeBarcode(raw);
-    const code = validation.isValid ? validation.code : raw;
-
-    const matched = clothes.find(c => c.barcode.trim().toLowerCase() === code.toLowerCase());
-    if (matched) {
-      const totalStock = getItemTotalStock(matched);
-      if (totalStock - (matched.rentedCount || 0) <= 0) {
-        playPosErrorBeep();
-        alert(`القطعة "${matched.name}" نفدت من كلا المخزنين.`);
-      } else {
-        addToCart(matched);
-        setBarcodeInput('');
-      }
-    } else {
-      playPosErrorBeep();
-      alert(`لم يتم العثور على قطعة بالباركود: ${code}`);
-    }
+    if (!barcodeInput.trim()) return;
+    handleBarcodeCode(barcodeInput);
   };
 
   // Global listener for handheld USB/Bluetooth barcode guns
@@ -198,15 +275,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
       if (e.key === 'Enter') {
         if (buffer.length >= 3) {
           e.preventDefault();
-          const validation = validateAndSanitizeBarcode(buffer.trim());
-          const scannedCode = validation.isValid ? validation.code : buffer.trim();
-          const matched = clothes.find(c => c.barcode.trim().toLowerCase() === scannedCode.toLowerCase());
-          if (matched) {
-            addToCart(matched);
-            setBarcodeInput('');
-          } else {
-            playPosErrorBeep();
-          }
+          handleBarcodeCode(buffer);
           buffer = '';
         }
       } else if (e.key.length === 1 && (!isInput || isBarcodeField)) {
@@ -359,23 +428,36 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
                 <p className="text-xs text-slate-500 font-medium">البيع من المخزون 1 أو المخزون 2 مع المسح بالباركود.</p>
               </div>
 
-              {/* Laser Barcode Quick Input Form */}
-              <form onSubmit={handleBarcodeSubmit} className="w-full sm:w-auto flex gap-1.5">
-                <input
-                  ref={barcodeInputRef}
-                  type="text"
-                  value={barcodeInput}
-                  onChange={(e) => setBarcodeInput(e.target.value)}
-                  placeholder="مسح باركود..."
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-mono font-medium w-full sm:w-48 focus:outline-none focus:border-slate-400 focus:bg-white"
-                />
+              {/* Laser Barcode Quick Input Form & Camera Scanner Button */}
+              <div className="w-full sm:w-auto flex items-center gap-1.5 flex-wrap">
                 <button
-                  type="submit"
-                  className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 shadow-xs"
+                  type="button"
+                  onClick={() => setShowCameraScanner(true)}
+                  className="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-xs transition-all"
+                  title="فتح كاميرا الجوال/الجهاز لمسح الباركود"
                 >
-                  إضافة
+                  <Camera className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">مسح بالكاميرا</span>
+                  <span className="sm:hidden">كاميرا</span>
                 </button>
-              </form>
+
+                <form onSubmit={handleBarcodeSubmit} className="flex-1 sm:flex-initial flex gap-1.5">
+                  <input
+                    ref={barcodeInputRef}
+                    type="text"
+                    value={barcodeInput}
+                    onChange={(e) => setBarcodeInput(e.target.value)}
+                    placeholder="مسح باركود..."
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-mono font-medium w-full sm:w-40 focus:outline-none focus:border-slate-400 focus:bg-white"
+                  />
+                  <button
+                    type="submit"
+                    className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 shadow-xs"
+                  >
+                    إضافة
+                  </button>
+                </form>
+              </div>
             </div>
 
             {/* Scan Success Notice */}
@@ -523,6 +605,23 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
                           <span className="font-bold">{s2}</span>
                         </button>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const defaultSource = s1 > 0 ? 'stock1' : 'stock2';
+                          setScannedItemModal({
+                            item,
+                            qty: 1,
+                            stockSource: defaultSource
+                          });
+                        }}
+                        className="w-full py-1 px-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 active:scale-95 transition-all mt-1"
+                        title="اختيار كمية محددة للبيع"
+                      >
+                        <Barcode className="w-3 h-3 text-blue-600" />
+                        <span>تحديد الكمية</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -743,6 +842,243 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
         />
       )}
 
+      {/* Barcode Camera Scanner Modal */}
+      {showCameraScanner && (
+        <BarcodeScanner
+          title="مسح باركود القطعة للبيع 📷"
+          onScan={(code) => {
+            setShowCameraScanner(false);
+            handleBarcodeCode(code);
+          }}
+          onClose={() => setShowCameraScanner(false)}
+        />
+      )}
+
+      {/* Barcode Scanned Item Quantity Selection Modal */}
+      {scannedItemModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" dir="rtl">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 space-y-5 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0">
+                  <Barcode className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">تحديد كمية البيع بالباركود</h3>
+                  <p className="text-xs text-slate-500 font-medium">اختر الكمية والمخزون المطلوب للبيع</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setScannedItemModal(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Item Card */}
+            <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center gap-3">
+              {scannedItemModal.item.imageUrl ? (
+                <img
+                  src={scannedItemModal.item.imageUrl}
+                  alt={scannedItemModal.item.name}
+                  className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-xl bg-slate-200 text-slate-400 flex items-center justify-center shrink-0">
+                  <Package className="w-7 h-7" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-slate-900 text-sm truncate">{scannedItemModal.item.name}</h4>
+                <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                  <span>الفئة: {scannedItemModal.item.category}</span>
+                  {scannedItemModal.item.size && <span>• المقاس: {scannedItemModal.item.size}</span>}
+                </div>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <span className="text-[11px] font-mono bg-slate-200 text-slate-700 px-2 py-0.5 rounded-lg">
+                    {scannedItemModal.item.barcode}
+                  </span>
+                  <span className="text-xs font-black text-blue-700">
+                    {scannedItemModal.item.sellPrice.toLocaleString()} دج / قطعة
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Stock Source Selection */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 block">مصدر المخزون للبيع:</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={getItemStock1(scannedItemModal.item) <= 0}
+                  onClick={() => setScannedItemModal(prev => prev ? { 
+                    ...prev, 
+                    stockSource: 'stock1', 
+                    qty: Math.min(prev.qty, getItemStock1(prev.item)) || 1 
+                  } : null)}
+                  className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between ${
+                    scannedItemModal.stockSource === 'stock1'
+                      ? 'bg-blue-50/80 border-blue-500 ring-2 ring-blue-500/20 text-blue-900'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                  } disabled:opacity-40`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold">مخزن 1 (الرئيسي)</span>
+                    {scannedItemModal.stockSource === 'stock1' && <Check className="w-4 h-4 text-blue-600" />}
+                  </div>
+                  <span className="text-xs font-black text-slate-900 mt-1">
+                    المتوفر: {getItemStock1(scannedItemModal.item)} قطعة
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={getItemStock2(scannedItemModal.item) <= 0}
+                  onClick={() => setScannedItemModal(prev => prev ? { 
+                    ...prev, 
+                    stockSource: 'stock2', 
+                    qty: Math.min(prev.qty, getItemStock2(prev.item)) || 1 
+                  } : null)}
+                  className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between ${
+                    scannedItemModal.stockSource === 'stock2'
+                      ? 'bg-blue-50/80 border-blue-500 ring-2 ring-blue-500/20 text-blue-900'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                  } disabled:opacity-40`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold">مخزن 2 (الثانوي)</span>
+                    {scannedItemModal.stockSource === 'stock2' && <Check className="w-4 h-4 text-blue-600" />}
+                  </div>
+                  <span className="text-xs font-black text-slate-900 mt-1">
+                    المتوفر: {getItemStock2(scannedItemModal.item)} قطعة
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quantity Picker */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700">الكمية المراد بيعها:</label>
+                <span className="text-[11px] text-slate-500">
+                  الحد الأقصى المتوفر: {scannedItemModal.stockSource === 'stock1' ? getItemStock1(scannedItemModal.item) : getItemStock2(scannedItemModal.item)} قطعة
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setScannedItemModal(prev => prev ? { ...prev, qty: Math.max(1, prev.qty - 1) } : null)}
+                  className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-100 flex items-center justify-center active:scale-95 transition-all shadow-xs"
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+
+                <input
+                  type="number"
+                  min={1}
+                  max={scannedItemModal.stockSource === 'stock1' ? getItemStock1(scannedItemModal.item) : getItemStock2(scannedItemModal.item)}
+                  value={scannedItemModal.qty}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 1;
+                    const max = scannedItemModal.stockSource === 'stock1' ? getItemStock1(scannedItemModal.item) : getItemStock2(scannedItemModal.item);
+                    setScannedItemModal(prev => prev ? { ...prev, qty: Math.max(1, Math.min(val, max)) } : null);
+                  }}
+                  className="flex-1 text-center font-black text-xl bg-white border border-slate-200 rounded-xl py-1.5 focus:outline-none focus:border-blue-500"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const max = scannedItemModal.stockSource === 'stock1' ? getItemStock1(scannedItemModal.item) : getItemStock2(scannedItemModal.item);
+                    setScannedItemModal(prev => prev ? { ...prev, qty: Math.min(max, prev.qty + 1) } : null);
+                  }}
+                  className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-100 flex items-center justify-center active:scale-95 transition-all shadow-xs"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {[1, 2, 3, 5, 10].map(n => {
+                  const maxAvailable = scannedItemModal.stockSource === 'stock1' 
+                    ? getItemStock1(scannedItemModal.item) 
+                    : getItemStock2(scannedItemModal.item);
+                  if (n > maxAvailable) return null;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setScannedItemModal(prev => prev ? { ...prev, qty: n } : null)}
+                      className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                        scannedItemModal.qty === n 
+                          ? 'bg-blue-600 text-white shadow-xs' 
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {n} قطعة
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const max = scannedItemModal.stockSource === 'stock1' 
+                      ? getItemStock1(scannedItemModal.item) 
+                      : getItemStock2(scannedItemModal.item);
+                    setScannedItemModal(prev => prev ? { ...prev, qty: max } : null);
+                  }}
+                  className="px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 rounded-xl text-xs font-bold transition-all"
+                >
+                  كل المتوفر
+                </button>
+              </div>
+            </div>
+
+            {/* Total Calculation */}
+            <div className="p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-2xl flex items-center justify-between">
+              <div>
+                <span className="text-xs text-blue-800 font-bold block">إجمالي السعر:</span>
+                <span className="text-xs text-blue-600 font-medium">
+                  {scannedItemModal.qty} قطعة × {scannedItemModal.item.sellPrice.toLocaleString()} دج
+                </span>
+              </div>
+              <span className="text-lg font-black text-blue-700">
+                {(scannedItemModal.qty * scannedItemModal.item.sellPrice).toLocaleString()} دج
+              </span>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  addCustomQtyToCart(scannedItemModal.item, scannedItemModal.qty, scannedItemModal.stockSource);
+                  setScannedItemModal(null);
+                }}
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-2xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                <span>إضافة للسلة ({scannedItemModal.qty} قطع)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setScannedItemModal(null)}
+                className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold text-xs transition-all"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Recent Sales History */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
         <h3 className="font-bold text-slate-900 text-base">سجل المبيعات السابقة</h3>
@@ -829,6 +1165,230 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
                 alt={previewImage.title} 
                 className="max-h-[70vh] w-auto object-contain"
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Camera Barcode Scanner Modal */}
+      {showCameraScanner && (
+        <BarcodeScanner 
+          onScan={(code) => {
+            setShowCameraScanner(false);
+            handleBarcodeCode(code);
+          }}
+          onClose={() => setShowCameraScanner(false)}
+          title="مسح باركود القطعة للمبيعات"
+        />
+      )}
+
+      {/* Scanned Barcode Item Quantity Selection Modal */}
+      {scannedItemModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 space-y-5 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200" dir="rtl">
+            {/* Header */}
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5 text-blue-600">
+                <div className="p-2 bg-blue-50 rounded-xl">
+                  <Barcode className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">مسح الباركود - تحديد كمية البيع</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">تم التعرف على المنتج بنجاح</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setScannedItemModal(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Item Card */}
+            <div className="flex gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 items-center">
+              {scannedItemModal.item.imageUrl ? (
+                <img 
+                  src={scannedItemModal.item.imageUrl} 
+                  alt={scannedItemModal.item.name} 
+                  className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-xl bg-slate-200 flex items-center justify-center shrink-0 text-slate-400">
+                  <Package className="w-8 h-8" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-sm text-slate-900 truncate">{scannedItemModal.item.name}</h4>
+                <div className="text-xs text-slate-500 mt-0.5 space-x-2 space-x-reverse font-medium">
+                  <span>مقاس: {scannedItemModal.item.size || 'عادي'}</span>
+                  <span>• اللون: {scannedItemModal.item.color || 'عام'}</span>
+                </div>
+                <div className="text-xs font-black text-blue-700 mt-1">
+                  سعر القطعة: {scannedItemModal.item.sellPrice.toLocaleString()} دج
+                </div>
+              </div>
+            </div>
+
+            {/* Stock Source Choice */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 block">مصدر المخزون للبيع:</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const s1 = getItemStock1(scannedItemModal.item);
+                    setScannedItemModal(prev => prev ? {
+                      ...prev,
+                      stockSource: 'stock1',
+                      qty: Math.min(prev.qty, s1) || 1
+                    } : null);
+                  }}
+                  disabled={getItemStock1(scannedItemModal.item) <= 0}
+                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-right ${
+                    scannedItemModal.stockSource === 'stock1'
+                      ? 'border-blue-600 bg-blue-50 text-blue-900 ring-2 ring-blue-500/20 shadow-2xs'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  } disabled:opacity-40 disabled:pointer-events-none`}
+                >
+                  <div className="font-bold">المخزون 1 (المحل)</div>
+                  <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                    متوفر: {getItemStock1(scannedItemModal.item)} قطعة
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const s2 = getItemStock2(scannedItemModal.item);
+                    setScannedItemModal(prev => prev ? {
+                      ...prev,
+                      stockSource: 'stock2',
+                      qty: Math.min(prev.qty, s2) || 1
+                    } : null);
+                  }}
+                  disabled={getItemStock2(scannedItemModal.item) <= 0}
+                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-right ${
+                    scannedItemModal.stockSource === 'stock2'
+                      ? 'border-blue-600 bg-blue-50 text-blue-900 ring-2 ring-blue-500/20 shadow-2xs'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  } disabled:opacity-40 disabled:pointer-events-none`}
+                >
+                  <div className="font-bold">المخزون 2 (المستودع)</div>
+                  <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                    متوفر: {getItemStock2(scannedItemModal.item)} قطعة
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Quantity Selector */}
+            {(() => {
+              const maxStock = scannedItemModal.stockSource === 'stock1' 
+                ? getItemStock1(scannedItemModal.item) 
+                : getItemStock2(scannedItemModal.item);
+
+              return (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold text-slate-700">اختر كمية المبيعات:</label>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      الحد الأقصى المتوفر: {maxStock} قطعة
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-200 justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setScannedItemModal(prev => prev ? { ...prev, qty: Math.max(1, prev.qty - 1) } : null)}
+                      className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center justify-center font-black text-lg active:scale-95 shadow-2xs"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+
+                    <input
+                      type="number"
+                      min={1}
+                      max={maxStock}
+                      value={scannedItemModal.qty}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        const safeVal = Math.min(Math.max(1, val), maxStock);
+                        setScannedItemModal(prev => prev ? { ...prev, qty: safeVal } : null);
+                      }}
+                      className="w-20 text-center font-black text-xl bg-white border border-slate-200 rounded-xl py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setScannedItemModal(prev => prev ? { ...prev, qty: Math.min(maxStock, prev.qty + 1) } : null)}
+                      className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center justify-center font-black text-lg active:scale-95 shadow-2xs"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Preset Buttons */}
+                  <div className="flex gap-1.5 justify-center pt-1">
+                    {[1, 2, 3, 5, 10].map(q => (
+                      q <= maxStock && (
+                        <button
+                          key={q}
+                          type="button"
+                          onClick={() => setScannedItemModal(prev => prev ? { ...prev, qty: q } : null)}
+                          className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                            scannedItemModal.qty === q
+                              ? 'bg-slate-900 text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          {q}
+                        </button>
+                      )
+                    ))}
+                    {maxStock > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setScannedItemModal(prev => prev ? { ...prev, qty: maxStock } : null)}
+                        className="px-2.5 py-1 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+                      >
+                        الكل ({maxStock})
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Total Display */}
+            <div className="p-3 bg-blue-50/80 border border-blue-200/60 rounded-2xl flex justify-between items-center">
+              <span className="text-xs font-bold text-slate-700">الإجمالي النهائي:</span>
+              <span className="text-base font-black text-blue-700">
+                {(scannedItemModal.item.sellPrice * scannedItemModal.qty).toLocaleString()} دج
+              </span>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  addCustomQtyToCart(scannedItemModal.item, scannedItemModal.qty, scannedItemModal.stockSource);
+                  setScannedItemModal(null);
+                }}
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                <span>إضافة إلى سلة المبيعات ({scannedItemModal.qty})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setScannedItemModal(null)}
+                className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
+              >
+                إلغاء
+              </button>
             </div>
           </div>
         </div>
