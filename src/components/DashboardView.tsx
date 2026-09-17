@@ -176,7 +176,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <button
             onClick={onOpenAddRental}
-            className="flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-black transition-all shadow-md shadow-rose-100 min-h-[38px] active:scale-95"
+            className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs min-h-[38px] active:scale-95"
           >
             + كراء جديد 👗
           </button>
@@ -184,45 +184,45 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Daily Cash Register & Shortage Monitoring Banner (La Caisse du Jour) */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-700/50 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+      <div className="bg-white text-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="p-1.5 bg-rose-500/20 text-rose-300 rounded-xl text-sm font-black border border-rose-500/30">
+            <span className="p-1.5 bg-slate-100 text-slate-700 rounded-xl text-sm border border-slate-200/80">
               ⚖️
             </span>
-            <h3 className="text-base sm:text-lg font-black text-white">
+            <h3 className="text-sm sm:text-base font-bold text-slate-900">
               صندوق اليومية ومتابعة العجز (La Caisse)
             </h3>
             {todayClosure ? (
-              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black px-2 py-0.5 rounded-full">
+              <span className="bg-slate-100 text-emerald-800 border border-emerald-200/80 text-[10px] font-bold px-2 py-0.5 rounded-md">
                 تم إقفال صندوق اليوم ✓
               </span>
             ) : (
-              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-black px-2 py-0.5 rounded-full">
-                الصندوق مفتوح قيد النشاط
+              <span className="bg-slate-100 text-amber-800 border border-amber-200/80 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                الصندوق قيد النشاط
               </span>
             )}
           </div>
-          <p className="text-xs text-slate-300 font-medium">
+          <p className="text-xs text-slate-500 font-normal">
             متابعة إجمالي مدخول اليوم وتسجيل المبلغ الفعلي في الدرج لاحتساب فارق وعجز الصندوق (اليوم، الشهر، والسنة)
           </p>
         </div>
 
         {/* 3 Quick stats and CTA button */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="bg-white/10 backdrop-blur-xs px-3 py-2 rounded-2xl border border-white/10 text-center min-w-[95px]">
-            <div className="text-[10px] text-slate-300 font-bold">مدخول اليوم:</div>
-            <div className="text-sm font-black text-emerald-400 font-mono">
+          <div className="bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/70 text-center min-w-[95px]">
+            <div className="text-[10px] text-slate-500 font-medium">مدخول اليوم:</div>
+            <div className="text-sm font-bold text-slate-900 font-mono">
               {hideFinances ? '••••' : `${todayIncome.toLocaleString()} دج`}
             </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-xs px-3 py-2 rounded-2xl border border-white/10 text-center min-w-[105px]">
-            <div className="text-[10px] text-slate-300 font-bold">
+          <div className="bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/70 text-center min-w-[105px]">
+            <div className="text-[10px] text-slate-500 font-medium">
               {todayClosure ? 'فارق اليوم:' : 'المتوقع في الدرج:'}
             </div>
-            <div className={`text-sm font-black font-mono ${
-              todayClosure ? (todayClosure.difference < 0 ? 'text-rose-400' : todayClosure.difference > 0 ? 'text-blue-300' : 'text-emerald-400') : 'text-indigo-200'
+            <div className={`text-sm font-bold font-mono ${
+              todayClosure ? (todayClosure.difference < 0 ? 'text-rose-600' : 'text-slate-900') : 'text-slate-800'
             }`}>
               {hideFinances ? '••••' : (
                 todayClosure ? (
@@ -232,10 +232,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-xs px-3 py-2 rounded-2xl border border-white/10 text-center min-w-[105px]">
-            <div className="text-[10px] text-slate-300 font-bold">عجز/فارق الشهر:</div>
-            <div className={`text-sm font-black font-mono ${
-              monthVariance < 0 ? 'text-rose-400' : monthVariance > 0 ? 'text-blue-300' : 'text-slate-200'
+          <div className="bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/70 text-center min-w-[105px]">
+            <div className="text-[10px] text-slate-500 font-medium">عجز/فارق الشهر:</div>
+            <div className={`text-sm font-bold font-mono ${
+              monthVariance < 0 ? 'text-rose-600' : 'text-slate-900'
             }`}>
               {hideFinances ? '••••' : (
                 monthVariance > 0 ? `+${monthVariance.toLocaleString()} دج` : `${monthVariance.toLocaleString()} دج`
@@ -245,21 +245,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <button
             onClick={() => onNavigate('caisse')}
-            className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-black text-xs rounded-2xl transition-all shadow-md shadow-rose-900/40 flex items-center gap-1.5 shrink-0"
+            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 shrink-0"
           >
             <span>⚖️</span>
-            <span>فتح الصندوق اليومي</span>
+            <span>فتح الصندوق</span>
           </button>
         </div>
       </div>
 
-      {/* Main Income & Financial StatCards Grid (مثل أيقونات مداخيل الكراء والتأجير مع العناوين والأسعار على حسب) */}
+      {/* Main Income & Financial StatCards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* 1. مداخيل الكراء والتأجير */}
         <StatCard
           title="مداخيل الكراء والتأجير"
           value={currentRentalIncome}
-          iconBg="bg-rose-600"
           subtitle={financePeriod === 'monthly' ? 'هذا الشهر' : financePeriod === 'yearly' ? 'هذه السنة' : 'الإجمالي'}
           hideValue={hideFinances}
           onClick={() => onNavigate('rentals')}
@@ -270,8 +269,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <StatCard
           title="مداخيل الخياطة الشهرية"
           value={stats.monthlyTailoringIncome || 0}
-          iconBg="bg-purple-600"
-          subtitle="هذا الشهر 📅"
+          subtitle="هذا الشهر"
           hideValue={hideFinances}
           onClick={() => onNavigate('tailoring')}
           icon={<span>🧵</span>}
@@ -281,8 +279,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <StatCard
           title="مداخيل الخياطة السنوية"
           value={stats.yearlyTailoringIncome || 0}
-          iconBg="bg-fuchsia-700"
-          subtitle="هذه السنة 🗓️"
+          subtitle="هذه السنة"
           hideValue={hideFinances}
           onClick={() => onNavigate('tailoring')}
           icon={<span>🪡</span>}
@@ -292,7 +289,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <StatCard
           title="مبيعات الملابس (الكاشير)"
           value={currentSalesRevenue}
-          iconBg="bg-indigo-600"
           subtitle={financePeriod === 'monthly' ? 'هذا الشهر' : financePeriod === 'yearly' ? 'هذه السنة' : 'الإجمالي'}
           hideValue={hideFinances}
           onClick={() => onNavigate('sales')}
@@ -303,7 +299,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <StatCard
           title="المصاريف والغسيل (Pressing)"
           value={currentExpenses}
-          iconBg="bg-amber-600"
           subtitle={financePeriod === 'monthly' ? 'هذا الشهر' : financePeriod === 'yearly' ? 'هذه السنة' : 'الإجمالي'}
           hideValue={hideFinances}
           onClick={() => onNavigate('expenses')}
@@ -314,7 +309,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <StatCard
           title="الكريدي والديون المتبقية"
           value={stats.totalDebt}
-          iconBg="bg-red-600"
           subtitle="متبقي على الزبائن"
           hideValue={hideFinances}
           onClick={() => onNavigate('credits')}
@@ -325,7 +319,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <StatCard
           title="رواتب ومسحوبات العمال"
           value={currentStaffPayouts}
-          iconBg="bg-blue-600"
           subtitle={financePeriod === 'monthly' ? 'هذا الشهر' : financePeriod === 'yearly' ? 'هذه السنة' : 'الإجمالي'}
           hideValue={hideFinances}
           onClick={() => onNavigate('customers')}
@@ -336,8 +329,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <StatCard
           title="صافي الأرباح الصافية"
           value={currentNetProfit}
-          iconBg="bg-emerald-600"
-          subtitle="بعد كل التكاليف ✨"
+          subtitle="بعد كل التكاليف"
           hideValue={hideFinances}
           onClick={() => onNavigate('dashboard')}
           icon={<span>📈</span>}

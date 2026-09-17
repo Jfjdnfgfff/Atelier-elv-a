@@ -141,16 +141,16 @@ export const NavButton: React.FC<{
   return (
     <button
       onClick={onClick}
-      className={`relative flex flex-col items-center justify-center gap-0.5 sm:gap-1 w-full py-1 sm:py-1.5 px-0.5 sm:px-1.5 rounded-lg sm:rounded-xl text-[9px] sm:text-xs font-black transition-all min-h-[38px] sm:min-h-[42px] ${
+      className={`relative flex flex-col items-center justify-center gap-0.5 sm:gap-1 w-full py-1.5 px-0.5 sm:px-1.5 rounded-xl text-[9.5px] sm:text-xs font-bold transition-all min-h-[38px] sm:min-h-[42px] ${
         active
-          ? 'bg-rose-600 text-white shadow-sm shadow-rose-200'
-          : 'bg-slate-100/90 hover:bg-slate-200 text-slate-700 active:scale-95'
+          ? 'bg-slate-900 text-white shadow-xs'
+          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/90 active:scale-95'
       }`}
     >
       <div className="shrink-0 scale-90 sm:scale-100">{getIcon()}</div>
-      <span className="truncate leading-none text-[8.5px] sm:text-xs tracking-tighter sm:tracking-normal">{label}</span>
+      <span className="truncate leading-none text-[8.5px] sm:text-xs tracking-tight">{label}</span>
       {badge !== undefined && badge > 0 && (
-        <span className="absolute -top-1 -left-1 min-w-[15px] h-[15px] sm:min-w-[17px] sm:h-[17px] px-0.5 bg-amber-500 text-white text-[8px] sm:text-[9px] font-black rounded-full flex items-center justify-center animate-pulse shadow-2xs">
+        <span className="absolute -top-1 -left-1 min-w-[15px] h-[15px] sm:min-w-[17px] sm:h-[17px] px-1 bg-slate-800 text-white text-[8px] sm:text-[9px] font-bold rounded-full flex items-center justify-center border border-white shadow-xs">
           {badge}
         </span>
       )}
@@ -162,7 +162,7 @@ export const StatCard: React.FC<{
   title: string;
   value: string | number;
   unit?: string;
-  iconBg: string;
+  iconBg?: string;
   icon: React.ReactNode;
   subtitle?: string;
   hideValue?: boolean;
@@ -173,29 +173,29 @@ export const StatCard: React.FC<{
   return (
     <Component
       onClick={onClick}
-      className={`bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-100/90 shadow-xs transition-all flex flex-col justify-between text-right w-full ${
-        onClick ? 'hover:shadow-md hover:border-slate-200 cursor-pointer active:scale-[0.98]' : ''
+      className={`bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs transition-all flex flex-col justify-between text-right w-full ${
+        onClick ? 'hover:border-slate-300 hover:shadow-sm cursor-pointer active:scale-[0.99]' : ''
       }`}
     >
-      <div className="flex justify-between items-start mb-2 w-full">
-        <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl ${iconBg} flex items-center justify-center text-white shadow-xs shrink-0 text-lg sm:text-xl`}>
+      <div className="flex justify-between items-start mb-2.5 w-full">
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 text-base sm:text-lg border border-slate-200/60">
           {icon}
         </div>
         {subtitle && (
-          <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100 truncate max-w-[130px]">
+          <span className="text-[10px] sm:text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100 truncate max-w-[130px]">
             {subtitle}
           </span>
         )}
       </div>
       <div className="w-full">
-        <div className="text-[11px] sm:text-xs font-bold text-slate-500 mb-0.5 sm:mb-1">{title}</div>
-        <div className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
+        <div className="text-[11px] sm:text-xs font-medium text-slate-500 mb-0.5 sm:mb-1">{title}</div>
+        <div className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight font-mono">
           {hideValue ? (
             <span className="tracking-widest text-slate-300 font-sans">••••••</span>
           ) : (
             <>
               {typeof value === 'number' ? value.toLocaleString('fr-DZ') : value}
-              {unit && <span className="text-[10px] sm:text-xs font-bold text-slate-400 mr-1">{unit}</span>}
+              {unit && <span className="text-[10px] sm:text-xs font-medium text-slate-400 mr-1 font-sans">{unit}</span>}
             </>
           )}
         </div>

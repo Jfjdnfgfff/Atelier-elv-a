@@ -941,9 +941,9 @@ export default function App() {
                 onClick={() => setIsScanning(true)}
                 title="مسح الباركود"
                 aria-label="مسح الباركود"
-                className="h-9 px-2.5 sm:px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 flex items-center gap-1.5 transition-all text-xs font-bold"
+                className="h-9 px-2.5 sm:px-3 rounded-xl bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200/70 active:scale-95 text-slate-700 flex items-center gap-1.5 transition-all text-xs font-bold"
               >
-                <svg className="w-4 h-4 text-indigo-600 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-slate-600 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <path d="M3 7V5a2 2 0 012-2h2" />
                   <path d="M17 3h2a2 2 0 012 2v2" />
                   <path d="M21 17v2a2 2 0 01-2 2h-2" />
@@ -964,8 +964,10 @@ export default function App() {
                 }}
                 title="إخفاء/إظهار المبالغ"
                 aria-label="إخفاء/إظهار المبالغ"
-                className={`h-9 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 transition-all active:scale-95 text-xs font-bold ${
-                  hideFinances ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                className={`h-9 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 transition-all active:scale-95 text-xs font-bold border ${
+                  hideFinances 
+                    ? 'bg-slate-900 text-white border-slate-900' 
+                    : 'bg-slate-100/90 text-slate-700 border-slate-200/70 hover:bg-slate-200/90'
                 }`}
               >
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -987,9 +989,9 @@ export default function App() {
               <button 
                 onClick={() => setActiveModal('fullReport')} 
                 title="التقرير المالي"
-                className="h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-xl transition-all shadow-xs active:scale-95"
+                className="h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200/70 rounded-xl transition-all shadow-2xs active:scale-95"
               >
-                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-slate-600 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
                   <polyline points="14 2 14 8 20 8" />
                   <line x1="16" y1="13" x2="8" y2="13" />
@@ -1002,10 +1004,10 @@ export default function App() {
               <button 
                 onClick={() => setCurrentView('caisse')} 
                 title="صندوق اليومية ومتابعة العجز (La Caisse)"
-                className={`h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold rounded-xl transition-all shadow-xs active:scale-95 ${
+                className={`h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold rounded-xl transition-all border active:scale-95 ${
                   currentView === 'caisse'
-                    ? 'bg-rose-600 text-white'
-                    : 'text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/80'
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                    : 'text-slate-700 bg-slate-100/90 hover:bg-slate-200/90 border-slate-200/70'
                 }`}
               >
                 <span className="text-sm">⚖️</span>
@@ -1017,7 +1019,7 @@ export default function App() {
                 onClick={() => setActiveModal('backupModal')} 
                 title="النسخ الاحتياطي" 
                 aria-label="النسخ الاحتياطي"
-                className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 rounded-xl transition-colors active:scale-95"
+                className="w-9 h-9 flex items-center justify-center text-slate-600 hover:text-slate-900 bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200/70 rounded-xl transition-colors active:scale-95"
               >
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
@@ -1030,7 +1032,7 @@ export default function App() {
             {/* Primary Add Button */}
             <button
               onClick={() => setActiveModal('addRental')}
-              className="h-9 px-4 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-xl font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-100 shrink-0"
+              className="h-9 px-4 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs shrink-0 transition-all"
             >
               <span>+</span>
               <span>كراء جديد</span>

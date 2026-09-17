@@ -125,22 +125,22 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
   return (
     <div className="space-y-5 p-3 sm:p-6" dir="rtl">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-5 rounded-3xl border border-slate-100 shadow-xs">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
-          <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
             <span>سجل كراء وحجز الفساتين</span>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs bg-rose-50 text-rose-700 px-2.5 py-1 rounded-xl font-bold border border-rose-100">
+              <span className="text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-lg font-medium border border-slate-200/70">
                 {activeRentalsList.length + overdueRentalsList.length} كراء جاري
               </span>
               {reservedRentals.length > 0 && (
-                <span className="text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-xl font-bold border border-indigo-100">
+                <span className="text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-lg font-medium border border-slate-200/70">
                   {reservedRentals.length} حجز مستقبلي
                 </span>
               )}
             </div>
           </h2>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
+          <p className="text-xs text-slate-500 font-normal mt-0.5">
             إدارة الكراء الفوري، الفساتين المستأجرة مستقبلاً (الحجوزات)، ومتابعة التسليم وتصفية الحسابات.
           </p>
         </div>
@@ -149,19 +149,19 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
           {onScanBarcode && (
             <button
               onClick={onScanBarcode}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all active:scale-95 shadow-xs"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-medium transition-all active:scale-95 border border-slate-200/70"
               title="مسح باركود الفستان لبدء كراء جديد"
             >
-              <svg className="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M7 12h10" />
               </svg>
-              <span>كراء بالباركود ⚡</span>
+              <span>كراء بالباركود</span>
             </button>
           )}
 
           <button
             onClick={() => onAddRental()}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-2xl text-xs font-black transition-all shadow-md shadow-rose-200 active:scale-95"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
           >
             + تسجيل كراء / حجز
           </button>
@@ -169,13 +169,13 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-xs flex flex-col sm:flex-row gap-3 justify-between items-center">
+      <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row gap-3 justify-between items-center">
         {/* Tabs */}
         <div className="flex gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
           <button
             onClick={() => setFilter('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-              filter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 ${
+              filter === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
             الكل ({rentals.length})
@@ -183,56 +183,64 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
 
           <button
             onClick={() => setFilter('reserved')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
               filter === 'reserved' 
-                ? 'bg-indigo-600 text-white shadow-xs' 
-                : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                ? 'bg-slate-900 text-white shadow-xs' 
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            <span>📅 مستأجرة مستقبلاً</span>
-            <span className="bg-white/20 px-1.5 py-0.2 rounded-full text-[10px] font-black">
+            <span>مستأجرة مستقبلاً</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              filter === 'reserved' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+            }`}>
               {reservedRentals.length}
             </span>
           </button>
 
           <button
             onClick={() => setFilter('active')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
               filter === 'active' 
-                ? 'bg-rose-600 text-white shadow-xs' 
-                : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+                ? 'bg-slate-900 text-white shadow-xs' 
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            <span>👗 جارية عند الزبون</span>
-            <span className="bg-white/20 px-1.5 py-0.2 rounded-full text-[10px] font-black">
+            <span>جارية عند الزبون</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              filter === 'active' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+            }`}>
               {activeRentalsList.length}
             </span>
           </button>
 
           <button
             onClick={() => setFilter('overdue')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
               filter === 'overdue' 
-                ? 'bg-amber-600 text-white shadow-xs' 
-                : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+                ? 'bg-slate-900 text-white shadow-xs' 
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            <span>⚠️ متأخرة عن الإرجاع</span>
-            <span className="bg-white/20 px-1.5 py-0.2 rounded-full text-[10px] font-black">
+            <span>متأخرة عن الإرجاع</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              filter === 'overdue' ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-700'
+            }`}>
               {overdueRentalsList.length}
             </span>
           </button>
 
           <button
             onClick={() => setFilter('returned')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
               filter === 'returned' 
-                ? 'bg-emerald-600 text-white shadow-xs' 
-                : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                ? 'bg-slate-900 text-white shadow-xs' 
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            <span>✓ مسترجعة</span>
-            <span className="bg-white/20 px-1.5 py-0.2 rounded-full text-[10px] font-black">
+            <span>مسترجعة</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              filter === 'returned' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+            }`}>
               {returnedRentalsList.length}
             </span>
           </button>

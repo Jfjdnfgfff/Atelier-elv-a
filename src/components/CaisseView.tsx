@@ -314,17 +314,17 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6" dir="rtl">
       {/* Top Header Card */}
-      <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 bg-rose-50 text-rose-600 rounded-xl text-lg font-black border border-rose-100">
+          <div className="flex items-center gap-2.5">
+            <span className="w-10 h-10 bg-slate-100 text-slate-700 rounded-xl flex items-center justify-center text-lg font-bold border border-slate-200/60">
               ⚖️
             </span>
             <div>
-              <h2 className="text-lg sm:text-2xl font-black text-slate-900">
+              <h2 className="text-base sm:text-xl font-bold text-slate-900">
                 صندوق اليومية ومتابعة العجز (La Caisse Journalière)
               </h2>
-              <p className="text-xs font-bold text-slate-500 mt-0.5">
+              <p className="text-xs font-normal text-slate-500 mt-0.5">
                 حساب مدخول اليوم، تسجيل المبلغ الفعلي، وتحديد فارق وعجز الصندوق في اليوم، الشهر، والسنة
               </p>
             </div>
@@ -333,29 +333,29 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
 
         {/* View Tabs & Privacy Toggle */}
         <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
-          <div className="flex bg-slate-100 p-1 rounded-2xl text-xs font-black">
+          <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
             <button
               onClick={() => setViewTab('today')}
-              className={`px-3 py-1.5 rounded-xl transition-all ${
-                viewTab === 'today' ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                viewTab === 'today' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              📅 صندوق اليوم ({selectedDate === today ? 'اليوم' : selectedDate})
+              صندوق اليوم ({selectedDate === today ? 'اليوم' : selectedDate})
             </button>
             <button
               onClick={() => setViewTab('history')}
-              className={`px-3 py-1.5 rounded-xl transition-all ${
-                viewTab === 'history' ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                viewTab === 'history' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              📚 سجل الإقفالات السابقة ({caisseClosures.length})
+              سجل الإقفالات ({caisseClosures.length})
             </button>
           </div>
 
           <button
             onClick={onPrivacyToggle}
             title="إخفاء/إظهار المبالغ"
-            className="h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+            className="h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all border border-slate-200/60"
           >
             <span>{hideFinances ? '👁️ إظهار' : '🔒 إخفاء'}</span>
           </button>
@@ -364,19 +364,19 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
 
       {/* Date Bar for Today's view */}
       {viewTab === 'today' && (
-        <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+        <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/80 flex flex-wrap items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-600">اختر تاريخ الصندوق للمراجعة والإقفال:</span>
+            <span className="text-xs font-medium text-slate-600">اختر تاريخ الصندوق:</span>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:outline-rose-500"
+              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:outline-slate-800"
             />
             {selectedDate !== today && (
               <button
                 onClick={() => setSelectedDate(today)}
-                className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-lg border border-rose-200 transition-all"
+                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg border border-slate-200 transition-all"
               >
                 العودة لليوم
               </button>
@@ -386,12 +386,12 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
           {/* Status Badge */}
           <div>
             {existingClosure ? (
-              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-full text-xs font-black">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="inline-flex items-center gap-1.5 bg-slate-100 text-emerald-800 border border-emerald-200/80 px-3 py-1 rounded-full text-xs font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-600" />
                 تم إقفال صندوق هذا اليوم (حفظ في: {new Date(existingClosure.closedAt).toLocaleTimeString('fr-DZ', { hour: '2-digit', minute: '2-digit' })})
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1 rounded-full text-xs font-black">
+              <span className="inline-flex items-center gap-1.5 bg-slate-100 text-amber-800 border border-amber-200/80 px-3 py-1 rounded-full text-xs font-bold">
                 <span className="w-2 h-2 rounded-full bg-amber-500" />
                 الصندوق قيد الاحتساب (لم يتم حفظ الإقفال بعد)
               </span>
@@ -400,24 +400,18 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
         </div>
       )}
 
-      {/* ==================================================== */}
-      {/* 4 PRIMARY KPI CARDS REQUESTED BY THE USER:            */}
-      {/* 1. Madkhoul lyoum                                    */}
-      {/* 2. Manque te3 la caisse fi nhar                      */}
-      {/* 3. Manque te3 la caisse fi chhar                     */}
-      {/* 4. Manque te3 la caisse fi l3am                      */}
-      {/* ==================================================== */}
+      {/* 4 PRIMARY KPI CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* 1. MADKHOUL TE3 LA JOURNEE (مدخول اليوم) */}
-        <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-xs relative overflow-hidden group hover:border-emerald-300 transition-all">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden transition-all">
           <div className="flex justify-between items-start">
-            <span className="text-xs font-black text-slate-500">إجمالي مدخول اليوم (المقبوضات)</span>
-            <span className="p-2 bg-emerald-50 text-emerald-600 rounded-xl text-base">💰</span>
+            <span className="text-xs font-medium text-slate-500">إجمالي مدخول اليوم (المقبوضات)</span>
+            <span className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-sm border border-slate-200/60">💰</span>
           </div>
           <div className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 font-mono">
             {hideFinances ? '••••••' : `${totalDailyInflow.toLocaleString()} دج`}
           </div>
-          <div className="mt-2 text-[11px] font-bold text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
+          <div className="mt-2 text-[11px] font-medium text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
             <span>مبيعات: {hideFinances ? '••' : `${dateSalesIncome.toLocaleString()}`}</span>
             <span>كراء: {hideFinances ? '••' : `${dateRentalsIncome.toLocaleString()}`}</span>
             <span>خياطة: {hideFinances ? '••' : `${dateTailoringIncome.toLocaleString()}`}</span>
@@ -425,39 +419,24 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
         </div>
 
         {/* 2. MANQUE TE3 LA CAISSE FI NHAR (فارق وعجز اليوم) */}
-        <div className={`p-4 sm:p-5 rounded-3xl border shadow-xs relative overflow-hidden transition-all ${
-          !hasEnteredActual && !existingClosure
-            ? 'bg-slate-50 border-slate-200'
-            : dailyDifference < 0 
-            ? 'bg-rose-50/70 border-rose-300' 
-            : dailyDifference > 0 
-            ? 'bg-blue-50/70 border-blue-300' 
-            : 'bg-emerald-50/70 border-emerald-300'
-        }`}>
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden transition-all">
           <div className="flex justify-between items-start">
             <div>
-              <span className="text-xs font-black text-slate-700">فارق صندوق اليوم (Fi Nhar)</span>
-              <div className="text-[10px] font-bold text-slate-500">المحسوب فعلياً - المتوقع نظرياً</div>
+              <span className="text-xs font-medium text-slate-700">فارق صندوق اليوم (Fi Nhar)</span>
+              <div className="text-[10px] text-slate-400">المحسوب فعلياً - المتوقع نظرياً</div>
             </div>
-            <span className={`p-2 rounded-xl text-base ${
-              !hasEnteredActual && !existingClosure ? 'bg-slate-200 text-slate-600' :
-              dailyDifference < 0 ? 'bg-rose-100 text-rose-700' :
-              dailyDifference > 0 ? 'bg-blue-100 text-blue-700' :
-              'bg-emerald-100 text-emerald-700'
-            }`}>
-              {dailyDifference < 0 ? '⚠️' : dailyDifference > 0 ? '📈' : '✅'}
+            <span className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-sm border border-slate-200/60">
+              {dailyDifference < 0 ? '⚠️' : dailyDifference > 0 ? '📈' : '✓'}
             </span>
           </div>
           <div className="mt-2">
             {!hasEnteredActual && !existingClosure ? (
-              <div className="text-sm font-bold text-slate-500 py-1.5">
+              <div className="text-xs font-medium text-slate-400 py-1.5">
                 أدخل المبلغ الفعلي في الدرج لاحتساب الفارق
               </div>
             ) : (
               <div className={`text-2xl sm:text-3xl font-black font-mono ${
-                dailyDifference < 0 ? 'text-rose-700' :
-                dailyDifference > 0 ? 'text-blue-700' :
-                'text-emerald-700'
+                dailyDifference < 0 ? 'text-rose-600' : 'text-slate-900'
               }`}>
                 {hideFinances ? '••••••' : (
                   dailyDifference > 0 ? `+${dailyDifference.toLocaleString()} دج` : `${dailyDifference.toLocaleString()} دج`
@@ -465,43 +444,37 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
               </div>
             )}
           </div>
-          <div className="mt-2 text-[11px] font-bold flex items-center justify-between border-t border-slate-200/60 pt-2">
+          <div className="mt-2 text-[11px] font-medium flex items-center justify-between border-t border-slate-100 pt-2">
             {dailyDifference < 0 ? (
-              <span className="text-rose-800 font-black">عجز ونقص في الصندوق (Manque)</span>
+              <span className="text-rose-600 font-bold">عجز في الصندوق (Manque)</span>
             ) : dailyDifference > 0 ? (
-              <span className="text-blue-800 font-black">فائض وزيادة في الصندوق (Excédent)</span>
+              <span className="text-slate-700 font-bold">فائض في الصندوق (Excédent)</span>
             ) : (
-              <span className="text-emerald-800 font-black">الصندوق مضبوط 100% (Conforme)</span>
+              <span className="text-slate-700 font-bold">الصندوق مطابق (Conforme)</span>
             )}
-            <span className="text-slate-500">تاريخ: {selectedDate.substring(5)}</span>
+            <span className="text-slate-400">{selectedDate.substring(5)}</span>
           </div>
         </div>
 
         {/* 3. MANQUE TE3 LA CAISSE FI CHHAR (فارق وعجز الشهر) */}
-        <div className={`p-4 sm:p-5 rounded-3xl border shadow-xs relative overflow-hidden transition-all ${
-          monthStats.totalDiff < 0 
-            ? 'bg-rose-50/50 border-rose-200' 
-            : monthStats.totalDiff > 0 
-            ? 'bg-blue-50/50 border-blue-200' 
-            : 'bg-white border-slate-200'
-        }`}>
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden transition-all">
           <div className="flex justify-between items-start">
             <div>
-              <span className="text-xs font-black text-slate-700">فارق الصندوق للشهر (Fi Chhar)</span>
-              <div className="text-[10px] font-bold text-slate-500">شهر {currentMonthPrefix} ({monthStats.daysCount} أيام مسجلة)</div>
+              <span className="text-xs font-medium text-slate-700">فارق الصندوق للشهر (Fi Chhar)</span>
+              <div className="text-[10px] text-slate-400">شهر {currentMonthPrefix} ({monthStats.daysCount} أيام)</div>
             </div>
-            <span className="p-2 bg-indigo-50 text-indigo-600 rounded-xl text-base">📊</span>
+            <span className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-sm border border-slate-200/60">📊</span>
           </div>
           <div className="mt-2 text-2xl sm:text-3xl font-black font-mono">
             {hideFinances ? '••••••' : (
-              <span className={monthStats.totalDiff < 0 ? 'text-rose-700' : monthStats.totalDiff > 0 ? 'text-blue-700' : 'text-slate-900'}>
+              <span className={monthStats.totalDiff < 0 ? 'text-rose-600' : 'text-slate-900'}>
                 {monthStats.totalDiff > 0 ? `+${monthStats.totalDiff.toLocaleString()} دج` : `${monthStats.totalDiff.toLocaleString()} دج`}
               </span>
             )}
           </div>
-          <div className="mt-2 text-[11px] font-bold text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
+          <div className="mt-2 text-[11px] font-medium text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
             <span>
-              {monthStats.totalDiff < 0 ? 'إجمالي عجز الشهر' : monthStats.totalDiff > 0 ? 'إجمالي فائض الشهر' : 'مطابق شهرياً'}
+              {monthStats.totalDiff < 0 ? 'عجز الشهر' : monthStats.totalDiff > 0 ? 'فائض الشهر' : 'مطابق شهرياً'}
             </span>
             <span className="text-[10px] text-slate-400">
               فعلي: {hideFinances ? '••' : monthStats.totalActual.toLocaleString()}
@@ -510,30 +483,24 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
         </div>
 
         {/* 4. MANQUE TE3 LA CAISSE FI L3AM (فارق وعجز السنة) */}
-        <div className={`p-4 sm:p-5 rounded-3xl border shadow-xs relative overflow-hidden transition-all ${
-          yearStats.totalDiff < 0 
-            ? 'bg-rose-50/50 border-rose-200' 
-            : yearStats.totalDiff > 0 
-            ? 'bg-blue-50/50 border-blue-200' 
-            : 'bg-white border-slate-200'
-        }`}>
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden transition-all">
           <div className="flex justify-between items-start">
             <div>
-              <span className="text-xs font-black text-slate-700">فارق الصندوق للسنة (Fi L3am)</span>
-              <div className="text-[10px] font-bold text-slate-500">سنة {currentYearPrefix} ({yearStats.daysCount} يوم مسجل)</div>
+              <span className="text-xs font-medium text-slate-700">فارق الصندوق للسنة (Fi L3am)</span>
+              <div className="text-[10px] text-slate-400">سنة {currentYearPrefix} ({yearStats.daysCount} يوم)</div>
             </div>
-            <span className="p-2 bg-amber-50 text-amber-600 rounded-xl text-base">🗓️</span>
+            <span className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-sm border border-slate-200/60">🗓️</span>
           </div>
           <div className="mt-2 text-2xl sm:text-3xl font-black font-mono">
             {hideFinances ? '••••••' : (
-              <span className={yearStats.totalDiff < 0 ? 'text-rose-700' : yearStats.totalDiff > 0 ? 'text-blue-700' : 'text-slate-900'}>
+              <span className={yearStats.totalDiff < 0 ? 'text-rose-600' : 'text-slate-900'}>
                 {yearStats.totalDiff > 0 ? `+${yearStats.totalDiff.toLocaleString()} دج` : `${yearStats.totalDiff.toLocaleString()} دج`}
               </span>
             )}
           </div>
-          <div className="mt-2 text-[11px] font-bold text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
+          <div className="mt-2 text-[11px] font-medium text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
             <span>
-              {yearStats.totalDiff < 0 ? 'إجمالي عجز السنة' : yearStats.totalDiff > 0 ? 'إجمالي فائض السنة' : 'مطابق سنوياً'}
+              {yearStats.totalDiff < 0 ? 'عجز السنة' : yearStats.totalDiff > 0 ? 'فائض السنة' : 'مطابق سنوياً'}
             </span>
             <span className="text-[10px] text-slate-400">
               فعلي: {hideFinances ? '••' : yearStats.totalActual.toLocaleString()}
@@ -608,9 +575,9 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowDenominations(!showDenominations)}
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                    className="text-xs font-medium text-slate-600 hover:text-slate-900 flex items-center gap-1"
                   >
-                    <span>{showDenominations ? 'إخفاء العداد' : '🧮 حساب بالأوراق النقدية'}</span>
+                    <span>{showDenominations ? 'إخفاء العداد' : '🧮 حساب بالفئات النقدية'}</span>
                   </button>
                 </div>
                 <div className="relative">
@@ -622,29 +589,29 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
                     placeholder="أدخل المبلغ المحسوب في الدرج..."
                     value={actualInput}
                     onChange={(e) => setActualInput(e.target.value)}
-                    className="w-full px-4 py-3 bg-indigo-50/50 border-2 border-indigo-300 focus:border-indigo-600 rounded-2xl text-base sm:text-lg font-black font-mono text-slate-900 focus:bg-white focus:outline-hidden transition-all shadow-inner"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-300 focus:border-slate-800 rounded-xl text-base sm:text-lg font-bold font-mono text-slate-900 focus:bg-white focus:outline-hidden transition-all"
                   />
-                  <span className="absolute left-4 top-3 text-sm font-black text-indigo-500">دج</span>
+                  <span className="absolute left-4 top-3.5 text-xs font-bold text-slate-400">دج</span>
                 </div>
                 {hasEnteredActual && (
-                  <div className="mt-1 text-xs text-slate-500 font-bold">
-                    المبلغ كتابة: {actualAmount.toLocaleString()} دينار جزائري
+                  <div className="mt-1 text-xs text-slate-500 font-medium">
+                    المبلغ: {actualAmount.toLocaleString()} دج
                   </div>
                 )}
               </div>
 
               {/* Denomination Counter Drawer */}
               {showDenominations && (
-                <div className="bg-indigo-50/70 p-3.5 rounded-2xl border border-indigo-200 space-y-3 animate-in fade-in duration-200">
-                  <div className="flex justify-between items-center text-xs font-black text-indigo-900 pb-1 border-b border-indigo-200">
-                    <span>عداد الفئات النقدية (دينار جزائري):</span>
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
+                  <div className="flex justify-between items-center text-xs font-bold text-slate-800 pb-1 border-b border-slate-200">
+                    <span>عداد الفئات النقدية (دج):</span>
                     <button
                       type="button"
                       onClick={() => {
                         setCounts({ '2000': 0, '1000': 0, '500': 0, '200': 0, '100': 0, '50': 0, '20': 0, '10': 0, 'coins': 0 });
                         setActualInput('0');
                       }}
-                      className="text-[10px] text-rose-600 hover:underline font-bold"
+                      className="text-[10px] text-slate-500 hover:text-rose-600 font-medium"
                     >
                       تصفير العداد
                     </button>
@@ -659,29 +626,29 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
                       { key: '100', label: '100 دج' },
                       { key: '50', label: '50 دج' },
                     ].map(item => (
-                      <div key={item.key} className="bg-white p-2 rounded-xl border border-indigo-100 flex items-center justify-between">
-                        <span className="font-black text-slate-700">{item.label}:</span>
+                      <div key={item.key} className="bg-white p-2 rounded-lg border border-slate-200 flex items-center justify-between">
+                        <span className="font-medium text-slate-700">{item.label}:</span>
                         <input
                           type="number"
                           min="0"
                           value={counts[item.key] || ''}
                           placeholder="0"
                           onChange={(e) => handleCountChange(item.key, Number(e.target.value))}
-                          className="w-16 px-1.5 py-0.5 text-center font-bold bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                          className="w-16 px-1.5 py-0.5 text-center font-bold bg-slate-50 border border-slate-200 rounded-md text-xs"
                         />
                       </div>
                     ))}
                   </div>
 
-                  <div className="bg-white p-2 rounded-xl border border-indigo-100 flex items-center justify-between text-xs">
-                    <span className="font-black text-slate-700">قطع وصرف أخرى (دج):</span>
+                  <div className="bg-white p-2 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
+                    <span className="font-medium text-slate-700">قطع وصرف أخرى (دج):</span>
                     <input
                       type="number"
                       min="0"
                       value={counts['coins'] || ''}
                       placeholder="0 دج"
                       onChange={(e) => handleCountChange('coins', Number(e.target.value))}
-                      className="w-24 px-2 py-0.5 text-center font-bold bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                      className="w-24 px-2 py-0.5 text-center font-bold bg-slate-50 border border-slate-200 rounded-md text-xs"
                     />
                   </div>
                 </div>
@@ -689,20 +656,18 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
 
               {/* LIVE DISCREPANCY PREVIEW BOX */}
               {hasEnteredActual && (
-                <div className={`p-4 rounded-2xl border-2 text-center transition-all ${
-                  dailyDifference < 0 ? 'bg-rose-50 border-rose-400 text-rose-900' :
-                  dailyDifference > 0 ? 'bg-blue-50 border-blue-400 text-blue-900' :
-                  'bg-emerald-50 border-emerald-400 text-emerald-900'
-                }`}>
-                  <div className="text-xs font-bold">
-                    {dailyDifference < 0 ? '⚠️ عجز ونقص مسجل في الصندوق (Manque de caisse):' :
-                     dailyDifference > 0 ? '📈 فائض وزيادة مسجلة في الصندوق (Excédent):' :
-                     '✅ الصندوق مطابق تماماً للحسابات:'}
+                <div className="p-3.5 rounded-xl border border-slate-200 text-center bg-slate-50">
+                  <div className="text-xs font-medium text-slate-600">
+                    {dailyDifference < 0 ? 'عجز مسجل في الصندوق (Manque):' :
+                     dailyDifference > 0 ? 'فائض مسجل في الصندوق (Excédent):' :
+                     'الصندوق مطابق تماماً للحسابات:'}
                   </div>
-                  <div className="text-2xl font-black font-mono mt-1">
+                  <div className={`text-2xl font-black font-mono mt-1 ${
+                    dailyDifference < 0 ? 'text-rose-600' : 'text-slate-900'
+                  }`}>
                     {dailyDifference > 0 ? `+${dailyDifference.toLocaleString()} دج` : `${dailyDifference.toLocaleString()} دج`}
                   </div>
-                  <div className="text-[11px] font-bold mt-1 text-slate-600">
+                  <div className="text-[11px] font-normal mt-1 text-slate-500">
                     (الفعلي: {actualAmount.toLocaleString()} دج | المتوقع: {theoreticalAmount.toLocaleString()} دج)
                   </div>
                 </div>
@@ -710,7 +675,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
 
               {/* Notes Field */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-slate-700 mb-1">
                   ملاحظات أو تبرير الفارق (اختياري):
                 </label>
                 <textarea
@@ -718,7 +683,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
                   placeholder="مثال: عجز بسبب صرف قطعة 500 دج، سلفية مؤقتة، زبون دفع كاش لاحقاً..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-rose-500"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-slate-800"
                 />
               </div>
 
@@ -726,7 +691,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
               <div className="pt-2 flex flex-col gap-2">
                 <button
                   type="submit"
-                  className="w-full py-3 px-4 bg-rose-600 hover:bg-rose-700 active:scale-98 text-white rounded-2xl font-black text-sm transition-all shadow-md shadow-rose-200 flex items-center justify-center gap-2"
+                  className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 active:scale-98 text-white rounded-xl font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2"
                 >
                   <span>💾</span>
                   <span>{existingClosure ? 'تحديث إقفال الصندوق لليوم' : 'حفظ وإقفال صندوق اليوم (Clôturer)'}</span>
@@ -736,7 +701,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setSelectedClosureForReceipt(existingClosure)}
-                    className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 active:scale-98 text-slate-700 rounded-2xl font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                    className="w-full py-2 px-4 bg-slate-100 hover:bg-slate-200 active:scale-98 text-slate-700 rounded-xl font-medium text-xs transition-all flex items-center justify-center gap-1.5 border border-slate-200/70"
                   >
                     <span>🖨️</span>
                     <span>معاينة وطباعة وصل إقفال هذا اليوم</span>
