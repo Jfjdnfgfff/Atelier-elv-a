@@ -109,7 +109,7 @@ export const CreditsView: React.FC<CreditsViewProps> = ({
       <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">سجل الديون والكريدي الشامل</h2>
+            <h2 className="text-xl font-bold text-blue-600">سجل الديون والكريدي الشامل</h2>
             <p className="text-xs text-slate-500 font-normal mt-0.5">
               متابعة ديون الزبائن (أموال لنا في الخارج) وديون الموردين (التزامات شراء السلعة).
             </p>

@@ -60,7 +60,7 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
         {/* Header */}
         <div className="border-b-2 border-slate-900 pb-4 flex justify-between items-start">
           <div>
-            <h2 className="text-xl font-black text-slate-900">
+            <h2 className="text-xl font-black text-blue-600">
               {rental.status === 'reserved' ? 'وصل حجز فستان لمناسبة قادمة' : 'وصل استلام وتأجير'}
             </h2>
             <p className="text-xs text-slate-500 font-bold">لكراء وبيع أرقى فساتين السهرة والأزياء والأطقم الرسمية</p>
@@ -150,7 +150,7 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
                   {(rental.dressRentPrice !== undefined ? rental.dressRentPrice : rental.rentPrice - (rental.accessoryPrice || 0)).toLocaleString()} دج
                 </span>
               </div>
-              <div className="flex justify-between font-bold text-amber-800">
+              <div className="flex justify-between font-bold text-slate-800">
                 <span>سعر كراء الإكسسوارات:</span>
                 <span className="font-bold">+{rental.accessoryPrice.toLocaleString()} دج</span>
               </div>
@@ -159,21 +159,21 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
 
           <div className="flex justify-between font-black text-slate-900 pt-1 border-t border-slate-200 text-sm">
             <span>مبلغ الكراء الإجمالي الكلي:</span>
-            <span className="text-emerald-700">{rental.rentPrice.toLocaleString()} دج</span>
+            <span className="text-blue-700">{rental.rentPrice.toLocaleString()} دج</span>
           </div>
-          <div className="flex justify-between font-bold text-emerald-700">
+          <div className="flex justify-between font-bold text-blue-700">
             <span>{rental.status === 'reserved' ? 'مبلغ العربون / التسبيق المدفوع:' : 'المدفوع مسبقاً:'}</span>
             <span className="font-black">{rental.paidAmount.toLocaleString()} دج</span>
           </div>
           {rental.remainingAmount > 0 && (
-            <div className="flex justify-between font-black text-rose-700 pt-1 border-t border-slate-200">
+            <div className="flex justify-between font-black text-red-700 pt-1 border-t border-slate-200">
               <span>{rental.status === 'reserved' ? 'المتبقي عند استلام الفستان وإتمام الصفقة:' : 'المتبقي عند الإرجاع:'}</span>
               <span>{rental.remainingAmount.toLocaleString()} دج</span>
             </div>
           )}
-          <div className="flex justify-between font-black text-amber-800 pt-1 border-t border-slate-200">
+          <div className="flex justify-between font-black text-slate-800 pt-1 border-t border-slate-200">
             <span>مبلغ الضمان / العربون المسترجع (Caution):</span>
-            <span className="bg-amber-100 px-2 py-0.5 rounded text-amber-900">
+            <span className="bg-blue-50 border border-blue-200 px-2 py-0.5 rounded text-blue-900">
               {(rental.cautionAmount || 0).toLocaleString()} دج
             </span>
           </div>

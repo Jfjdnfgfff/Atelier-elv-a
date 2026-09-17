@@ -425,7 +425,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           {errorMsg ? (
             <div className="p-4 text-center space-y-2.5 z-20">
               <Camera className="w-8 h-8 text-slate-400 mx-auto" />
-              <p className="text-xs text-amber-200 font-bold leading-relaxed">{errorMsg}</p>
+              <p className="text-xs text-red-200 font-bold leading-relaxed">{errorMsg}</p>
               <button
                 type="button"
                 onClick={restartBarcodeScanner}
@@ -533,7 +533,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                       id="barcodeTorchBtn"
                       onClick={toggleBarcodeTorch}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold backdrop-blur-xs transition-all active:scale-95 flex items-center gap-1.5 border ${
-                        torchOn ? 'bg-amber-400 text-black border-amber-300' : 'bg-black/70 text-white border-white/10'
+                        torchOn ? 'bg-blue-600 text-white border-blue-500 shadow-xs' : 'bg-black/70 text-white border-white/10'
                       }`}
                     >
                       <Zap className="w-3.5 h-3.5" />

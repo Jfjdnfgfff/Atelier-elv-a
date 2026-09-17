@@ -1271,7 +1271,7 @@ export default function App() {
           <div 
             key={t.id} 
             className={`px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold text-white transition-all transform duration-300 ${
-              t.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'
+              t.type === 'success' ? 'bg-blue-600' : 'bg-red-600'
             }`}
           >
             {t.message}
@@ -1290,9 +1290,9 @@ export default function App() {
                 onClick={() => setIsScanning(true)}
                 title="مسح الباركود"
                 aria-label="مسح الباركود"
-                className="h-9 px-2.5 sm:px-3 rounded-xl bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200/70 active:scale-95 text-slate-700 flex items-center gap-1.5 transition-all text-xs font-bold"
+                className="h-9 px-2.5 sm:px-3 rounded-xl bg-slate-100/90 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 border border-slate-200/70 active:scale-95 text-slate-700 flex items-center gap-1.5 transition-all text-xs font-bold group"
               >
-                <svg className="w-4 h-4 text-slate-600 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-slate-600 group-hover:text-blue-600 shrink-0 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <path d="M3 7V5a2 2 0 012-2h2" />
                   <path d="M17 3h2a2 2 0 012 2v2" />
                   <path d="M21 17v2a2 2 0 01-2 2h-2" />
@@ -1313,13 +1313,13 @@ export default function App() {
                 }}
                 title="إخفاء/إظهار المبالغ"
                 aria-label="إخفاء/إظهار المبالغ"
-                className={`h-9 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 transition-all active:scale-95 text-xs font-bold border ${
+                className={`h-9 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 transition-all active:scale-95 text-xs font-bold border group ${
                   hideFinances 
-                    ? 'bg-slate-900 text-white border-slate-900' 
-                    : 'bg-slate-100/90 text-slate-700 border-slate-200/70 hover:bg-slate-200/90'
+                    ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800' 
+                    : 'bg-slate-100/90 text-slate-700 border-slate-200/70 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'
                 }`}
               >
-                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <svg className={`w-4 h-4 shrink-0 transition-colors ${hideFinances ? 'text-white' : 'text-slate-600 group-hover:text-blue-600'}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   {hideFinances ? (
                     <>
                       <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
@@ -1338,9 +1338,9 @@ export default function App() {
               <button 
                 onClick={() => setActiveModal('fullReport')} 
                 title="التقرير المالي"
-                className="h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200/70 rounded-xl transition-all shadow-2xs active:scale-95"
+                className="h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100/90 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 border border-slate-200/70 rounded-xl transition-all shadow-2xs active:scale-95 group"
               >
-                <svg className="w-4 h-4 text-slate-600 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-slate-600 group-hover:text-blue-600 shrink-0 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
                   <polyline points="14 2 14 8 20 8" />
                   <line x1="16" y1="13" x2="8" y2="13" />
@@ -1353,49 +1353,24 @@ export default function App() {
               <button 
                 onClick={() => setCurrentView('caisse')} 
                 title="صندوق اليومية ومتابعة العجز (La Caisse)"
-                className={`h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold rounded-xl transition-all border active:scale-95 ${
+                className={`h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold rounded-xl transition-all border active:scale-95 group ${
                   currentView === 'caisse'
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                    : 'text-slate-700 bg-slate-100/90 hover:bg-slate-200/90 border-slate-200/70'
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                    : 'text-slate-700 bg-slate-100/90 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 border-slate-200/70'
                 }`}
               >
-                <Scale className="w-4 h-4 shrink-0" />
+                <Scale className={`w-4 h-4 shrink-0 transition-colors ${currentView === 'caisse' ? 'text-white' : 'text-slate-600 group-hover:text-blue-600'}`} />
                 <span className="hidden sm:inline">الصندوق اليومي</span>
                 <span className="sm:hidden">الصندوق</span>
-              </button>
-
-              <button 
-                onClick={() => setActiveModal('cloudSyncModal')} 
-                title="المزامنة السحابية (Firebase)" 
-                aria-label="المزامنة السحابية (Firebase)"
-                className="h-9 px-2.5 sm:px-3 rounded-xl bg-slate-900 text-white hover:bg-black border border-slate-900 active:scale-95 flex items-center gap-1.5 transition-all text-xs font-bold shadow-xs shrink-0"
-              >
-                <span className={`w-2 h-2 rounded-full ${isCloudSyncing ? 'bg-amber-400 animate-spin' : 'bg-emerald-400 animate-pulse'} shrink-0`} />
-                <Cloud className="w-3.5 h-3.5 text-slate-200 shrink-0" />
-                <span className="hidden sm:inline">سحابي (Firebase)</span>
-                <span className="sm:hidden text-[10px]">سحابي</span>
-              </button>
-
-              <button 
-                onClick={() => setActiveModal('backupModal')} 
-                title="النسخ الاحتياطي" 
-                aria-label="النسخ الاحتياطي"
-                className="w-9 h-9 flex items-center justify-center text-slate-600 hover:text-slate-900 bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200/70 rounded-xl transition-colors active:scale-95"
-              >
-                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
               </button>
             </div>
 
             {/* Primary Add Button */}
             <button
               onClick={() => setActiveModal('addRental')}
-              className="h-9 px-4 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs shrink-0 transition-all"
+              className="h-9 px-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs shrink-0 transition-all hover:shadow-md hover:shadow-blue-500/20"
             >
-              <span>+</span>
+              <span className="text-sm font-bold">+</span>
               <span>كراء جديد</span>
             </button>
           </div>
@@ -1671,20 +1646,20 @@ export default function App() {
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
               <h4 className="font-black text-slate-800 text-xs mb-1">الزبون: {selectedRental.customerName}</h4>
               <p className="text-xs text-slate-600">القطعة: {selectedRental.itemName}</p>
-              <p className="text-xs text-rose-700 font-bold mt-1">تاريخ الإرجاع: {selectedRental.expectedReturnDate}</p>
+              <p className="text-xs text-red-600 font-bold mt-1">تاريخ الإرجاع: {selectedRental.expectedReturnDate}</p>
             </div>
 
             <div className="flex gap-3">
               <button 
                 onClick={() => { handleSendMessage(selectedRental, 'whatsapp'); setActiveModal(null); }} 
-                className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-emerald-100"
+                className="flex-1 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 shadow-xs"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.007c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.275.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.043.073.043.419-.101.824z"/></svg>
                 إرسال عبر واتساب
               </button>
               <button 
                 onClick={() => { handleSendMessage(selectedRental, 'sms'); setActiveModal(null); }} 
-                className="flex-1 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-100"
+                className="flex-1 py-3.5 bg-slate-900 hover:bg-black text-white rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 shadow-xs"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" strokeWidth="2"></path></svg>
                 إرسال SMS
@@ -1721,7 +1696,7 @@ export default function App() {
             <input 
               type="password" 
               autoFocus 
-              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-center text-xl font-black outline-none tracking-widest focus:border-rose-500" 
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-center text-xl font-black outline-none tracking-widest focus:border-blue-500" 
               placeholder="••••" 
               maxLength={4} 
               onKeyDown={(e) => { 
@@ -1750,16 +1725,16 @@ export default function App() {
             {/* Connection Status Card */}
             <div className="p-4 bg-slate-900 text-white rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0">
                   <Cloud className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse" />
                     <h4 className="font-black text-sm text-white">الربط السحابي مع Firebase مفعل ونشط</h4>
                   </div>
                   <p className="text-[11px] text-slate-300 mt-0.5">
-                    معرف المشروع: <span className="font-mono text-emerald-300 font-bold">ateliu-14e23</span>
+                    معرف المشروع: <span className="font-mono text-blue-300 font-bold">ateliu-14e23</span>
                   </p>
                 </div>
               </div>
@@ -1767,7 +1742,7 @@ export default function App() {
               <button
                 onClick={handleManualFullSync}
                 disabled={isCloudSyncing}
-                className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isCloudSyncing ? 'animate-spin' : ''}`} />
                 <span>{isCloudSyncing ? 'جاري المزامنة...' : 'مزامنة سحابية الآن'}</span>
@@ -1809,7 +1784,7 @@ export default function App() {
             {/* Last Sync Info & Safety Notice */}
             <div className="flex items-center justify-between text-[11px] text-slate-500 px-1 pt-1">
               <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
                 <span>آخر مزامنة ناجحة: {lastCloudSyncTime.toLocaleTimeString('ar-DZ')}</span>
               </div>
               <span className="text-slate-400">حفظ تلقائي مع دعم العمل بدون إنترنت (Offline-First)</span>
@@ -1822,12 +1797,12 @@ export default function App() {
       {activeModal === 'backupModal' && (
         <Modal title="النسخ الاحتياطي واستعادة البيانات" onClose={() => setActiveModal(null)}>
           <div className="space-y-4">
-            <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl">
-              <h4 className="font-bold text-sm text-rose-900 mb-1">حفظ نسخة احتياطية من بيانات البوتيك</h4>
-              <p className="text-xs text-rose-700 mb-3">تنزيل ملف يحتوي على كافة ملابس المخزن، عمليات الكراء، المبيعات، والمصاريف.</p>
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+              <h4 className="font-bold text-sm text-slate-900 mb-1">حفظ نسخة احتياطية من بيانات البوتيك</h4>
+              <p className="text-xs text-slate-600 mb-3">تنزيل ملف يحتوي على كافة ملابس المخزن، عمليات الكراء، المبيعات، والمصاريف.</p>
               <button 
                 onClick={handleExportBackup} 
-                className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-100"
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
               >
                 تنزيل النسخة الاحتياطية (JSON)
               </button>

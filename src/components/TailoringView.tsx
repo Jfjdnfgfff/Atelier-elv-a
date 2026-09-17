@@ -94,7 +94,7 @@ export const TailoringView: React.FC<TailoringViewProps> = ({
       case 'in_progress':
         return <span className="bg-blue-50 text-blue-700 text-[11px] font-bold px-2 py-0.5 rounded-md">قيد الإنجاز</span>;
       case 'ready':
-        return <span className="bg-emerald-50 text-emerald-700 text-[11px] font-bold px-2 py-0.5 rounded-md">جاهزة للتسليم</span>;
+        return <span className="bg-blue-50 text-blue-700 text-[11px] font-bold px-2 py-0.5 rounded-md">جاهزة للتسليم</span>;
       case 'delivered':
         return <span className="bg-slate-100 text-slate-500 text-[11px] font-bold px-2 py-0.5 rounded-md">تم التسليم</span>;
     }
@@ -130,7 +130,7 @@ export const TailoringView: React.FC<TailoringViewProps> = ({
       <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-base font-black text-slate-900">
+            <h1 className="text-base font-black text-blue-600">
               قسم الخياطة والصيانة
             </h1>
             <p className="text-xs text-slate-500 font-medium mt-0.5">

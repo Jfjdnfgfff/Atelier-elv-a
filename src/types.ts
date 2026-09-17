@@ -12,8 +12,10 @@ export interface ClothItem {
   sellPrice: number;
   rentPrice: number;
   cautionAmount: number;
-  size: string;
-  color: string;
+  size: string; // المقاس الأساسي أو سلسلة المقاسات
+  sizes?: string[]; // قائمة المقاسات المتوفرة (لطاي المتوفرين)
+  color: string; // اللون الأساسي أو سلسلة الألوان
+  colors?: string[]; // قائمة الألوان المتوفرة
   stock: number; // Total stock (stock1 + stock2)
   stock1?: number; // Stock 1 (e.g. المحل / صالة العرض)
   stock2?: number; // Stock 2 (e.g. المستودع / التخزين)

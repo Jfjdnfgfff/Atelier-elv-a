@@ -142,14 +142,14 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
+          <h2 className="text-lg sm:text-xl font-black text-blue-600 flex items-center gap-2">
             <span>سجل كراء وحجز الفساتين</span>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-lg font-medium border border-slate-200/70">
+              <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-lg font-bold border border-blue-100">
                 {activeRentalsList.length + overdueRentalsList.length} كراء جاري
               </span>
               {reservedRentals.length > 0 && (
-                <span className="text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-lg font-medium border border-slate-200/70">
+                <span className="text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-lg font-bold border border-slate-200">
                   {reservedRentals.length} حجز مستقبلي
                 </span>
               )}
@@ -164,7 +164,7 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
           {onScanBarcode && (
             <button
               onClick={onScanBarcode}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-medium transition-all active:scale-95 border border-slate-200/70"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 border border-slate-200/70"
               title="مسح باركود الفستان لبدء كراء جديد"
             >
               <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -176,7 +176,7 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
 
           <button
             onClick={() => onAddRental()}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
           >
             + تسجيل كراء / حجز
           </button>
@@ -189,8 +189,8 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
         <div className="flex gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
           <button
             onClick={() => setFilter('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 ${
-              filter === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border border-transparent ${
+              filter === 'all' ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
             }`}
           >
             الكل ({rentals.length})
@@ -198,10 +198,10 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
 
           <button
             onClick={() => setFilter('reserved')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 border border-transparent ${
               filter === 'reserved' 
-                ? 'bg-slate-900 text-white shadow-xs' 
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                ? 'bg-blue-600 text-white shadow-xs' 
+                : 'bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
             }`}
           >
             <span>مستأجرة مستقبلاً</span>
@@ -214,15 +214,15 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
 
           <button
             onClick={() => setFilter('active')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 border border-transparent ${
               filter === 'active' 
-                ? 'bg-slate-900 text-white shadow-xs' 
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                ? 'bg-blue-600 text-white shadow-xs' 
+                : 'bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
             }`}
           >
             <span>جارية عند الزبون</span>
             <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-              filter === 'active' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+              filter === 'active' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-700'
             }`}>
               {activeRentalsList.length}
             </span>
@@ -230,15 +230,15 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
 
           <button
             onClick={() => setFilter('overdue')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 border border-transparent ${
               filter === 'overdue' 
-                ? 'bg-slate-900 text-white shadow-xs' 
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                ? 'bg-red-600 text-white shadow-xs' 
+                : 'bg-slate-100 text-slate-700 hover:bg-red-50 hover:text-red-700 hover:border-red-200'
             }`}
           >
             <span>متأخرة عن الإرجاع</span>
             <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-              filter === 'overdue' ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-700'
+              filter === 'overdue' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-700'
             }`}>
               {overdueRentalsList.length}
             </span>
@@ -246,10 +246,10 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
 
           <button
             onClick={() => setFilter('returned')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 border border-transparent ${
               filter === 'returned' 
-                ? 'bg-slate-900 text-white shadow-xs' 
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                ? 'bg-blue-600 text-white shadow-xs' 
+                : 'bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
             }`}
           >
             <span>مسترجعة</span>
@@ -268,7 +268,7 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="بحث باسم الزبون، الهاتف، الفستان..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-9 pl-4 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-9 pl-4 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-500 hover:border-blue-300 transition-colors"
           />
           <svg className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -311,13 +311,13 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
             return (
               <div
                 key={rental.id}
-                className={`bg-white rounded-3xl border p-4 sm:p-5 flex flex-col justify-between transition-all shadow-xs hover:shadow-md ${
+                className={`bg-white rounded-3xl border p-4 sm:p-5 flex flex-col justify-between transition-all duration-200 shadow-xs hover:shadow-lg hover:shadow-blue-500/10 hover:border-blue-400 group hover:-translate-y-0.5 ${
                   isReturned
                     ? 'border-slate-200 bg-slate-50/20'
                     : isReserved
                     ? 'border-slate-300 bg-slate-50/40'
                     : isOverdue
-                    ? 'border-slate-300 bg-slate-50/60'
+                    ? 'border-red-200 bg-red-50/20'
                     : 'border-slate-200'
                 }`}
               >
@@ -329,16 +329,16 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
                         <img 
                           src={matchedCloth.imageUrl} 
                           alt={rental.itemName} 
-                          className="w-12 h-12 rounded-2xl object-cover border border-slate-200 shrink-0" 
+                          className="w-12 h-12 rounded-2xl object-cover border border-slate-200 shrink-0 group-hover:border-blue-200 transition-colors" 
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 font-bold bg-slate-100 text-slate-600">
-                          <Shirt className="w-6 h-6 text-slate-500" />
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 font-bold bg-slate-100 group-hover:bg-blue-50 group-hover:text-blue-600 text-slate-600 transition-colors">
+                          <Shirt className="w-6 h-6 text-slate-500 group-hover:text-blue-600 transition-colors" />
                         </div>
                       )}
                       <div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <h3 className="font-black text-slate-900 text-sm sm:text-base leading-tight">
+                          <h3 className="font-black text-slate-900 group-hover:text-blue-950 text-sm sm:text-base leading-tight transition-colors">
                             {rental.itemName}
                           </h3>
                           {rental.hasAccessories && (
@@ -366,13 +366,13 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
                         <span>مستأجرة مستقبلاً</span>
                       </span>
                     ) : isOverdue ? (
-                      <span className="bg-slate-100 text-slate-800 border border-slate-300 text-[10px] font-black px-2.5 py-1 rounded-xl shrink-0 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3 text-slate-700" />
+                      <span className="bg-red-50 text-red-700 border border-red-200 text-[10px] font-black px-2.5 py-1 rounded-xl shrink-0 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 text-red-600" />
                         <span>متأخر {Math.abs(daysDiffFromReturn)} يوم</span>
                       </span>
                     ) : (
-                      <span className="bg-slate-100 text-slate-800 border border-slate-200 text-[10px] font-black px-2.5 py-1 rounded-xl shrink-0 flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-slate-700" />
+                      <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-black px-2.5 py-1 rounded-xl shrink-0 flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-blue-600" />
                         <span>جاري عند الزبون</span>
                       </span>
                     )}
@@ -393,10 +393,10 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
                   )}
 
                   {/* Rental Dates & Info */}
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-1.5 text-xs text-slate-600 mb-3">
+                  <div className="bg-slate-50 group-hover:bg-blue-50/30 p-3 rounded-2xl border border-slate-100 group-hover:border-blue-100 space-y-1.5 text-xs text-slate-600 mb-3 transition-colors">
                     <div className="flex justify-between items-center">
                       <span className="text-[11px] font-bold text-slate-500">الهاتف:</span>
-                      <a href={`tel:${rental.customerPhone}`} className="font-bold text-slate-900 font-mono hover:text-slate-600">
+                      <a href={`tel:${rental.customerPhone}`} className="font-bold text-slate-900 font-mono hover:text-blue-600 transition-colors">
                         {rental.customerPhone}
                       </a>
                     </div>
@@ -410,7 +410,7 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
 
                     <div className="flex justify-between items-center">
                       <span className="text-[11px] font-bold text-slate-500">موعد الإرجاع:</span>
-                      <span className={`font-bold font-mono ${isOverdue ? 'text-slate-900 font-black' : 'text-slate-800'}`}>
+                      <span className={`font-bold font-mono ${isOverdue ? 'text-red-600 font-black' : 'text-slate-800'}`}>
                         {rental.expectedReturnDate}
                       </span>
                     </div>
@@ -430,16 +430,16 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
                       <span className="font-black text-slate-900 text-sm font-mono">{rental.rentPrice.toLocaleString()} دج</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-700 font-bold block">
+                      <span className="text-[10px] text-blue-700 font-bold block">
                         {isReserved ? 'العربون المدفوع' : 'المدفوع'}
                       </span>
-                      <span className="font-black text-slate-900 font-mono">{rental.paidAmount.toLocaleString()} دج</span>
+                      <span className="font-black text-blue-700 font-mono">{rental.paidAmount.toLocaleString()} دج</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-500 font-bold block">
+                      <span className="text-[10px] text-red-700 font-bold block">
                         {isReserved ? 'المتبقي عند الاستلام' : 'المتبقي'}
                       </span>
-                      <span className="font-black text-slate-800 font-mono">{(rental.remainingAmount || 0).toLocaleString()} دج</span>
+                      <span className="font-black text-red-700 font-mono">{(rental.remainingAmount || 0).toLocaleString()} دج</span>
                     </div>
                   </div>
                 </div>
@@ -450,7 +450,7 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
                   {isReserved && (
                     <button
                       onClick={() => openHandoverModal(rental)}
-                      className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition-all shadow-xs flex items-center justify-center gap-1.5 active:scale-95"
+                      className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition-all shadow-xs flex items-center justify-center gap-1.5 active:scale-95 hover:shadow-md hover:shadow-blue-500/20"
                     >
                       <Check className="w-4 h-4" />
                       <span>تسليم الفستان وبدء الكراء (إتمام الصفقة)</span>
@@ -461,7 +461,7 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
                   {!isReserved && !isReturned && (
                     <button
                       onClick={() => onOpenReturnModal(rental)}
-                      className="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-black transition-all shadow-xs flex items-center justify-center gap-1.5 active:scale-95"
+                      className="w-full py-2.5 bg-slate-900 hover:bg-blue-600 text-white rounded-xl text-xs font-black transition-all shadow-xs flex items-center justify-center gap-1.5 active:scale-95 hover:shadow-md hover:shadow-blue-500/20"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       <span>استرجاع الفستان وتسوية الحساب</span>
@@ -471,7 +471,7 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
                   <div className="flex gap-1.5">
                     <button
                       onClick={() => onOpenReceiptModal(rental)}
-                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1.5"
+                      className="flex-1 py-2 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 border border-transparent text-slate-700 rounded-xl text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1.5"
                       title="طباعة وصل وعقد الكراء / الحجز"
                     >
                       <FileText className="w-3.5 h-3.5" />
@@ -480,7 +480,7 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
 
                     <button
                       onClick={() => onSendMessage(rental)}
-                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1.5"
+                      className="flex-1 py-2 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 border border-transparent text-slate-700 rounded-xl text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1.5"
                       title="مراسلة الزبون عبر واتساب أو SMS"
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
@@ -489,7 +489,7 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
 
                     <button
                       onClick={() => onEditRental(rental)}
-                      className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all"
+                      className="p-2 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 border border-transparent text-slate-600 rounded-xl text-xs font-bold transition-all"
                       title="تعديل بيانات العملية"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
@@ -497,7 +497,7 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
 
                     <button
                       onClick={() => onDeleteRental(rental.id)}
-                      className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all"
+                      className="p-2 bg-slate-100 hover:bg-red-50 hover:text-red-600 hover:border-red-200 border border-transparent text-slate-600 rounded-xl text-xs font-bold transition-all"
                       title="حذف العملية"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

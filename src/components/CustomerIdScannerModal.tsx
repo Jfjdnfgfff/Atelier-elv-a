@@ -727,7 +727,7 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
           <div className="flex items-center gap-2.5">
-            <span className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 to-amber-500 text-white flex items-center justify-center text-xl font-bold shadow-md shadow-rose-200">
+            <span className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-xl font-bold shadow-xs">
               ⚡
             </span>
             <div>
@@ -857,12 +857,12 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
 
         {/* Camera Error message */}
         {cameraError && !extractedData && activeTab !== 'manual' && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center space-y-2 mb-3">
-            <p className="text-xs font-bold text-amber-800">{cameraError}</p>
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center space-y-2 mb-3">
+            <p className="text-xs font-bold text-red-800">{cameraError}</p>
             <div className="flex gap-2 justify-center">
               <button
                 onClick={startCamera}
-                className="py-1.5 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs"
+                className="py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs"
               >
                 إعادة تشغيل الكاميرا
               </button>
@@ -1154,7 +1154,7 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                 type="button"
                 disabled={isProcessingAI}
                 onClick={() => captureAndExtractWithAI()}
-                className="w-full py-3.5 bg-gradient-to-r from-rose-600 via-pink-600 to-amber-500 hover:from-rose-700 hover:to-pink-700 active:scale-[0.98] disabled:opacity-50 text-white rounded-2xl font-black text-sm shadow-lg shadow-rose-200 transition-all flex items-center justify-center gap-2 border border-rose-400"
+                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 text-white rounded-2xl font-black text-sm shadow-xs transition-all flex items-center justify-center gap-2"
               >
                 <span className="text-xl">⚡</span>
                 <span>فحص واستخراج بيانات البطاقة فوراً</span>

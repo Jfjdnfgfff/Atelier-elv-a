@@ -66,7 +66,7 @@ export const FullReport: React.FC<FullReportProps> = ({
         <div className="flex gap-2">
           <button
             onClick={exportToImage}
-            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-emerald-100 transition-all active:scale-95"
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" strokeWidth="2"></path></svg>
             حفظ التقرير كصورة
@@ -86,7 +86,7 @@ export const FullReport: React.FC<FullReportProps> = ({
         <div className="border-b-2 border-slate-900 pb-4 mb-6 text-right">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">التقرير المالي والإداري الشامل</h1>
+              <h1 className="text-2xl font-black text-blue-600 tracking-tight">التقرير المالي والإداري الشامل</h1>
               <p className="text-xs font-bold text-slate-500 mt-1">تقرير كراء وبيع الملابس والأزياء والمخزون</p>
             </div>
             <div className="text-left bg-slate-50 border border-slate-200 px-4 py-2 rounded-2xl">
@@ -98,30 +98,30 @@ export const FullReport: React.FC<FullReportProps> = ({
 
         {/* Top Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl">
-            <span className="text-xs font-bold text-rose-800 block mb-1">مداخيل الكراء</span>
-            <span className="text-xl font-black text-rose-900">{totalRentalIncome.toLocaleString()} دج</span>
-            <span className="text-[10px] text-rose-600 block mt-1">
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+            <span className="text-xs font-bold text-blue-800 block mb-1">مداخيل الكراء</span>
+            <span className="text-xl font-black text-blue-900">{totalRentalIncome.toLocaleString()} دج</span>
+            <span className="text-[10px] text-blue-600 block mt-1">
               ({activeRentalsCount} كراء جاري{reservedRentalsCount > 0 ? ` • ${reservedRentalsCount} حجز قادم` : ''})
             </span>
           </div>
 
-          <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl">
-            <span className="text-xs font-bold text-indigo-800 block mb-1">مبيعات الملابس</span>
-            <span className="text-xl font-black text-indigo-900">{totalSalesRevenue.toLocaleString()} دج</span>
-            <span className="text-[10px] text-indigo-600 block mt-1">(ربح صافي: {totalSalesProfit.toLocaleString()} دج)</span>
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+            <span className="text-xs font-bold text-slate-800 block mb-1">مبيعات الملابس</span>
+            <span className="text-xl font-black text-slate-900">{totalSalesRevenue.toLocaleString()} دج</span>
+            <span className="text-[10px] text-slate-600 block mt-1">(ربح صافي: {totalSalesProfit.toLocaleString()} دج)</span>
           </div>
 
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl">
-            <span className="text-xs font-bold text-amber-800 block mb-1">المصاريف والغسيل</span>
-            <span className="text-xl font-black text-amber-900">{totalExpenses.toLocaleString()} دج</span>
-            <span className="text-[10px] text-amber-600 block mt-1">({expenses.length} مصاريف)</span>
+          <div className="p-4 bg-red-50 border border-red-200 rounded-2xl">
+            <span className="text-xs font-bold text-red-800 block mb-1">المصاريف والغسيل</span>
+            <span className="text-xl font-black text-red-900">{totalExpenses.toLocaleString()} دج</span>
+            <span className="text-[10px] text-red-600 block mt-1">({expenses.length} مصاريف)</span>
           </div>
 
-          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
-            <span className="text-xs font-bold text-emerald-800 block mb-1">صافي الأرباح</span>
-            <span className="text-xl font-black text-emerald-900">{netProfit.toLocaleString()} دج</span>
-            <span className="text-[10px] text-emerald-600 block mt-1">الربح الصافي للبوتيك</span>
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+            <span className="text-xs font-bold text-blue-800 block mb-1">صافي الأرباح</span>
+            <span className="text-xl font-black text-blue-900">{netProfit.toLocaleString()} دج</span>
+            <span className="text-[10px] text-blue-600 block mt-1">الربح الصافي للبوتيك</span>
           </div>
         </div>
 
@@ -131,7 +131,7 @@ export const FullReport: React.FC<FullReportProps> = ({
           <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
             <h3 className="font-black text-sm text-slate-800 mb-3 flex items-center justify-between">
               <span>القطع المؤجرة حالياً ({activeRentalsCount})</span>
-              <span className="text-xs text-rose-600 font-bold">الضمانات: {totalHeldCautions.toLocaleString()} دج</span>
+              <span className="text-xs text-red-600 font-bold">الضمانات: {totalHeldCautions.toLocaleString()} دج</span>
             </h3>
             <table className="w-full text-right text-xs">
               <thead className="bg-slate-100 text-slate-600 font-bold">
@@ -146,7 +146,7 @@ export const FullReport: React.FC<FullReportProps> = ({
                   <tr key={r.id}>
                     <td className="p-2 font-black">{r.itemName}</td>
                     <td className="p-2 text-slate-600">{r.customerName}</td>
-                    <td className="p-2 font-bold text-rose-700">{r.expectedReturnDate}</td>
+                    <td className="p-2 font-bold text-red-700">{r.expectedReturnDate}</td>
                   </tr>
                 ))}
               </tbody>
@@ -157,7 +157,7 @@ export const FullReport: React.FC<FullReportProps> = ({
           <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
             <h3 className="font-black text-sm text-slate-800 mb-3 flex items-center justify-between">
               <span>حالة مخزون المحل ({totalStockItems} قطعة)</span>
-              <span className="text-xs text-indigo-600 font-bold">{clothes.length} موديل</span>
+              <span className="text-xs text-blue-600 font-bold">{clothes.length} موديل</span>
             </h3>
             <table className="w-full text-right text-xs">
               <thead className="bg-slate-100 text-slate-600 font-bold">
@@ -172,7 +172,7 @@ export const FullReport: React.FC<FullReportProps> = ({
                   <tr key={c.id}>
                     <td className="p-2 font-black">{c.name}</td>
                     <td className="p-2 text-center font-bold text-slate-500">{c.size}</td>
-                    <td className="p-2 text-left font-black text-emerald-700">{c.stock - c.rentedCount} قطعة</td>
+                    <td className="p-2 text-left font-black text-blue-700">{c.stock - c.rentedCount} قطعة</td>
                   </tr>
                 ))}
               </tbody>

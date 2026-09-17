@@ -35,7 +35,7 @@ export const TailoringReceiptModal: React.FC<TailoringReceiptModalProps> = ({
         <div id="tailoring-receipt-print" className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4 text-slate-800 text-sm">
           {/* Header */}
           <div className="text-center border-b border-dashed border-slate-200 pb-3">
-            <h2 className="text-lg font-bold text-slate-900">بوتيك الأزياء والأناقة</h2>
+            <h2 className="text-lg font-bold text-blue-600">بوتيك الأزياء والأناقة</h2>
             <p className="text-xs text-slate-500 font-medium mt-0.5">قسم الصيانة، التعديل والخياطة</p>
             <div className="mt-2 inline-block px-3 py-1 bg-slate-100 rounded-full text-xs font-bold text-slate-700">
               وصل رقم: <span className="font-mono">{order.orderNumber}</span>

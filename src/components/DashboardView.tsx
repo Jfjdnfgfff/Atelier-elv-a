@@ -136,7 +136,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 sm:p-5 rounded-3xl border border-slate-100 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg sm:text-2xl font-black text-slate-900">
+            <h2 className="text-lg sm:text-2xl font-black text-blue-600">
               لوحة التحكم والمداخيل الرئيسية
             </h2>
           </div>
@@ -151,7 +151,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               onClick={() => setFinancePeriod('monthly')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
-                financePeriod === 'monthly' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
+                financePeriod === 'monthly' ? 'bg-blue-600 text-white shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               هذا الشهر
@@ -159,7 +159,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               onClick={() => setFinancePeriod('yearly')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
-                financePeriod === 'yearly' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
+                financePeriod === 'yearly' ? 'bg-blue-600 text-white shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               هذه السنة
@@ -167,7 +167,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               onClick={() => setFinancePeriod('all')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
-                financePeriod === 'all' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
+                financePeriod === 'all' ? 'bg-blue-600 text-white shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               الإجمالي
@@ -177,7 +177,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <button
             onClick={onPrivacyToggle}
             className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all min-h-[38px] active:scale-95 ${
-              hideFinances ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              hideFinances ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
             title={hideFinances ? 'إظهار الأرقام' : 'إخفاء الأرقام'}
           >
@@ -187,7 +187,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <button
             onClick={onOpenAddRental}
-            className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs min-h-[38px] active:scale-95"
+            className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs min-h-[38px] active:scale-95"
           >
             <Plus className="w-4 h-4" />
             <span>كراء جديد</span>
@@ -199,18 +199,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="bg-white text-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="p-1.5 bg-slate-100 text-slate-700 rounded-xl text-sm border border-slate-200/80">
-              <Scale className="w-4 h-4 text-slate-700" />
+            <span className="p-1.5 bg-blue-50 text-blue-700 rounded-xl text-sm border border-blue-100">
+              <Scale className="w-4 h-4 text-blue-700" />
             </span>
             <h3 className="text-sm sm:text-base font-bold text-slate-900">
               صندوق اليومية ومتابعة العجز (La Caisse)
             </h3>
             {todayClosure ? (
-              <span className="bg-slate-100 text-emerald-800 border border-emerald-200/80 text-[10px] font-bold px-2 py-0.5 rounded-md">
+              <span className="bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-md">
                 تم إقفال صندوق اليوم
               </span>
             ) : (
-              <span className="bg-slate-100 text-amber-800 border border-amber-200/80 text-[10px] font-bold px-2 py-0.5 rounded-md">
+              <span className="bg-slate-100 text-slate-800 border border-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-md">
                 الصندوق قيد النشاط
               </span>
             )}
@@ -234,7 +234,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {todayClosure ? 'فارق اليوم:' : 'المتوقع في الدرج:'}
             </div>
             <div className={`text-sm font-bold font-mono ${
-              todayClosure ? (todayClosure.difference < 0 ? 'text-rose-600' : 'text-slate-900') : 'text-slate-800'
+              todayClosure ? (todayClosure.difference < 0 ? 'text-red-600' : 'text-blue-700') : 'text-slate-800'
             }`}>
               {hideFinances ? '••••' : (
                 todayClosure ? (
@@ -247,7 +247,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/70 text-center min-w-[105px]">
             <div className="text-[10px] text-slate-500 font-medium">عجز/فارق الشهر:</div>
             <div className={`text-sm font-bold font-mono ${
-              monthVariance < 0 ? 'text-rose-600' : 'text-slate-900'
+              monthVariance < 0 ? 'text-red-600' : 'text-blue-700'
             }`}>
               {hideFinances ? '••••' : (
                 monthVariance > 0 ? `+${monthVariance.toLocaleString()} دج` : `${monthVariance.toLocaleString()} دج`
@@ -257,7 +257,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <button
             onClick={() => onNavigate('caisse')}
-            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 shrink-0"
+            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 shrink-0"
           >
             <Scale className="w-3.5 h-3.5" />
             <span>فتح الصندوق</span>
@@ -350,24 +350,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Urgent Returns Alert Banner */}
       {urgentRentals.length > 0 && (
-        <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-5 shadow-xs space-y-3">
+        <div className="bg-red-50 border-2 border-red-300 rounded-3xl p-5 shadow-xs space-y-3">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <span className="p-1 bg-amber-100 rounded-lg text-amber-700">
+              <span className="p-1 bg-red-100 rounded-lg text-red-700">
                 <AlertTriangle className="w-5 h-5" />
               </span>
               <div>
-                <h3 className="font-black text-amber-950 text-sm">
+                <h3 className="font-black text-red-950 text-sm">
                   تنبيهات إرجاع الملابس والمواعيد العاجلة ({urgentRentals.length})
                 </h3>
-                <p className="text-xs text-amber-800">
+                <p className="text-xs text-red-800">
                   قطع ملابس يجب استرجاعها اليوم أو متأخرة عن الموعد المحدد.
                 </p>
               </div>
             </div>
             <button
               onClick={() => onNavigate('rentals')}
-              className="text-xs font-bold text-amber-900 bg-amber-200/80 hover:bg-amber-300 px-3 py-1.5 rounded-xl transition-all"
+              className="text-xs font-bold text-red-900 bg-red-200/80 hover:bg-red-300 px-3 py-1.5 rounded-xl transition-all"
             >
               عرض قسم الكراء ←
             </button>
@@ -380,10 +380,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               const cloth = clothes.find(c => c.id === rental.itemId);
 
               return (
-                <div key={rental.id} className="bg-white p-3.5 rounded-2xl border border-amber-200 flex justify-between items-center text-xs gap-2">
+                <div key={rental.id} className="bg-white p-3.5 rounded-2xl border border-red-200 flex justify-between items-center text-xs gap-2">
                   <div className="flex items-center gap-2.5 min-w-0">
                     {cloth?.imageUrl ? (
-                      <img src={cloth.imageUrl} alt={rental.itemName} className="w-10 h-10 rounded-xl object-cover border border-amber-200 shrink-0" />
+                      <img src={cloth.imageUrl} alt={rental.itemName} className="w-10 h-10 rounded-xl object-cover border border-red-200 shrink-0" />
                     ) : (
                       <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
                         <Sparkles className="w-5 h-5 text-slate-600" />
@@ -397,7 +397,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <Phone className="w-3 h-3 text-slate-400" />
                         <span>{rental.customerPhone})</span>
                       </div>
-                      <div className="text-[10px] text-amber-700 font-bold mt-0.5">
+                      <div className="text-[10px] text-red-700 font-bold mt-0.5">
                         {isOverdue ? `متأخر بـ ${Math.abs(diff)} أيام عن الموعد` : 'موعد الإرجاع اليوم!'}
                       </div>
                     </div>
@@ -406,13 +406,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div className="flex gap-1.5 shrink-0">
                     <button
                       onClick={() => onOpenReturnModal(rental)}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-black transition-all shadow-xs"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-black transition-all shadow-xs"
                     >
                       استرجاع
                     </button>
                     <button
                       onClick={() => onSendMessage(rental)}
-                      className="bg-emerald-50 text-emerald-700 px-2 py-1.5 rounded-xl text-xs font-bold hover:bg-emerald-100 flex items-center gap-1"
+                      className="bg-slate-100 text-slate-800 border border-slate-300 px-2 py-1.5 rounded-xl text-xs font-bold hover:bg-slate-200 flex items-center gap-1"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
                       <span>واتساب</span>
@@ -427,24 +427,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Urgent Tailoring Orders Alert Banner (Within 10 Days) */}
       {urgentTailoringOrders.length > 0 && (
-        <div className="bg-amber-50/80 border border-amber-300 rounded-3xl p-5 shadow-xs space-y-3">
+        <div className="bg-blue-50/80 border border-blue-300 rounded-3xl p-5 shadow-xs space-y-3">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <span className="p-1 bg-amber-100 rounded-lg text-amber-700">
+              <span className="p-1 bg-blue-100 rounded-lg text-blue-700">
                 <Scissors className="w-5 h-5" />
               </span>
               <div>
-                <h3 className="font-black text-amber-950 text-sm">
+                <h3 className="font-black text-blue-950 text-sm">
                   تنبيهات تسليم طلبات الخياطة والصيانة ({urgentTailoringOrders.length})
                 </h3>
-                <p className="text-xs text-amber-800">
+                <p className="text-xs text-blue-800">
                   طلبات خياطة موعد تسليمها يقترب خلال 10 أيام أو اليوم.
                 </p>
               </div>
             </div>
             <button
               onClick={() => onNavigate('tailoring')}
-              className="text-xs font-bold text-amber-900 bg-amber-200/80 hover:bg-amber-300 px-3 py-1.5 rounded-xl transition-all"
+              className="text-xs font-bold text-blue-900 bg-blue-200/80 hover:bg-blue-300 px-3 py-1.5 rounded-xl transition-all"
             >
               عرض قسم الخياطة ←
             </button>
@@ -456,7 +456,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               const isOverdue = diff < 0;
 
               return (
-                <div key={order.id} className="bg-white p-3 rounded-2xl border border-amber-200 flex justify-between items-center text-xs gap-2">
+                <div key={order.id} className="bg-white p-3 rounded-2xl border border-blue-200 flex justify-between items-center text-xs gap-2">
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono font-bold text-slate-800">{order.orderNumber}</span>
@@ -466,14 +466,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       {order.customerName ? `الزبونة: ${order.customerName}` : 'مخزن المحل'}
                       {order.tailorName && ` | الخياطة: ${order.tailorName}`}
                     </div>
-                    <div className="text-[11px] text-amber-800 font-bold mt-1">
+                    <div className="text-[11px] text-blue-800 font-bold mt-1">
                       {isOverdue ? `متأخر بـ ${Math.abs(diff)} يوم!` : diff === 0 ? 'موعد التسليم اليوم!' : `موعد التسليم: ${order.expectedDeliveryDate} (متبقي ${diff} أيام)`}
                     </div>
                   </div>
 
                   <button
                     onClick={() => onNavigate('tailoring')}
-                    className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all shadow-xs"
                   >
                     متابعة
                   </button>
@@ -489,13 +489,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="flex justify-between items-center">
           <h3 className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-2">
             <span>القطع المؤجرة حالياً في المحل</span>
-            <span className="text-xs bg-rose-50 text-rose-700 px-2 py-0.5 rounded-lg font-bold">
+            <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg font-bold">
               {activeRentals.length}
             </span>
           </h3>
           <button
             onClick={() => onNavigate('rentals')}
-            className="text-xs font-bold text-rose-600 hover:text-rose-700"
+            className="text-xs font-bold text-blue-600 hover:text-blue-700"
           >
             عرض الكل ←
           </button>
@@ -527,12 +527,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                   <div className="flex items-center justify-between sm:justify-end gap-3 pt-1 sm:pt-0">
                     <div className="text-right sm:text-left">
-                      <div className="font-bold text-rose-700 text-xs">موعد الإرجاع: {rental.expectedReturnDate}</div>
+                      <div className="font-bold text-blue-700 text-xs">موعد الإرجاع: {rental.expectedReturnDate}</div>
                       <div className="text-[10px] text-slate-400 font-medium">العربون: {(rental.cautionAmount || 0).toLocaleString()} دج</div>
                     </div>
                     <button
                       onClick={() => onOpenReturnModal(rental)}
-                      className="bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-700 px-3.5 py-1.5 rounded-xl font-black transition-all text-xs"
+                      className="bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 px-3.5 py-1.5 rounded-xl font-black transition-all text-xs"
                     >
                       استرجاع
                     </button>

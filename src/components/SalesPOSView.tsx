@@ -16,7 +16,8 @@ import {
   Trash2, 
   Search, 
   X, 
-  Check 
+  Check,
+  Calendar
 } from 'lucide-react';
 
 interface SalesPOSViewProps {
@@ -47,6 +48,25 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
   const [customerPhone, setCustomerPhone] = useState('');
   const [showCustomerIdScanner, setShowCustomerIdScanner] = useState(false);
   const [paidAmount, setPaidAmount] = useState<number | ''>('');
+  
+  // Date selector for the sale
+  const getTodayDateString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const getYesterdayDateString = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const [saleDate, setSaleDate] = useState<string>(getTodayDateString());
+
   const [search, setSearch] = useState('');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('الكل');
@@ -262,6 +282,16 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
       return;
     }
 
+    // Compute final sale timestamp from chosen saleDate
+    const now = new Date();
+    let finalSaleDate: string;
+    if (saleDate) {
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+      finalSaleDate = `${saleDate}T${timeStr}`;
+    } else {
+      finalSaleDate = new Date().toISOString();
+    }
+
     onCompleteSale({
       customerName: customerName.trim() || 'زبون عام',
       customerPhone: customerPhone.trim(),
@@ -270,13 +300,14 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
       paidAmount: actualPaid,
       debtAmount,
       profit: totalProfit,
-      date: new Date().toISOString()
+      date: finalSaleDate
     });
 
     setCart([]);
     setCustomerName('');
     setCustomerPhone('');
     setPaidAmount('');
+    setSaleDate(getTodayDateString());
   };
 
   const filteredClothes = sellableClothes.filter(c => {
@@ -319,7 +350,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
           <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-bold text-blue-600 flex items-center gap-2">
                   <span>نقطة بيع الأزياء (POS)</span>
                   <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg font-medium">
                     {filteredClothes.length} معروض
@@ -394,8 +425,8 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
               return (
                 <div
                   key={item.id}
-                  className={`bg-white rounded-2xl overflow-hidden border transition-all select-none relative hover:border-slate-300 shadow-2xs flex flex-col justify-between group ${
-                    inCartCount > 0 ? 'border-slate-900 ring-1 ring-slate-900' : 'border-slate-200'
+                  className={`bg-white rounded-2xl overflow-hidden border transition-all duration-200 select-none relative hover:border-blue-400 hover:shadow-lg hover:shadow-blue-500/10 shadow-2xs flex flex-col justify-between group hover:-translate-y-0.5 ${
+                    inCartCount > 0 ? 'border-blue-600 ring-2 ring-blue-500/30' : 'border-slate-200'
                   }`}
                 >
                   {/* Photo Container */}
@@ -415,13 +446,13 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center text-slate-300">
-                        <Package className="w-8 h-8 text-slate-400" />
+                        <Package className="w-8 h-8 text-slate-400 group-hover:text-blue-500 transition-colors" />
                       </div>
                     )}
 
                     {/* Quantity Badge in Cart */}
                     {inCartCount > 0 && (
-                      <span className="absolute top-2 left-2 bg-slate-900 text-white text-[11px] font-bold w-6 h-6 rounded-full flex items-center justify-center shadow-xs">
+                      <span className="absolute top-2 left-2 bg-blue-600 text-white text-[11px] font-bold w-6 h-6 rounded-full flex items-center justify-center shadow-xs">
                         {inCartCount}
                       </span>
                     )}
@@ -439,7 +470,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
                           e.stopPropagation();
                           setPreviewImage({ url: item.imageUrl!, title: item.name });
                         }}
-                        className="absolute bottom-1.5 left-1.5 bg-black/60 hover:bg-black/80 text-white p-1 rounded-lg text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute bottom-1.5 left-1.5 bg-blue-600/90 hover:bg-blue-700 text-white p-1 rounded-lg text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow-xs"
                         title="تكبير الصورة"
                       >
                         <ZoomIn className="w-3.5 h-3.5" />
@@ -451,12 +482,14 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
                   <div className="p-2.5 flex-1 flex flex-col justify-between space-y-2">
                     <div>
                       <span className="text-[10px] text-slate-400 font-medium block truncate">{item.category}</span>
-                      <h4 className="font-bold text-slate-800 text-xs mt-0.5 line-clamp-2 leading-tight min-h-[28px]">
+                      <h4 className="font-bold text-slate-800 group-hover:text-blue-950 text-xs mt-0.5 line-clamp-2 leading-tight min-h-[28px] transition-colors">
                         {item.name}
                       </h4>
-                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium mt-1">
-                        <span>مقاس: {item.size}</span>
-                        {item.color && <span>• {item.color}</span>}
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium mt-1 flex-wrap">
+                        <span>مقاس: {item.sizes && item.sizes.length > 0 ? item.sizes.join(', ') : (item.size || '38')}</span>
+                        {(item.colors && item.colors.length > 0 ? item.colors.join(', ') : item.color) && (
+                          <span>• {item.colors && item.colors.length > 0 ? item.colors.join(', ') : item.color}</span>
+                        )}
                       </div>
                     </div>
 
@@ -464,7 +497,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
                     <div className="pt-1.5 border-t border-slate-100 space-y-1">
                       <div className="flex items-center justify-between text-xs font-bold text-slate-900">
                         <span className="text-slate-500">السعر:</span>
-                        <span>{item.sellPrice.toLocaleString()} دج</span>
+                        <span className="text-blue-700 font-black">{item.sellPrice.toLocaleString()} دج</span>
                       </div>
 
                       <div className="grid grid-cols-2 gap-1 text-[10px]">
@@ -472,7 +505,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
                           type="button"
                           onClick={() => addToCart(item, 'stock1')}
                           disabled={s1 <= 0}
-                          className="py-1 px-1.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-800 border border-slate-200 rounded-lg font-bold flex items-center justify-between active:scale-95 transition-all"
+                          className="py-1 px-1.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 disabled:opacity-40 text-slate-800 border border-slate-200 rounded-lg font-bold flex items-center justify-between active:scale-95 transition-all"
                           title="إضافة من المخزون 1"
                         >
                           <span>مخزن 1:</span>
@@ -483,7 +516,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
                           type="button"
                           onClick={() => addToCart(item, 'stock2')}
                           disabled={s2 <= 0}
-                          className="py-1 px-1.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-800 border border-slate-200 rounded-lg font-bold flex items-center justify-between active:scale-95 transition-all"
+                          className="py-1 px-1.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 disabled:opacity-40 text-slate-800 border border-slate-200 rounded-lg font-bold flex items-center justify-between active:scale-95 transition-all"
                           title="إضافة من المخزون 2"
                         >
                           <span>مخزن 2:</span>
@@ -623,6 +656,46 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
                   />
                 </div>
 
+                {/* Sale Date Selector */}
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                      <span>تاريخ عملية البيع:</span>
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setSaleDate(getTodayDateString())}
+                        className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-all border ${
+                          saleDate === getTodayDateString()
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        اليوم
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSaleDate(getYesterdayDateString())}
+                        className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-all border ${
+                          saleDate === getYesterdayDateString()
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        أمس
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="date"
+                    value={saleDate}
+                    onChange={(e) => setSaleDate(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                   <div>
                     <label className="block text-[10px] text-slate-500 font-bold mb-1">المبلغ الإجمالي</label>
@@ -677,46 +750,56 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
           <p className="text-xs text-slate-400 text-center py-6">لم يتم تسجيل أي مبيعات بعد.</p>
         ) : (
           <div className="divide-y divide-slate-100">
-            {sales.map(sale => (
-              <div key={sale.id} className="py-3 flex justify-between items-center text-xs gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  {/* First item photo thumbnail if available */}
-                  <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
-                    {sale.items[0]?.imageUrl ? (
-                      <img src={sale.items[0].imageUrl} alt="صورة" className="w-full h-full object-cover" />
-                    ) : (
-                      <ShoppingBag className="w-4 h-4 text-slate-400" />
-                    )}
+            {sales.map(sale => {
+              const saleDateObj = new Date(sale.date);
+              const formattedDate = !isNaN(saleDateObj.getTime())
+                ? saleDateObj.toLocaleDateString('ar-DZ', { year: 'numeric', month: 'numeric', day: 'numeric' })
+                : (sale.date ? sale.date.split('T')[0] : '');
+              const formattedTime = !isNaN(saleDateObj.getTime())
+                ? saleDateObj.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })
+                : '';
+
+              return (
+                <div key={sale.id} className="py-3 flex justify-between items-center text-xs gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {/* First item photo thumbnail if available */}
+                    <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                      {sale.items[0]?.imageUrl ? (
+                        <img src={sale.items[0].imageUrl} alt="صورة" className="w-full h-full object-cover" />
+                      ) : (
+                        <ShoppingBag className="w-4 h-4 text-slate-400" />
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="font-bold text-slate-800 truncate flex items-center gap-1.5 flex-wrap">
+                        <span>{sale.customerName || 'زبون عام'}</span>
+                        <span className="text-[10px] text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md font-bold">
+                          {formattedDate} {formattedTime && `• ${formattedTime}`}
+                        </span>
+                      </div>
+                      <div className="text-slate-500 text-[11px] mt-0.5 truncate">
+                        {sale.items.map(i => `${i.name} (${i.qty} قطع - ${i.stockSource === 'stock2' ? 'مخزن 2' : 'مخزن 1'})`).join('، ')}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="min-w-0">
-                    <div className="font-bold text-slate-800 truncate">
-                      {sale.customerName || 'زبون عام'} 
-                      <span className="text-[10px] text-slate-400 font-normal mr-2">
-                        ({new Date(sale.date).toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })})
-                      </span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-left">
+                      <div className="font-bold text-slate-900">{sale.totalAmount.toLocaleString()} دج</div>
+                      <div className="text-[10px] text-slate-500 font-medium">ربح: {sale.profit.toLocaleString()} دج</div>
                     </div>
-                    <div className="text-slate-500 text-[11px] mt-0.5 truncate">
-                      {sale.items.map(i => `${i.name} (${i.qty} قطع - ${i.stockSource === 'stock2' ? 'مخزن 2' : 'مخزن 1'})`).join('، ')}
-                    </div>
+                    <button
+                      onClick={() => onDeleteSale(sale)}
+                      className="text-slate-400 hover:text-rose-600 p-1 rounded transition-colors"
+                      title="إلغاء البيع واسترجاع للمخزن"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="text-left">
-                    <div className="font-bold text-slate-900">{sale.totalAmount.toLocaleString()} دج</div>
-                    <div className="text-[10px] text-slate-500 font-medium">ربح: {sale.profit.toLocaleString()} دج</div>
-                  </div>
-                  <button
-                    onClick={() => onDeleteSale(sale)}
-                    className="text-slate-400 hover:text-rose-600 p-1 rounded transition-colors"
-                    title="إلغاء البيع واسترجاع للمخزن"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

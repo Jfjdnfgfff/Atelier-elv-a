@@ -241,7 +241,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
       <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-blue-600 flex items-center gap-2">
               <span>مصاريف البوتيك وخلاص الموردين</span>
               <span className="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-xl font-bold">
                 {expenses.length} عملية
@@ -290,7 +290,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
 
           <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl">
             <span className="text-[11px] text-slate-600 font-bold block mb-0.5">كريدي وديون الموردين المتبقية:</span>
-            <span className="text-base sm:text-lg font-bold text-amber-700 font-mono">
+            <span className="text-base sm:text-lg font-bold text-red-600 font-mono">
               {totalSupplierDebts.toLocaleString()} دج
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">
@@ -504,7 +504,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
                 </label>
                 <div className="w-full rounded-xl px-3 py-2 text-xs font-bold border border-slate-200 bg-white flex items-center justify-between text-slate-900">
                   <span>{calculatedCredit.toLocaleString()} دج</span>
-                  <span className={`text-[10px] font-bold ${calculatedCredit > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
+                  <span className={`text-[10px] font-bold ${calculatedCredit > 0 ? 'text-red-600' : 'text-slate-400'}`}>
                     {calculatedCredit > 0 ? 'دين للمورد' : 'صافي 0 دج'}
                   </span>
                 </div>
@@ -760,9 +760,9 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
                           </div>
 
                           <div className="text-center border-r border-slate-200 pr-3">
-                            <span className="text-[9px] text-amber-700 font-bold block">الكريدي المتبقي</span>
+                            <span className="text-[9px] text-slate-600 font-bold block">الكريدي المتبقي</span>
                             <span className={`text-xs font-bold font-mono ${
-                              (exp.creditAmount || 0) > 0 ? 'text-amber-700 font-bold' : 'text-slate-400'
+                              (exp.creditAmount || 0) > 0 ? 'text-red-600 font-bold' : 'text-slate-400'
                             }`}>
                               {(exp.creditAmount || 0).toLocaleString()} دج
                             </span>
@@ -858,7 +858,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-slate-200">
                 <span className="text-slate-700 font-bold">الكريدي المتبقي حالياً:</span>
-                <span className="font-bold text-amber-700 font-mono text-sm">{(settleModalExpense.creditAmount || 0).toLocaleString()} دج</span>
+                <span className="font-bold text-red-600 font-mono text-sm">{(settleModalExpense.creditAmount || 0).toLocaleString()} دج</span>
               </div>
             </div>
 
@@ -960,9 +960,9 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
                   <span className="font-bold">المبلغ المسدد كاش:</span>
                   <span className="font-bold font-mono">{(voucherExpense.paidAmount || voucherExpense.amount).toLocaleString()} دج</span>
                 </div>
-                <div className="flex justify-between text-amber-700">
+                <div className="flex justify-between text-slate-900">
                   <span className="font-bold">المتبقي كريدي للمورد:</span>
-                  <span className="font-bold font-mono">{(voucherExpense.creditAmount || 0).toLocaleString()} دج</span>
+                  <span className="font-bold text-red-600 font-mono">{(voucherExpense.creditAmount || 0).toLocaleString()} دج</span>
                 </div>
               </div>
             </div>

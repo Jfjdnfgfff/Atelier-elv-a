@@ -71,7 +71,7 @@ export const CaisseReceiptModal: React.FC<CaisseReceiptModalProps> = ({ closure,
           <div className="w-12 h-12 bg-slate-100 text-slate-700 rounded-2xl mx-auto flex items-center justify-center text-xl font-bold mb-1 border border-slate-200">
             <Scale className="w-6 h-6 text-slate-700" />
           </div>
-          <h2 className="text-lg font-black text-slate-900">بوتيك مانجر برو</h2>
+          <h2 className="text-lg font-black text-blue-600">بوتيك مانجر برو</h2>
           <p className="text-xs font-bold text-slate-500">وصل إقفال ومطابقة الصندوق اليومي (Ticket de Caisse)</p>
           <div className="mt-2 inline-flex items-center gap-1.5 bg-slate-100 px-3 py-1 rounded-full text-xs font-bold text-slate-700">
             <Calendar className="w-3.5 h-3.5 text-slate-500" />
