@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ClothItem, PurposeType } from '../types';
 import { BarcodeScanner } from './BarcodeScanner';
+import { LettersInput, NumbersInput } from './Shared';
+import { isValidImageFileType, generateSecureImageFilename, sanitizeText, sanitizeNumericAmount } from '../utils/security';
 import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2 } from 'lucide-react';
 
 export const STANDARD_SIZES = [
@@ -1277,10 +1279,20 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
     }
   };
 
-  // Compress & convert file to Base64
+  // Compress & convert file to Base64 with security checks
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Security Check: Validate MIME Type and Extension
+    if (!isValidImageFileType(file.type, file.name)) {
+      alert('⚠️ ملف غير مسموح به! يرجى رفع صورة فقط (JPG, PNG, WEBP).');
+      if (e.target) e.target.value = '';
+      return;
+    }
+
+    const { secureName } = generateSecureImageFilename(file.name, file.type);
+    console.log(`[Security] Image file verified and renamed to secure asset name: ${secureName}`);
 
     setIsProcessingImage(true);
     const reader = new FileReader();
@@ -1428,12 +1440,11 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">اسم القطعة أو الفستان *</label>
-            <input
-              type="text"
+            <label className="block text-xs font-bold text-slate-700 mb-1">اسم القطعة أو الفستان * (حروف فقط)</label>
+            <LettersInput
               required
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={setName}
               placeholder="مثال: فستان سهرة مخمل مطرز، قفطان تقليدي..."
               className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-sm font-bold focus:border-blue-500 focus:outline-none"
             />
@@ -1442,7 +1453,7 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
           {/* Barcode Field with In-Form Camera Scanner Button */}
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="text-xs font-bold text-slate-700">الباركود / الكود (EAN-13 أو Code-128)</label>
+              <label className="text-xs font-bold text-slate-700">الباركود / الكود (أرقام فقط)</label>
               <button
                 type="button"
                 onClick={() => setBarcode(Math.floor(100000000000 + Math.random() * 900000000000).toString())}
@@ -1452,10 +1463,9 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
               </button>
             </div>
             <div className="flex gap-1.5">
-              <input
-                type="text"
+              <NumbersInput
                 value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
+                onChange={setBarcode}
                 placeholder="امسح بالليزر أو اكتب الكود..."
                 className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold focus:border-blue-500 focus:outline-none"
               />
@@ -1644,17 +1654,16 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
 
             {/* Add Custom Color input */}
             <div className="flex gap-1.5 pt-1">
-              <input
-                type="text"
+              <LettersInput
                 value={customColorInput}
-                onChange={(e) => setCustomColorInput(e.target.value)}
+                onChange={setCustomColorInput}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     handleAddCustomColor();
                   }
                 }}
-                placeholder="أضف لون مخصص (مثال: بترولي، موطارد، ترابي)..."
+                placeholder="أضف لون مخصص (حروف فقط: بترولي، موطارد)..."
                 className="flex-1 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:border-red-500"
               />
               <button

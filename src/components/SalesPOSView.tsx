@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ClothItem, Sale, SaleItem } from '../types';
 import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
 import { BarcodeScanner } from './BarcodeScanner';
+import { LettersInput, NumbersInput } from './Shared';
 import { 
   playPosScannerBeep, 
   playPosErrorBeep, 
@@ -739,18 +740,17 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
+                  <LettersInput
                     value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="اسم الزبون (اختياري)..."
+                    onChange={setCustomerName}
+                    placeholder="اسم الزبون (أحرف فقط)..."
                     className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-slate-400 focus:bg-white"
                   />
-                  <input
-                    type="tel"
+                  <NumbersInput
+                    allowPlus
                     value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="رقم الهاتف..."
+                    onChange={setCustomerPhone}
+                    placeholder="رقم الهاتف (أرقام فقط)..."
                     className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-slate-400 focus:bg-white"
                   />
                 </div>

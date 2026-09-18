@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { StaffPayout, StaffMember, StaffAbsence } from '../types';
+import { LettersInput, NumbersInput } from './Shared';
 import { Banknote, Calendar, Users, History, AlertCircle, Check, UserPlus, X, Plus } from 'lucide-react';
 
 interface StaffPayoutsModalProps {
@@ -274,13 +275,12 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
 
               {!selectedStaffId && (
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">اسم العامل/ة *</label>
-                  <input
-                    type="text"
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">اسم العامل/ة * (حروف فقط)</label>
+                  <LettersInput
                     required
                     value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                    placeholder="الاسم الكامل..."
+                    onChange={setCustomName}
+                    placeholder="الاسم الكامل (أحرف فقط)..."
                     className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none focus:border-slate-800"
                   />
                 </div>
@@ -499,13 +499,12 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
 
               {absReason === 'أخرى' && (
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">اكتب السبب بالتفصيل</label>
-                  <input
-                    type="text"
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">اكتب السبب بالتفصيل (حروف فقط)</label>
+                  <LettersInput
                     required
                     value={absCustomReason}
-                    onChange={(e) => setAbsCustomReason(e.target.value)}
-                    placeholder="سبب الغياب..."
+                    onChange={setAbsCustomReason}
+                    placeholder="سبب الغياب (أحرف فقط)..."
                     className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
                   />
                 </div>
@@ -581,35 +580,33 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-1">اسم العامل/ة *</label>
-                <input
-                  type="text"
+                <label className="block text-[10px] font-bold text-slate-500 mb-1">اسم العامل/ة * (حروف فقط)</label>
+                <LettersInput
                   required
                   value={newStaffName}
-                  onChange={(e) => setNewStaffName(e.target.value)}
+                  onChange={setNewStaffName}
                   placeholder="مثال: ياسمين بن علي..."
                   className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-1">المهمة / الدور</label>
-                <input
-                  type="text"
+                <label className="block text-[10px] font-bold text-slate-500 mb-1">المهمة / الدور (حروف فقط)</label>
+                <LettersInput
                   required
                   value={newStaffRole}
-                  onChange={(e) => setNewStaffRole(e.target.value)}
+                  onChange={setNewStaffRole}
                   placeholder="مساعدة بيع، خياطة..."
                   className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-1">رقم الهاتف</label>
-                <input
-                  type="tel"
+                <label className="block text-[10px] font-bold text-slate-500 mb-1">رقم الهاتف (أرقام فقط)</label>
+                <NumbersInput
+                  allowPlus
                   value={newStaffPhone}
-                  onChange={(e) => setNewStaffPhone(e.target.value)}
+                  onChange={setNewStaffPhone}
                   placeholder="05XXXXXXXX"
                   className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
                 />

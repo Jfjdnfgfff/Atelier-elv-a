@@ -3,6 +3,8 @@ import {
   getDatabase, 
   ref, 
   set, 
+  update, 
+  push, 
   get, 
   onValue 
 } from 'firebase/database';
@@ -91,6 +93,56 @@ export async function saveToFirebase<T>(key: string, data: T): Promise<boolean> 
   }
 
   return success;
+}
+
+/**
+ * Incrementally update specific fields in Firebase database using native update()
+ */
+export async function updateInFirebase<T extends object>(key: string, updates: Partial<T>): Promise<boolean> {
+  updateStatus('syncing');
+  const now = Date.now();
+  pendingLocalWrites.set(key, now);
+
+  try {
+    const storeRef = ref(rtdb, `boutique_store/${key}`);
+    const cleanUpdates: Record<string, any> = {};
+    Object.keys(updates).forEach(field => {
+      cleanUpdates[field] = (updates as any)[field];
+    });
+    cleanUpdates.updatedAt = new Date().toISOString();
+
+    await update(storeRef, cleanUpdates);
+    updateStatus('connected');
+    return true;
+  } catch (err: any) {
+    console.warn(`[Firebase RTDB update error on ${key}]:`, err?.message || err);
+    updateStatus('error', err?.message || 'تعذر تحديث البيانات في السحابة');
+    return false;
+  }
+}
+
+/**
+ * Push a new record into a collection using native push()
+ */
+export async function pushToFirebase<T>(key: string, newItem: T): Promise<boolean> {
+  updateStatus('syncing');
+  const now = Date.now();
+  pendingLocalWrites.set(key, now);
+
+  try {
+    const itemsRef = ref(rtdb, `boutique_store/${key}/items`);
+    const newRef = push(itemsRef);
+    await set(newRef, JSON.parse(JSON.stringify(newItem)));
+    await update(ref(rtdb, `boutique_store/${key}`), {
+      updatedAt: new Date().toISOString()
+    });
+    updateStatus('connected');
+    return true;
+  } catch (err: any) {
+    console.warn(`[Firebase RTDB push error on ${key}]:`, err?.message || err);
+    updateStatus('error', err?.message || 'تعذر إضافة العنصر السحابي');
+    return false;
+  }
 }
 
 /**

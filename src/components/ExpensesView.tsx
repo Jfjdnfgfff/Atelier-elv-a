@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Expense, Supplier, Credit } from '../types';
+import { LettersInput, NumbersInput } from './Shared';
+import { sanitizeName, sanitizePhone, sanitizeText } from '../utils/security';
 import {
   Building2,
   Receipt,
@@ -357,12 +359,11 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
                 </select>
 
                 {(selectedSupplierName === '__new__' || selectedSupplierName === '' || !suppliers.some(s => s.name === selectedSupplierName)) && (
-                  <input
-                    type="text"
+                  <LettersInput
                     required
                     value={customSupplierName}
-                    onChange={(e) => setCustomSupplierName(e.target.value)}
-                    placeholder="اكتب اسم المورد أو الشركة..."
+                    onChange={setCustomSupplierName}
+                    placeholder="اكتب اسم المورد (أحرف فقط)..."
                     className="w-full border border-slate-300 bg-slate-50 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-800"
                   />
                 )}
@@ -372,12 +373,12 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
             {/* Supplier Phone */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                هاتف المورد (اختياري)
+                هاتف المورد (أرقام فقط)
               </label>
-              <input
-                type="tel"
+              <NumbersInput
+                allowPlus
                 value={supplierPhone}
-                onChange={(e) => setSupplierPhone(e.target.value)}
+                onChange={setSupplierPhone}
                 placeholder="05 / 06 / 07..."
                 className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
               />
@@ -560,13 +561,12 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-600 mb-1">بيان المصروف *</label>
-              <input
-                type="text"
+              <label className="block text-xs font-bold text-slate-600 mb-1">بيان المصروف * (حروف فقط)</label>
+              <LettersInput
                 required
                 value={generalDesc}
-                onChange={(e) => setGeneralDesc(e.target.value)}
-                placeholder="مثال: تنظيف جاف لـ 4 فساتين سهرة بعد الكراء..."
+                onChange={setGeneralDesc}
+                placeholder="مثال: تنظيف جاف لفساتين سهرة بعد الكراء..."
                 className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:border-slate-800"
               />
             </div>

@@ -144,3 +144,247 @@ export const StatCard: React.FC<{
     </Component>
   );
 };
+
+/**
+ * Strict Letters-Only Input (Blocks numbers on keyboard, beforeinput, paste, drop, and change)
+ */
+export interface LettersInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+  value: string;
+  onChange: (val: string) => void;
+  maxLength?: number;
+}
+
+export const LettersInput: React.FC<LettersInputProps> = ({
+  value,
+  onChange,
+  maxLength = 120,
+  className = '',
+  onKeyDown,
+  onBeforeInput,
+  onPaste,
+  onDrop,
+  ...props
+}) => {
+  // Helper to strip any number/digit and code injection
+  const filterLetters = (input: string): string => {
+    return input
+      .replace(/[0-9\u0660-\u0669\u06F0-\u06F9]/g, '')
+      .replace(/[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFFa-zA-Z\s.\-']/g, '')
+      .slice(0, maxLength);
+  };
+
+  return (
+    <input
+      {...props}
+      type="text"
+      value={value}
+      maxLength={maxLength}
+      onKeyDown={(e) => {
+        // Allow navigation and modification shortcut keys
+        if (
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey &&
+          !['Backspace', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Delete', 'Home', 'End'].includes(e.key) &&
+          /[0-9\u0660-\u0669\u06F0-\u06F9]/.test(e.key)
+        ) {
+          e.preventDefault();
+        }
+        onKeyDown?.(e);
+      }}
+      onBeforeInput={(e: React.FormEvent<HTMLInputElement>) => {
+        const nativeEvt = e.nativeEvent as InputEvent;
+        if (nativeEvt.data && /[0-9\u0660-\u0669\u06F0-\u06F9]/.test(nativeEvt.data)) {
+          e.preventDefault();
+        }
+        onBeforeInput?.(e);
+      }}
+      onPaste={(e) => {
+        e.preventDefault();
+        const text = e.clipboardData.getData('text/plain');
+        const filtered = filterLetters(text);
+        if (filtered) {
+          onChange(filterLetters(value + filtered));
+        }
+        onPaste?.(e);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const text = e.dataTransfer.getData('text/plain');
+        const filtered = filterLetters(text);
+        if (filtered) {
+          onChange(filterLetters(value + filtered));
+        }
+        onDrop?.(e);
+      }}
+      onChange={(e) => {
+        onChange(filterLetters(e.target.value));
+      }}
+      className={className}
+    />
+  );
+};
+
+/**
+ * Strict Numbers-Only Input (Blocks letters & symbols on keyboard, beforeinput, paste, drop, digits only)
+ */
+export interface NumbersInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+  value: string;
+  onChange: (val: string) => void;
+  maxLength?: number;
+  allowPlus?: boolean;
+}
+
+export const NumbersInput: React.FC<NumbersInputProps> = ({
+  value,
+  onChange,
+  maxLength = 30,
+  allowPlus = false,
+  className = '',
+  onKeyDown,
+  onBeforeInput,
+  onPaste,
+  onDrop,
+  ...props
+}) => {
+  const filterDigits = (input: string): string => {
+    let raw = input
+      .replace(/[\u0660-\u0669]/g, d => (d.charCodeAt(0) - 0x0660).toString())
+      .replace(/[\u06F0-\u06F9]/g, d => (d.charCodeAt(0) - 0x06F0).toString());
+    const hasPlus = allowPlus && raw.startsWith('+');
+    const digits = raw.replace(/[^\d]/g, '').slice(0, maxLength);
+    return hasPlus ? `+${digits}` : digits;
+  };
+
+  return (
+    <input
+      {...props}
+      type="tel"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={value}
+      maxLength={maxLength}
+      onKeyDown={(e) => {
+        if (
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey &&
+          !['Backspace', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Delete', 'Home', 'End'].includes(e.key)
+        ) {
+          if (allowPlus && e.key === '+') return;
+          if (!/^[0-9]$/.test(e.key)) {
+            e.preventDefault();
+          }
+        }
+        onKeyDown?.(e);
+      }}
+      onBeforeInput={(e: React.FormEvent<HTMLInputElement>) => {
+        const nativeEvt = e.nativeEvent as InputEvent;
+        if (nativeEvt.data) {
+          if (allowPlus && nativeEvt.data === '+') return;
+          if (!/^[0-9]+$/.test(nativeEvt.data)) {
+            e.preventDefault();
+          }
+        }
+        onBeforeInput?.(e);
+      }}
+      onPaste={(e) => {
+        e.preventDefault();
+        const text = e.clipboardData.getData('text/plain');
+        const filtered = filterDigits(text);
+        if (filtered) {
+          onChange(filterDigits(value + filtered));
+        }
+        onPaste?.(e);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const text = e.dataTransfer.getData('text/plain');
+        const filtered = filterDigits(text);
+        if (filtered) {
+          onChange(filterDigits(value + filtered));
+        }
+        onDrop?.(e);
+      }}
+      onChange={(e) => {
+        onChange(filterDigits(e.target.value));
+      }}
+      className={className}
+    />
+  );
+};
+
+/**
+ * Strict Money / Decimal Input (Allows only digits and a single decimal point)
+ */
+export interface MoneyInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
+  value: string | number;
+  onChange: (val: string) => void;
+}
+
+export const MoneyInput: React.FC<MoneyInputProps> = ({
+  value,
+  onChange,
+  className = '',
+  onKeyDown,
+  onBeforeInput,
+  onPaste,
+  ...props
+}) => {
+  const filterMoney = (input: string): string => {
+    let raw = input
+      .replace(/[\u0660-\u0669]/g, d => (d.charCodeAt(0) - 0x0660).toString())
+      .replace(/[\u06F0-\u06F9]/g, d => (d.charCodeAt(0) - 0x06F0).toString())
+      .replace(/,/g, '.');
+    let clean = raw.replace(/[^\d.]/g, '');
+    const parts = clean.split('.');
+    if (parts.length > 2) {
+      clean = parts[0] + '.' + parts.slice(1).join('');
+    }
+    return clean;
+  };
+
+  return (
+    <input
+      {...props}
+      type="text"
+      inputMode="decimal"
+      value={value ?? ''}
+      onKeyDown={(e) => {
+        if (
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey &&
+          !['Backspace', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Delete', 'Home', 'End'].includes(e.key)
+        ) {
+          if (e.key === '.' || e.key === ',') return;
+          if (!/^[0-9]$/.test(e.key)) {
+            e.preventDefault();
+          }
+        }
+        onKeyDown?.(e);
+      }}
+      onBeforeInput={(e: React.FormEvent<HTMLInputElement>) => {
+        const nativeEvt = e.nativeEvent as InputEvent;
+        if (nativeEvt.data) {
+          if (nativeEvt.data === '.' || nativeEvt.data === ',') return;
+          if (!/^[0-9]+$/.test(nativeEvt.data)) {
+            e.preventDefault();
+          }
+        }
+        onBeforeInput?.(e);
+      }}
+      onPaste={(e) => {
+        e.preventDefault();
+        const text = e.clipboardData.getData('text/plain');
+        onChange(filterMoney(String(value ?? '') + text));
+        onPaste?.(e);
+      }}
+      onChange={(e) => {
+        onChange(filterMoney(e.target.value));
+      }}
+      className={className}
+    />
+  );
+};
+

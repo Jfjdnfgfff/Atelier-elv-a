@@ -49,6 +49,13 @@ async function startServer() {
         return res.status(400).json({ error: 'صورة البطاقة أو النص مطلوب' });
       }
 
+      // Security check: Validate MIME Type
+      const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      const cleanMime = (mimeType || 'image/jpeg').toLowerCase().trim();
+      if (imageBase64 && !allowedMimes.includes(cleanMime)) {
+        return res.status(400).json({ error: 'نوع الملف غير مسموح به. يرجى إرفاق صورة فقط (JPEG, PNG, WEBP).' });
+      }
+
       if (!process.env.GEMINI_API_KEY) {
         // Return a graceful response if API key is not configured
         return res.status(500).json({ 
@@ -63,11 +70,15 @@ async function startServer() {
         cleanBase64 = cleanBase64.split(';base64,')[1];
       }
 
+      // Generate a secure server-side random filename for the session asset
+      const ext = cleanMime.split('/')[1] || 'jpg';
+      const secureAssetFilename = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${ext}`;
+
       const parts: any[] = [];
       if (cleanBase64) {
         parts.push({
           inlineData: {
-            mimeType: mimeType || 'image/jpeg',
+            mimeType: cleanMime,
             data: cleanBase64,
           },
         });
@@ -116,15 +127,30 @@ JSON Schema Requirements:
       });
 
       const resultText = response.text || '{}';
-      let parsedData = {};
+      let parsedData: any = {};
       try {
         parsedData = JSON.parse(resultText);
       } catch {
-        parsedData = { raw: resultText };
+        parsedData = {};
+      }
+
+      // Security sanitization pass on OCR output
+      const sanitizeStr = (s: any) => {
+        if (!s || typeof s !== 'string') return '';
+        return s.replace(/<[^>]*>?/gm, '').replace(/['"--]/g, '').trim();
+      };
+
+      if (parsedData && typeof parsedData === 'object') {
+        parsedData.name = sanitizeStr(parsedData.name);
+        parsedData.idNumber = sanitizeStr(parsedData.idNumber).replace(/[^\d]/g, '').slice(0, 30);
+        parsedData.phone = sanitizeStr(parsedData.phone);
+        parsedData.address = sanitizeStr(parsedData.address);
+        parsedData.documentType = sanitizeStr(parsedData.documentType);
       }
 
       return res.json({
         success: true,
+        secureFilename: secureAssetFilename,
         data: parsedData,
       });
     } catch (error: any) {

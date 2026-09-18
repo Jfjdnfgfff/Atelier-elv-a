@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { ClothItem, Rental } from '../types';
 import { BarcodeScanner } from './BarcodeScanner';
 import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
+import { LettersInput, NumbersInput } from './Shared';
+import { sanitizeName, sanitizePhone, sanitizeDigitsOnly, sanitizeText } from '../utils/security';
 import { 
   Shirt, 
   Calendar, 
@@ -80,18 +82,26 @@ export const RentalModal: React.FC<RentalModalProps> = ({
   const [showCustomerIdScanner, setShowCustomerIdScanner] = useState(false);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
 
-  // Handle extracted customer data from ID / Barcode
+  // Handle extracted customer data from ID / Barcode using update/merge logic
   const handleCustomerExtracted = (data: ExtractedCustomerData) => {
     const cleanName = (data.name || '').replace(/^(الاسم واللقب|الاسم|اللقب|Nom|Prénom)[\s:]*/i, '').trim();
     const cleanId = (data.idNumber || '').replace(/^(NIN|رقم التعريف|بطاقة|ID)[\s:]*/i, '').trim();
     const cleanPhone = (data.phone || '').trim();
 
-    if (cleanName) setCustomerName(cleanName);
-    if (cleanPhone) setCustomerPhone(cleanPhone);
-    if (cleanId) setCustomerIdNumber(cleanId);
-    if (data.notes && !notes) setNotes(data.notes);
+    if (cleanName) {
+      setCustomerName(prev => (prev.trim() && !prev.includes(cleanName) ? `${prev} - ${cleanName}` : (prev.trim() || cleanName)));
+    }
+    if (cleanPhone) {
+      setCustomerPhone(prev => (prev.trim() ? prev : cleanPhone));
+    }
+    if (cleanId) {
+      setCustomerIdNumber(prev => (prev.trim() ? prev : cleanId));
+    }
+    if (data.notes) {
+      setNotes(prev => (prev.trim() ? `${prev} | ${data.notes}` : data.notes));
+    }
 
-    setScanNotice(`✓ تم تعبئة بيانات الزبونة: ${cleanName || cleanId} بنجاح`);
+    setScanNotice(`✓ تم تحديث وتأكيد بيانات الزبونة: ${cleanName || cleanId} بنجاح`);
     setTimeout(() => setScanNotice(null), 4000);
   };
 
@@ -346,17 +356,16 @@ export const RentalModal: React.FC<RentalModalProps> = ({
 
         {/* Quick Barcode/Search Input + Camera Scanner Button */}
         <div className="flex gap-1.5">
-          <input
-            type="text"
+          <NumbersInput
             value={quickBarcodeInput}
-            onChange={(e) => setQuickBarcodeInput(e.target.value)}
+            onChange={setQuickBarcodeInput}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
                 handleQuickBarcodeSearch(e);
               }
             }}
-            placeholder="امسح بالليزر أو اكتب الباركود..."
+            placeholder="امسح بالليزر أو اكتب الباركود (أرقام فقط)..."
             className="flex-1 bg-white border border-slate-200 focus:border-slate-400 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 placeholder:font-sans placeholder:text-slate-400 focus:outline-none"
           />
           <button
@@ -567,7 +576,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
         </div>
       </div>
 
-      {/* Customer Information with Smart ID & Barcode Scanner */}
+      {/* Customer Information Section */}
       <div className="bg-slate-50 p-4 rounded-3xl border border-slate-200 shadow-xs space-y-3">
         <div className="flex flex-wrap justify-between items-center gap-2">
           <div className="flex items-center gap-2">
@@ -576,33 +585,50 @@ export const RentalModal: React.FC<RentalModalProps> = ({
             </span>
             <div>
               <span className="text-xs font-bold text-slate-900 block">معلومات وهوية الزبونة / الزبون</span>
-              <span className="text-[10px] text-slate-500 font-medium">يمكنك الكتابة يدوياً أو المسح المباشر بالكاميرا</span>
+              <span className="text-[10px] text-slate-500 font-medium">أدخل الاسم والهاتف ورقم بطاقة الهوية يدوياً</span>
             </div>
           </div>
           
-          <button
-            type="button"
-            onClick={() => setShowCustomerIdScanner(true)}
-            className="bg-slate-900 hover:bg-slate-800 active:scale-95 text-white px-3.5 py-2 rounded-2xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 border border-slate-800"
-            title="مسح بطاقة التعريف الوطنية أو رخصة السياقة أو باركود الزبون بالكاميرا"
-          >
-            <Camera className="w-4 h-4 text-slate-300" />
-            <span>مسح بطاقة الهوية بالكاميرا (AI OCR)</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setCustomerName('');
+                setCustomerPhone('');
+                setCustomerIdNumber('');
+                setScanNotice('تم مسح وتفريغ بيانات الزبون');
+                setTimeout(() => setScanNotice(null), 3000);
+              }}
+              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1"
+              title="مسح وتفريغ جميع الحقول"
+            >
+              <span>🗑️</span>
+              <span>مسح / تفريغ الحقول</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowCustomerIdScanner(true)}
+              className="bg-slate-900 hover:bg-slate-800 active:scale-95 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 border border-slate-800"
+              title="مسح بطاقة التعريف الوطنية بالماسح الضوئي"
+            >
+              <Camera className="w-3.5 h-3.5 text-slate-300" />
+              <span>ماسح الهوية</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-xs font-bold text-slate-700">اسم ولقب الزبونة / الزبون *</label>
+              <label className="block text-xs font-bold text-slate-700">اسم ولقب الزبونة / الزبون * (حروف فقط)</label>
             </div>
             <div className="relative">
-              <input
-                type="text"
+              <LettersInput
                 required
                 value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="الاسم واللقب الكامل..."
+                onChange={setCustomerName}
+                placeholder="الاسم واللقب (أحرف فقط)..."
                 className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:border-slate-400 focus:outline-none shadow-2xs"
               />
             </div>
@@ -610,13 +636,13 @@ export const RentalModal: React.FC<RentalModalProps> = ({
 
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-xs font-bold text-slate-700">رقم الهاتف *</label>
+              <label className="block text-xs font-bold text-slate-700">رقم الهاتف * (أرقام فقط)</label>
             </div>
-            <input
-              type="tel"
+            <NumbersInput
               required
+              allowPlus
               value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
+              onChange={setCustomerPhone}
               placeholder="05 / 06 / 07..."
               className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:border-slate-400 focus:outline-none shadow-2xs"
             />
@@ -624,32 +650,25 @@ export const RentalModal: React.FC<RentalModalProps> = ({
 
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-xs font-bold text-slate-700">رقم بطاقة الهوية / التعريف (NIN)</label>
-              <button
-                type="button"
-                onClick={() => setShowCustomerIdScanner(true)}
-                className="text-[10px] text-slate-600 font-bold hover:underline flex items-center gap-1"
-              >
-                <Camera className="w-3 h-3 text-slate-500" />
-                <span>مسح</span>
-              </button>
+              <label className="block text-xs font-bold text-slate-700">رقم بطاقة الهوية / التعريف (أرقام فقط)</label>
+              {customerIdNumber && (
+                <button
+                  type="button"
+                  onClick={() => setCustomerIdNumber('')}
+                  className="text-[10px] text-rose-600 font-bold hover:underline"
+                >
+                  مسح الرقم
+                </button>
+              )}
             </div>
             <div className="relative">
-              <input
-                type="text"
+              <NumbersInput
                 value={customerIdNumber}
-                onChange={(e) => setCustomerIdNumber(e.target.value)}
-                placeholder="رقم البطاقة الوطنية أو الضمانة..."
-                className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs font-bold font-mono text-slate-900 focus:border-slate-400 focus:outline-none shadow-2xs"
+                onChange={setCustomerIdNumber}
+                placeholder="18 رقم للتعريف الوطني..."
+                maxLength={30}
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold font-mono text-slate-900 focus:border-slate-400 focus:outline-none shadow-2xs"
               />
-              <button
-                type="button"
-                onClick={() => setShowCustomerIdScanner(true)}
-                className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-                title="مسح بطاقة الهوية بالكاميرا"
-              >
-                <Camera className="w-3.5 h-3.5" />
-              </button>
             </div>
           </div>
         </div>
@@ -704,14 +723,13 @@ export const RentalModal: React.FC<RentalModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2">
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  اسم / بيان الإكسسوار المرفق *
+                  اسم / بيان الإكسسوار المرفق * (حروف فقط)
                 </label>
-                <input
-                  type="text"
+                <LettersInput
                   required={hasAccessories}
                   value={accessoryName}
-                  onChange={(e) => setAccessoryName(e.target.value)}
-                  placeholder="مثال: تاج ملكي فاخر + حزام مجوهرات..."
+                  onChange={setAccessoryName}
+                  placeholder="مثال: تاج ملكي فاخر، حزام مجوهرات..."
                   className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400"
                 />
               </div>

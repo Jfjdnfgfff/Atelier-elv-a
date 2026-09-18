@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Credit, Supplier } from '../types';
 import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
+import { LettersInput, NumbersInput } from './Shared';
+import { sanitizeName, sanitizePhone, sanitizeText } from '../utils/security';
 import {
   Users,
   Building2,
@@ -225,33 +227,31 @@ export const CreditsView: React.FC<CreditsViewProps> = ({
                   <option value="">-- اختر مورد أو اكتب أدناه --</option>
                   {suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                 </select>
-                <input
-                  type="text"
+                <LettersInput
                   required
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="اسم المورد..."
+                  onChange={setName}
+                  placeholder="اسم المورد (أحرف فقط)..."
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
                 />
               </div>
             ) : (
-              <input
-                type="text"
+              <LettersInput
                 required
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="الاسم واللقب..."
+                onChange={setName}
+                placeholder="الاسم واللقب (أحرف فقط)..."
                 className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:border-slate-800"
               />
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">رقم الهاتف</label>
-            <input
-              type="tel"
+            <label className="block text-xs font-bold text-slate-600 mb-1">رقم الهاتف (أرقام فقط)</label>
+            <NumbersInput
+              allowPlus
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={setPhone}
               placeholder="05 / 06 / 07..."
               className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:border-slate-800"
             />

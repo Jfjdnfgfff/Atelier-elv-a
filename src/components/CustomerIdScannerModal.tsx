@@ -11,6 +11,14 @@ import {
 import { CustomerProfile } from '../types';
 import { STORAGE_KEYS, loadFromStorage } from '../storage';
 import { playPosScannerBeep } from '../utils/scannerSoundAndValidation';
+import { LettersInput, NumbersInput } from './Shared';
+import {
+  isValidImageFileType,
+  generateSecureImageFilename,
+  sanitizeName,
+  sanitizeDigitsOnly,
+  sanitizeText
+} from '../utils/security';
 
 export interface ExtractedCustomerData {
   name: string;
@@ -596,10 +604,18 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
       const resJson = await response.json();
       if (resJson.success && resJson.data) {
         const info = resJson.data;
-        const cleanName = (info.name || '').replace(/^(الاسم واللقب|الاسم|اللقب|Nom|Prénom)[\s:]*/i, '').trim();
-        const cleanId = (info.idNumber || '').replace(/^(NIN|رقم التعريف|بطاقة|ID)[\s:]*/i, '').trim();
+        const rawName = (info.name || '').replace(/^(الاسم واللقب|الاسم|اللقب|Nom|Prénom)[\s:]*/i, '').trim();
+        const rawId = (info.idNumber || '').replace(/^(NIN|رقم التعريف|بطاقة|ID)[\s:]*/i, '').trim();
 
-        if (cleanName || cleanId || info.phone) {
+        // Apply strict sanitization against XSS & SQL Injection
+        const cleanName = sanitizeName(rawName);
+        const cleanId = sanitizeDigitsOnly(rawId, 30);
+        const cleanPhone = sanitizeDigitsOnly(info.phone || '', 20);
+        const cleanBirthDate = sanitizeText(info.birthDate || '', 20);
+        const cleanAddress = sanitizeText(info.address || '', 120);
+        const cleanDocType = sanitizeText(info.documentType || 'بطاقة هوية / وثيقة رسمية', 50);
+
+        if (cleanName || cleanId || cleanPhone) {
           playBeep();
           if (navigator.vibrate) {
             try { navigator.vibrate([60, 40, 60]); } catch {}
@@ -608,13 +624,13 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
           setExtractedData({
             name: cleanName,
             idNumber: cleanId,
-            phone: info.phone || '',
-            birthDate: info.birthDate || '',
-            address: info.address || '',
-            documentType: info.documentType || 'بطاقة هوية / وثيقة رسمية',
-            notes: info.notes || ''
+            phone: cleanPhone,
+            birthDate: cleanBirthDate,
+            address: cleanAddress,
+            documentType: cleanDocType,
+            notes: sanitizeText(info.notes || '', 150)
           });
-          setOcrStatusMessage('✓ تم قراءة الاسم واللقب ورقم التعريف بنجاح!');
+          setOcrStatusMessage('✓ تم قراءة وتنقية الاسم واللقب ورقم التعريف بنجاح!');
           return;
         }
       }
@@ -666,6 +682,17 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Security Check: Ensure uploaded file is a valid image format
+    if (!isValidImageFileType(file.type, file.name)) {
+      alert('⚠️ نوع الملف غير مسموح به! يرجى رفع صورة فقط (JPG, PNG, WEBP).');
+      if (e.target) e.target.value = '';
+      return;
+    }
+
+    // Generate secure randomized filename automatically upon receipt
+    const { secureName } = generateSecureImageFilename(file.name, file.type);
+    console.log(`[Security] Uploaded image verified and assigned secure filename: ${secureName}`);
 
     setOcrStatusMessage('🔍 جاري التحليل المعمق واسترجاع النصوص من الورقة المطوية / الفوطوكوبي...');
     const reader = new FileReader();
@@ -851,34 +878,32 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
         {activeTab === 'manual' && !extractedData && (
           <form onSubmit={handleManualSubmit} className="space-y-3 p-3 bg-slate-50 rounded-2xl border border-slate-200">
             <div>
-              <label className="block text-xs font-black text-slate-700 mb-1">اسم ولقب الزبونة / الزبون *</label>
-              <input
-                type="text"
+              <label className="block text-xs font-black text-slate-700 mb-1">اسم ولقب الزبونة / الزبون * (حروف فقط)</label>
+              <LettersInput
                 required
                 value={manualName}
-                onChange={(e) => setManualName(e.target.value)}
-                placeholder="الاسم واللقب..."
+                onChange={setManualName}
+                placeholder="الاسم واللقب (أحرف فقط)..."
                 className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-rose-500"
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-xs font-black text-slate-700 mb-1">رقم الهاتف</label>
-                <input
-                  type="tel"
+                <label className="block text-xs font-black text-slate-700 mb-1">رقم الهاتف (أرقام فقط)</label>
+                <NumbersInput
+                  allowPlus
                   value={manualPhone}
-                  onChange={(e) => setManualPhone(e.target.value)}
+                  onChange={setManualPhone}
                   placeholder="05 / 06 / 07..."
                   className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-rose-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-black text-slate-700 mb-1">رقم بطاقة الهوية (NIN)</label>
-                <input
-                  type="text"
+                <label className="block text-xs font-black text-slate-700 mb-1">رقم بطاقة الهوية (NIN) (أرقام فقط)</label>
+                <NumbersInput
                   value={manualId}
-                  onChange={(e) => setManualId(e.target.value)}
-                  placeholder="رقم البطاقة..."
+                  onChange={setManualId}
+                  placeholder="رقم البطاقة (أرقام فقط)..."
                   className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold font-mono text-slate-900 focus:outline-none focus:border-rose-500"
                 />
               </div>
@@ -951,27 +976,26 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-black text-slate-700 mb-1">
-                    👤 اسم ولقب الزبونة / الزبون *
+                    👤 اسم ولقب الزبونة / الزبون * (حروف فقط)
                   </label>
-                  <input
-                    type="text"
+                  <LettersInput
                     required
                     value={extractedData.name}
-                    onChange={(e) => setExtractedData({ ...extractedData, name: e.target.value })}
-                    placeholder="الاسم واللقب..."
+                    onChange={(val) => setExtractedData({ ...extractedData, name: val })}
+                    placeholder="الاسم واللقب (أحرف فقط)..."
                     className="w-full bg-white border border-slate-300 focus:border-rose-500 rounded-xl px-3 py-2 text-xs font-black text-slate-900 focus:outline-none shadow-2xs"
                   />
                 </div>
 
                 <div>
                   <label className="block text-[11px] font-black text-slate-700 mb-1">
-                    🆔 رقم بطاقة التعريف / NIN
+                    🆔 رقم بطاقة التعريف / NIN (أرقام فقط)
                   </label>
-                  <input
-                    type="text"
+                  <NumbersInput
                     value={extractedData.idNumber}
-                    onChange={(e) => setExtractedData({ ...extractedData, idNumber: e.target.value })}
-                    placeholder="رقم البطاقة (NIN)..."
+                    onChange={(val) => setExtractedData({ ...extractedData, idNumber: val })}
+                    placeholder="رقم البطاقة (أرقام فقط)..."
+                    maxLength={30}
                     className="w-full bg-white border border-slate-300 focus:border-rose-500 rounded-xl px-3 py-2 text-xs font-mono font-black text-slate-900 focus:outline-none shadow-2xs"
                   />
                 </div>
@@ -981,16 +1005,15 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
               <div className="p-3 bg-emerald-50/80 border-2 border-emerald-400 rounded-2xl shadow-xs">
                 <div className="flex justify-between items-center mb-1">
                   <label className="block text-xs font-black text-emerald-950 flex items-center gap-1.5">
-                    <span>📞 رقم الهاتف (أدخل رقم الزبون يدوياً):</span>
+                    <span>📞 رقم الهاتف (أرقام فقط):</span>
                     <span className="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.2 rounded font-bold">كتابة يدوية</span>
                   </label>
                 </div>
-                <input
-                  ref={phoneInputRef}
-                  type="tel"
+                <NumbersInput
+                  allowPlus
                   autoFocus
                   value={extractedData.phone}
-                  onChange={(e) => setExtractedData({ ...extractedData, phone: e.target.value })}
+                  onChange={(val) => setExtractedData({ ...extractedData, phone: val })}
                   placeholder="05 / 06 / 07..."
                   className="w-full bg-white border-2 border-emerald-500 focus:border-emerald-600 rounded-xl px-3.5 py-2.5 text-sm font-black font-mono text-slate-900 focus:outline-none shadow-inner"
                 />

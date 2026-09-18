@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { MaintenanceOrder, MaintenanceServiceType, MaintenanceTargetType, MaintenanceStatus, ClothItem, StaffMember } from '../types';
-import { Modal } from './Shared';
+import { Modal, LettersInput, NumbersInput } from './Shared';
 import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
 import { User, Tag, CreditCard } from 'lucide-react';
+import { sanitizeName, sanitizePhone, sanitizeText } from '../utils/security';
 
 interface TailoringModalProps {
   order?: MaintenanceOrder | null;
@@ -217,23 +218,22 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">اسم الزبونة *</label>
-                <input
-                  type="text"
+                <label className="block text-xs font-bold text-slate-700 mb-1">اسم الزبونة * (حروف فقط)</label>
+                <LettersInput
                   required
                   value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="اسم الزبونة"
+                  onChange={setCustomerName}
+                  placeholder="اسم الزبونة (أحرف فقط)..."
                   className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">رقم الهاتف (لإشعارها بالواتساب) *</label>
-                <input
-                  type="tel"
+                <label className="block text-xs font-bold text-slate-700 mb-1">رقم الهاتف (لإشعارها بالواتساب) * (أرقام فقط)</label>
+                <NumbersInput
                   required
+                  allowPlus
                   value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  onChange={setCustomerPhone}
                   placeholder="05XXXXXXXX / 06XXXXXXXX"
                   dir="ltr"
                   className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-rose-500 focus:outline-none text-right"
@@ -261,14 +261,13 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">الخياطة / الورشة المسؤولة</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">الخياطة / الورشة المسؤولة (حروف فقط)</label>
             <div className="flex gap-1.5">
-              <input
-                type="text"
+              <LettersInput
                 list="staff-list"
                 value={tailorName}
-                onChange={(e) => setTailorName(e.target.value)}
-                placeholder="اسم الخياطة"
+                onChange={setTailorName}
+                placeholder="اسم الخياطة (أحرف فقط)..."
                 className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
               />
               <datalist id="staff-list">
