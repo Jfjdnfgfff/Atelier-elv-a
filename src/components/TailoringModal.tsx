@@ -224,7 +224,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
                   value={customerName}
                   onChange={setCustomerName}
                   placeholder="اسم الزبونة (أحرف فقط)..."
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-rose-500 focus:outline-none"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-blue-900 focus:outline-none"
                 />
               </div>
               <div>
@@ -236,7 +236,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
                   onChange={setCustomerPhone}
                   placeholder="05XXXXXXXX / 06XXXXXXXX"
                   dir="ltr"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-rose-500 focus:outline-none text-right"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-blue-900 focus:outline-none text-right"
                 />
               </div>
             </div>

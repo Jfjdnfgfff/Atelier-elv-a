@@ -232,13 +232,13 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
             onClick={() => setFilter('overdue')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 border border-transparent ${
               filter === 'overdue' 
-                ? 'bg-red-600 text-white shadow-xs' 
-                : 'bg-slate-100 text-slate-700 hover:bg-red-50 hover:text-red-700 hover:border-red-200'
+                ? 'bg-black text-white shadow-xs' 
+                : 'bg-slate-100 text-slate-700 hover:bg-black hover:text-white'
             }`}
           >
             <span>متأخرة عن الإرجاع</span>
             <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-              filter === 'overdue' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-700'
+              filter === 'overdue' ? 'bg-white/20 text-white' : 'bg-slate-900 text-white'
             }`}>
               {overdueRentalsList.length}
             </span>
@@ -317,7 +317,7 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
                     : isReserved
                     ? 'border-slate-300 bg-slate-50/40'
                     : isOverdue
-                    ? 'border-red-200 bg-red-50/20'
+                    ? 'border-black bg-slate-50'
                     : 'border-slate-200'
                 }`}
               >
@@ -366,8 +366,8 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
                         <span>مستأجرة مستقبلاً</span>
                       </span>
                     ) : isOverdue ? (
-                      <span className="bg-red-50 text-red-700 border border-red-200 text-[10px] font-black px-2.5 py-1 rounded-xl shrink-0 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3 text-red-600" />
+                      <span className="bg-black text-white border border-black text-[10px] font-black px-2.5 py-1 rounded-xl shrink-0 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 text-white" />
                         <span>متأخر {Math.abs(daysDiffFromReturn)} يوم</span>
                       </span>
                     ) : (
@@ -410,7 +410,7 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
 
                     <div className="flex justify-between items-center">
                       <span className="text-[11px] font-bold text-slate-500">موعد الإرجاع:</span>
-                      <span className={`font-bold font-mono ${isOverdue ? 'text-red-600 font-black' : 'text-slate-800'}`}>
+                      <span className={`font-bold font-mono ${isOverdue ? 'text-black font-black underline' : 'text-slate-800'}`}>
                         {rental.expectedReturnDate}
                       </span>
                     </div>
@@ -436,10 +436,10 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
                       <span className="font-black text-blue-700 font-mono">{rental.paidAmount.toLocaleString()} دج</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-red-700 font-bold block">
+                      <span className="text-[10px] text-black font-bold block">
                         {isReserved ? 'المتبقي عند الاستلام' : 'المتبقي'}
                       </span>
-                      <span className="font-black text-red-700 font-mono">{(rental.remainingAmount || 0).toLocaleString()} دج</span>
+                      <span className="font-black text-black font-mono">{(rental.remainingAmount || 0).toLocaleString()} دج</span>
                     </div>
                   </div>
                 </div>
@@ -497,7 +497,7 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
 
                     <button
                       onClick={() => onDeleteRental(rental.id)}
-                      className="p-2 bg-slate-100 hover:bg-red-50 hover:text-red-600 hover:border-red-200 border border-transparent text-slate-600 rounded-xl text-xs font-bold transition-all"
+                      className="p-2 bg-slate-100 hover:bg-black hover:text-white rounded-xl text-xs font-bold transition-all"
                       title="حذف العملية"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

@@ -791,13 +791,13 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
           <div className="flex items-center gap-2.5">
-            <span className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-xl font-bold shadow-xs">
+            <span className="w-10 h-10 rounded-2xl bg-blue-900 text-white flex items-center justify-center text-xl font-bold shadow-xs">
               ⚡
             </span>
             <div>
               <h2 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-1.5">
                 {title}
-                <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold animate-pulse">
+                <span className="text-[10px] bg-blue-50 text-blue-800 px-2 py-0.5 rounded-full font-bold animate-pulse">
                   قراءة فورية ⚡
                 </span>
               </h2>
@@ -832,7 +832,7 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
               }}
               className={`py-2 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 ${
                 activeTab === 'id_card'
-                  ? 'bg-white text-rose-700 shadow-xs'
+                  ? 'bg-blue-900 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -848,7 +848,7 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
               }}
               className={`py-2 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 ${
                 activeTab === 'barcode'
-                  ? 'bg-white text-rose-700 shadow-xs'
+                  ? 'bg-blue-900 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -864,7 +864,7 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
               }}
               className={`py-2 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 ${
                 activeTab === 'manual'
-                  ? 'bg-white text-rose-700 shadow-xs'
+                  ? 'bg-blue-900 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -884,7 +884,7 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                 value={manualName}
                 onChange={setManualName}
                 placeholder="الاسم واللقب (أحرف فقط)..."
-                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-rose-500"
+                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-900"
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -895,7 +895,7 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                   value={manualPhone}
                   onChange={setManualPhone}
                   placeholder="05 / 06 / 07..."
-                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-rose-500"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-900"
                 />
               </div>
               <div>
@@ -904,13 +904,13 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                   value={manualId}
                   onChange={setManualId}
                   placeholder="رقم البطاقة (أرقام فقط)..."
-                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold font-mono text-slate-900 focus:outline-none focus:border-rose-500"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold font-mono text-slate-900 focus:outline-none focus:border-blue-900"
                 />
               </div>
             </div>
             <button
               type="submit"
-              className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-black text-xs shadow-md shadow-rose-200"
+              className="w-full py-3 bg-blue-900 hover:bg-black text-white rounded-2xl font-black text-xs shadow-md shadow-blue-200"
             >
               ✓ اعتماد وتعبئة النموذج
             </button>
@@ -919,8 +919,8 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
 
         {/* Camera Error message */}
         {cameraError && !extractedData && activeTab !== 'manual' && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center space-y-2 mb-3">
-            <p className="text-xs font-bold text-red-800">{cameraError}</p>
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-center space-y-2 mb-3">
+            <p className="text-xs font-bold text-blue-900">{cameraError}</p>
             <div className="flex gap-2 justify-center">
               <button
                 onClick={startCamera}
@@ -948,13 +948,13 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
             className="space-y-3.5 animate-in fade-in"
           >
             {ocrStatusMessage && (
-              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-2xl text-xs font-bold flex items-center justify-between shadow-xs">
+              <div className="bg-blue-50 border border-blue-200 text-blue-900 p-2.5 rounded-2xl text-xs font-bold flex items-center justify-between shadow-xs">
                 <span className="flex items-center gap-1.5">
-                  <span className="text-emerald-600 text-sm">⚡</span>
+                  <span className="text-blue-600 text-sm">⚡</span>
                   <span>{ocrStatusMessage}</span>
                 </span>
                 {extractedData.documentType && (
-                  <span className="bg-emerald-200 text-emerald-900 text-[10px] px-2 py-0.5 rounded-md font-mono">
+                  <span className="bg-blue-200 text-blue-900 text-[10px] px-2 py-0.5 rounded-md font-mono">
                     {extractedData.documentType}
                   </span>
                 )}
@@ -972,10 +972,10 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
             )}
 
             {/* Quick Summary Cards */}
-            <div className="space-y-3 bg-gradient-to-br from-slate-50 to-rose-50/20 p-3.5 rounded-2xl border border-slate-200 text-xs">
+            <div className="space-y-3 bg-white p-3.5 rounded-2xl border border-blue-100 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[11px] font-black text-slate-700 mb-1">
+                  <label className="block text-[11px] font-black text-blue-900 mb-1">
                     👤 اسم ولقب الزبونة / الزبون * (حروف فقط)
                   </label>
                   <LettersInput
@@ -983,12 +983,12 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                     value={extractedData.name}
                     onChange={(val) => setExtractedData({ ...extractedData, name: val })}
                     placeholder="الاسم واللقب (أحرف فقط)..."
-                    className="w-full bg-white border border-slate-300 focus:border-rose-500 rounded-xl px-3 py-2 text-xs font-black text-slate-900 focus:outline-none shadow-2xs"
+                    className="w-full bg-white border border-blue-200 focus:border-blue-900 rounded-xl px-3 py-2 text-xs font-black text-blue-900 focus:outline-none shadow-2xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-black text-slate-700 mb-1">
+                  <label className="block text-[11px] font-black text-blue-900 mb-1">
                     🆔 رقم بطاقة التعريف / NIN (أرقام فقط)
                   </label>
                   <NumbersInput
@@ -996,17 +996,17 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                     onChange={(val) => setExtractedData({ ...extractedData, idNumber: val })}
                     placeholder="رقم البطاقة (أرقام فقط)..."
                     maxLength={30}
-                    className="w-full bg-white border border-slate-300 focus:border-rose-500 rounded-xl px-3 py-2 text-xs font-mono font-black text-slate-900 focus:outline-none shadow-2xs"
+                    className="w-full bg-white border border-blue-200 focus:border-blue-900 rounded-xl px-3 py-2 text-xs font-mono font-black text-blue-900 focus:outline-none shadow-2xs"
                   />
                 </div>
               </div>
 
               {/* Dedicated Phone Input with High-Visibility Highlight */}
-              <div className="p-3 bg-emerald-50/80 border-2 border-emerald-400 rounded-2xl shadow-xs">
+              <div className="p-3 bg-blue-50 border-2 border-blue-400 rounded-2xl shadow-xs">
                 <div className="flex justify-between items-center mb-1">
-                  <label className="block text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                  <label className="block text-xs font-black text-blue-950 flex items-center gap-1.5">
                     <span>📞 رقم الهاتف (أرقام فقط):</span>
-                    <span className="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.2 rounded font-bold">كتابة يدوية</span>
+                    <span className="text-[10px] bg-blue-200 text-blue-900 px-1.5 py-0.2 rounded font-bold">كتابة يدوية</span>
                   </label>
                 </div>
                 <NumbersInput
@@ -1015,7 +1015,7 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                   value={extractedData.phone}
                   onChange={(val) => setExtractedData({ ...extractedData, phone: val })}
                   placeholder="05 / 06 / 07..."
-                  className="w-full bg-white border-2 border-emerald-500 focus:border-emerald-600 rounded-xl px-3.5 py-2.5 text-sm font-black font-mono text-slate-900 focus:outline-none shadow-inner"
+                  className="w-full bg-white border-2 border-blue-500 focus:border-blue-900 rounded-xl px-3.5 py-2.5 text-sm font-black font-mono text-slate-900 focus:outline-none shadow-inner"
                 />
               </div>
 
@@ -1041,7 +1041,7 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
             <div className="grid grid-cols-2 gap-2 pt-1">
               <button
                 type="submit"
-                className="py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 active:scale-95 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md shadow-rose-200 transition-all flex items-center justify-center gap-1.5"
+                className="py-3 bg-blue-900 hover:bg-black active:scale-95 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md shadow-blue-200 transition-all flex items-center justify-center gap-1.5"
               >
                 <span>✓</span>
                 <span>تعبئة النموذج فوراً</span>
@@ -1094,24 +1094,24 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                       width: '88%',
                       height: '65%',
                       maxWidth: '420px',
-                      border: '3px solid #f43f5e',
+                      border: '3px solid #1e3a8a',
                       borderRadius: '16px',
-                      boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)'
+                      boxShadow: '0 0 0 9999px rgba(0,0,0,0.65)'
                     }}
                     className="relative overflow-hidden flex flex-col justify-between p-2"
                   >
                     <div className="flex justify-between items-start">
-                      <span className="text-[10px] font-bold text-rose-200 bg-black/80 px-2 py-0.5 rounded-md border border-rose-500/30">
+                      <span className="text-[10px] font-bold text-blue-50 bg-black/80 px-2 py-0.5 rounded-md border border-blue-500/30">
                         وجّه الكاميرا نحو بطاقة الهوية 💳
                       </span>
                     </div>
 
                     <div
-                      className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-rose-500 to-transparent shadow-lg shadow-rose-500/80"
+                      className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent shadow-lg shadow-blue-500/80"
                       style={{ animation: 'laserScan 0.9s ease-in-out infinite alternate' }}
                     />
 
-                    <span className="text-[9px] font-bold text-emerald-300 bg-black/75 px-2 py-0.5 rounded self-center">
+                    <span className="text-[9px] font-bold text-blue-300 bg-black/75 px-2 py-0.5 rounded self-center">
                       ⚡ مسح فوري للباركود الخلفي أو اضغط الزر
                     </span>
                   </div>
@@ -1129,10 +1129,10 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                     className="relative overflow-hidden flex items-center justify-center"
                   >
                     <div
-                      className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-lg shadow-emerald-400/80"
+                      className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent shadow-lg shadow-blue-400/80"
                       style={{ animation: 'laserScan 0.8s ease-in-out infinite alternate' }}
                     />
-                    <span className="absolute top-1.5 right-2 text-[9px] font-mono font-black text-emerald-300 bg-black/80 px-2 py-0.5 rounded-md">
+                    <span className="absolute top-1.5 right-2 text-[9px] font-mono font-black text-blue-300 bg-black/80 px-2 py-0.5 rounded-md">
                       ⚡ مسح فوري (0.01s)
                     </span>
                   </div>
@@ -1143,13 +1143,13 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
               {(isInitializing || isProcessingAI) && (
                 <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center text-white text-xs font-bold gap-2.5 z-30 p-4 text-center">
                   <div className="relative flex items-center justify-center">
-                    <svg className="w-10 h-10 animate-spin text-rose-500" fill="none" viewBox="0 0 24 24">
+                    <svg className="w-10 h-10 animate-spin text-blue-900" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                     </svg>
                     <span className="absolute text-sm">⚡</span>
                   </div>
-                  <span className="text-rose-200 font-black">
+                  <span className="text-blue-100 font-black">
                     {isProcessingAI
                       ? '⚡ جاري استخراج الاسم ورقم التعريف فوراً...'
                       : 'تشغيل الكاميرا المباشرة...'}
@@ -1198,7 +1198,7 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                     type="button"
                     onClick={toggleTorch}
                     className={`w-8 h-8 flex items-center justify-center rounded-xl bg-black/75 ${
-                      torchOn ? 'text-yellow-300 ring-2 ring-yellow-400 bg-yellow-950/70' : 'text-white'
+                      torchOn ? 'text-blue-300 ring-2 ring-blue-400 bg-slate-950/70' : 'text-white'
                     } backdrop-blur-md active:scale-95 border border-white/10`}
                     title="تشغيل الفلاش (🔦)"
                   >
@@ -1234,7 +1234,7 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                   type="button"
                   disabled={isProcessingAI}
                   onClick={() => nativeCameraInputRef.current?.click()}
-                  className="py-2.5 px-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-2xs"
+                  className="py-2.5 px-2 bg-blue-50 hover:bg-blue-100 text-blue-950 border border-blue-200 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-2xs"
                   title="التقاط صورة ثابتة عالية الدقة بحكام الكاميرا الأصلية للهاتف"
                 >
                   <span>📷</span>

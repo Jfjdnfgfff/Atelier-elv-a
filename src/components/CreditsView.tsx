@@ -161,7 +161,7 @@ export const CreditsView: React.FC<CreditsViewProps> = ({
               <span className="text-[10px] font-medium text-slate-500">(لنا - علينا)</span>
             </div>
             <span className={`text-lg sm:text-xl font-bold font-mono ${
-              netDebtBalance >= 0 ? 'text-emerald-700' : 'text-rose-600'
+              netDebtBalance >= 0 ? 'text-blue-900' : 'text-black'
             }`}>
               {netDebtBalance >= 0 ? `+${netDebtBalance.toLocaleString()}` : netDebtBalance.toLocaleString()} دج
             </span>
@@ -393,13 +393,13 @@ export const CreditsView: React.FC<CreditsViewProps> = ({
                         onClick={() => onSettleCredit(credit.id)}
                         className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl font-bold transition-all text-xs flex items-center gap-1 active:scale-95"
                       >
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <Check className="w-3.5 h-3.5 text-blue-700" />
                         <span>تم التسديد</span>
                       </button>
 
                       <button
                         onClick={() => onDeleteCredit(credit.id)}
-                        className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors active:scale-95"
+                        className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-black hover:text-white text-slate-400 flex items-center justify-center transition-colors active:scale-95 border border-transparent hover:border-black"
                         title="حذف"
                       >
                         <Trash2 className="w-4 h-4" />

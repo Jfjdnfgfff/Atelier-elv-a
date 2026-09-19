@@ -571,7 +571,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
             required
             value={expectedReturnDate}
             onChange={(e) => handleExpectedReturnDateChange(e.target.value)}
-            className="w-[145px] sm:w-[155px] bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none text-red-600 font-black"
+            className="w-[145px] sm:w-[155px] bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none font-black"
           />
         </div>
       </div>
@@ -599,7 +599,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
                 setScanNotice('تم مسح وتفريغ بيانات الزبون');
                 setTimeout(() => setScanNotice(null), 3000);
               }}
-              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1"
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1"
               title="مسح وتفريغ جميع الحقول"
             >
               <span>🗑️</span>
@@ -655,7 +655,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setCustomerIdNumber('')}
-                  className="text-[10px] text-rose-600 font-bold hover:underline"
+                  className="text-[10px] text-slate-600 font-bold hover:underline"
                 >
                   مسح الرقم
                 </button>

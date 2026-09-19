@@ -1413,14 +1413,14 @@ export default function App() {
   };
 
   return (
-    <div className="text-slate-900 w-full min-h-screen flex flex-col bg-slate-50 font-['Tajawal']" dir="rtl">
+    <div className="text-blue-900 w-full min-h-screen flex flex-col bg-white font-['Tajawal']" dir="rtl">
       {/* Toast Notification Container */}
       <div className="fixed bottom-4 left-4 z-[100] flex flex-col gap-2 pointer-events-none">
         {toasts.map(t => (
           <div 
             key={t.id} 
             className={`px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold text-white transition-all transform duration-300 ${
-              t.type === 'success' ? 'bg-blue-600' : 'bg-red-600'
+              t.type === 'success' ? 'bg-blue-600' : 'bg-black'
             }`}
           >
             {t.message}
@@ -1429,7 +1429,7 @@ export default function App() {
       </div>
 
       {/* Main Top Header */}
-      <header className="bg-white border-b border-slate-200 px-3 sm:px-6 py-2.5 z-20 sticky top-0 shadow-xs safe-top">
+      <header className="bg-white border-b border-blue-100 px-3 sm:px-6 py-2.5 z-20 sticky top-0 shadow-xs safe-top">
         <div className="max-w-6xl mx-auto flex flex-col gap-2">
           {/* Top Row: Quick Tools & Actions */}
           <div className="flex items-center justify-between gap-2">
@@ -1439,9 +1439,9 @@ export default function App() {
                 onClick={() => setIsScanning(true)}
                 title="مسح الباركود"
                 aria-label="مسح الباركود"
-                className="h-9 px-2.5 sm:px-3 rounded-xl bg-slate-100/90 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 border border-slate-200/70 active:scale-95 text-slate-700 flex items-center gap-1.5 transition-all text-xs font-bold group"
+                className="h-9 px-2.5 sm:px-3 rounded-xl bg-blue-50/50 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-300 border border-blue-100/70 active:scale-95 text-blue-800 flex items-center gap-1.5 transition-all text-xs font-bold group"
               >
-                <svg className="w-4 h-4 text-slate-600 group-hover:text-blue-600 shrink-0 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-blue-600 group-hover:text-blue-700 shrink-0 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <path d="M3 7V5a2 2 0 012-2h2" />
                   <path d="M17 3h2a2 2 0 012 2v2" />
                   <path d="M21 17v2a2 2 0 01-2 2h-2" />
@@ -1505,10 +1505,10 @@ export default function App() {
                 className={`h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold rounded-xl transition-all border active:scale-95 group ${
                   currentView === 'caisse'
                     ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                    : 'text-slate-700 bg-slate-100/90 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 border-slate-200/70'
+                    : 'text-blue-700 bg-blue-50/50 hover:bg-blue-100 hover:text-blue-800 hover:border-blue-300 border-blue-100/70'
                 }`}
               >
-                <Scale className={`w-4 h-4 shrink-0 transition-colors ${currentView === 'caisse' ? 'text-white' : 'text-slate-600 group-hover:text-blue-600'}`} />
+                <Scale className={`w-4 h-4 shrink-0 transition-colors ${currentView === 'caisse' ? 'text-white' : 'text-blue-600 group-hover:text-blue-700'}`} />
                 <span className="hidden sm:inline">الصندوق اليومي</span>
                 <span className="sm:hidden">الصندوق</span>
               </button>
@@ -1525,7 +1525,7 @@ export default function App() {
           </div>
 
           {/* Bottom Row of Header: All Navigation Icons in a single compact row */}
-          <nav className="grid grid-cols-10 gap-0.5 sm:gap-1 w-full pt-1 border-t border-slate-100" aria-label="أقسام التطبيق">
+          <nav className="grid grid-cols-10 gap-0.5 sm:gap-1 w-full pt-1 border-t border-blue-50" aria-label="أقسام التطبيق">
             <NavButton 
               icon="dashboard" 
               label="الرئيسية" 
@@ -1825,7 +1825,7 @@ export default function App() {
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
               <h4 className="font-black text-slate-800 text-xs mb-1">الزبون: {selectedRental.customerName}</h4>
               <p className="text-xs text-slate-600">القطعة: {selectedRental.itemName}</p>
-              <p className="text-xs text-red-600 font-bold mt-1">تاريخ الإرجاع: {selectedRental.expectedReturnDate}</p>
+              <p className="text-xs text-black font-bold mt-1">تاريخ الإرجاع: {selectedRental.expectedReturnDate}</p>
             </div>
 
             <div className="flex gap-3">
@@ -2297,22 +2297,22 @@ export default function App() {
                 <BarChart3 className="w-5 h-5 text-slate-700" />
               </div>
               <div>
-                <h4 className="font-black text-slate-900 text-xs">التقرير المالي الشامل</h4>
-                <p className="text-[10px] text-slate-500 mt-0.5">طباعة وإحصائيات كاملة</p>
+                <h4 className="font-black text-blue-900 text-xs">التقرير المالي الشامل</h4>
+                <p className="text-[10px] text-blue-500 mt-0.5">طباعة وإحصائيات كاملة</p>
               </div>
             </button>
 
             <button
               onClick={() => { setActiveModal('backupModal'); }}
-              className="p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-200 text-right transition-all flex flex-col justify-between active:scale-95 col-span-2"
+              className="p-4 bg-blue-50/50 hover:bg-blue-100/50 rounded-2xl border border-blue-100 text-right transition-all flex flex-col justify-between active:scale-95 col-span-2"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-blue-900 text-white flex items-center justify-center shrink-0">
                   <Save className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h4 className="font-black text-slate-900 text-xs">النسخ الاحتياطي واستعادة البيانات</h4>
-                  <p className="text-[10px] text-slate-500 mt-0.5">تصدير أو استرجاع بيانات المحل (JSON)</p>
+                  <h4 className="font-black text-blue-900 text-xs">النسخ الاحتياطي واستعادة البيانات</h4>
+                  <p className="text-[10px] text-blue-500 mt-0.5">تصدير أو استرجاع بيانات المحل (JSON)</p>
                 </div>
               </div>
             </button>
@@ -2324,16 +2324,16 @@ export default function App() {
       {confirmDelete && (
         <Modal title={confirmDelete.title} onClose={() => setConfirmDelete(null)}>
           <div className="space-y-4 py-2 text-center sm:text-right" dir="rtl">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto sm:mx-0">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-900 flex items-center justify-center mx-auto sm:mx-0">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </div>
             <div>
-              <p className="text-sm font-black text-slate-800 leading-relaxed">
+              <p className="text-sm font-black text-blue-800 leading-relaxed">
                 {confirmDelete.message}
               </p>
-              <span className="text-xs text-slate-400 font-bold block mt-1">
+              <span className="text-xs text-blue-400 font-bold block mt-1">
                 تأكيد حذف البيانات بشكل فوري وآمن.
               </span>
             </div>
@@ -2341,14 +2341,14 @@ export default function App() {
               <button
                 type="button"
                 onClick={confirmDelete.onConfirm}
-                className="flex-1 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white py-3 rounded-2xl font-black text-xs sm:text-sm transition-all shadow-md shadow-rose-200 min-h-[44px]"
+                className="flex-1 bg-black hover:bg-blue-950 active:scale-95 text-white py-3 rounded-2xl font-black text-xs sm:text-sm transition-all shadow-md shadow-blue-200 min-h-[44px]"
               >
                 تأكيد الحذف
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmDelete(null)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all min-h-[44px]"
+                className="flex-1 bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all min-h-[44px]"
               >
                 إلغاء
               </button>

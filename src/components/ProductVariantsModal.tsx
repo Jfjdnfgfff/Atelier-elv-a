@@ -311,7 +311,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
           {distinctColors.length > 1 && (
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 text-xs">
               <span className="text-[11px] font-bold text-slate-400 shrink-0 flex items-center gap-1">
-                <Palette className="w-3.5 h-3.5 text-red-500" />
+                <Palette className="w-3.5 h-3.5 text-blue-600" />
                 <span>اللون:</span>
               </span>
               <button
@@ -363,7 +363,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
             </div>
             <div className="flex items-center justify-between px-1 border-r border-slate-200 pr-2">
               <span className="text-slate-500 font-medium">المستودع (التخزين):</span>
-              <span className="font-black text-purple-700 font-mono">{totalStock2} قطع</span>
+              <span className="font-black text-blue-900 font-mono">{totalStock2} قطع</span>
             </div>
           </div>
         </div>
@@ -468,7 +468,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                           <button
                             type="button"
                             onClick={() => handleDeleteVariant(variant.id)}
-                            className="text-red-500 hover:text-red-700 text-xs font-bold p-1 rounded-lg hover:bg-red-50 flex items-center gap-1"
+                            className="text-black hover:text-blue-900 text-xs font-bold p-1 rounded-lg hover:bg-slate-100 flex items-center gap-1 border border-transparent hover:border-slate-200"
                             title="حذف هذا المقاس"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -514,13 +514,13 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                             >
                               -
                             </button>
-                            <span className="font-mono font-black text-sm text-purple-700">
+                            <span className="font-mono font-black text-sm text-blue-900">
                               {variant.stock2 || 0}
                             </span>
                             <button
                               type="button"
                               onClick={() => handleAdjustStock(variant.id, 0, 1)}
-                              className="w-7 h-7 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-black flex items-center justify-center"
+                              className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-black flex items-center justify-center"
                             >
                               +
                             </button>
@@ -573,7 +573,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                               onQuickSale(item, variant);
                               onClose();
                             }}
-                            className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-xs"
+                            className="flex-1 py-1.5 bg-black hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-xs"
                           >
                             <ShoppingBag className="w-3.5 h-3.5" />
                             <span>بيع مقاس {variant.size}</span>

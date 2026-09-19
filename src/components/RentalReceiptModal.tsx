@@ -166,7 +166,7 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
             <span className="font-black">{rental.paidAmount.toLocaleString()} دج</span>
           </div>
           {rental.remainingAmount > 0 && (
-            <div className="flex justify-between font-black text-red-700 pt-1 border-t border-slate-200">
+            <div className="flex justify-between font-black text-black pt-1 border-t border-slate-200">
               <span>{rental.status === 'reserved' ? 'المتبقي عند استلام الفستان وإتمام الصفقة:' : 'المتبقي عند الإرجاع:'}</span>
               <span>{rental.remainingAmount.toLocaleString()} دج</span>
             </div>

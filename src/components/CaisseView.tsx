@@ -338,8 +338,8 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <span className="w-10 h-10 bg-slate-100 text-slate-700 rounded-xl flex items-center justify-center text-lg font-bold border border-slate-200/60">
-              <Scale className="w-5 h-5 text-slate-700" />
+            <span className="w-10 h-10 bg-blue-50 text-blue-900 rounded-xl flex items-center justify-center text-lg font-bold border border-blue-100">
+              <Scale className="w-5 h-5 text-blue-900" />
             </span>
             <div>
               <h2 className="text-base sm:text-xl font-bold text-blue-600">
@@ -449,9 +449,9 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
               <span className="text-xs font-medium text-slate-700">فارق صندوق اليوم (Fi Nhar)</span>
               <div className="text-[10px] text-slate-400">المحسوب فعلياً - المتوقع نظرياً</div>
             </div>
-            <span className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-sm border border-slate-200/60">
+            <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-900 flex items-center justify-center text-sm border border-blue-100">
               {dailyDifference < 0 ? (
-                <TrendingDown className="w-4 h-4 text-red-600" />
+                <TrendingDown className="w-4 h-4 text-blue-900" />
               ) : dailyDifference > 0 ? (
                 <TrendingUp className="w-4 h-4 text-blue-600" />
               ) : (
@@ -466,7 +466,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
               </div>
             ) : (
               <div className={`text-2xl sm:text-3xl font-black font-mono ${
-                dailyDifference < 0 ? 'text-red-600' : 'text-slate-900'
+                dailyDifference < 0 ? 'text-black' : 'text-blue-900'
               }`}>
                 {hideFinances ? '••••••' : (
                   dailyDifference > 0 ? `+${dailyDifference.toLocaleString()} دج` : `${dailyDifference.toLocaleString()} دج`
@@ -474,13 +474,13 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
               </div>
             )}
           </div>
-          <div className="mt-2 text-[11px] font-medium flex items-center justify-between border-t border-slate-100 pt-2">
+          <div className="mt-2 text-[11px] font-medium flex items-center justify-between border-t border-blue-50 pt-2">
             {dailyDifference < 0 ? (
-              <span className="text-red-600 font-bold">عجز في الصندوق (Manque)</span>
+              <span className="text-black font-bold">عجز في الصندوق (Manque)</span>
             ) : dailyDifference > 0 ? (
-              <span className="text-slate-700 font-bold">فائض في الصندوق (Excédent)</span>
+              <span className="text-blue-700 font-bold">فائض في الصندوق (Excédent)</span>
             ) : (
-              <span className="text-slate-700 font-bold">الصندوق مطابق (Conforme)</span>
+              <span className="text-blue-700 font-bold">الصندوق مطابق (Conforme)</span>
             )}
             <span className="text-slate-400">{selectedDate.substring(5)}</span>
           </div>
@@ -499,7 +499,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
           </div>
           <div className="mt-2 text-2xl sm:text-3xl font-black font-mono">
             {hideFinances ? '••••••' : (
-              <span className={monthStats.totalDiff < 0 ? 'text-red-600' : 'text-slate-900'}>
+              <span className={monthStats.totalDiff < 0 ? 'text-black' : 'text-blue-900'}>
                 {monthStats.totalDiff > 0 ? `+${monthStats.totalDiff.toLocaleString()} دج` : `${monthStats.totalDiff.toLocaleString()} دج`}
               </span>
             )}
@@ -527,7 +527,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
           </div>
           <div className="mt-2 text-2xl sm:text-3xl font-black font-mono">
             {hideFinances ? '••••••' : (
-              <span className={yearStats.totalDiff < 0 ? 'text-red-600' : 'text-slate-900'}>
+              <span className={yearStats.totalDiff < 0 ? 'text-black' : 'text-blue-900'}>
                 {yearStats.totalDiff > 0 ? `+${yearStats.totalDiff.toLocaleString()} دج` : `${yearStats.totalDiff.toLocaleString()} دج`}
               </span>
             )}
@@ -556,7 +556,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
                   <Banknote className="w-4 h-4 text-slate-700" />
                   <span>تسجيل المبلغ الفعلي في الدرج</span>
                 </h3>
-                <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-lg">
+                <span className="text-xs font-bold text-black bg-blue-50 px-2 py-0.5 rounded-lg">
                   (nmarkilha wech kayen)
                 </span>
               </div>
@@ -571,7 +571,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
                   <span>+ إجمالي المداخيل اليومية:</span>
                   <span className="font-mono font-bold">+{totalDailyInflow.toLocaleString()} دج</span>
                 </div>
-                <div className="flex justify-between text-red-600">
+                <div className="flex justify-between text-blue-900">
                   <span>- إجمالي المصاريف المسددة:</span>
                   <span className="font-mono font-bold">-{totalDailyOutflow.toLocaleString()} دج</span>
                 </div>
@@ -646,7 +646,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
                         setCounts({ '2000': 0, '1000': 0, '500': 0, '200': 0, '100': 0, '50': 0, '20': 0, '10': 0, 'coins': 0 });
                         setActualInput('0');
                       }}
-                      className="text-[10px] text-slate-500 hover:text-red-600 font-medium"
+                      className="text-[10px] text-blue-500 hover:text-black font-medium"
                     >
                       تصفير العداد
                     </button>
@@ -698,7 +698,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
                      'الصندوق مطابق تماماً للحسابات:'}
                   </div>
                   <div className={`text-2xl font-black font-mono mt-1 ${
-                    dailyDifference < 0 ? 'text-red-600' : 'text-slate-900'
+                    dailyDifference < 0 ? 'text-black' : 'text-blue-900'
                   }`}>
                     {dailyDifference > 0 ? `+${dailyDifference.toLocaleString()} دج` : `${dailyDifference.toLocaleString()} دج`}
                   </div>
@@ -843,29 +843,29 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
 
               {/* Outflow Section */}
               <div className="space-y-2 pt-2 border-t border-slate-100">
-                <div className="flex justify-between items-center text-xs font-black text-red-800 bg-red-50/80 px-3 py-1.5 rounded-xl border border-red-100">
+                <div className="flex justify-between items-center text-xs font-black text-black bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100">
                   <span className="flex items-center gap-1">
-                    <ArrowUpRight className="w-4 h-4 text-red-600" />
+                    <ArrowUpRight className="w-4 h-4 text-black" />
                     <span>المصاريف والخوارج النقدية (Sorties):</span>
                   </span>
                   <span className="font-mono text-sm">-{totalDailyOutflow.toLocaleString()} دج</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
-                    <div className="text-slate-500 font-bold">مصاريف المحل اليومية:</div>
-                    <div className="font-black text-red-600 font-mono text-sm mt-0.5">
+                  <div className="bg-white p-2.5 rounded-xl border border-blue-100 text-xs">
+                    <div className="text-blue-500 font-bold">مصاريف المحل اليومية:</div>
+                    <div className="font-black text-black font-mono text-sm mt-0.5">
                       -{dateExpensesPaid.toLocaleString()} دج
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-1">{dateExpenses.length} سند صرف</div>
+                    <div className="text-[10px] text-blue-300 mt-1">{dateExpenses.length} سند صرف</div>
                   </div>
 
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
-                    <div className="text-slate-500 font-bold">أجور وسلفيات العمال:</div>
-                    <div className="font-black text-red-600 font-mono text-sm mt-0.5">
+                  <div className="bg-white p-2.5 rounded-xl border border-blue-100 text-xs">
+                    <div className="text-blue-500 font-bold">أجور وسلفيات العمال:</div>
+                    <div className="font-black text-black font-mono text-sm mt-0.5">
                       -{dateStaffPayoutsPaid.toLocaleString()} دج
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-1">{dateStaffPayouts.length} دفعة عمال</div>
+                    <div className="text-[10px] text-blue-300 mt-1">{dateStaffPayouts.length} دفعة عمال</div>
                   </div>
                 </div>
 
@@ -882,7 +882,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
                             <span className="font-bold text-slate-800">{e.desc || e.category}</span>
                             <span className="text-[10px] text-slate-500 mr-2">[{e.category}]</span>
                           </div>
-                          <span className="font-mono font-bold text-red-600">
+                          <span className="font-mono font-bold text-black">
                             -{Number(e.amount).toLocaleString()} دج
                           </span>
                         </div>
@@ -904,7 +904,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
                             <span className="font-bold text-slate-800">{p.name}</span>
                             <span className="text-[10px] text-slate-500 mr-2">({p.type})</span>
                           </div>
-                          <span className="font-mono font-bold text-red-600">
+                          <span className="font-mono font-bold text-black">
                             -{Number(p.amount).toLocaleString()} دج
                           </span>
                         </div>
@@ -965,7 +965,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
                 عدد الإقفالات: <strong className="text-slate-900">{filteredHistory.length}</strong>
               </span>
               <span className="text-slate-600">
-                صافي الفارق: <strong className={historyTotals.totalDf < 0 ? 'text-red-600 font-mono' : 'text-blue-700 font-mono'}>
+                صافي الفارق: <strong className={historyTotals.totalDf < 0 ? 'text-black font-mono' : 'text-blue-700 font-mono'}>
                   {historyTotals.totalDf > 0 ? `+${historyTotals.totalDf.toLocaleString()} دج` : `${historyTotals.totalDf.toLocaleString()} دج`}
                 </strong>
               </span>
@@ -1016,7 +1016,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
                           <td className="p-3.5 font-mono font-bold text-blue-700">
                             +{(closure.totalInflow || 0).toLocaleString()} دج
                           </td>
-                          <td className="p-3.5 font-mono font-bold text-red-600">
+                          <td className="p-3.5 font-mono font-bold text-black">
                             -{(closure.totalOutflow || 0).toLocaleString()} دج
                           </td>
                           <td className="p-3.5 font-mono font-bold text-slate-800">
@@ -1027,7 +1027,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
                           </td>
                           <td className="p-3.5">
                             <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-black font-mono ${
-                              isShort ? 'bg-red-100 text-red-800' :
+                              isShort ? 'bg-black text-white' :
                               isSurp ? 'bg-blue-100 text-blue-800' :
                               'bg-blue-50 text-blue-800 border border-blue-200'
                             }`}>
@@ -1066,7 +1066,7 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
                                   }
                                 }}
                                 title="حذف"
-                                className="p-1.5 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-lg transition-colors"
+                                className="p-1.5 bg-slate-100 hover:bg-black hover:text-white rounded-lg transition-colors border border-transparent hover:border-black"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>

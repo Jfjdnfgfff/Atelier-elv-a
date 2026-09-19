@@ -425,7 +425,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           {errorMsg ? (
             <div className="p-4 text-center space-y-2.5 z-20">
               <Camera className="w-8 h-8 text-slate-400 mx-auto" />
-              <p className="text-xs text-red-200 font-bold leading-relaxed">{errorMsg}</p>
+              <p className="text-xs text-white font-bold leading-relaxed">{errorMsg}</p>
               <button
                 type="button"
                 onClick={restartBarcodeScanner}
@@ -448,29 +448,27 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
               />
 
               {/* Exact Green Focus Bounding Box Overlay */}
-              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <div
-                  style={{
-                    width: '92%',
-                    height: '34%',
-                    maxWidth: '620px',
-                    border: '3px solid #22c55e',
-                    borderRadius: '14px',
-                    boxShadow: '0 0 0 9999px rgba(0,0,0,0.22)'
-                  }}
-                  className="relative overflow-hidden"
-                >
                   <div
-                    className="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_8px_#22c55e]"
-                    style={{ animation: 'laserScan 1.2s ease-in-out infinite alternate' }}
-                  />
-                </div>
-              </div>
+                    style={{
+                      width: '92%',
+                      height: '34%',
+                      maxWidth: '620px',
+                      border: '3px solid #1e3a8a',
+                      borderRadius: '14px',
+                      boxShadow: '0 0 0 9999px rgba(0,0,0,0.65)'
+                    }}
+                    className="relative overflow-hidden"
+                  >
+                    <div
+                      className="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent shadow-[0_0_8px_#1e3a8a]"
+                      style={{ animation: 'laserScan 1.2s ease-in-out infinite alternate' }}
+                    />
+                  </div>
 
               {/* Loading Indicator */}
               {isInitializing && (
                 <div className="absolute inset-0 bg-black/80 flex items-center justify-center text-white text-xs font-bold gap-2 z-20">
-                  <svg className="w-5 h-5 animate-spin text-emerald-400" fill="none" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 animate-spin text-blue-400" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                   </svg>
@@ -481,7 +479,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
               {/* Scanned Badge */}
               {recentScanned && (
                 <div className="absolute top-3 inset-x-4 bg-slate-900 text-white text-xs font-bold p-2 rounded-xl text-center shadow-xl flex items-center justify-center gap-1.5 z-30 border border-slate-700">
-                  <Check className="w-4 h-4 text-emerald-400" />
+                  <Check className="w-4 h-4 text-blue-400" />
                   <span>تم التقاط الباركود:</span>
                   <span className="font-mono bg-slate-800 px-2 py-0.5 rounded">{recentScanned}</span>
                 </div>
@@ -576,7 +574,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           <button
             type="button"
             onClick={restartBarcodeScanner}
-            className="py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold transition-all text-center active:scale-95 border border-emerald-200"
+            className="py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl text-xs font-bold transition-all text-center active:scale-95 border border-blue-200"
           >
             إعادة المسح
           </button>

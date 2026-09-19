@@ -292,7 +292,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
 
           <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl">
             <span className="text-[11px] text-slate-600 font-bold block mb-0.5">كريدي وديون الموردين المتبقية:</span>
-            <span className="text-base sm:text-lg font-bold text-red-600 font-mono">
+            <span className="text-base sm:text-lg font-bold text-black font-mono">
               {totalSupplierDebts.toLocaleString()} دج
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">
@@ -310,7 +310,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
 
           <div className="bg-slate-900 text-white p-3.5 rounded-2xl">
             <span className="text-[11px] text-slate-300 font-bold block mb-0.5">المجموع الكلي المدفوع كاش:</span>
-            <span className="text-base sm:text-lg font-bold text-emerald-400 font-mono">
+            <span className="text-base sm:text-lg font-bold text-blue-400 font-mono">
               {totalCashOut.toLocaleString()} دج
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">إجمالي السيولة الخارجة من الصندوق</span>
@@ -505,7 +505,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
                 </label>
                 <div className="w-full rounded-xl px-3 py-2 text-xs font-bold border border-slate-200 bg-white flex items-center justify-between text-slate-900">
                   <span>{calculatedCredit.toLocaleString()} دج</span>
-                  <span className={`text-[10px] font-bold ${calculatedCredit > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                  <span className={`text-[10px] font-bold ${calculatedCredit > 0 ? 'text-black' : 'text-slate-400'}`}>
                     {calculatedCredit > 0 ? 'دين للمورد' : 'صافي 0 دج'}
                   </span>
                 </div>
@@ -762,7 +762,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
                           <div className="text-center border-r border-slate-200 pr-3">
                             <span className="text-[9px] text-slate-600 font-bold block">الكريدي المتبقي</span>
                             <span className={`text-xs font-bold font-mono ${
-                              (exp.creditAmount || 0) > 0 ? 'text-red-600 font-bold' : 'text-slate-400'
+                              (exp.creditAmount || 0) > 0 ? 'text-black font-bold underline' : 'text-slate-400'
                             }`}>
                               {(exp.creditAmount || 0).toLocaleString()} دج
                             </span>
@@ -801,7 +801,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
 
                         <button
                           onClick={() => onDeleteExpense(exp.id)}
-                          className="p-2 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
+                          className="p-2 rounded-xl bg-slate-50 hover:bg-black text-slate-400 hover:text-white transition-colors"
                           title="حذف السجل"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -858,7 +858,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-slate-200">
                 <span className="text-slate-700 font-bold">الكريدي المتبقي حالياً:</span>
-                <span className="font-bold text-red-600 font-mono text-sm">{(settleModalExpense.creditAmount || 0).toLocaleString()} دج</span>
+                <span className="font-bold text-black font-mono text-sm underline">{(settleModalExpense.creditAmount || 0).toLocaleString()} دج</span>
               </div>
             </div>
 
@@ -962,7 +962,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
                 </div>
                 <div className="flex justify-between text-slate-900">
                   <span className="font-bold">المتبقي كريدي للمورد:</span>
-                  <span className="font-bold text-red-600 font-mono">{(voucherExpense.creditAmount || 0).toLocaleString()} دج</span>
+                  <span className="font-bold text-black font-mono">{(voucherExpense.creditAmount || 0).toLocaleString()} دج</span>
                 </div>
               </div>
             </div>

@@ -112,10 +112,10 @@ export const FullReport: React.FC<FullReportProps> = ({
             <span className="text-[10px] text-slate-600 block mt-1">(ربح صافي: {totalSalesProfit.toLocaleString()} دج)</span>
           </div>
 
-          <div className="p-4 bg-red-50 border border-red-200 rounded-2xl">
-            <span className="text-xs font-bold text-red-800 block mb-1">المصاريف والغسيل</span>
-            <span className="text-xl font-black text-red-900">{totalExpenses.toLocaleString()} دج</span>
-            <span className="text-[10px] text-red-600 block mt-1">({expenses.length} مصاريف)</span>
+          <div className="p-4 bg-black border border-black rounded-2xl">
+            <span className="text-xs font-bold text-white block mb-1">المصاريف والغسيل</span>
+            <span className="text-xl font-black text-white">{totalExpenses.toLocaleString()} دج</span>
+            <span className="text-[10px] text-slate-300 block mt-1">({expenses.length} مصاريف)</span>
           </div>
 
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl">
@@ -131,7 +131,7 @@ export const FullReport: React.FC<FullReportProps> = ({
           <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
             <h3 className="font-black text-sm text-slate-800 mb-3 flex items-center justify-between">
               <span>القطع المؤجرة حالياً ({activeRentalsCount})</span>
-              <span className="text-xs text-red-600 font-bold">الضمانات: {totalHeldCautions.toLocaleString()} دج</span>
+              <span className="text-xs text-black font-bold">الضمانات: {totalHeldCautions.toLocaleString()} دج</span>
             </h3>
             <table className="w-full text-right text-xs">
               <thead className="bg-slate-100 text-slate-600 font-bold">
@@ -146,7 +146,7 @@ export const FullReport: React.FC<FullReportProps> = ({
                   <tr key={r.id}>
                     <td className="p-2 font-black">{r.itemName}</td>
                     <td className="p-2 text-slate-600">{r.customerName}</td>
-                    <td className="p-2 font-bold text-red-700">{r.expectedReturnDate}</td>
+                    <td className="p-2 font-bold text-black underline">{r.expectedReturnDate}</td>
                   </tr>
                 ))}
               </tbody>

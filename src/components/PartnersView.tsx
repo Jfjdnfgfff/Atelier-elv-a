@@ -364,15 +364,15 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
             </div>
             <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
               <span className="text-[11px] text-slate-500 font-bold block mb-0.5">إجمالي المدفوع للموردين:</span>
-              <span className="text-xl font-black text-emerald-700 font-mono">
+              <span className="text-xl font-black text-blue-700 font-mono">
                 {supplierAnalytics.reduce((s, sup) => s + sup.totalPaid, 0).toLocaleString()} دج
               </span>
               <span className="text-[10px] text-slate-400 block mt-0.5">مسدد كاش من الصندوق</span>
             </div>
-            <div className="bg-red-50 p-3.5 rounded-2xl border border-red-200">
-              <span className="text-[11px] text-red-700 font-bold block mb-0.5">الديون والكريدي المتبقي للموردين:</span>
-              <span className="text-xl font-black text-red-700 font-mono">{totalSupplierDebtsAll.toLocaleString()} دج</span>
-              <span className="text-[10px] text-red-600 block mt-0.5">مستحقات بانتظار السداد</span>
+            <div className="bg-slate-900 p-3.5 rounded-2xl border border-slate-700">
+              <span className="text-[11px] text-blue-200 font-bold block mb-0.5">الديون والكريدي المتبقي للموردين:</span>
+              <span className="text-xl font-black text-white font-mono">{totalSupplierDebtsAll.toLocaleString()} دج</span>
+              <span className="text-[10px] text-blue-300 block mt-0.5">مستحقات بانتظار السداد</span>
             </div>
           </div>
         ) : (
@@ -451,11 +451,11 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                         <h3 className="font-black text-slate-900 text-base mt-1">{sup.name}</h3>
                       </div>
                       {sup.remainingDebt > 0 ? (
-                        <span className="bg-red-50 text-red-700 border border-red-200 text-[11px] font-black px-2.5 py-1 rounded-xl">
+                        <span className="bg-black text-white border border-black text-[11px] font-black px-2.5 py-1 rounded-xl">
                           كريدي: {sup.remainingDebt.toLocaleString()} دج
                         </span>
                       ) : (
-                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold px-2 py-0.5 rounded-xl">
+                        <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold px-2 py-0.5 rounded-xl">
                           خالص 0 دج
                         </span>
                       )}
@@ -495,7 +495,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-400 block font-bold">المدفوع كاش</span>
-                        <span className="font-bold text-emerald-700">{sup.totalPaid.toLocaleString()}</span>
+                        <span className="font-bold text-blue-700">{sup.totalPaid.toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
@@ -506,7 +506,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                       {sup.phone && (
                         <button
                           onClick={() => handleWhatsApp(sup.phone, sup.name)}
-                          className="p-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl transition-all"
+                          className="p-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl transition-all"
                           title="مراسلة واتساب"
                         >
                           <MessageSquare className="w-3.5 h-3.5" />
@@ -544,7 +544,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                             onDeleteSupplier(sup.id);
                           }
                         }}
-                        className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-slate-100 transition-all"
+                        className="p-1.5 text-slate-400 hover:text-black rounded-lg hover:bg-slate-100 transition-all"
                         title="حذف"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -637,7 +637,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-400 block font-bold">تم تسليمها</span>
-                        <span className="font-bold text-emerald-700">{seam.deliveredOrders}</span>
+                        <span className="font-bold text-blue-700">{seam.deliveredOrders}</span>
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-400 block font-bold">أتعاب الخياطة</span>
@@ -652,7 +652,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                       {seam.phone && (
                         <button
                           onClick={() => handleWhatsApp(seam.phone, seam.name)}
-                          className="p-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl transition-all"
+                          className="p-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl transition-all"
                           title="مراسلة واتساب"
                         >
                           <MessageSquare className="w-3.5 h-3.5" />
@@ -690,7 +690,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                             onDeleteSeamstress(seam.id);
                           }
                         }}
-                        className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-slate-100 transition-all"
+                        className="p-1.5 text-slate-400 hover:text-black rounded-lg hover:bg-slate-100 transition-all"
                         title="حذف"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -725,7 +725,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
             <form onSubmit={handleSaveSupplier} className="space-y-3.5">
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  اسم المورد / الشركة / الورشة <span className="text-red-500">* (حروف فقط)</span>
+                  اسم المورد / الشركة / الورشة <span className="text-blue-600">* (حروف فقط)</span>
                 </label>
                 <LettersInput
                   value={supName}
@@ -835,7 +835,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
             <form onSubmit={handleSaveSeamstress} className="space-y-3.5">
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  اسم الخياطة <span className="text-red-500">* (حروف فقط)</span>
+                  اسم الخياطة <span className="text-blue-600">* (حروف فقط)</span>
                 </label>
                 <LettersInput
                   value={seamName}
@@ -996,9 +996,9 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                               الإجمالي: {(exp.totalInvoiceAmount || exp.amount || 0).toLocaleString()} دج
                             </div>
                             <div className="text-[11px]">
-                              <span className="text-emerald-700 font-bold">المدفوع: {(exp.paidAmount !== undefined ? exp.paidAmount : exp.amount).toLocaleString()} دج</span>
+                              <span className="text-blue-700 font-bold">المدفوع: {(exp.paidAmount !== undefined ? exp.paidAmount : exp.amount).toLocaleString()} دج</span>
                               {(exp.creditAmount || 0) > 0 && (
-                                <span className="text-red-600 font-bold mr-2">متبقي: {(exp.creditAmount || 0).toLocaleString()} دج</span>
+                                <span className="text-black font-bold mr-2">متبقي: {(exp.creditAmount || 0).toLocaleString()} دج</span>
                               )}
                             </div>
                           </div>
@@ -1009,7 +1009,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                                 setSettleExpense(exp);
                                 setSettleAmount(String(exp.creditAmount || 0));
                               }}
-                              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs shadow-xs shrink-0"
+                              className="px-3 py-1.5 bg-black hover:bg-slate-900 text-white rounded-xl font-bold text-xs shadow-xs shrink-0"
                             >
                               تسديد الدين
                             </button>
@@ -1095,7 +1095,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                               ? 'bg-slate-100 text-slate-600'
                               : order.status === 'ready'
                               ? 'bg-blue-50 text-blue-700'
-                              : 'bg-amber-50 text-amber-700'
+                              : 'bg-slate-100 text-slate-700'
                           }`}>
                             {order.status === 'delivered' ? 'تم التسليم' : order.status === 'ready' ? 'جاهزة' : 'قيد الإنجاز'}
                           </span>
@@ -1133,7 +1133,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
               <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs space-y-1">
                 <div>المورد: <span className="font-bold text-slate-900">{settleExpense.supplierName}</span></div>
                 <div>السلعة: <span className="font-medium text-slate-700">{settleExpense.goodsDescription || settleExpense.desc}</span></div>
-                <div className="text-red-600 font-bold">
+                <div className="text-black font-bold">
                   الدين المتبقي: {(settleExpense.creditAmount || 0).toLocaleString()} دج
                 </div>
               </div>

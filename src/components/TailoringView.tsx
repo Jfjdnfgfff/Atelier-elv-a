@@ -237,7 +237,7 @@ export const TailoringView: React.FC<TailoringViewProps> = ({
                 {isOverdue && (
                   <div className="bg-slate-100 border border-slate-300 text-slate-800 px-3 py-1.5 rounded-xl flex items-center justify-between text-xs font-bold">
                     <span className="flex items-center gap-1.5">
-                      <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                      <AlertCircle className="w-3.5 h-3.5 text-blue-900" />
                       <span>تنبيه: تجاوز موعد التسليم المحدد!</span>
                     </span>
                     <span className="font-bold">متأخر بـ {Math.abs(daysLeft)} يوم</span>
@@ -371,7 +371,7 @@ export const TailoringView: React.FC<TailoringViewProps> = ({
                     </button>
                     <button
                       onClick={() => onDeleteOrder(order.id)}
-                      className="p-1 text-slate-400 hover:text-rose-600 transition-all"
+                      className="p-1 text-slate-400 hover:text-black transition-all"
                       title="حذف"
                     >
                       <Trash2 className="w-4 h-4" />

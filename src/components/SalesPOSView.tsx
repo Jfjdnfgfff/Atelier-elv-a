@@ -645,7 +645,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
               {cart.length > 0 && (
                 <button
                   onClick={() => setCart([])}
-                  className="text-xs text-rose-600 hover:text-rose-700 font-bold p-1"
+                  className="text-xs text-black hover:underline font-bold p-1"
                 >
                   تفريغ السلة
                 </button>
@@ -1033,7 +1033,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
                       : getItemStock2(scannedItemModal.item);
                     setScannedItemModal(prev => prev ? { ...prev, qty: max } : null);
                   }}
-                  className="px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 rounded-xl text-xs font-bold transition-all"
+                  className="px-3 py-1 bg-slate-50 text-slate-800 border border-slate-200 hover:bg-slate-100 rounded-xl text-xs font-bold transition-all"
                 >
                   كل المتوفر
                 </button>
@@ -1127,7 +1127,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
                     </div>
                     <button
                       onClick={() => onDeleteSale(sale)}
-                      className="text-slate-400 hover:text-rose-600 p-1 rounded transition-colors"
+                      className="text-slate-400 hover:text-black p-1 rounded transition-colors"
                       title="إلغاء البيع واسترجاع للمخزن"
                     >
                       <Trash2 className="w-4 h-4" />

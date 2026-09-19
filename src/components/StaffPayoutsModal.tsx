@@ -553,7 +553,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                       <button 
                         onClick={() => onDeleteAbsence(a.id)} 
                         title="حذف الغياب"
-                        className="text-slate-300 hover:text-rose-600 p-1"
+                        className="text-slate-300 hover:text-black p-1"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -670,7 +670,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                       </div>
                       <button
                         onClick={() => onDeleteStaffMember(s.id)}
-                        className="text-slate-300 hover:text-rose-600 p-1"
+                        className="text-slate-300 hover:text-black p-1"
                         title="حذف العامل"
                       >
                         <X className="w-4 h-4" />
@@ -742,7 +742,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                     <button 
                       onClick={() => onDeletePayout(p.id)} 
                       title="حذف السجل"
-                      className="text-slate-300 hover:text-rose-600 p-1"
+                      className="text-slate-300 hover:text-black p-1"
                     >
                       <X className="w-4 h-4" />
                     </button>
