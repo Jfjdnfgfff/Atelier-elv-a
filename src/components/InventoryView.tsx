@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { ClothItem, PurposeType } from '../types';
+import { ClothItem, PurposeType, RawMaterial, Supplier } from '../types';
 import { BarcodeScanner } from './BarcodeScanner';
 import { LettersInput, NumbersInput } from './Shared';
+import { RawMaterialsSection } from './RawMaterialsSection';
+import { ProductVariantsModal } from './ProductVariantsModal';
 import { isValidImageFileType, generateSecureImageFilename, sanitizeText, sanitizeNumericAmount } from '../utils/security';
-import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2 } from 'lucide-react';
+import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign } from 'lucide-react';
 
 export const STANDARD_SIZES = [
   '34', '36', '38', '40', '42', '44', '46', '48', '50', '52', '54',
@@ -55,18 +57,29 @@ export const getColorHex = (colorName: string): string => {
 
 interface InventoryViewProps {
   clothes: ClothItem[];
+  rawMaterials?: RawMaterial[];
+  suppliers?: Supplier[];
   onAddCloth: (item: any) => void;
   onUpdateCloth: (id: string, item: any) => void;
   onDeleteCloth: (id: string) => void;
+  onAddRawMaterial?: (mat: RawMaterial) => void;
+  onUpdateRawMaterial?: (id: string, mat: Partial<RawMaterial>) => void;
+  onDeleteRawMaterial?: (id: string) => void;
   onScanBarcode?: () => void;
 }
 
 export const InventoryView: React.FC<InventoryViewProps> = ({
   clothes,
+  rawMaterials = [],
+  suppliers = [],
   onAddCloth,
   onUpdateCloth,
-  onDeleteCloth
+  onDeleteCloth,
+  onAddRawMaterial,
+  onUpdateRawMaterial,
+  onDeleteRawMaterial
 }) => {
+  const [inventoryTab, setInventoryTab] = useState<'clothes' | 'raw_materials'>('clothes');
   const [filterPurpose, setFilterPurpose] = useState<string>('all');
   const [filterStockLoc, setFilterStockLoc] = useState<'all' | 'stock1' | 'stock2' | 'low'>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -77,6 +90,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [showAddModal, setShowAddModal] = useState(false);
   const [initialBarcodeForAdd, setInitialBarcodeForAdd] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
+  const [variantsModalItem, setVariantsModalItem] = useState<ClothItem | null>(null);
 
   // Quick Stock & Transfer Modal
   const [stockModalItem, setStockModalItem] = useState<ClothItem | null>(null);
@@ -103,7 +117,19 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const totalStock1 = clothes.reduce((sum, c) => sum + getItemStock1(c), 0);
   const totalStock2 = clothes.reduce((sum, c) => sum + getItemStock2(c), 0);
   const grandTotalStock = totalStock1 + totalStock2;
-  const totalInventoryValue = clothes.reduce((sum, c) => sum + (c.buyCost * getItemTotalStock(c)), 0);
+  
+  // Financial valuations for stock (ثمن القيمة، ثمن البيع، وهامش الربح)
+  const totalCostReadyClothes = clothes.reduce((sum, c) => sum + (c.buyCost * getItemTotalStock(c)), 0);
+  const totalSellReadyClothes = clothes.reduce((sum, c) => sum + (c.sellPrice * getItemTotalStock(c)), 0);
+  const expectedProfitReadyClothes = totalSellReadyClothes - totalCostReadyClothes;
+
+  // Raw Materials valuation (السلع الأولية بالرولو والأمتار)
+  const totalRawRolls = rawMaterials.reduce((sum, m) => sum + (m.rollCount || 0), 0);
+  const totalRawMeters = rawMaterials.reduce((sum, m) => sum + (m.totalMeters || 0), 0);
+  const totalRawMaterialsCost = rawMaterials.reduce((sum, m) => sum + (m.totalCostValue || (m.totalMeters * m.costPerMeter) || 0), 0);
+  
+  // Combined capital of all store inventory & fabrics
+  const grandTotalStoreCapital = totalCostReadyClothes + totalRawMaterialsCost;
 
   // Collect all unique sizes & colors present in the inventory
   const allAvailableSizes = useMemo(() => {
@@ -263,81 +289,148 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 
   return (
     <div className="space-y-5 p-3 sm:p-6" dir="rtl">
-      {/* Top Header */}
+      {/* Top Header & Tab Switcher */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-5 rounded-3xl border border-slate-100 shadow-xs">
         <div>
           <h2 className="text-xl font-black text-blue-600 flex items-center gap-2">
-            <span>مخزون الأزياء والملابس (Stock 1 & Stock 2)</span>
-            <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-xl font-bold border border-blue-100">
-              {clothes.length} موديل
-            </span>
+            <span>مخزون المحل والسلع (Stock & Tissus)</span>
           </h2>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            إدارة المخزونين (المخزن 1 / المحل و المخزن 2 / المستودع) مع التحويل السريع والإضافة بالباركود.
+            متابعة دقيقة للفساتين الجاهزة (المخزن 1 و 2) والسلع الأولية والأقمشة بالرولو مع احتساب رأس المال وثمن البيع.
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-          {/* Add Stock by Barcode Button */}
-          <button
-            onClick={() => setShowScannerModal(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-2xl text-xs font-black transition-all shadow-md shadow-blue-200 active:scale-95"
-            title="مسح باركود لإضافة أو تحويل كمية المخزن"
-          >
-            <span>📷</span>
-            <span>إضافة مخزون بالباركود ⚡</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {/* Main Tab Switcher */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-2xl text-xs font-bold w-full sm:w-auto">
+            <button
+              onClick={() => setInventoryTab('clothes')}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl transition-all ${
+                inventoryTab === 'clothes'
+                  ? 'bg-blue-600 text-white shadow-xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Shirt className="w-4 h-4" />
+              <span>فساتين وملابس جاهزة ({clothes.length})</span>
+            </button>
+            <button
+              onClick={() => setInventoryTab('raw_materials')}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl transition-all ${
+                inventoryTab === 'raw_materials'
+                  ? 'bg-blue-600 text-white shadow-xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Scissors className="w-4 h-4" />
+              <span>سلع أولية وأقمشة بالرولو ({rawMaterials.length})</span>
+            </button>
+          </div>
 
-          <button
-            onClick={() => {
-              setInitialBarcodeForAdd('');
-              setShowAddModal(true);
-            }}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-2xl text-xs font-black transition-all shadow-md shadow-red-200 active:scale-95"
-          >
-            + إضافة قطعة جديدة
-          </button>
+          {inventoryTab === 'clothes' && (
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => setShowScannerModal(true)}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2.5 rounded-2xl text-xs font-black transition-all shadow-xs active:scale-95"
+                title="مسح باركود لإضافة أو تحويل كمية المخزن"
+              >
+                <span>📷</span>
+                <span>إضافة بالباركود</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setInitialBarcodeForAdd('');
+                  setShowAddModal(true);
+                }}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-2xl text-xs font-black transition-all shadow-xs active:scale-95"
+              >
+                + قطعة جديدة
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Stock 1 & Stock 2 Summary Cards */}
+      {/* Global Financial Valuation Cards: ثمن القيمة، ثمن البيع، والسلع الأولية */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-blue-600">🏬 المخزون 1 (Stock 1)</span>
-            <span className="text-lg">🏪</span>
-          </div>
-          <p className="text-2xl font-black text-slate-900">{totalStock1.toLocaleString()} <span className="text-xs font-bold text-slate-700">قطعة</span></p>
-          <span className="text-[11px] text-slate-600 font-medium">مخزن المحل وصالة العرض</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-red-600">📦 المخزون 2 (Stock 2)</span>
-            <span className="text-lg">🏭</span>
-          </div>
-          <p className="text-2xl font-black text-slate-900">{totalStock2.toLocaleString()} <span className="text-xs font-bold text-slate-700">قطعة</span></p>
-          <span className="text-[11px] text-slate-600 font-medium">المستودع والتخزين الاحتياطي</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-blue-600">📊 إجمالي المخزون الكلي</span>
-            <span className="text-lg">✨</span>
-          </div>
-          <p className="text-2xl font-black text-slate-900">{grandTotalStock.toLocaleString()} <span className="text-xs font-bold text-slate-700">قطعة</span></p>
-          <span className="text-[11px] text-slate-600 font-medium">مجموع المخزن 1 + المخزن 2</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-red-600">💰 قيمة المخزون (تكلِفة)</span>
+            <span className="text-xs font-bold text-slate-700">💰 مجموع السلعة بثمن القيمة (التكلفة)</span>
             <span className="text-lg">🏷️</span>
           </div>
-          <p className="text-2xl font-black text-slate-900">{totalInventoryValue.toLocaleString()} <span className="text-xs font-bold text-slate-700">دج</span></p>
-          <span className="text-[11px] text-slate-600 font-medium">قيمة رأس المال في المخزنين</span>
+          <p className="text-2xl font-black text-slate-900 font-mono">{totalCostReadyClothes.toLocaleString()} <span className="text-xs font-bold text-slate-500">دج</span></p>
+          <span className="text-[11px] text-slate-500 font-medium">رأس مال شراء الملابس الجاهزة</span>
+        </div>
+
+        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-bold text-emerald-700">💎 مجموع السلعة بثمن البيع</span>
+            <span className="text-lg">🛍️</span>
+          </div>
+          <p className="text-2xl font-black text-emerald-700 font-mono">{totalSellReadyClothes.toLocaleString()} <span className="text-xs font-bold text-emerald-600">دج</span></p>
+          <span className="text-[11px] text-emerald-600 font-medium">الأرباح المتوقعة: +{expectedProfitReadyClothes.toLocaleString()} دج</span>
+        </div>
+
+        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-bold text-blue-600">🧵 مجموع السلع الأولية والأقمشة</span>
+            <span className="text-lg">✨</span>
+          </div>
+          <p className="text-2xl font-black text-blue-700 font-mono">{totalRawMaterialsCost.toLocaleString()} <span className="text-xs font-bold text-blue-600">دج</span></p>
+          <span className="text-[11px] text-slate-500 font-medium">{totalRawRolls} رولو ({totalRawMeters} متر أقمشة)</span>
+        </div>
+
+        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-bold text-purple-700">👑 إجمالي رأس مال المحل المندمج</span>
+            <span className="text-lg">🏛️</span>
+          </div>
+          <p className="text-2xl font-black text-purple-900 font-mono">{grandTotalStoreCapital.toLocaleString()} <span className="text-xs font-bold text-purple-700">دج</span></p>
+          <span className="text-[11px] text-slate-500 font-medium">ملابس جاهزة + أقمشة وسلع أولية</span>
         </div>
       </div>
+
+      {/* Render Subview: Raw Materials vs Clothes */}
+      {inventoryTab === 'raw_materials' ? (
+        <RawMaterialsSection
+          rawMaterials={rawMaterials}
+          suppliers={suppliers}
+          onAddRawMaterial={onAddRawMaterial || (() => {})}
+          onUpdateRawMaterial={onUpdateRawMaterial || (() => {})}
+          onDeleteRawMaterial={onDeleteRawMaterial || (() => {})}
+        />
+      ) : (
+        <>
+          {/* Stock 1 & Stock 2 Location Quantities */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold text-blue-600">🏬 المخزون 1 (صالة العرض)</span>
+                <span className="text-lg">🏪</span>
+              </div>
+              <p className="text-2xl font-black text-slate-900">{totalStock1.toLocaleString()} <span className="text-xs font-bold text-slate-700">قطعة</span></p>
+              <span className="text-[11px] text-slate-600 font-medium">مخزن المحل المعروض للزبائن</span>
+            </div>
+
+            <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold text-red-600">📦 المخزون 2 (المستودع)</span>
+                <span className="text-lg">🏭</span>
+              </div>
+              <p className="text-2xl font-black text-slate-900">{totalStock2.toLocaleString()} <span className="text-xs font-bold text-slate-700">قطعة</span></p>
+              <span className="text-[11px] text-slate-600 font-medium">المستودع والتخزين الاحتياطي</span>
+            </div>
+
+            <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs col-span-2 sm:col-span-1">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold text-slate-700">📊 إجمالي القطع في المخزنين</span>
+                <span className="text-lg">👗</span>
+              </div>
+              <p className="text-2xl font-black text-slate-900">{grandTotalStock.toLocaleString()} <span className="text-xs font-bold text-slate-700">قطعة</span></p>
+              <span className="text-[11px] text-slate-600 font-medium">مجموع المخزن 1 + المخزن 2</span>
+            </div>
+          </div>
 
       {/* Notice Pill */}
       {barcodeActionNotice && (
@@ -542,10 +635,11 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               key={item.id}
               className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 hover:border-blue-400 shadow-xs hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-200 flex flex-col justify-between group hover:-translate-y-0.5"
             >
-              {/* Product Image Box */}
+              {/* Product Image Box - Opens Colors & Sizes (Déclinaisons) Modal */}
               <div 
-                onClick={() => item.imageUrl && setPreviewImage({ url: item.imageUrl, title: item.name })}
-                className="relative aspect-4/3 sm:aspect-16/10 bg-slate-100 overflow-hidden cursor-pointer flex items-center justify-center"
+                onClick={() => setVariantsModalItem(item)}
+                className="relative aspect-4/3 sm:aspect-16/10 bg-slate-100 overflow-hidden cursor-pointer flex items-center justify-center group"
+                title="اضغط لعرض الألوان والمقاسات (Déclinaisons)"
               >
                 {item.imageUrl ? (
                   <img
@@ -590,12 +684,25 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                   </span>
                 </div>
 
-                {/* Zoom Hint */}
+                {/* Colors & Sizes Badge Prompt on Image */}
+                <div className="absolute bottom-2.5 left-2.5 bg-slate-900/90 group-hover:bg-blue-600 text-white text-[10px] font-black px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1.5 transition-all">
+                  <span>✨</span>
+                  <span>الألوان والمقاسات ({itemSizesList.length || 1})</span>
+                </div>
+
+                {/* Direct Image Zoom Button */}
                 {item.imageUrl && (
-                  <div className="absolute bottom-2 left-2 bg-blue-600/90 text-white text-[9px] px-2 py-0.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shadow-xs">
-                    <span>🔍</span>
-                    <span>تكبير الصورة</span>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPreviewImage({ url: item.imageUrl!, title: item.name });
+                    }}
+                    className="absolute bottom-2.5 right-2.5 w-7 h-7 rounded-xl bg-black/60 hover:bg-black text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-xs"
+                    title="تكبير الصورة كاملة"
+                  >
+                    🔍
+                  </button>
                 )}
               </div>
 
@@ -610,8 +717,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                     )}
                   </div>
 
-                  {/* Available Sizes Badges */}
-                  <div className="mt-2 space-y-1.5">
+                  {/* Available Sizes Badges - Click to open variants */}
+                  <div 
+                    onClick={() => setVariantsModalItem(item)}
+                    className="mt-2 space-y-1.5 cursor-pointer hover:opacity-90 transition-opacity"
+                    title="انقر لعرض تفاصيل المقاسات والألوان (لطاي)"
+                  >
                     <div className="flex items-center gap-1 flex-wrap">
                       <span className="text-[10px] font-bold text-slate-500 flex items-center gap-0.5">
                         <Ruler className="w-3 h-3 text-blue-600" />
@@ -763,6 +874,21 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         </div>
       )}
 
+      {/* Colors & Sizes Variants Modal (نافذة الألوان والمقاسات عند الضغط على صورة المنتج) */}
+      {variantsModalItem && (
+        <ProductVariantsModal
+          item={variantsModalItem}
+          onClose={() => setVariantsModalItem(null)}
+          onUpdateItem={(id, updatedFields) => {
+            onUpdateCloth(id, updatedFields);
+            setVariantsModalItem(prev => prev && prev.id === id ? { ...prev, ...updatedFields } : prev);
+          }}
+          onOpenFullImage={(url, title) => {
+            setPreviewImage({ url, title });
+          }}
+        />
+      )}
+
       {/* Add / Edit Cloth Modal */}
       {(showAddModal || editingItem) && (
         <ClothFormModal
@@ -820,6 +946,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           onScan={(code) => handleProcessBarcode(code)}
           onClose={() => setShowScannerModal(false)}
         />
+      )}
+        </>
       )}
     </div>
   );

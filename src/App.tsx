@@ -12,7 +12,9 @@ import {
   MaintenanceStatus,
   Supplier,
   ViewType,
-  DailyCaisseClosure
+  DailyCaisseClosure,
+  RawMaterial,
+  Seamstress
 } from './types';
 import { 
   loadFromStorage, 
@@ -23,6 +25,8 @@ import {
   DEFAULT_SUPPLIERS,
   DEFAULT_MAINTENANCE,
   DEFAULT_CAISSE_CLOSURES,
+  DEFAULT_RAW_MATERIALS,
+  DEFAULT_SEAMSTRESSES,
   initializeStorage 
 } from './storage';
 import { 
@@ -50,6 +54,7 @@ import { TailoringView } from './components/TailoringView';
 import { TailoringModal } from './components/TailoringModal';
 import { TailoringReceiptModal } from './components/TailoringReceiptModal';
 import { CaisseView } from './components/CaisseView';
+import { PartnersView } from './components/PartnersView';
 import { 
   Scale, 
   Shirt, 
@@ -105,6 +110,12 @@ export default function App() {
   const [suppliers, setSuppliers] = useState<Supplier[]>(() => 
     loadFromStorage<Supplier[]>(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS)
   );
+  const [seamstresses, setSeamstresses] = useState<Seamstress[]>(() => 
+    loadFromStorage<Seamstress[]>(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES)
+  );
+  const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>(() => 
+    loadFromStorage<RawMaterial[]>(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS)
+  );
   const [caisseClosures, setCaisseClosures] = useState<DailyCaisseClosure[]>(() => 
     loadFromStorage<DailyCaisseClosure[]>(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES)
   );
@@ -123,6 +134,8 @@ export default function App() {
     staffAbsences: false,
     maintenanceOrders: false,
     suppliers: false,
+    seamstresses: false,
+    rawMaterials: false,
     caisseClosures: false
   });
 
@@ -259,6 +272,32 @@ export default function App() {
       }
     });
 
+    // 12. Subscribe to Seamstresses
+    const unsubSeamstresses = subscribeToCloudCollection<Seamstress[]>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.seamstresses = true;
+        setSeamstresses(items);
+        saveToStorage(STORAGE_KEYS.SEAMSTRESSES, items, false);
+        setLastCloudSyncTime(new Date());
+      } else {
+        const local = loadFromStorage<Seamstress[]>(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, local);
+      }
+    });
+
+    // 13. Subscribe to Raw Materials
+    const unsubRawMaterials = subscribeToCloudCollection<RawMaterial[]>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.rawMaterials = true;
+        setRawMaterials(items);
+        saveToStorage(STORAGE_KEYS.RAW_MATERIALS, items, false);
+        setLastCloudSyncTime(new Date());
+      } else {
+        const local = loadFromStorage<RawMaterial[]>(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, local);
+      }
+    });
+
     return () => {
       unsubClothes();
       unsubRentals();
@@ -270,6 +309,8 @@ export default function App() {
       unsubStaffAbsences();
       unsubMaintenance();
       unsubSuppliers();
+      unsubSeamstresses();
+      unsubRawMaterials();
       unsubCaisse();
     };
   }, []);
@@ -406,6 +447,32 @@ export default function App() {
   }, [suppliers]);
 
   useEffect(() => {
+    saveToStorage(STORAGE_KEYS.SEAMSTRESSES, seamstresses);
+    if (isRemoteUpdateRef.current.seamstresses) {
+      isRemoteUpdateRef.current.seamstresses = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, seamstresses);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [seamstresses]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.RAW_MATERIALS, rawMaterials);
+    if (isRemoteUpdateRef.current.rawMaterials) {
+      isRemoteUpdateRef.current.rawMaterials = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, rawMaterials);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [rawMaterials]);
+
+  useEffect(() => {
     saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, caisseClosures);
     if (isRemoteUpdateRef.current.caisseClosures) {
       isRemoteUpdateRef.current.caisseClosures = false;
@@ -433,6 +500,8 @@ export default function App() {
         syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_ABSENCES, staffAbsences),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, maintenanceOrders),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, suppliers),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, seamstresses),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, rawMaterials),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, caisseClosures)
       ]);
       setLastCloudSyncTime(new Date());
@@ -994,6 +1063,71 @@ export default function App() {
       if (prev.some(s => s.name.trim().toLowerCase() === newSup.name.trim().toLowerCase())) return prev;
       return [newSup, ...prev];
     });
+    showToast(`تمت إضافة المورد: ${newSup.name}`);
+  };
+
+  const handleUpdateSupplier = (id: string, data: Partial<Supplier>) => {
+    setSuppliers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+    showToast('تم تحديث بيانات المورد');
+  };
+
+  const handleDeleteSupplier = (id: string) => {
+    setConfirmDelete({
+      title: 'حذف المورد',
+      message: 'هل أنت متأكد من حذف هذا المورد؟',
+      onConfirm: () => {
+        setSuppliers(prev => prev.filter(s => s.id !== id));
+        showToast('تم حذف المورد بنجاح');
+        setConfirmDelete(null);
+      }
+    });
+  };
+
+  // ==========================
+  // SEAMSTRESSES & RAW MATERIALS HANDLERS
+  // ==========================
+  const handleAddSeamstress = (seam: Seamstress) => {
+    setSeamstresses(prev => [seam, ...prev]);
+    showToast(`تمت إضافة الخياطة: ${seam.name}`);
+  };
+
+  const handleUpdateSeamstress = (id: string, data: Partial<Seamstress>) => {
+    setSeamstresses(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+    showToast('تم تحديث بيانات الخياطة');
+  };
+
+  const handleDeleteSeamstress = (id: string) => {
+    setConfirmDelete({
+      title: 'حذف الخياطة',
+      message: 'هل تريد حذف هذه الخياطة من النظام؟',
+      onConfirm: () => {
+        setSeamstresses(prev => prev.filter(s => s.id !== id));
+        showToast('تم حذف الخياطة');
+        setConfirmDelete(null);
+      }
+    });
+  };
+
+  const handleAddRawMaterial = (mat: RawMaterial) => {
+    setRawMaterials(prev => [mat, ...prev]);
+    showToast(`تمت إضافة القماش / السلعة: ${mat.name}`);
+  };
+
+  const handleUpdateRawMaterial = (id: string, data: Partial<RawMaterial>) => {
+    setRawMaterials(prev => prev.map(m => m.id === id ? { ...m, ...data, updatedAt: new Date().toISOString() } : m));
+    showToast('تم تحديث بيانات القماش');
+  };
+
+  const handleDeleteRawMaterial = (id: string) => {
+    setConfirmDelete({
+      title: 'حذف السلعة الأولية أو القماش',
+      message: 'هل أنت متأكد من حذف هذا القماش من سجل المخزن؟',
+      onConfirm: () => {
+        setRawMaterials(prev => prev.filter(m => m.id !== id));
+        showToast('تم حذف القماش بنجاح');
+        setConfirmDelete(null);
+      }
+    });
   };
 
   const handleAddCredit = (credData: any) => {
@@ -1229,6 +1363,13 @@ export default function App() {
       expenses,
       credits,
       staffPayouts,
+      staffMembers,
+      staffAbsences,
+      maintenanceOrders,
+      suppliers,
+      seamstresses,
+      rawMaterials,
+      caisseClosures,
       exportedAt: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
@@ -1254,6 +1395,13 @@ export default function App() {
           if (parsed.expenses) setExpenses(parsed.expenses);
           if (parsed.credits) setCredits(parsed.credits);
           if (parsed.staffPayouts) setStaffPayouts(parsed.staffPayouts);
+          if (parsed.staffMembers) setStaffMembers(parsed.staffMembers);
+          if (parsed.staffAbsences) setStaffAbsences(parsed.staffAbsences);
+          if (parsed.maintenanceOrders) setMaintenanceOrders(parsed.maintenanceOrders);
+          if (parsed.suppliers) setSuppliers(parsed.suppliers);
+          if (parsed.seamstresses) setSeamstresses(parsed.seamstresses);
+          if (parsed.rawMaterials) setRawMaterials(parsed.rawMaterials);
+          if (parsed.caisseClosures) setCaisseClosures(parsed.caisseClosures);
           showToast('تمت استعادة البيانات بنجاح!');
           setActiveModal(null);
         } catch (err) {
@@ -1377,7 +1525,7 @@ export default function App() {
           </div>
 
           {/* Bottom Row of Header: All Navigation Icons in a single compact row */}
-          <nav className="grid grid-cols-9 gap-0.5 sm:gap-1 w-full pt-1 border-t border-slate-100" aria-label="أقسام التطبيق">
+          <nav className="grid grid-cols-10 gap-0.5 sm:gap-1 w-full pt-1 border-t border-slate-100" aria-label="أقسام التطبيق">
             <NavButton 
               icon="dashboard" 
               label="الرئيسية" 
@@ -1421,6 +1569,12 @@ export default function App() {
               label="الكريدي" 
               onClick={() => setCurrentView('credits')} 
               active={currentView === 'credits'} 
+            />
+            <NavButton 
+              icon="partners" 
+              label="الموردين والخياطات" 
+              onClick={() => setCurrentView('partners')} 
+              active={currentView === 'partners'} 
             />
             <NavButton 
               icon="caisse" 
@@ -1487,9 +1641,14 @@ export default function App() {
         {currentView === 'inventory' && (
           <InventoryView 
             clothes={clothes}
+            rawMaterials={rawMaterials}
+            suppliers={suppliers}
             onAddCloth={handleAddCloth}
             onUpdateCloth={handleUpdateCloth}
             onDeleteCloth={handleDeleteCloth}
+            onAddRawMaterial={handleAddRawMaterial}
+            onUpdateRawMaterial={handleUpdateRawMaterial}
+            onDeleteRawMaterial={handleDeleteRawMaterial}
             onScanBarcode={() => setIsScanning(true)}
           />
         )}
@@ -1559,6 +1718,23 @@ export default function App() {
                 localStorage.setItem('bm_hideFinances', 'true');
               }
             }}
+          />
+        )}
+
+        {currentView === 'partners' && (
+          <PartnersView 
+            suppliers={suppliers}
+            seamstresses={seamstresses}
+            expenses={expenses}
+            maintenanceOrders={maintenanceOrders}
+            credits={credits}
+            onAddSupplier={handleAddSupplier}
+            onUpdateSupplier={handleUpdateSupplier}
+            onDeleteSupplier={handleDeleteSupplier}
+            onAddSeamstress={handleAddSeamstress}
+            onUpdateSeamstress={handleUpdateSeamstress}
+            onDeleteSeamstress={handleDeleteSeamstress}
+            onSettleSupplierCredit={handleSettleSupplierCredit}
           />
         )}
       </main>

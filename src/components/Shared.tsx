@@ -68,6 +68,7 @@ export const NavButton: React.FC<{
         return <Receipt className="w-4 h-4" />;
       case 'credits':
         return <CreditCard className="w-4 h-4" />;
+      case 'partners':
       case 'customers':
       case 'staff':
       case 'absence':

@@ -2,6 +2,19 @@ export type PurposeType = 'sell' | 'rent' | 'both';
 export type RentalStatus = 'reserved' | 'active' | 'overdue' | 'returned' | 'cleaning' | 'cancelled';
 export type CautionStatus = 'held' | 'refunded' | 'deducted';
 
+export interface ClothVariant {
+  id: string;
+  code?: string; // المرجع أو الباركود الخاص بالمقاس e.g. #3921
+  size: string; // المقاس e.g. 44, 42, 40, 38
+  color: string; // اللون e.g. أسود, وردي
+  stock1: number; // متوفر في المحل
+  stock2: number; // متوفر في المستودع
+  stock: number; // إجمالي المتوفر
+  price?: number; // سعر البيع الخاص بهذا المقاس
+  rentPrice?: number; // سعر الكراء الخاص بهذا المقاس
+  imageUrl?: string; // صورة خاصة بهذا اللون/المقاس
+}
+
 export interface ClothItem {
   id: string;
   name: string;
@@ -23,6 +36,7 @@ export interface ClothItem {
   inCleaningCount: number;
   imageUrl?: string;
   description?: string;
+  variants?: ClothVariant[]; // تفاصيل كل مقاس ولون (لطاي والألوان)
 }
 
 export interface Rental {
@@ -93,12 +107,37 @@ export interface Supplier {
   notes?: string;
 }
 
+export interface RawMaterial {
+  id: string;
+  name: string; // اسم السلعة الأولية أو القماش (مثال: ساتان ملكي، حرير كريب، تول مطرز...)
+  code?: string; // كود/مرجع القماش
+  fabricType: string; // نوع القماش
+  color: string; // اللون
+  rollCount: number; // عدد الرولويات المتوفرة (Rouleaux)
+  metersPerRoll: number; // طول الرولو الواحد بالمتر
+  totalMeters: number; // إجمالي الأمتار = (rollCount * metersPerRoll) + looseMeters
+  looseMeters?: number; // أمتار إضافية أو متبقية من رولو مفتوح
+  costPerMeter: number; // سعر المتر الواحد (شراء / تكلفة)
+  costPerRoll?: number; // سعر الرولو الواحد
+  totalCostValue: number; // القيمة الإجمالية للسلعة بسعر التكلفة (totalMeters * costPerMeter)
+  supplierId?: string;
+  supplierName?: string;
+  storageLocation?: string; // مكان التخزين (المستودع، الورشة، المحل)
+  minAlertMeters?: number; // تنبيه نقص الأمتار
+  notes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type ExpenseScope = 'rental' | 'sale' | 'tailoring' | 'general';
+
 export interface Expense {
   id: string;
   category: string;
   desc: string;
   amount: number;
   date: string;
+  expenseScope?: ExpenseScope; // فساتين كراء، فساتين بيع، خياطة، أو مصاريف عامة
   // Supplier purchase specific fields
   isSupplierPurchase?: boolean;
   supplierName?: string;
@@ -109,6 +148,17 @@ export interface Expense {
   creditAmount?: number; // شحال كريدي / دين متبقي للمورد
   invoiceNumber?: string; // رقم الفاتورة أو الوصل
   notes?: string;
+}
+
+export interface Seamstress {
+  id: string;
+  name: string; // اسم الخياطة
+  phone?: string;
+  specialty?: string; // الاختصاص (قفاطين، تعديل، فساتين سهرة، تطريز...)
+  addressOrCity?: string;
+  ratePerPieceOrSalary?: string; // تسعيرة بالقطعة أو شهرية
+  notes?: string;
+  createdAt?: string;
 }
 
 export interface Credit {
@@ -227,4 +277,4 @@ export interface DailyCaisseClosure {
   closedAt: string;
 }
 
-export type ViewType = 'dashboard' | 'rentals' | 'inventory' | 'sales' | 'expenses' | 'credits' | 'tailoring' | 'customers' | 'caisse';
+export type ViewType = 'dashboard' | 'rentals' | 'inventory' | 'sales' | 'expenses' | 'credits' | 'tailoring' | 'customers' | 'caisse' | 'partners';

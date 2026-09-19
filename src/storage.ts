@@ -10,7 +10,9 @@ import {
   CustomerProfile,
   MaintenanceOrder,
   Supplier,
-  DailyCaisseClosure
+  DailyCaisseClosure,
+  RawMaterial,
+  Seamstress
 } from './types';
 import { saveToFirebase } from './firebase';
 
@@ -26,9 +28,123 @@ export const STORAGE_KEYS = {
   CUSTOMERS: 'boutique_customers',
   MAINTENANCE: 'boutique_maintenance',
   SUPPLIERS: 'boutique_suppliers',
+  SEAMSTRESSES: 'boutique_seamstresses',
+  RAW_MATERIALS: 'boutique_raw_materials',
   CAISSE_CLOSURES: 'boutique_caisse_closures',
   STORE_CONFIG: 'boutique_store_config'
 };
+
+export const DEFAULT_RAW_MATERIALS: RawMaterial[] = [
+  {
+    id: 'mat_1',
+    name: 'ساتان حريري ملكي (Satin Duchesse)',
+    code: 'FAB-SAT-01',
+    fabricType: 'ساتان ملكي فاخر',
+    color: 'أوف وايت (أبيض عاجي)',
+    rollCount: 4,
+    metersPerRoll: 30,
+    looseMeters: 5,
+    totalMeters: 125,
+    costPerMeter: 850,
+    costPerRoll: 25500,
+    totalCostValue: 106250,
+    supplierName: 'شركة النسيج الملكي للأقمشة والحرير',
+    storageLocation: 'ورشة الخياطة',
+    minAlertMeters: 20,
+    notes: 'قماش أساسي لفساتين الأعراس وبطانات القفاطين.',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'mat_2',
+    name: 'كريب جورجيت فرنسي ناعم',
+    code: 'FAB-CRP-02',
+    fabricType: 'كريب جورجيت',
+    color: 'أخضر زمردي',
+    rollCount: 3,
+    metersPerRoll: 25,
+    looseMeters: 8,
+    totalMeters: 83,
+    costPerMeter: 1200,
+    costPerRoll: 30000,
+    totalCostValue: 99600,
+    supplierName: 'شركة النسيج الملكي للأقمشة والحرير',
+    storageLocation: 'مستودع الأقمشة',
+    minAlertMeters: 15,
+    notes: 'مخصص للعبايات وفساتين السهرة الإنسيابية.',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'mat_3',
+    name: 'مخمل ملكي قطيفة راقية (Velours Royal)',
+    code: 'FAB-VEL-03',
+    fabricType: 'مخمل قطيفة',
+    color: 'بوردو عنابي',
+    rollCount: 2,
+    metersPerRoll: 20,
+    looseMeters: 4,
+    totalMeters: 44,
+    costPerMeter: 1800,
+    costPerRoll: 36000,
+    totalCostValue: 79200,
+    supplierName: 'دار القفطان والتطريز التقليدي',
+    storageLocation: 'ورشة الخياطة',
+    minAlertMeters: 10,
+    notes: 'مخصص لخياطة الكراكو والقفطان العاصمي.',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'mat_4',
+    name: 'تول مطرز بالخرز والكريستال اللامع',
+    code: 'FAB-TUL-04',
+    fabricType: 'تول ودانتيل مطرز',
+    color: 'وردي بودري (Rose Poudré)',
+    rollCount: 3,
+    metersPerRoll: 15,
+    looseMeters: 2,
+    totalMeters: 47,
+    costPerMeter: 2500,
+    costPerRoll: 37500,
+    totalCostValue: 117500,
+    supplierName: 'مؤسسة الأناقة للأزياء والفساتين',
+    storageLocation: 'صالة العرض / المحل',
+    minAlertMeters: 10,
+    notes: 'تول تركي مطرز يدوي عالي الجودة للعرائس.',
+    createdAt: new Date().toISOString()
+  }
+];
+
+export const DEFAULT_SEAMSTRESSES: Seamstress[] = [
+  {
+    id: 'seam_1',
+    name: 'حليمة بوزيد',
+    phone: '0661223344',
+    specialty: 'تعديل مقاسات وفساتين سهرة',
+    addressOrCity: 'الجزائر العاصمة',
+    ratePerPieceOrSalary: 'بالقطعة (800 - 3000 دج)',
+    notes: 'خبرة 10 سنوات في خياطة وتضييق فساتين السهرة والأعراس.',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'seam_2',
+    name: 'فاطمة ناصري',
+    phone: '0555889900',
+    specialty: 'قفاطين وكراكو وتطريز تقليدي',
+    addressOrCity: 'البليدة',
+    ratePerPieceOrSalary: 'بالقطعة (3000 - 15000 دج)',
+    notes: 'متخصصة في الصناعة التقليدية والفتلة والمجبود.',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'seam_3',
+    name: 'ياسمين عيساوي',
+    phone: '0770334455',
+    specialty: 'صيانة، سحابات وكي وتجهيز',
+    addressOrCity: 'بومرداس',
+    ratePerPieceOrSalary: 'راتب شهري / بالقطعة',
+    notes: 'سريعة في تصليح السحابات وتجهيز الفساتين للكراء.',
+    createdAt: new Date().toISOString()
+  }
+];
 
 export const DEFAULT_SUPPLIERS: Supplier[] = [
   {
@@ -128,23 +244,31 @@ export const DEFAULT_STAFF: StaffMember[] = [
 export const DEFAULT_CLOTHES: ClothItem[] = [
   {
     id: 'item_1',
-    name: 'فستان سهرة كلاسيكي مطرز ذهبي',
-    barcode: '6130001',
+    name: 'فستان سهرة أسود كلاسيكي فاخر',
+    barcode: '3918',
     category: 'فساتين سهرة',
     purpose: 'both',
-    buyCost: 14000,
-    sellPrice: 28000,
-    rentPrice: 6000,
-    cautionAmount: 4000,
-    size: '38',
-    color: 'أسود وذهبي',
-    stock1: 2,
-    stock2: 1,
-    stock: 3,
+    buyCost: 3500,
+    sellPrice: 7200,
+    rentPrice: 4000,
+    cautionAmount: 3000,
+    size: '44، 42، 40، 38',
+    sizes: ['44', '42', '40', '38'],
+    color: 'أسود',
+    colors: ['أسود'],
+    stock1: 8,
+    stock2: 8,
+    stock: 16,
     rentedCount: 1,
     inCleaningCount: 0,
     imageUrl: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=600&auto=format&fit=crop&q=80',
-    description: 'فستان سهرة راقي بقماش التول والمخمل مع تطريز يدوي فاخر.'
+    description: 'فستان سهرة راقي بقماش التول والمخمل مع تطريز يدوي فاخر.',
+    variants: [
+      { id: 'var_3921', code: '3921', size: '44', color: 'أسود', stock1: 2, stock2: 2, stock: 4, price: 7200, imageUrl: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=600&auto=format&fit=crop&q=80' },
+      { id: 'var_3920', code: '3920', size: '42', color: 'أسود', stock1: 2, stock2: 2, stock: 4, price: 7200, imageUrl: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=600&auto=format&fit=crop&q=80' },
+      { id: 'var_3919', code: '3919', size: '40', color: 'أسود', stock1: 2, stock2: 2, stock: 4, price: 7200, imageUrl: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=600&auto=format&fit=crop&q=80' },
+      { id: 'var_3918', code: '3918', size: '38', color: 'أسود', stock1: 2, stock2: 2, stock: 4, price: 7200, imageUrl: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=600&auto=format&fit=crop&q=80' }
+    ]
   },
   {
     id: 'item_2',
@@ -423,6 +547,12 @@ export const initializeStorage = () => {
   }
   if (!localStorage.getItem(STORAGE_KEYS.SUPPLIERS)) {
     saveToStorage(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS);
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.SEAMSTRESSES)) {
+    saveToStorage(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES);
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.RAW_MATERIALS)) {
+    saveToStorage(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS);
   }
   if (!localStorage.getItem(STORAGE_KEYS.MAINTENANCE)) {
     saveToStorage(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE);

@@ -348,6 +348,254 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         />
       </div>
 
+      {/* التفصيل المالي الدقيق لكل نشاط (كراء، بيع، خياطة) شهرياً وسنوياً */}
+      <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+              <span className="p-1.5 bg-blue-50 text-blue-600 rounded-xl">📊</span>
+              <span>التقرير المالي المفصل للأنشطة الثلاثة (الأرباح والمصاريف الشهرية والسنوية)</span>
+            </h3>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              متابعة دقيقة لأرباح ومصاريف كل قسم على حدة (كراء فساتين، بيع فساتين، وخياطة وتفصيل).
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* 1. نشاط كراء الفساتين */}
+          <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
+                  ✨
+                </span>
+                <div>
+                  <h4 className="text-sm font-black text-blue-900">نشاط كراء وتأجير الفساتين</h4>
+                  <span className="text-[10px] text-slate-500 font-medium">Rentals & Locations</span>
+                </div>
+              </div>
+              <button
+                onClick={() => onNavigate('rentals')}
+                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-white px-2 py-1 rounded-lg border border-slate-200"
+              >
+                عرض القسم ←
+              </button>
+            </div>
+
+            {/* Monthly Rentals */}
+            <div className="bg-white p-3 rounded-xl border border-slate-200/60 space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-slate-700">📅 أرباح ومصاريف هذا الشهر:</span>
+                <span className="font-bold text-blue-700">{today.substring(0, 7)}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="bg-blue-50/50 p-2 rounded-lg">
+                  <span className="text-slate-500 block">مداخيل الكراء</span>
+                  <span className="font-black text-blue-700 font-mono text-xs">
+                    {hideFinances ? '••••' : `${(stats.monthlyRentalIncome || 0).toLocaleString()} دج`}
+                  </span>
+                </div>
+                <div className="bg-red-50/50 p-2 rounded-lg">
+                  <span className="text-slate-500 block">مصاريف وغسيل الكراء</span>
+                  <span className="font-black text-red-600 font-mono text-xs">
+                    {hideFinances ? '••••' : `${(stats.monthlyRentalExpenses || 0).toLocaleString()} دج`}
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center bg-slate-900 text-white p-2 rounded-lg text-xs font-bold">
+                <span>الربح الشهري الصافي:</span>
+                <span className="font-mono text-emerald-400 font-black">
+                  {hideFinances ? '••••' : `${((stats.monthlyRentalIncome || 0) - (stats.monthlyRentalExpenses || 0)).toLocaleString()} دج`}
+                </span>
+              </div>
+            </div>
+
+            {/* Yearly Rentals */}
+            <div className="bg-white p-3 rounded-xl border border-slate-200/60 space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-slate-700">🗓️ أرباح ومصاريف هذه السنة:</span>
+                <span className="font-bold text-blue-700">{today.substring(0, 4)}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="bg-blue-50/50 p-2 rounded-lg">
+                  <span className="text-slate-500 block">مداخيل الكراء السنوية</span>
+                  <span className="font-black text-blue-700 font-mono text-xs">
+                    {hideFinances ? '••••' : `${(stats.yearlyRentalIncome || 0).toLocaleString()} دج`}
+                  </span>
+                </div>
+                <div className="bg-red-50/50 p-2 rounded-lg">
+                  <span className="text-slate-500 block">مصاريف الكراء السنوية</span>
+                  <span className="font-black text-red-600 font-mono text-xs">
+                    {hideFinances ? '••••' : `${(stats.yearlyRentalExpenses || 0).toLocaleString()} دج`}
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center bg-blue-900 text-white p-2 rounded-lg text-xs font-bold">
+                <span>الربح السنوي الصافي:</span>
+                <span className="font-mono text-emerald-300 font-black">
+                  {hideFinances ? '••••' : `${((stats.yearlyRentalIncome || 0) - (stats.yearlyRentalExpenses || 0)).toLocaleString()} دج`}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. نشاط بيع الفساتين والملابس */}
+          <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                  🛍️
+                </span>
+                <div>
+                  <h4 className="text-sm font-black text-emerald-900">نشاط بيع الملابس والفساتين</h4>
+                  <span className="text-[10px] text-slate-500 font-medium">Ventes & Prêt-à-porter</span>
+                </div>
+              </div>
+              <button
+                onClick={() => onNavigate('sales')}
+                className="text-[11px] font-bold text-emerald-600 hover:text-emerald-800 bg-white px-2 py-1 rounded-lg border border-slate-200"
+              >
+                عرض القسم ←
+              </button>
+            </div>
+
+            {/* Monthly Sales */}
+            <div className="bg-white p-3 rounded-xl border border-slate-200/60 space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-slate-700">📅 مبيعات ومصاريف هذا الشهر:</span>
+                <span className="font-bold text-emerald-700">{today.substring(0, 7)}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="bg-emerald-50/50 p-2 rounded-lg">
+                  <span className="text-slate-500 block">مبيعات الملابس</span>
+                  <span className="font-black text-emerald-700 font-mono text-xs">
+                    {hideFinances ? '••••' : `${(stats.monthlySalesRevenue || 0).toLocaleString()} دج`}
+                  </span>
+                </div>
+                <div className="bg-red-50/50 p-2 rounded-lg">
+                  <span className="text-slate-500 block">مصاريف وتكاليف البيع</span>
+                  <span className="font-black text-red-600 font-mono text-xs">
+                    {hideFinances ? '••••' : `${(stats.monthlySalesExpenses || 0).toLocaleString()} دج`}
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center bg-slate-900 text-white p-2 rounded-lg text-xs font-bold">
+                <span>الربح الشهري من البيع:</span>
+                <span className="font-mono text-emerald-400 font-black">
+                  {hideFinances ? '••••' : `${(stats.monthlySalesProfit || 0).toLocaleString()} دج`}
+                </span>
+              </div>
+            </div>
+
+            {/* Yearly Sales */}
+            <div className="bg-white p-3 rounded-xl border border-slate-200/60 space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-slate-700">🗓️ مبيعات ومصاريف هذه السنة:</span>
+                <span className="font-bold text-emerald-700">{today.substring(0, 4)}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="bg-emerald-50/50 p-2 rounded-lg">
+                  <span className="text-slate-500 block">مبيعات الملابس السنوية</span>
+                  <span className="font-black text-emerald-700 font-mono text-xs">
+                    {hideFinances ? '••••' : `${(stats.yearlySalesRevenue || 0).toLocaleString()} دج`}
+                  </span>
+                </div>
+                <div className="bg-red-50/50 p-2 rounded-lg">
+                  <span className="text-slate-500 block">مصاريف البيع السنوية</span>
+                  <span className="font-black text-red-600 font-mono text-xs">
+                    {hideFinances ? '••••' : `${(stats.yearlySalesExpenses || 0).toLocaleString()} دج`}
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center bg-emerald-900 text-white p-2 rounded-lg text-xs font-bold">
+                <span>الربح السنوي من البيع:</span>
+                <span className="font-mono text-emerald-300 font-black">
+                  {hideFinances ? '••••' : `${(stats.yearlySalesProfit || 0).toLocaleString()} دج`}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. نشاط الخياطة والتفصيل والصيانة */}
+          <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm">
+                  ✂️
+                </span>
+                <div>
+                  <h4 className="text-sm font-black text-purple-900">نشاط الخياطة والتفصيل</h4>
+                  <span className="text-[10px] text-slate-500 font-medium">Couture & Atelier</span>
+                </div>
+              </div>
+              <button
+                onClick={() => onNavigate('tailoring')}
+                className="text-[11px] font-bold text-purple-600 hover:text-purple-800 bg-white px-2 py-1 rounded-lg border border-slate-200"
+              >
+                عرض القسم ←
+              </button>
+            </div>
+
+            {/* Monthly Tailoring */}
+            <div className="bg-white p-3 rounded-xl border border-slate-200/60 space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-slate-700">📅 خياطة ومصاريف هذا الشهر:</span>
+                <span className="font-bold text-purple-700">{today.substring(0, 7)}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="bg-purple-50/50 p-2 rounded-lg">
+                  <span className="text-slate-500 block">مداخيل الخياطة</span>
+                  <span className="font-black text-purple-700 font-mono text-xs">
+                    {hideFinances ? '••••' : `${(stats.monthlyTailoringIncome || 0).toLocaleString()} دج`}
+                  </span>
+                </div>
+                <div className="bg-red-50/50 p-2 rounded-lg">
+                  <span className="text-slate-500 block">مصاريف وأقمشة الخياطة</span>
+                  <span className="font-black text-red-600 font-mono text-xs">
+                    {hideFinances ? '••••' : `${(stats.monthlyTailoringExpenses || 0).toLocaleString()} دج`}
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center bg-slate-900 text-white p-2 rounded-lg text-xs font-bold">
+                <span>الربح الشهري من الخياطة:</span>
+                <span className="font-mono text-emerald-400 font-black">
+                  {hideFinances ? '••••' : `${(stats.monthlyTailoringProfit || 0).toLocaleString()} دج`}
+                </span>
+              </div>
+            </div>
+
+            {/* Yearly Tailoring */}
+            <div className="bg-white p-3 rounded-xl border border-slate-200/60 space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-slate-700">🗓️ خياطة ومصاريف هذه السنة:</span>
+                <span className="font-bold text-purple-700">{today.substring(0, 4)}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="bg-purple-50/50 p-2 rounded-lg">
+                  <span className="text-slate-500 block">مداخيل الخياطة السنوية</span>
+                  <span className="font-black text-purple-700 font-mono text-xs">
+                    {hideFinances ? '••••' : `${(stats.yearlyTailoringIncome || 0).toLocaleString()} دج`}
+                  </span>
+                </div>
+                <div className="bg-red-50/50 p-2 rounded-lg">
+                  <span className="text-slate-500 block">مصاريف الخياطة السنوية</span>
+                  <span className="font-black text-red-600 font-mono text-xs">
+                    {hideFinances ? '••••' : `${(stats.yearlyTailoringExpenses || 0).toLocaleString()} دج`}
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center bg-purple-900 text-white p-2 rounded-lg text-xs font-bold">
+                <span>الربح السنوي من الخياطة:</span>
+                <span className="font-mono text-emerald-300 font-black">
+                  {hideFinances ? '••••' : `${(stats.yearlyTailoringProfit || 0).toLocaleString()} دج`}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Urgent Returns Alert Banner */}
       {urgentRentals.length > 0 && (
         <div className="bg-red-50 border-2 border-red-300 rounded-3xl p-5 shadow-xs space-y-3">

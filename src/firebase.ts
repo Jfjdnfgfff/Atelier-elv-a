@@ -214,6 +214,8 @@ export const FIREBASE_COLLECTIONS = {
   CUSTOMERS: 'boutique_customers',
   MAINTENANCE: 'boutique_maintenance',
   SUPPLIERS: 'boutique_suppliers',
+  SEAMSTRESSES: 'boutique_seamstresses',
+  RAW_MATERIALS: 'boutique_raw_materials',
   CAISSE_CLOSURES: 'boutique_caisse_closures',
   STORE_CONFIG: 'boutique_store_config'
 };
