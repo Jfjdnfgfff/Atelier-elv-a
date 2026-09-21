@@ -496,6 +496,7 @@ export const DEFAULT_CAISSE_CLOSURES: DailyCaisseClosure[] = [
 // In-memory cache for fast, synchronous lookups without reading localStorage repeatedly
 const memoryStore = new Map<string, any>();
 const storageFlushDebouncers = new Map<string, any>();
+const lastWrittenRef = new Map<string, any>();
 
 export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
   if (memoryStore.has(key)) {
@@ -509,6 +510,7 @@ export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
     }
     const parsed = JSON.parse(item);
     memoryStore.set(key, parsed);
+    lastWrittenRef.set(key, parsed);
     return parsed;
   } catch (e) {
     console.error(`Error loading key ${key} from storage:`, e);
@@ -518,6 +520,12 @@ export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
 };
 
 export const saveToStorage = <T>(key: string, data: T, syncFirebase: boolean = false): void => {
+  // If the exact same object/array reference is passed and not forcing cloud sync, avoid redundant serialization
+  if (lastWrittenRef.get(key) === data && !syncFirebase) {
+    return;
+  }
+  lastWrittenRef.set(key, data);
+
   // Update in-memory cache instantly for zero latency
   memoryStore.set(key, data);
 

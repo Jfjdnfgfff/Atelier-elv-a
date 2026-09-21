@@ -15,9 +15,9 @@ async function startServer() {
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-  // Dedicated controlled payload parser for OCR document extraction (12mb max to protect container memory)
-  const ocrJsonParser = express.json({ limit: '12mb' });
-  const ocrUrlParser = express.urlencoded({ extended: true, limit: '12mb' });
+  // Dedicated controlled payload parser for OCR document extraction (10mb max to protect container memory)
+  const ocrJsonParser = express.json({ limit: '10mb' });
+  const ocrUrlParser = express.urlencoded({ extended: true, limit: '10mb' });
 
   // Lazy Gemini Client initialization
   let aiClient: GoogleGenAI | null = null;
@@ -44,7 +44,7 @@ async function startServer() {
     res.json({ status: 'ok', hasGeminiKey: !!process.env.GEMINI_API_KEY });
   });
 
-  // OCR ID and Customer Document Extraction Route (isolated 25mb parser)
+  // OCR ID and Customer Document Extraction Route (isolated 10mb parser)
   app.post('/api/ocr-id', ocrJsonParser, ocrUrlParser, async (req, res) => {
     try {
       const { imageBase64, mimeType = 'image/jpeg', textInput } = req.body;
@@ -54,7 +54,7 @@ async function startServer() {
       }
 
       // Security check: Validate MIME Type
-      const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       const cleanMime = (mimeType || 'image/jpeg').toLowerCase().trim();
       if (imageBase64 && !allowedMimes.includes(cleanMime)) {
         return res.status(400).json({ error: 'نوع الملف غير مسموح به. يرجى إرفاق صورة فقط (JPEG, PNG, WEBP).' });
@@ -73,10 +73,15 @@ async function startServer() {
       if (cleanBase64.includes(';base64,')) {
         cleanBase64 = cleanBase64.split(';base64,')[1];
       }
+      cleanBase64 = cleanBase64.trim().replace(/\s/g, '');
 
-      // Generate a secure server-side random filename for the session asset
-      const ext = cleanMime.split('/')[1] || 'jpg';
-      const secureAssetFilename = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${ext}`;
+      // Validate base64 structure to protect against arbitrary payload injection
+      if (cleanBase64 && !/^[A-Za-z0-9+/=]+$/.test(cleanBase64)) {
+        return res.status(400).json({ error: 'صيغة بيانات الصورة غير صالحة' });
+      }
+
+      // Generate a clean session request ID
+      const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
       const parts: any[] = [];
       if (cleanBase64) {
@@ -154,13 +159,13 @@ JSON Schema Requirements:
 
       return res.json({
         success: true,
-        secureFilename: secureAssetFilename,
+        requestId,
         data: parsedData,
       });
     } catch (error: any) {
-      console.error('OCR ID Processing Error:', error);
+      console.error('OCR ID Processing Error:', error?.message || 'Processing failed');
       return res.status(500).json({
-        error: error?.message || 'فشل معالجة بطاقة الهوية',
+        error: 'فشل معالجة بطاقة الهوية',
         success: false,
       });
     }

@@ -190,8 +190,18 @@ export default function App() {
       const unsub = subscribeToCloudCollection<T>(collectionKey, (items) => {
         if (items && Array.isArray(items)) {
           isRemoteUpdateRef.current[refKey] = true;
-          setter(items);
-          saveToStorage(storageKey, items, false);
+          setter((prev) => {
+            // Smart ID merge: update or insert incoming cloud items while preserving local historical records
+            if (!prev || prev.length === 0) return items;
+            const map = new Map<string, T>();
+            for (const p of prev) {
+              if (p?.id) map.set(p.id, p);
+            }
+            for (const item of items) {
+              if (item?.id) map.set(item.id, item);
+            }
+            return Array.from(map.values());
+          });
           setLastCloudSyncTime(new Date());
         }
       }, options);
@@ -216,22 +226,22 @@ export default function App() {
     const needsLogs = currentView === 'logs';
 
     if (needsRentals) {
-      sub<Rental>(FIREBASE_COLLECTIONS.RENTALS, setRentals, STORAGE_KEYS.RENTALS, 'rentals', { limit: 120 });
+      sub<Rental>(FIREBASE_COLLECTIONS.RENTALS, setRentals, STORAGE_KEYS.RENTALS, 'rentals', { limit: 200 });
     }
     if (needsSales) {
-      sub<Sale>(FIREBASE_COLLECTIONS.SALES, setSales, STORAGE_KEYS.SALES, 'sales', { limit: 120 });
+      sub<Sale>(FIREBASE_COLLECTIONS.SALES, setSales, STORAGE_KEYS.SALES, 'sales', { limit: 200 });
     }
     if (needsExpenses) {
-      sub<Expense>(FIREBASE_COLLECTIONS.EXPENSES, setExpenses, STORAGE_KEYS.EXPENSES, 'expenses', { limit: 120 });
+      sub<Expense>(FIREBASE_COLLECTIONS.EXPENSES, setExpenses, STORAGE_KEYS.EXPENSES, 'expenses', { limit: 200 });
     }
     if (needsCredits) {
-      sub<Credit>(FIREBASE_COLLECTIONS.CREDITS, setCredits, STORAGE_KEYS.CREDITS, 'credits', { limit: 100 });
+      sub<Credit>(FIREBASE_COLLECTIONS.CREDITS, setCredits, STORAGE_KEYS.CREDITS, 'credits', { limit: 150 });
     }
     if (needsStaffPayouts) {
-      sub<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, setStaffPayouts, STORAGE_KEYS.STAFF_PAYOUTS, 'staffPayouts', { limit: 60 });
+      sub<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, setStaffPayouts, STORAGE_KEYS.STAFF_PAYOUTS, 'staffPayouts', { limit: 100 });
     }
     if (needsMaintenance) {
-      sub<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, setMaintenanceOrders, STORAGE_KEYS.MAINTENANCE, 'maintenanceOrders', { limit: 80 });
+      sub<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, setMaintenanceOrders, STORAGE_KEYS.MAINTENANCE, 'maintenanceOrders', { limit: 100 });
     }
     if (needsClothes) {
       sub<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, setClothes, STORAGE_KEYS.CLOTHES, 'clothes');

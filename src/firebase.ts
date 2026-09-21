@@ -335,7 +335,7 @@ export async function saveCollectionToFirebase<T extends { id?: string }>(
   }
 }
 
-// Active singleton listeners registry to prevent duplicate network listeners on the same path
+// Active singleton listeners registry to prevent duplicate network listeners on the same path & query
 interface ListenerRegistryEntry {
   unsub: () => void;
   callbacks: Set<(data: any[]) => void>;
@@ -345,11 +345,36 @@ const activeListenersRegistry = new Map<string, ListenerRegistryEntry>();
 // Track collections that have already been checked for legacy root fallback
 const checkedLegacyCollections = new Set<string>();
 
+export const COLLECTION_DATE_FIELDS: Record<string, string> = {
+  [FIREBASE_COLLECTIONS.SALES]: 'date',
+  [FIREBASE_COLLECTIONS.RENTALS]: 'createdAt',
+  [FIREBASE_COLLECTIONS.EXPENSES]: 'date',
+  [FIREBASE_COLLECTIONS.CREDITS]: 'date',
+  [FIREBASE_COLLECTIONS.STAFF_PAYOUTS]: 'date',
+  [FIREBASE_COLLECTIONS.MAINTENANCE]: 'receivedDate',
+  [FIREBASE_COLLECTIONS.CAISSE_CLOSURES]: 'date',
+  [FIREBASE_COLLECTIONS.ACTIVITY_LOGS]: 'timestamp',
+};
+
 export interface SubscribeQueryOptions {
   limit?: number;
   orderBy?: string;
   startAt?: string | number;
   endAt?: string | number;
+}
+
+/**
+ * Builds a deterministic registry key based on collection key and active query options
+ * Ensures identical queries share a singleton listener, while different queries get isolated listeners
+ */
+export function buildQueryRegistryKey(key: string, options?: SubscribeQueryOptions): string {
+  if (!options) return key;
+  const parts: string[] = [key];
+  if (options.orderBy) parts.push(`ob:${options.orderBy}`);
+  if (options.startAt !== undefined) parts.push(`sa:${options.startAt}`);
+  if (options.endAt !== undefined) parts.push(`ea:${options.endAt}`);
+  if (options.limit !== undefined) parts.push(`lim:${options.limit}`);
+  return parts.join('|');
 }
 
 /**
@@ -366,18 +391,20 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
     onDataReceived(memoryCache.get(key) as T[]);
   }
 
-  // Check if a shared listener already exists for this collection
-  let registryEntry = activeListenersRegistry.get(key);
+  const registryKey = buildQueryRegistryKey(key, options);
+
+  // Check if a shared listener already exists for this exact collection + query combination
+  const registryEntry = activeListenersRegistry.get(registryKey);
   
   if (registryEntry) {
     registryEntry.callbacks.add(onDataReceived);
     return () => {
-      const entry = activeListenersRegistry.get(key);
+      const entry = activeListenersRegistry.get(registryKey);
       if (entry) {
         entry.callbacks.delete(onDataReceived);
         if (entry.callbacks.size === 0) {
           entry.unsub();
-          activeListenersRegistry.delete(key);
+          activeListenersRegistry.delete(registryKey);
         }
       }
     };
@@ -391,15 +418,16 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
 
   try {
     const isHeavy = HEAVY_COLLECTIONS.has(key);
-    const limitCount = options?.limit || (isHeavy ? 100 : undefined);
+    const limitCount = options?.limit || (isHeavy ? 120 : undefined);
     
     // Connect directly to the records subnode for true indexed item limits
     const recordsRef = ref(rtdb, `boutique_store/${key}/records`);
     let dbQuery: any = recordsRef;
 
     const queryConstraints: any[] = [];
-    if (options?.orderBy) {
-      queryConstraints.push(orderByChild(options.orderBy));
+    const orderField = options?.orderBy || COLLECTION_DATE_FIELDS[key];
+    if (orderField) {
+      queryConstraints.push(orderByChild(orderField));
     }
     if (options?.startAt !== undefined) {
       queryConstraints.push(startAt(options.startAt));
@@ -425,14 +453,31 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
           if (snapshot.exists()) {
             const val = snapshot.val();
             const normalized = normalizeSnapshotData<T>(val);
-            memoryCache.set(key, normalized);
+            
+            // Smart merge into memory cache by ID to preserve local historical records
+            const existing = (memoryCache.get(key) || []) as T[];
+            let finalData: T[];
+            if (existing.length > 0 && normalized.length > 0) {
+              const map = new Map<string, T>();
+              for (const item of existing) {
+                if (item?.id) map.set(item.id, item);
+              }
+              for (const item of normalized) {
+                if (item?.id) map.set(item.id, item);
+              }
+              finalData = Array.from(map.values());
+            } else {
+              finalData = normalized;
+            }
+
+            memoryCache.set(key, finalData);
             cacheTimestamps.set(key, Date.now());
             
-            const currentEntry = activeListenersRegistry.get(key);
+            const currentEntry = activeListenersRegistry.get(registryKey);
             if (currentEntry) {
               currentEntry.callbacks.forEach(cb => {
                 try {
-                  cb(normalized);
+                  cb(finalData);
                 } catch (e) {
                   console.error('Error in listener callback:', e);
                 }
@@ -450,7 +495,7 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
                 if (normalized.length > 0) {
                   memoryCache.set(key, normalized);
                   cacheTimestamps.set(key, Date.now());
-                  const currentEntry = activeListenersRegistry.get(key);
+                  const currentEntry = activeListenersRegistry.get(registryKey);
                   if (currentEntry) {
                     currentEntry.callbacks.forEach(cb => cb(normalized));
                   }
@@ -461,7 +506,7 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
               const existingCache = memoryCache.get(key) || [];
               if (existingCache.length === 0) {
                 memoryCache.set(key, []);
-                const currentEntry = activeListenersRegistry.get(key);
+                const currentEntry = activeListenersRegistry.get(registryKey);
                 if (currentEntry) {
                   currentEntry.callbacks.forEach(cb => cb([]));
                 }
@@ -482,15 +527,15 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
     unsub: unsubRTDB,
     callbacks
   };
-  activeListenersRegistry.set(key, newEntry);
+  activeListenersRegistry.set(registryKey, newEntry);
 
   return () => {
-    const entry = activeListenersRegistry.get(key);
+    const entry = activeListenersRegistry.get(registryKey);
     if (entry) {
       entry.callbacks.delete(onDataReceived);
       if (entry.callbacks.size === 0) {
         entry.unsub();
-        activeListenersRegistry.delete(key);
+        activeListenersRegistry.delete(registryKey);
       }
     }
   };
@@ -518,13 +563,16 @@ export async function getCachedOrFetchData<T extends { id?: string }>(
       cacheTimestamps.set(key, Date.now());
       return normalized;
     }
-    const legacyRef = ref(rtdb, `boutique_store/${key}`);
-    const legacySnap = await get(legacyRef);
-    if (legacySnap.exists()) {
-      const normalized = normalizeSnapshotData<T>(legacySnap.val());
-      memoryCache.set(key, normalized);
-      cacheTimestamps.set(key, Date.now());
-      return normalized;
+    if (!checkedLegacyCollections.has(key)) {
+      checkedLegacyCollections.add(key);
+      const legacyRef = ref(rtdb, `boutique_store/${key}`);
+      const legacySnap = await get(legacyRef);
+      if (legacySnap.exists()) {
+        const normalized = normalizeSnapshotData<T>(legacySnap.val());
+        memoryCache.set(key, normalized);
+        cacheTimestamps.set(key, Date.now());
+        return normalized;
+      }
     }
   } catch (e) {
     console.warn(`[RTDB fetch failed for ${key}]:`, e);
@@ -549,13 +597,16 @@ export async function fetchHistoricalCollection<T extends { id?: string }>(
       cacheTimestamps.set(key, Date.now());
       return normalized;
     }
-    const legacyRef = ref(rtdb, `boutique_store/${key}`);
-    const legacySnap = await get(query(legacyRef, limitToLast(limit)));
-    if (legacySnap.exists()) {
-      const normalized = normalizeSnapshotData<T>(legacySnap.val());
-      memoryCache.set(key, normalized);
-      cacheTimestamps.set(key, Date.now());
-      return normalized;
+    if (!checkedLegacyCollections.has(key)) {
+      checkedLegacyCollections.add(key);
+      const legacyRef = ref(rtdb, `boutique_store/${key}`);
+      const legacySnap = await get(query(legacyRef, limitToLast(limit)));
+      if (legacySnap.exists()) {
+        const normalized = normalizeSnapshotData<T>(legacySnap.val());
+        memoryCache.set(key, normalized);
+        cacheTimestamps.set(key, Date.now());
+        return normalized;
+      }
     }
   } catch (e) {
     console.warn(`[RTDB historical fetch failed for ${key}]:`, e);
