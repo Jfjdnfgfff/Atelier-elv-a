@@ -1,5 +1,4 @@
 import React from 'react';
-import html2canvas from 'html2canvas';
 import { DailyCaisseClosure } from '../types';
 import { Download, Printer, Scale, Calendar, AlertTriangle, TrendingUp, CheckCircle } from 'lucide-react';
 
@@ -14,6 +13,9 @@ export const CaisseReceiptModal: React.FC<CaisseReceiptModalProps> = ({ closure,
     if (!el) return;
 
     try {
+      const html2canvasModule = await import('html2canvas');
+      const html2canvas = html2canvasModule.default || html2canvasModule;
+
       const canvas = await html2canvas(el, {
         scale: 2,
         useCORS: true,

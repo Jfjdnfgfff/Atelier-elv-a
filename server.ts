@@ -11,9 +11,13 @@ async function startServer() {
   const PORT = 3000;
   const distPath = path.join(process.cwd(), 'dist');
 
-  // Increase payload limit for base64 image captures
-  app.use(express.json({ limit: '25mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+  // Standard lightweight payload limit for regular API requests
+  app.use(express.json({ limit: '1mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+  // Dedicated large payload parser for OCR document extraction
+  const ocrJsonParser = express.json({ limit: '25mb' });
+  const ocrUrlParser = express.urlencoded({ extended: true, limit: '25mb' });
 
   // Lazy Gemini Client initialization
   let aiClient: GoogleGenAI | null = null;
@@ -40,8 +44,8 @@ async function startServer() {
     res.json({ status: 'ok', hasGeminiKey: !!process.env.GEMINI_API_KEY });
   });
 
-  // OCR ID and Customer Document Extraction Route
-  app.post('/api/ocr-id', async (req, res) => {
+  // OCR ID and Customer Document Extraction Route (isolated 25mb parser)
+  app.post('/api/ocr-id', ocrJsonParser, ocrUrlParser, async (req, res) => {
     try {
       const { imageBase64, mimeType = 'image/jpeg', textInput } = req.body;
 

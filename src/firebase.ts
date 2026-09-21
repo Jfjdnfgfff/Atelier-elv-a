@@ -8,8 +8,7 @@ import {
   get, 
   onValue,
   query,
-  limitToLast,
-  orderByChild
+  limitToLast
 } from 'firebase/database';
 import { getFirestore } from 'firebase/firestore';
 
@@ -39,16 +38,16 @@ interface SyncListener {
   (status: SyncStatus, lastSynced?: Date, errorMsg?: string): void;
 }
 
-const listeners: Set<SyncListener> = new Set();
+const statusListeners: Set<SyncListener> = new Set();
 let currentStatus: SyncStatus = 'connected';
 let lastSyncedTime: Date | undefined = undefined;
 let lastErrorMessage: string | undefined = undefined;
 
 export function onSyncStatusChange(callback: SyncListener) {
-  listeners.add(callback);
+  statusListeners.add(callback);
   callback(currentStatus, lastSyncedTime, lastErrorMessage);
   return () => {
-    listeners.delete(callback);
+    statusListeners.delete(callback);
   };
 }
 
@@ -65,11 +64,11 @@ function updateStatus(status: SyncStatus, error?: string) {
   
   if (statusDebounceTimer) clearTimeout(statusDebounceTimer);
   statusDebounceTimer = setTimeout(() => {
-    listeners.forEach((l) => l(currentStatus, lastSyncedTime, lastErrorMessage));
+    statusListeners.forEach((l) => l(currentStatus, lastSyncedTime, lastErrorMessage));
   }, 100);
 }
 
-// In-memory cache for all collections to prevent redundant network fetches
+// In-memory cache for all collections for zero-latency UI and deduplication
 const memoryCache = new Map<string, any[]>();
 
 // Track locally initiated writes with item-level precision to avoid echo loops
@@ -94,6 +93,17 @@ export const FIREBASE_COLLECTIONS = {
   STORE_CONFIG: 'boutique_store_config'
 };
 
+// Collections that grow continuously and should be loaded with initial limit to prevent memory bloat
+const HEAVY_COLLECTIONS = new Set([
+  FIREBASE_COLLECTIONS.SALES,
+  FIREBASE_COLLECTIONS.RENTALS,
+  FIREBASE_COLLECTIONS.EXPENSES,
+  FIREBASE_COLLECTIONS.CREDITS,
+  FIREBASE_COLLECTIONS.ACTIVITY_LOGS,
+  FIREBASE_COLLECTIONS.STAFF_PAYOUTS,
+  FIREBASE_COLLECTIONS.MAINTENANCE
+]);
+
 /**
  * Sanitize object for Firebase (remove undefined, convert Dates, deep clone)
  */
@@ -103,7 +113,8 @@ function sanitizeForFirebase<T>(data: T): any {
 }
 
 /**
- * Normalizes Firebase snapshot data whether stored as legacy array or records map
+ * Normalizes Firebase snapshot data whether stored in records map, legacy items array, or flat object
+ * Completely backward-compatible with any existing structure
  */
 export function normalizeSnapshotData<T extends { id?: string }>(val: any): T[] {
   if (!val) return [];
@@ -111,11 +122,11 @@ export function normalizeSnapshotData<T extends { id?: string }>(val: any): T[] 
   if (val.items && Array.isArray(val.items)) return val.items.filter(Boolean);
   
   // If stored in record map: records: { [id]: item } or direct { [id]: item }
-  const records = val.records || val;
-  if (typeof records === 'object') {
+  const records = val.records !== undefined ? val.records : val;
+  if (records && typeof records === 'object') {
     const items: T[] = [];
     Object.keys(records).forEach((k) => {
-      if (k === 'updatedAt' || k === 'meta') return;
+      if (k === 'updatedAt' || k === 'meta' || k === 'items') return;
       const item = records[k];
       if (item && typeof item === 'object') {
         if (!item.id && k) item.id = k;
@@ -128,7 +139,15 @@ export function normalizeSnapshotData<T extends { id?: string }>(val: any): T[] 
 }
 
 /**
- * Saves or overwrites a single item in Firebase by ID without rewriting the whole collection
+ * Get current in-memory cached items for a collection
+ */
+export function getLocalCachedData<T>(key: string): T[] {
+  return (memoryCache.get(key) || []) as T[];
+}
+
+/**
+ * Saves or overwrites a single item in Firebase by ID without rewriting the whole collection.
+ * Immediately updates in-memory cache for 0ms UI latency.
  */
 export async function saveItemToFirebase<T extends { id: string }>(
   collectionKey: string,
@@ -138,6 +157,18 @@ export async function saveItemToFirebase<T extends { id: string }>(
   
   const writeKey = `${collectionKey}/${item.id}`;
   pendingItemWrites.set(writeKey, Date.now());
+  pendingItemWrites.set(collectionKey, Date.now());
+
+  // Optimistically update memory cache
+  const current = memoryCache.get(collectionKey) || [];
+  const idx = current.findIndex(x => x.id === item.id);
+  if (idx >= 0) {
+    current[idx] = item;
+  } else {
+    current.unshift(item);
+  }
+  memoryCache.set(collectionKey, [...current]);
+
   updateStatus('syncing');
 
   try {
@@ -146,7 +177,7 @@ export async function saveItemToFirebase<T extends { id: string }>(
     
     await set(itemRef, cleanItem);
     
-    // Update collection timestamp lightweight
+    // Update collection timestamp lightweight without touching item data
     const metaRef = ref(rtdb, `boutique_store/${collectionKey}/updatedAt`);
     set(metaRef, new Date().toISOString()).catch(() => {});
 
@@ -160,7 +191,8 @@ export async function saveItemToFirebase<T extends { id: string }>(
 }
 
 /**
- * Updates specific fields on an existing record by ID in Firebase
+ * Updates specific fields on an existing record by ID in Firebase.
+ * Immediately merges updates into memory cache.
  */
 export async function updateItemInFirebase<T extends { id?: string }>(
   collectionKey: string,
@@ -171,6 +203,16 @@ export async function updateItemInFirebase<T extends { id?: string }>(
 
   const writeKey = `${collectionKey}/${itemId}`;
   pendingItemWrites.set(writeKey, Date.now());
+  pendingItemWrites.set(collectionKey, Date.now());
+
+  // Optimistically update memory cache
+  const current = memoryCache.get(collectionKey) || [];
+  const idx = current.findIndex(x => x.id === itemId);
+  if (idx >= 0) {
+    current[idx] = { ...current[idx], ...updates };
+    memoryCache.set(collectionKey, [...current]);
+  }
+
   updateStatus('syncing');
 
   try {
@@ -193,7 +235,8 @@ export async function updateItemInFirebase<T extends { id?: string }>(
 }
 
 /**
- * Deletes a single item by ID from Firebase
+ * Deletes a single item by ID from Firebase.
+ * Immediately removes from memory cache.
  */
 export async function deleteItemFromFirebase(
   collectionKey: string,
@@ -203,13 +246,18 @@ export async function deleteItemFromFirebase(
 
   const writeKey = `${collectionKey}/${itemId}`;
   pendingItemWrites.set(writeKey, Date.now());
+  pendingItemWrites.set(collectionKey, Date.now());
+
+  // Optimistically remove from memory cache
+  const current = memoryCache.get(collectionKey) || [];
+  memoryCache.set(collectionKey, current.filter(x => x.id !== itemId));
+
   updateStatus('syncing');
 
   try {
     const itemRef = ref(rtdb, `boutique_store/${collectionKey}/records/${itemId}`);
     await remove(itemRef);
 
-    // Also remove from legacy items array if exists
     const metaRef = ref(rtdb, `boutique_store/${collectionKey}/updatedAt`);
     set(metaRef, new Date().toISOString()).catch(() => {});
 
@@ -223,7 +271,8 @@ export async function deleteItemFromFirebase(
 }
 
 /**
- * Batch saves or migrates a full collection to Firebase in the optimized records structure
+ * Batch saves a full collection to Firebase in the optimized records structure
+ * Used exclusively for full backup restore and data migration
  */
 export async function saveCollectionToFirebase<T extends { id?: string }>(
   key: string,
@@ -247,8 +296,6 @@ export async function saveCollectionToFirebase<T extends { id?: string }>(
 
     await set(storeRef, {
       records: recordsMap,
-      // also keep items field for backwards compatibility
-      items: cleanData,
       updatedAt: new Date().toISOString()
     });
 
@@ -264,47 +311,95 @@ export async function saveCollectionToFirebase<T extends { id?: string }>(
   }
 }
 
+// Active singleton listeners registry to prevent duplicate network listeners on the same path
+interface ListenerRegistryEntry {
+  unsub: () => void;
+  callbacks: Set<(data: any[]) => void>;
+}
+const activeListenersRegistry = new Map<string, ListenerRegistryEntry>();
+
 /**
- * Subscribes to real-time changes on a collection with intelligent caching and local mutation protection
+ * Subscribes to real-time changes on a collection with singleton listener multiplexing,
+ * pagination/limiting on heavy historical collections, and echo loop prevention.
  */
 export function subscribeToFirebaseKey<T extends { id?: string }>(
   key: string,
   onDataReceived: (data: T[]) => void,
   options?: { limit?: number; orderBy?: string }
 ): () => void {
-  let unsubRTDB: (() => void) | null = null;
+  // If we already have cached data, immediately deliver it to caller
+  if (memoryCache.has(key)) {
+    onDataReceived(memoryCache.get(key) as T[]);
+  }
+
+  // Check if a shared listener already exists for this collection
+  let registryEntry = activeListenersRegistry.get(key);
+  
+  if (registryEntry) {
+    registryEntry.callbacks.add(onDataReceived);
+    return () => {
+      const entry = activeListenersRegistry.get(key);
+      if (entry) {
+        entry.callbacks.delete(onDataReceived);
+        if (entry.callbacks.size === 0) {
+          entry.unsub();
+          activeListenersRegistry.delete(key);
+        }
+      }
+    };
+  }
+
+  // Setup new singleton listener
+  const callbacks = new Set<(data: any[]) => void>();
+  callbacks.add(onDataReceived);
+
+  let unsubRTDB: (() => void) = () => {};
 
   try {
+    const isHeavy = HEAVY_COLLECTIONS.has(key);
+    const limitCount = options?.limit || (isHeavy ? 100 : undefined);
+    
+    // Connect to the collection reference
     const rtdbRef = ref(rtdb, `boutique_store/${key}`);
     let dbQuery: any = rtdbRef;
 
-    if (options?.limit) {
-      if (options.orderBy) {
-        dbQuery = query(rtdbRef, orderByChild(options.orderBy), limitToLast(options.limit));
-      } else {
-        dbQuery = query(rtdbRef, limitToLast(options.limit));
-      }
+    if (limitCount) {
+      dbQuery = query(rtdbRef, limitToLast(limitCount));
     }
 
     unsubRTDB = onValue(
       dbQuery,
       (snapshot) => {
-        if (snapshot.exists()) {
-          const val = snapshot.val();
-          const lastWrite = pendingItemWrites.get(key) || 0;
-          
-          // Prevent echo loops for recent local batch writes
-          if (Date.now() - lastWrite > 1000) {
+        const lastWrite = pendingItemWrites.get(key) || 0;
+        
+        // Prevent echo loops for recent local writes within 800ms
+        if (Date.now() - lastWrite > 800) {
+          if (snapshot.exists()) {
+            const val = snapshot.val();
             const normalized = normalizeSnapshotData<T>(val);
             memoryCache.set(key, normalized);
-            onDataReceived(normalized);
+            
+            const currentEntry = activeListenersRegistry.get(key);
+            if (currentEntry) {
+              currentEntry.callbacks.forEach(cb => {
+                try {
+                  cb(normalized);
+                } catch (e) {
+                  console.error('Error in listener callback:', e);
+                }
+              });
+            }
             updateStatus('connected');
-          }
-        } else {
-          const lastWrite = pendingItemWrites.get(key) || 0;
-          if (Date.now() - lastWrite > 1000) {
-            memoryCache.set(key, []);
-            onDataReceived([]);
+          } else {
+            // Snapshot doesn't exist yet on cloud
+            const existingCache = memoryCache.get(key) || [];
+            if (existingCache.length === 0) {
+              memoryCache.set(key, []);
+              const currentEntry = activeListenersRegistry.get(key);
+              if (currentEntry) {
+                currentEntry.callbacks.forEach(cb => cb([]));
+              }
+            }
           }
         }
       },
@@ -316,8 +411,21 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
     console.warn(`[RTDB subscribe failed for ${key}]:`, e);
   }
 
+  const newEntry: ListenerRegistryEntry = {
+    unsub: unsubRTDB,
+    callbacks
+  };
+  activeListenersRegistry.set(key, newEntry);
+
   return () => {
-    if (unsubRTDB) unsubRTDB();
+    const entry = activeListenersRegistry.get(key);
+    if (entry) {
+      entry.callbacks.delete(onDataReceived);
+      if (entry.callbacks.size === 0) {
+        entry.unsub();
+        activeListenersRegistry.delete(key);
+      }
+    }
   };
 }
 
@@ -341,6 +449,28 @@ export async function getCachedOrFetchData<T extends { id?: string }>(key: strin
     console.warn(`[RTDB fetch failed for ${key}]:`, e);
   }
   return [];
+}
+
+/**
+ * Fetches full historical data on demand without keeping permanent high-memory listener
+ */
+export async function fetchHistoricalCollection<T extends { id?: string }>(
+  key: string,
+  limit: number = 500
+): Promise<T[]> {
+  try {
+    const rtdbRef = ref(rtdb, `boutique_store/${key}`);
+    const q = query(rtdbRef, limitToLast(limit));
+    const snap = await get(q);
+    if (snap.exists()) {
+      const normalized = normalizeSnapshotData<T>(snap.val());
+      memoryCache.set(key, normalized);
+      return normalized;
+    }
+  } catch (e) {
+    console.warn(`[RTDB historical fetch failed for ${key}]:`, e);
+  }
+  return (memoryCache.get(key) || []) as T[];
 }
 
 // Backward-compatible aliases

@@ -1,5 +1,4 @@
 import React from 'react';
-import html2canvas from 'html2canvas';
 import { ClothItem, Rental, Sale, Expense, Credit, StaffPayout } from '../types';
 
 interface FullReportProps {
@@ -29,17 +28,24 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
     const element = document.getElementById('boutiqueFullReportContent');
     if (!element) return;
 
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff'
-    });
+    try {
+      const html2canvasModule = await import('html2canvas');
+      const html2canvas = html2canvasModule.default || html2canvasModule;
 
-    const image = canvas.toDataURL('image/png', 1.0);
-    const link = document.createElement('a');
-    link.download = `تقرير_شامل_${new Date().toLocaleDateString()}.png`;
-    link.href = image;
-    link.click();
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff'
+      });
+
+      const image = canvas.toDataURL('image/png', 1.0);
+      const link = document.createElement('a');
+      link.download = `تقرير_شامل_${new Date().toLocaleDateString()}.png`;
+      link.href = image;
+      link.click();
+    } catch (e) {
+      console.error('Error exporting report to image:', e);
+    }
   };
 
   const totalRentalIncome = rentals.reduce((s, r) => s + (r.paidAmount || 0), 0);

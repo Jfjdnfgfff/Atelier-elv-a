@@ -1,5 +1,4 @@
 import React from 'react';
-import html2canvas from 'html2canvas';
 import { Rental } from '../types';
 import { Shirt, Crown, Download, Printer } from 'lucide-react';
 
@@ -13,17 +12,24 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
     const el = document.getElementById('rentalReceiptPrintArea');
     if (!el) return;
 
-    const canvas = await html2canvas(el, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff'
-    });
+    try {
+      const html2canvasModule = await import('html2canvas');
+      const html2canvas = html2canvasModule.default || html2canvasModule;
 
-    const image = canvas.toDataURL('image/png', 1.0);
-    const link = document.createElement('a');
-    link.download = `وصل_كراء_${rental.customerName.replace(/\s+/g, '_')}_${rental.id.substring(0, 6)}.png`;
-    link.href = image;
-    link.click();
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff'
+      });
+
+      const image = canvas.toDataURL('image/png', 1.0);
+      const link = document.createElement('a');
+      link.download = `وصل_كراء_${rental.customerName.replace(/\s+/g, '_')}_${rental.id.substring(0, 6)}.png`;
+      link.href = image;
+      link.click();
+    } catch (e) {
+      console.error('Error generating image:', e);
+    }
   };
 
   const handlePrint = () => {

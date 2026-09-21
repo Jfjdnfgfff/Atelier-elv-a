@@ -393,17 +393,20 @@ export default function App() {
       performedBy: 'المسؤول'
     };
     setActivityLogs(prev => [newLog, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, newLog);
   };
 
   // Activity Log Handlers with Password Enforcement
   const handleDeleteLog = (id: string, passwordVerified: boolean) => {
     if (!passwordVerified) return;
     setActivityLogs(prev => prev.filter(l => l.id !== id));
+    deleteItemFromFirebase(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, id);
   };
 
   const handleClearAllLogs = (passwordVerified: boolean) => {
     if (!passwordVerified) return;
     setActivityLogs([]);
+    syncCollectionToCloud(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, []);
   };
 
   const handleAddManualLog = (logData: Omit<ActivityLog, 'id' | 'timestamp'>) => {
@@ -413,6 +416,7 @@ export default function App() {
       ...logData
     };
     setActivityLogs(prev => [newLog, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, newLog);
   };
 
   // Full Manual Cloud Sync Handler
@@ -615,14 +619,17 @@ export default function App() {
   const handleAddRental = (rentalData: any) => {
     const newRental: Rental = { ...rentalData, id: generateId() };
     
-    // Add rental to state
+    // Add rental to state and granular cloud sync
     setRentals(prev => [newRental, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.RENTALS, newRental);
 
     // If active, increment rented count. If reserved (future booking), DO NOT deduct stock until handover/deal finalization!
     if (newRental.status === 'active') {
       setClothes(prev => prev.map(c => {
         if (c.id === rentalData.itemId) {
-          return { ...c, rentedCount: (c.rentedCount || 0) + (rentalData.qty || 1) };
+          const updated = { ...c, rentedCount: (c.rentedCount || 0) + (rentalData.qty || 1) };
+          updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updated.rentedCount });
+          return updated;
         }
         return c;
       }));
@@ -660,6 +667,7 @@ export default function App() {
         relatedRentalId: newRental.id
       };
       setCredits(prev => [newCredit, ...prev]);
+      saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCredit);
     }
 
     setActiveModal(null);
@@ -670,25 +678,29 @@ export default function App() {
     const newRemaining = Math.max(0, rental.rentPrice - newPaid);
     const todayStr = new Date().toISOString().split('T')[0];
 
+    const rentalUpdates = {
+      status: 'active' as const,
+      paidAmount: newPaid,
+      remainingAmount: newRemaining,
+      handoverDate: todayStr,
+      notes: handoverNotes ? `${rental.notes ? rental.notes + ' | ' : ''}تسليم: ${handoverNotes}` : rental.notes
+    };
+
     // 1. Activate rental and update payments
     setRentals(prev => prev.map(r => {
       if (r.id === rental.id) {
-        return {
-          ...r,
-          status: 'active',
-          paidAmount: newPaid,
-          remainingAmount: newRemaining,
-          handoverDate: todayStr,
-          notes: handoverNotes ? `${r.notes ? r.notes + ' | ' : ''}تسليم: ${handoverNotes}` : r.notes
-        };
+        return { ...r, ...rentalUpdates };
       }
       return r;
     }));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, rental.id, rentalUpdates);
 
     // 2. DEDUCT INVENTORY: Increment rented count upon deal finalization/handover!
     setClothes(prev => prev.map(c => {
       if (c.id === rental.itemId) {
-        return { ...c, rentedCount: (c.rentedCount || 0) + (rental.qty || 1) };
+        const updated = { ...c, rentedCount: (c.rentedCount || 0) + (rental.qty || 1) };
+        updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updated.rentedCount });
+        return updated;
       }
       return c;
     }));
@@ -696,6 +708,10 @@ export default function App() {
     // 3. Update or clear credit
     setCredits(prev => {
       const filtered = prev.filter(c => c.relatedRentalId !== rental.id);
+      const existingCredit = prev.find(c => c.relatedRentalId === rental.id);
+      if (existingCredit) {
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, existingCredit.id);
+      }
       if (newRemaining > 0) {
         const updatedCredit: Credit = {
           id: generateId(),
@@ -707,6 +723,7 @@ export default function App() {
           date: new Date().toISOString(),
           relatedRentalId: rental.id
         };
+        saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, updatedCredit);
         return [updatedCredit, ...filtered];
       }
       return filtered;
@@ -734,7 +751,9 @@ export default function App() {
         // Transitioned to active -> increment item rentedCount
         setClothes(prev => prev.map(c => {
           if (c.id === updatedData.itemId) {
-            return { ...c, rentedCount: (c.rentedCount || 0) + (updatedData.qty || 1) };
+            const updated = { ...c, rentedCount: (c.rentedCount || 0) + (updatedData.qty || 1) };
+            updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updated.rentedCount });
+            return updated;
           }
           return c;
         }));
@@ -742,7 +761,9 @@ export default function App() {
         // Transitioned from active to reserved or returned -> decrement item rentedCount
         setClothes(prev => prev.map(c => {
           if (c.id === prevRental.itemId) {
-            return { ...c, rentedCount: Math.max(0, (c.rentedCount || 0) - (prevRental.qty || 1)) };
+            const updated = { ...c, rentedCount: Math.max(0, (c.rentedCount || 0) - (prevRental.qty || 1)) };
+            updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updated.rentedCount });
+            return updated;
           }
           return c;
         }));
@@ -750,6 +771,7 @@ export default function App() {
     }
 
     setRentals(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, id, updatedData);
 
     logActivity(
       'update',
@@ -778,12 +800,20 @@ export default function App() {
           // Return item count to inventory only if it was active
           setClothes(prev => prev.map(c => {
             if (c.id === target.itemId) {
-              return { ...c, rentedCount: Math.max(0, (c.rentedCount || 0) - (target.qty || 1)) };
+              const updated = { ...c, rentedCount: Math.max(0, (c.rentedCount || 0) - (target.qty || 1)) };
+              updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updated.rentedCount });
+              return updated;
             }
             return c;
           }));
         }
         setRentals(prev => prev.filter(r => r.id !== id));
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.RENTALS, id);
+
+        const linkedCredit = credits.find(c => c.relatedRentalId === id);
+        if (linkedCredit) {
+          deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, linkedCredit.id);
+        }
         setCredits(prev => prev.filter(c => c.relatedRentalId !== id));
 
         logActivity(
@@ -805,32 +835,39 @@ export default function App() {
     const target = rentals.find(r => r.id === rentalId);
     if (!target) return;
 
+    const returnUpdates = {
+      status: 'returned' as const,
+      actualReturnDate: new Date().toISOString().split('T')[0],
+      conditionOnReturn: returnData.condition,
+      cautionStatus: returnData.cautionAction === 'refund' ? 'refunded' as const : 'deducted' as const,
+      penaltyAmount: returnData.penaltyAmount,
+      paidAmount: target.paidAmount + (returnData.collectedRemaining || 0),
+      remainingAmount: Math.max(0, (target.remainingAmount || 0) - (returnData.collectedRemaining || 0)),
+      notes: returnData.notes ? `${target.notes ? target.notes + ' | ' : ''}إرجاع: ${returnData.notes}` : target.notes
+    };
+
     // Update rental status
     setRentals(prev => prev.map(r => {
       if (r.id === rentalId) {
-        return {
-          ...r,
-          status: 'returned',
-          actualReturnDate: new Date().toISOString().split('T')[0],
-          conditionOnReturn: returnData.condition,
-          cautionStatus: returnData.cautionAction === 'refund' ? 'refunded' : 'deducted',
-          penaltyAmount: returnData.penaltyAmount,
-          paidAmount: r.paidAmount + (returnData.collectedRemaining || 0),
-          remainingAmount: Math.max(0, (r.remainingAmount || 0) - (returnData.collectedRemaining || 0)),
-          notes: returnData.notes ? `${r.notes ? r.notes + ' | ' : ''}إرجاع: ${returnData.notes}` : r.notes
-        };
+        return { ...r, ...returnUpdates };
       }
       return r;
     }));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, rentalId, returnUpdates);
 
     // Update inventory: decrease rentedCount, add to inCleaningCount if requested
     setClothes(prev => prev.map(c => {
       if (c.id === target.itemId) {
-        return {
+        const updated = {
           ...c,
           rentedCount: Math.max(0, (c.rentedCount || 0) - (target.qty || 1)),
           inCleaningCount: returnData.sendToCleaning ? (c.inCleaningCount || 0) + (target.qty || 1) : (c.inCleaningCount || 0)
         };
+        updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, {
+          rentedCount: updated.rentedCount,
+          inCleaningCount: updated.inCleaningCount
+        });
+        return updated;
       }
       return c;
     }));
@@ -853,6 +890,10 @@ export default function App() {
 
     // Auto clear linked credit if collected
     if (returnData.collectedRemaining > 0) {
+      const linkedCredit = credits.find(c => c.relatedRentalId === rentalId);
+      if (linkedCredit) {
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, linkedCredit.id);
+      }
       setCredits(prev => prev.filter(c => c.relatedRentalId !== rentalId));
     }
 
