@@ -14,7 +14,10 @@ import {
   ViewType,
   DailyCaisseClosure,
   RawMaterial,
-  Seamstress
+  Seamstress,
+  ActivityLog,
+  ActivityActionType,
+  ActivityCategory
 } from './types';
 import { 
   loadFromStorage, 
@@ -27,6 +30,7 @@ import {
   DEFAULT_CAISSE_CLOSURES,
   DEFAULT_RAW_MATERIALS,
   DEFAULT_SEAMSTRESSES,
+  DEFAULT_ACTIVITY_LOGS,
   initializeStorage 
 } from './storage';
 import { 
@@ -55,6 +59,7 @@ import { TailoringModal } from './components/TailoringModal';
 import { TailoringReceiptModal } from './components/TailoringReceiptModal';
 import { CaisseView } from './components/CaisseView';
 import { PartnersView } from './components/PartnersView';
+import { LogsView } from './components/LogsView';
 import { 
   Scale, 
   Shirt, 
@@ -74,7 +79,8 @@ import {
   CheckCircle2,
   Database,
   Smartphone,
-  Laptop
+  Laptop,
+  History
 } from 'lucide-react';
 
 export default function App() {
@@ -119,6 +125,9 @@ export default function App() {
   const [caisseClosures, setCaisseClosures] = useState<DailyCaisseClosure[]>(() => 
     loadFromStorage<DailyCaisseClosure[]>(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES)
   );
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => 
+    loadFromStorage<ActivityLog[]>(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS)
+  );
 
   // Cloud Real-time Synchronization state
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
@@ -136,7 +145,8 @@ export default function App() {
     suppliers: false,
     seamstresses: false,
     rawMaterials: false,
-    caisseClosures: false
+    caisseClosures: false,
+    activityLogs: false
   });
 
   // Real-time Cloud Subscriptions on Mount
@@ -298,6 +308,19 @@ export default function App() {
       }
     });
 
+    // 14. Subscribe to Activity Logs
+    const unsubLogs = subscribeToCloudCollection<ActivityLog[]>(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.activityLogs = true;
+        setActivityLogs(items);
+        saveToStorage(STORAGE_KEYS.ACTIVITY_LOGS, items, false);
+        setLastCloudSyncTime(new Date());
+      } else {
+        const local = loadFromStorage<ActivityLog[]>(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, local);
+      }
+    });
+
     return () => {
       unsubClothes();
       unsubRentals();
@@ -312,6 +335,7 @@ export default function App() {
       unsubSeamstresses();
       unsubRawMaterials();
       unsubCaisse();
+      unsubLogs();
     };
   }, []);
 
@@ -485,6 +509,62 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [caisseClosures]);
 
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.ACTIVITY_LOGS, activityLogs);
+    if (isRemoteUpdateRef.current.activityLogs) {
+      isRemoteUpdateRef.current.activityLogs = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, activityLogs);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [activityLogs]);
+
+  // Central Activity Logging Helper
+  const logActivity = (
+    actionType: ActivityActionType,
+    category: ActivityCategory,
+    title: string,
+    details: string,
+    amount?: number,
+    itemCodeOrId?: string
+  ) => {
+    const newLog: ActivityLog = {
+      id: generateId(),
+      timestamp: new Date().toISOString(),
+      actionType,
+      category,
+      title,
+      details,
+      amount,
+      itemCodeOrId,
+      performedBy: 'المسؤول'
+    };
+    setActivityLogs(prev => [newLog, ...prev]);
+  };
+
+  // Activity Log Handlers with Password Enforcement
+  const handleDeleteLog = (id: string, passwordVerified: boolean) => {
+    if (!passwordVerified) return;
+    setActivityLogs(prev => prev.filter(l => l.id !== id));
+  };
+
+  const handleClearAllLogs = (passwordVerified: boolean) => {
+    if (!passwordVerified) return;
+    setActivityLogs([]);
+  };
+
+  const handleAddManualLog = (logData: Omit<ActivityLog, 'id' | 'timestamp'>) => {
+    const newLog: ActivityLog = {
+      id: generateId(),
+      timestamp: new Date().toISOString(),
+      ...logData
+    };
+    setActivityLogs(prev => [newLog, ...prev]);
+  };
+
   // Full Manual Cloud Sync Handler
   const handleManualFullSync = async () => {
     setIsCloudSyncing(true);
@@ -502,7 +582,8 @@ export default function App() {
         syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, suppliers),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, seamstresses),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, rawMaterials),
-        syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, caisseClosures)
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, caisseClosures),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, activityLogs)
       ]);
       setLastCloudSyncTime(new Date());
       showToast('تمت المزامنة وحفظ جميع التعديلات في Firebase بنجاح!');
@@ -695,8 +776,24 @@ export default function App() {
         }
         return c;
       }));
+      logActivity(
+        'deal',
+        'rentals',
+        'تسجيل كراء فوري',
+        `الزبونة: ${newRental.customerName} - الفستان: ${newRental.itemName} - السعر: ${newRental.rentPrice} دج - المدفوع: ${newRental.paidAmount} دج`,
+        newRental.paidAmount || newRental.rentPrice,
+        newRental.itemId
+      );
       showToast('تم تسجيل الكراء الفوري بنجاح');
     } else {
+      logActivity(
+        'create',
+        'rentals',
+        'حجز فستان مستقبلي',
+        `حجز للزبونة: ${newRental.customerName} - الفستان: ${newRental.itemName} - تاريخ المناسبة: ${newRental.startDate} - العربون: ${newRental.paidAmount} دج`,
+        newRental.paidAmount,
+        newRental.itemId
+      );
       showToast('تم تسجيل حجز الفستان مستقبلاً بنجاح (سيدخل في الكراء عند إتمام الصفقة وتسليمه)');
     }
 
@@ -765,6 +862,15 @@ export default function App() {
       return filtered;
     });
 
+    logActivity(
+      'deal',
+      'rentals',
+      'إتمام صفقة وتسليم فستان',
+      `تسليم الفستان (${rental.itemName}) للزبونة ${rental.customerName} - تحصيل دفعة إضافية: ${collectedAmount} دج`,
+      collectedAmount,
+      rental.itemId
+    );
+
     showToast('تمت الصفقة وتسليم الفستان بنجاح! دخل الفستان في الكراء الجاري وتم خصمه من المخزن');
   };
 
@@ -794,6 +900,16 @@ export default function App() {
     }
 
     setRentals(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+
+    logActivity(
+      'update',
+      'rentals',
+      'تعديل بيانات كراء',
+      `تحديث بيانات الكراء للزبونة: ${updatedData.customerName || prevRental?.customerName || ''}`,
+      updatedData.paidAmount,
+      updatedData.itemId
+    );
+
     showToast('تم تحديث بيانات الكراء');
     setActiveModal(null);
   };
@@ -819,6 +935,16 @@ export default function App() {
         }
         setRentals(prev => prev.filter(r => r.id !== id));
         setCredits(prev => prev.filter(c => c.relatedRentalId !== id));
+
+        logActivity(
+          'delete',
+          'rentals',
+          target.status === 'reserved' ? 'إلغاء حجز فستان' : 'حذف عملية كراء',
+          `حذف كراء (${target.itemName}) للزبونة ${target.customerName}`,
+          target.paidAmount,
+          target.itemBarcode || target.itemId
+        );
+
         showToast(target.status === 'reserved' ? 'تم إلغاء الحجز بنجاح' : 'تم حذف عملية الكراء بنجاح');
         setConfirmDelete(null);
       }
@@ -859,6 +985,15 @@ export default function App() {
       return c;
     }));
 
+    logActivity(
+      'return',
+      'rentals',
+      'استرجاع فستان من الكراء',
+      `استرجاع (${target.itemName}) من الزبونة ${target.customerName} - حالة القطعة: ${returnData.condition === 'good' ? 'ممتازة' : 'تحتاج تنظيف أو صيانة'} - غرامة: ${returnData.penaltyAmount || 0} دج`,
+      returnData.collectedRemaining || 0,
+      target.itemBarcode || target.itemId
+    );
+
     // If penalty was deducted or caution kept as revenue/compensation
     if (returnData.penaltyAmount > 0) {
       showToast(`تم استرجاع الفستان وخصم غرامة بقيمة ${returnData.penaltyAmount} دج`);
@@ -880,20 +1015,51 @@ export default function App() {
   const handleAddCloth = (itemData: any) => {
     const newCloth: ClothItem = { ...itemData, id: generateId() };
     setClothes(prev => [newCloth, ...prev]);
+    
+    logActivity(
+      'create',
+      'inventory',
+      'إضافة قطعة ملابس للمخزن',
+      `إضافة: ${newCloth.name} (المقاس: ${newCloth.size || 'متعدد'} - اللون: ${newCloth.color || 'متعدد'} - الكمية: ${(newCloth.stock1 || 0) + (newCloth.stock2 || 0) || newCloth.stock || 1})`,
+      newCloth.rentPrice,
+      newCloth.barcode || newCloth.id
+    );
+
     showToast('تمت إضافة قطعة الملابس للمخزن');
   };
 
   const handleUpdateCloth = (id: string, itemData: any) => {
     setClothes(prev => prev.map(c => c.id === id ? { ...c, ...itemData } : c));
+    
+    logActivity(
+      'update',
+      'inventory',
+      'تعديل بيانات قطعة في المخزن',
+      `تعديل: ${itemData.name || 'قطعة'} (الكمية الإجمالية: ${(itemData.stock1 || 0) + (itemData.stock2 || 0) || itemData.stock || 1})`,
+      itemData.rentPrice,
+      itemData.barcode || id
+    );
+
     showToast('تم تحديث بيانات القطعة');
   };
 
   const handleDeleteCloth = (id: string) => {
+    const targetItem = clothes.find(c => c.id === id);
     setConfirmDelete({
       title: 'حذف قطعة من المخزن',
       message: 'هل أنت متأكد من حذف هذه القطعة من المخزن؟ لا يمكن التراجع عن هذا الإجراء.',
       onConfirm: () => {
         setClothes(prev => prev.filter(c => c.id !== id));
+        
+        logActivity(
+          'delete',
+          'inventory',
+          'حذف قطعة من المخزن',
+          `حذف القطعة: ${targetItem?.name || id} نهائياً من المخزن`,
+          undefined,
+          targetItem?.barcode || id
+        );
+
         showToast('تم حذف القطعة من المخزن');
         setConfirmDelete(null);
       }
@@ -947,6 +1113,15 @@ export default function App() {
       setCredits(prev => [newCredit, ...prev]);
     }
 
+    logActivity(
+      'deal',
+      'sales',
+      'إتمام عملية بيع (نقطة البيع)',
+      `بيع ${newSale.items.length} قطع للزبون: ${newSale.customerName || 'زبون عام'} - الإجمالي: ${newSale.totalAmount} دج - المدفوع: ${newSale.paidAmount} دج`,
+      newSale.paidAmount || newSale.totalAmount,
+      newSale.id
+    );
+
     showToast('تم إتمام عملية البيع بنجاح');
   };
 
@@ -980,6 +1155,16 @@ export default function App() {
             return c;
           }));
         });
+
+        logActivity(
+          'delete',
+          'sales',
+          'إلغاء فاتورة بيع',
+          `إلغاء فاتورة بيع بقيمة ${sale.totalAmount} دج واسترجاع القطع للمخزون`,
+          sale.totalAmount,
+          sale.id
+        );
+
         showToast('تم إلغاء البيع واسترجاع المخزون');
         setConfirmDelete(null);
       }
@@ -1012,17 +1197,54 @@ export default function App() {
         paidAmount: expData.paidAmount
       };
       setCredits(prev => [newCredit, ...prev]);
+
+      logActivity(
+        'create',
+        'expenses',
+        'تسجيل مشتريات مورد (سلعة)',
+        `المورد: ${expData.supplierName} - السلعة: ${expData.goodsDescription || expData.desc} - المسدد: ${expData.paidAmount} دج - المتبقي دين: ${expData.creditAmount} دج`,
+        expData.paidAmount,
+        newExpId
+      );
+
       showToast(`تم تسجيل مشتريات المورد (المسدد: ${expData.paidAmount?.toLocaleString()} دج + متبقي دين: ${expData.creditAmount?.toLocaleString()} دج)`);
     } else if (expData.isSupplierPurchase) {
+      logActivity(
+        'create',
+        'expenses',
+        'تسجيل مشتريات مورد كاش',
+        `المورد: ${expData.supplierName} - السلعة: ${expData.goodsDescription || expData.desc} - المبلغ: ${expData.paidAmount || expData.amount} دج`,
+        expData.paidAmount || expData.amount,
+        newExpId
+      );
       showToast(`تم تسجيل خلاص المورد بنجاح (${(expData.paidAmount || expData.amount)?.toLocaleString()} دج كاش)`);
     } else {
+      logActivity(
+        'create',
+        'expenses',
+        'تسجيل مصروف محل',
+        `مصروف: ${expData.desc} - الصنف: ${expData.category || 'عام'} - المبلغ: ${expData.amount} دج`,
+        expData.amount,
+        newExpId
+      );
       showToast('تم تسجيل المصروف بنجاح');
     }
   };
 
   const handleDeleteExpense = (id: string) => {
+    const exp = expenses.find(e => e.id === id);
     setExpenses(prev => prev.filter(e => e.id !== id));
     setCredits(prev => prev.filter(c => c.relatedExpenseId !== id));
+
+    logActivity(
+      'delete',
+      'expenses',
+      'حذف سجل مصروف',
+      `حذف مصروف: ${exp?.desc || ''} بقيمة ${exp?.amount || 0} دج`,
+      exp?.amount,
+      id
+    );
+
     showToast('تم حذف سجل المصروف');
   };
 
@@ -1055,6 +1277,15 @@ export default function App() {
       }).filter(c => c.amount > 0);
     });
 
+    logActivity(
+      'payment',
+      'partners',
+      'تسديد دفعة دين لمورد',
+      `تسديد مبلغ ${paidNow.toLocaleString()} دج لحساب دين سلعة لمورد`,
+      paidNow,
+      expenseId
+    );
+
     showToast(`تم خلاص وتسديد مبلغ ${paidNow.toLocaleString()} دج للمورد بنجاح`);
   };
 
@@ -1063,20 +1294,51 @@ export default function App() {
       if (prev.some(s => s.name.trim().toLowerCase() === newSup.name.trim().toLowerCase())) return prev;
       return [newSup, ...prev];
     });
+    
+    logActivity(
+      'create',
+      'partners',
+      'إضافة مورد جديد',
+      `اسم المورد: ${newSup.name} - الهاتف: ${newSup.phone || 'غير مسجل'}`,
+      undefined,
+      newSup.id
+    );
+
     showToast(`تمت إضافة المورد: ${newSup.name}`);
   };
 
   const handleUpdateSupplier = (id: string, data: Partial<Supplier>) => {
     setSuppliers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+    
+    logActivity(
+      'update',
+      'partners',
+      'تحديث بيانات مورد',
+      `تحديث معلومات المورد: ${data.name || id}`,
+      undefined,
+      id
+    );
+
     showToast('تم تحديث بيانات المورد');
   };
 
   const handleDeleteSupplier = (id: string) => {
+    const targetSup = suppliers.find(s => s.id === id);
     setConfirmDelete({
       title: 'حذف المورد',
       message: 'هل أنت متأكد من حذف هذا المورد؟',
       onConfirm: () => {
         setSuppliers(prev => prev.filter(s => s.id !== id));
+        
+        logActivity(
+          'delete',
+          'partners',
+          'حذف مورد',
+          `حذف المورد: ${targetSup?.name || id} من النظام`,
+          undefined,
+          id
+        );
+
         showToast('تم حذف المورد بنجاح');
         setConfirmDelete(null);
       }
@@ -1088,20 +1350,51 @@ export default function App() {
   // ==========================
   const handleAddSeamstress = (seam: Seamstress) => {
     setSeamstresses(prev => [seam, ...prev]);
+    
+    logActivity(
+      'create',
+      'partners',
+      'إضافة خياطة جديدة',
+      `اسم الخياطة: ${seam.name} - الهاتف: ${seam.phone || 'غير مسجل'}`,
+      undefined,
+      seam.id
+    );
+
     showToast(`تمت إضافة الخياطة: ${seam.name}`);
   };
 
   const handleUpdateSeamstress = (id: string, data: Partial<Seamstress>) => {
     setSeamstresses(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+    
+    logActivity(
+      'update',
+      'partners',
+      'تحديث بيانات خياطة',
+      `تحديث معلومات الخياطة: ${data.name || id}`,
+      undefined,
+      id
+    );
+
     showToast('تم تحديث بيانات الخياطة');
   };
 
   const handleDeleteSeamstress = (id: string) => {
+    const seam = seamstresses.find(s => s.id === id);
     setConfirmDelete({
       title: 'حذف الخياطة',
       message: 'هل تريد حذف هذه الخياطة من النظام؟',
       onConfirm: () => {
         setSeamstresses(prev => prev.filter(s => s.id !== id));
+        
+        logActivity(
+          'delete',
+          'partners',
+          'حذف خياطة',
+          `حذف الخياطة: ${seam?.name || id} من النظام`,
+          undefined,
+          id
+        );
+
         showToast('تم حذف الخياطة');
         setConfirmDelete(null);
       }
@@ -1110,20 +1403,51 @@ export default function App() {
 
   const handleAddRawMaterial = (mat: RawMaterial) => {
     setRawMaterials(prev => [mat, ...prev]);
+    
+    logActivity(
+      'create',
+      'inventory',
+      'إضافة قماش / سلعة أولية',
+      `إضافة: ${mat.name} - الإجمالي: ${mat.totalMeters} متر (${mat.rollCount || 0} رولو) - سعر المتر: ${mat.costPerMeter} دج`,
+      mat.totalCostValue || (mat.costPerMeter * mat.totalMeters),
+      mat.id
+    );
+
     showToast(`تمت إضافة القماش / السلعة: ${mat.name}`);
   };
 
   const handleUpdateRawMaterial = (id: string, data: Partial<RawMaterial>) => {
     setRawMaterials(prev => prev.map(m => m.id === id ? { ...m, ...data, updatedAt: new Date().toISOString() } : m));
+    
+    logActivity(
+      'update',
+      'inventory',
+      'تحديث قماش / سلعة أولية',
+      `تحديث بيانات القماش: ${data.name || id}`,
+      undefined,
+      id
+    );
+
     showToast('تم تحديث بيانات القماش');
   };
 
   const handleDeleteRawMaterial = (id: string) => {
+    const mat = rawMaterials.find(m => m.id === id);
     setConfirmDelete({
       title: 'حذف السلعة الأولية أو القماش',
       message: 'هل أنت متأكد من حذف هذا القماش من سجل المخزن؟',
       onConfirm: () => {
         setRawMaterials(prev => prev.filter(m => m.id !== id));
+        
+        logActivity(
+          'delete',
+          'inventory',
+          'حذف قماش / سلعة أولية',
+          `حذف القماش: ${mat?.name || id} من المخزن`,
+          undefined,
+          id
+        );
+
         showToast('تم حذف القماش بنجاح');
         setConfirmDelete(null);
       }
@@ -1133,6 +1457,16 @@ export default function App() {
   const handleAddCredit = (credData: any) => {
     const newCred: Credit = { ...credData, id: generateId() };
     setCredits(prev => [newCred, ...prev]);
+
+    logActivity(
+      'create',
+      'credits',
+      credData.supplierDebt ? 'تسجيل دين لمورد' : 'تسجيل دين على زبون',
+      `الطرف: ${credData.name} - البيان: ${credData.desc} - المبلغ: ${credData.amount} دج`,
+      credData.amount,
+      newCred.id
+    );
+
     showToast(credData.supplierDebt ? 'تم تسجيل دين للمورد' : 'تم تسجيل الدين على الزبون');
   };
 
@@ -1155,11 +1489,32 @@ export default function App() {
       }));
     }
     setCredits(prev => prev.filter(c => c.id !== id));
+
+    logActivity(
+      'payment',
+      'credits',
+      'تسوية وتسديد دين',
+      `تسوية دين: ${cred?.name || ''} - البيان: ${cred?.desc || ''} - المبلغ المسدد: ${cred?.amount || 0} دج`,
+      cred?.amount,
+      id
+    );
+
     showToast('تم تسديد وتصفية الدين بنجاح');
   };
 
   const handleDeleteCredit = (id: string) => {
+    const cred = credits.find(c => c.id === id);
     setCredits(prev => prev.filter(c => c.id !== id));
+
+    logActivity(
+      'delete',
+      'credits',
+      'حذف سجل دين',
+      `حذف سجل دين للطرف: ${cred?.name || ''} بقيمة ${cred?.amount || 0} دج`,
+      cred?.amount,
+      id
+    );
+
     showToast('تم حذف السجل');
   };
 
@@ -1171,15 +1526,36 @@ export default function App() {
       const filtered = prev.filter(c => c.date !== closure.date);
       return [closure, ...filtered];
     });
+
+    logActivity(
+      'closure',
+      'caisse',
+      'إقفال الصندوق اليومي',
+      `إقفال صندوق يوم ${closure.date}: الفعلي ${closure.actualAmount.toLocaleString()} دج - النظري ${closure.theoreticalAmount.toLocaleString()} دج (الفرق: ${closure.difference.toLocaleString()} دج)`,
+      closure.actualAmount,
+      closure.id
+    );
+
     showToast(`تم إقفال وحفظ صندوق يوم ${closure.date} بنجاح`);
   };
 
   const handleDeleteCaisseClosure = (id: string) => {
+    const closure = caisseClosures.find(c => c.id === id);
     setConfirmDelete({
       title: 'حذف إقفال الصندوق',
       message: 'هل أنت متأكد من حذف هذا السجل لصندوق اليومية؟',
       onConfirm: () => {
         setCaisseClosures(prev => prev.filter(c => c.id !== id));
+
+        logActivity(
+          'delete',
+          'caisse',
+          'حذف إقفال صندوق يومي',
+          `حذف إقفال الصندوق ليوم: ${closure?.date || id}`,
+          closure?.actualAmount,
+          id
+        );
+
         showToast('تم حذف سجل إقفال الصندوق');
         setConfirmDelete(null);
       }
@@ -1204,33 +1580,84 @@ export default function App() {
       }));
     }
 
+    logActivity(
+      'payment',
+      'staff',
+      'صرف راتب لعامل',
+      `صرف مبلغ ${data.amount} دج للعامل/ة: ${data.staffName} (عن شهر ${data.month || ''})`,
+      data.amount,
+      payoutId
+    );
+
     showToast('تم صرف الراتب وتطبيق خصم الغيابات بنجاح');
   };
 
   const handleDeleteStaffPayout = (id: string) => {
+    const payout = staffPayouts.find(p => p.id === id);
     setStaffPayouts(prev => prev.filter(p => p.id !== id));
     // Restore deducted status if payout is deleted
     setStaffAbsences(prev => prev.map(a => a.payoutId === id ? { ...a, isDeducted: false, payoutId: undefined } : a));
+
+    logActivity(
+      'delete',
+      'staff',
+      'حذف سجل صرف راتب',
+      `حذف راتب: ${payout?.staffName || ''} بقيمة ${payout?.amount || 0} دج`,
+      payout?.amount,
+      id
+    );
+
     showToast('تم حذف سجل الراتب');
   };
 
   const handleAddStaffMember = (data: any) => {
     const newMember: StaffMember = { ...data, id: generateId() };
     setStaffMembers(prev => [...prev, newMember]);
+
+    logActivity(
+      'create',
+      'staff',
+      'إضافة عامل جديد',
+      `اسم العامل: ${data.name} - الوظيفة: ${data.role || 'عامل'} - الراتب الأساسي: ${data.baseSalary || 0} دج`,
+      data.baseSalary,
+      newMember.id
+    );
+
     showToast(`تمت إضافة العامل/ة ${data.name}`);
   };
 
   const handleUpdateStaffMember = (id: string, data: any) => {
     setStaffMembers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+
+    logActivity(
+      'update',
+      'staff',
+      'تحديث بيانات عامل',
+      `تحديث ملف العامل: ${data.name || id}`,
+      data.baseSalary,
+      id
+    );
+
     showToast('تم تحديث بيانات العامل');
   };
 
   const handleDeleteStaffMember = (id: string) => {
+    const member = staffMembers.find(s => s.id === id);
     setConfirmDelete({
       title: 'حذف العامل',
       message: 'هل تريد حذف هذا العامل من النظام؟',
       onConfirm: () => {
         setStaffMembers(prev => prev.filter(s => s.id !== id));
+
+        logActivity(
+          'delete',
+          'staff',
+          'حذف عامل',
+          `حذف العامل: ${member?.name || id} من النظام`,
+          undefined,
+          id
+        );
+
         showToast('تم حذف العامل');
         setConfirmDelete(null);
       }
@@ -1240,11 +1667,32 @@ export default function App() {
   const handleAddAbsence = (data: any) => {
     const newAbsence: StaffAbsence = { ...data, id: generateId() };
     setStaffAbsences(prev => [newAbsence, ...prev]);
+
+    logActivity(
+      'create',
+      'staff',
+      'تسجيل غياب وخصم',
+      `غياب: ${data.staffName} بتاريخ ${data.date} - سبب: ${data.reason || 'غياب'} - خصم: ${data.deductionAmount} دج`,
+      data.deductionAmount,
+      newAbsence.id
+    );
+
     showToast(`تم تسجيل غياب ${data.staffName} بقيمة خصم ${data.deductionAmount} دج`);
   };
 
   const handleDeleteAbsence = (id: string) => {
+    const abs = staffAbsences.find(a => a.id === id);
     setStaffAbsences(prev => prev.filter(a => a.id !== id));
+
+    logActivity(
+      'delete',
+      'staff',
+      'حذف سجل غياب',
+      `إلغاء غياب: ${abs?.staffName || ''} بتاريخ ${abs?.date || ''}`,
+      abs?.deductionAmount,
+      id
+    );
+
     showToast('تم حذف سجل الغياب');
   };
 
@@ -1290,17 +1738,37 @@ export default function App() {
       setCredits(prev => [newCredit, ...prev]);
     }
 
+    logActivity(
+      'create',
+      'tailoring',
+      'تسجيل طلب خياطة وتفصيل',
+      `طلب #${newOrder.orderNumber}: ${newOrder.itemName} للزبونة ${newOrder.customerName || 'عام'} - السعر: ${newOrder.price} دج - المدفوع: ${newOrder.paidAmount} دج`,
+      newOrder.paidAmount || newOrder.price,
+      newOrder.orderNumber
+    );
+
     showToast('تم تسجيل طلب الخياطة والصيانة بنجاح');
     setActiveModal(null);
   };
 
   const handleUpdateTailoringOrder = (id: string, data: Partial<MaintenanceOrder>) => {
     setMaintenanceOrders(prev => prev.map(o => o.id === id ? { ...o, ...data } : o));
+    
+    logActivity(
+      'update',
+      'tailoring',
+      'تحديث طلب خياطة',
+      `تعديل بيانات طلب الخياطة: ${data.itemName || id}`,
+      data.price,
+      id
+    );
+
     showToast('تم تحديث بيانات طلب الخياطة');
     setActiveModal(null);
   };
 
   const handleUpdateTailoringStatus = (id: string, newStatus: MaintenanceStatus) => {
+    const ord = maintenanceOrders.find(o => o.id === id);
     setMaintenanceOrders(prev => prev.map(o => {
       if (o.id === id) {
         return { 
@@ -1311,15 +1779,36 @@ export default function App() {
       }
       return o;
     }));
+
+    logActivity(
+      'status_change',
+      'tailoring',
+      'تحديث حالة طلب خياطة',
+      `طلب #${ord?.orderNumber || id} أصبح في حالة: ${newStatus === 'delivered' ? 'تم التسليم للزبونة' : newStatus === 'ready' ? 'جاهز ومكتمل' : 'قيد العمل'}`,
+      undefined,
+      ord?.orderNumber || id
+    );
+
     showToast('تم تحديث حالة الطلب');
   };
 
   const handleDeleteTailoringOrder = (id: string) => {
+    const ord = maintenanceOrders.find(o => o.id === id);
     setConfirmDelete({
       title: 'حذف طلب الصيانة والخياطة',
       message: 'هل أنت متأكد من حذف هذا الطلب من سجل الخياطة؟',
       onConfirm: () => {
         setMaintenanceOrders(prev => prev.filter(o => o.id !== id));
+        
+        logActivity(
+          'delete',
+          'tailoring',
+          'حذف طلب خياطة',
+          `حذف طلب #${ord?.orderNumber || id} (${ord?.itemName || ''})`,
+          ord?.price,
+          ord?.orderNumber || id
+        );
+
         showToast('تم حذف الطلب بنجاح');
         setConfirmDelete(null);
       }
@@ -1370,6 +1859,7 @@ export default function App() {
       seamstresses,
       rawMaterials,
       caisseClosures,
+      activityLogs,
       exportedAt: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
@@ -1402,6 +1892,7 @@ export default function App() {
           if (parsed.seamstresses) setSeamstresses(parsed.seamstresses);
           if (parsed.rawMaterials) setRawMaterials(parsed.rawMaterials);
           if (parsed.caisseClosures) setCaisseClosures(parsed.caisseClosures);
+          if (parsed.activityLogs) setActivityLogs(parsed.activityLogs);
           showToast('تمت استعادة البيانات بنجاح!');
           setActiveModal(null);
         } catch (err) {
@@ -1512,6 +2003,19 @@ export default function App() {
                 <span className="hidden sm:inline">الصندوق اليومي</span>
                 <span className="sm:hidden">الصندوق</span>
               </button>
+
+              <button 
+                onClick={() => setCurrentView('logs')} 
+                title="سجل التحديثات والتعديلات (Logs)"
+                className={`h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold rounded-xl transition-all border active:scale-95 group ${
+                  currentView === 'logs'
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                    : 'text-slate-700 bg-slate-100/90 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 border-slate-200/70'
+                }`}
+              >
+                <History className={`w-4 h-4 shrink-0 transition-colors ${currentView === 'logs' ? 'text-white' : 'text-slate-600 group-hover:text-blue-600'}`} />
+                <span className="hidden sm:inline">السجل</span>
+              </button>
             </div>
 
             {/* Primary Add Button */}
@@ -1525,7 +2029,7 @@ export default function App() {
           </div>
 
           {/* Bottom Row of Header: All Navigation Icons in a single compact row */}
-          <nav className="grid grid-cols-10 gap-0.5 sm:gap-1 w-full pt-1 border-t border-blue-50" aria-label="أقسام التطبيق">
+          <nav className="grid grid-cols-11 gap-0.5 sm:gap-1 w-full pt-1 border-t border-blue-50" aria-label="أقسام التطبيق">
             <NavButton 
               icon="dashboard" 
               label="الرئيسية" 
@@ -1581,6 +2085,12 @@ export default function App() {
               label="الصندوق" 
               onClick={() => setCurrentView('caisse')} 
               active={currentView === 'caisse'} 
+            />
+            <NavButton 
+              icon="logs" 
+              label="السجل" 
+              onClick={() => setCurrentView('logs')} 
+              active={currentView === 'logs'} 
             />
             <NavButton 
               icon="staff" 
@@ -1735,6 +2245,15 @@ export default function App() {
             onUpdateSeamstress={handleUpdateSeamstress}
             onDeleteSeamstress={handleDeleteSeamstress}
             onSettleSupplierCredit={handleSettleSupplierCredit}
+          />
+        )}
+
+        {currentView === 'logs' && (
+          <LogsView 
+            logs={activityLogs}
+            onDeleteLog={handleDeleteLog}
+            onClearAllLogs={handleClearAllLogs}
+            onAddLog={handleAddManualLog}
           />
         )}
       </main>

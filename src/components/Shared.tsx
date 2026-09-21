@@ -9,6 +9,7 @@ import {
   CreditCard,
   Scale,
   Users,
+  History,
   X,
 } from 'lucide-react';
 
@@ -45,7 +46,7 @@ export const Modal: React.FC<{
 );
 
 export const NavButton: React.FC<{
-  icon: 'dashboard' | 'rentals' | 'inventory' | 'sales' | 'expenses' | 'credits' | 'customers' | 'staff' | 'packages' | 'absence' | 'tailoring' | 'caisse';
+  icon: 'dashboard' | 'rentals' | 'inventory' | 'sales' | 'expenses' | 'credits' | 'customers' | 'staff' | 'packages' | 'absence' | 'tailoring' | 'caisse' | 'logs' | 'partners';
   label: string;
   onClick: () => void;
   active?: boolean;
@@ -68,6 +69,8 @@ export const NavButton: React.FC<{
         return <Receipt className="w-4 h-4" />;
       case 'credits':
         return <CreditCard className="w-4 h-4" />;
+      case 'logs':
+        return <History className="w-4 h-4" />;
       case 'partners':
       case 'customers':
       case 'staff':

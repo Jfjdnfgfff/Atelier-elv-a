@@ -277,4 +277,20 @@ export interface DailyCaisseClosure {
   closedAt: string;
 }
 
-export type ViewType = 'dashboard' | 'rentals' | 'inventory' | 'sales' | 'expenses' | 'credits' | 'tailoring' | 'customers' | 'caisse' | 'partners';
+export type ActivityActionType = 'create' | 'update' | 'delete' | 'return' | 'deal' | 'status_change' | 'payment' | 'closure';
+export type ActivityCategory = 'all' | 'inventory' | 'rentals' | 'sales' | 'tailoring' | 'expenses' | 'credits' | 'caisse' | 'staff' | 'partners';
+
+export interface ActivityLog {
+  id: string;
+  timestamp: string; // ISO string
+  actionType: ActivityActionType;
+  category: ActivityCategory;
+  title: string; // e.g. "تعديل كمية مقاس", "تسجيل كراء جديد", "حذف فستان"
+  details: string; // تفاصيل العملية الدقيقة
+  itemCodeOrId?: string;
+  performedBy?: string;
+  amount?: number;
+  notes?: string;
+}
+
+export type ViewType = 'dashboard' | 'rentals' | 'inventory' | 'sales' | 'expenses' | 'credits' | 'tailoring' | 'customers' | 'caisse' | 'partners' | 'logs';

@@ -12,7 +12,8 @@ import {
   Supplier,
   DailyCaisseClosure,
   RawMaterial,
-  Seamstress
+  Seamstress,
+  ActivityLog
 } from './types';
 import { saveToFirebase } from './firebase';
 
@@ -31,8 +32,42 @@ export const STORAGE_KEYS = {
   SEAMSTRESSES: 'boutique_seamstresses',
   RAW_MATERIALS: 'boutique_raw_materials',
   CAISSE_CLOSURES: 'boutique_caisse_closures',
+  ACTIVITY_LOGS: 'boutique_activity_logs',
+  SECURITY_PIN: 'bm_security_pin',
   STORE_CONFIG: 'boutique_store_config'
 };
+
+export const DEFAULT_ACTIVITY_LOGS: ActivityLog[] = [
+  {
+    id: 'log_init_1',
+    timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
+    actionType: 'create',
+    category: 'inventory',
+    title: 'تهيئة المخزون وإضافة فساتين وأقمشة',
+    details: 'إضافة موديلات فساتين سهرة، قفاطين وأقمشة ساتان للمخزن',
+    performedBy: 'إدارة البوتيك'
+  },
+  {
+    id: 'log_init_2',
+    timestamp: new Date(Date.now() - 3600000 * 3).toISOString(),
+    actionType: 'deal',
+    category: 'rentals',
+    title: 'تسجيل كراء فستان سهرة',
+    details: 'كراء فستان سهرة كلاسيكي مطرز ذهبي للزبونة فاطمة الزهراء بوعلام بمبلغ 6,000 دج وضمان 4,000 دج',
+    amount: 6000,
+    performedBy: 'المسؤول'
+  },
+  {
+    id: 'log_init_3',
+    timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
+    actionType: 'create',
+    category: 'expenses',
+    title: 'تسجيل مصاريف تنظيف جاف',
+    details: 'تنظيف جاف لـ 4 فساتين سهرة بعد الكراء (Pressing) بمبلغ 3,200 دج',
+    amount: 3200,
+    performedBy: 'المسؤول'
+  }
+];
 
 export const DEFAULT_RAW_MATERIALS: RawMaterial[] = [
   {
@@ -559,5 +594,8 @@ export const initializeStorage = () => {
   }
   if (!localStorage.getItem(STORAGE_KEYS.CAISSE_CLOSURES)) {
     saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES);
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.ACTIVITY_LOGS)) {
+    saveToStorage(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS);
   }
 };

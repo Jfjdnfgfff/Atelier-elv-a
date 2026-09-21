@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { ClothItem, PurposeType, RawMaterial, Supplier } from '../types';
+import { ClothItem, ClothVariant, PurposeType, RawMaterial, Supplier } from '../types';
 import { BarcodeScanner } from './BarcodeScanner';
 import { LettersInput, NumbersInput } from './Shared';
 import { RawMaterialsSection } from './RawMaterialsSection';
@@ -914,14 +914,15 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         <QuickStockModal
           item={stockModalItem}
           onClose={() => setStockModalItem(null)}
-          onSave={(newStock1, newStock2, newBuyCost, newSellPrice, newRentPrice) => {
+          onSave={(newStock1, newStock2, newBuyCost, newSellPrice, newRentPrice, updatedVariants) => {
             onUpdateCloth(stockModalItem.id, {
               stock1: newStock1,
               stock2: newStock2,
               stock: newStock1 + newStock2,
               buyCost: newBuyCost,
               sellPrice: newSellPrice,
-              rentPrice: newRentPrice
+              rentPrice: newRentPrice,
+              ...(updatedVariants ? { variants: updatedVariants } : {})
             });
             setStockModalItem(null);
             setBarcodeActionNotice(`✓ تم تحديث مخزون ${stockModalItem.name} بنجاح!`);
@@ -959,7 +960,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 interface QuickStockModalProps {
   item: ClothItem;
   onClose: () => void;
-  onSave: (newStock1: number, newStock2: number, buyCost: number, sellPrice: number, rentPrice: number) => void;
+  onSave: (newStock1: number, newStock2: number, buyCost: number, sellPrice: number, rentPrice: number, updatedVariants?: ClothVariant[]) => void;
 }
 
 const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave }) => {
@@ -969,22 +970,55 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
   const [stock1, setStock1] = useState<number>(initialS1);
   const [stock2, setStock2] = useState<number>(initialS2);
   const [targetStock, setTargetStock] = useState<'stock1' | 'stock2'>('stock1');
-  const [addQty, setAddQty] = useState<number>(1);
   const [buyCost, setBuyCost] = useState<number>(item.buyCost || 0);
   const [sellPrice, setSellPrice] = useState<number>(item.sellPrice || 0);
   const [rentPrice, setRentPrice] = useState<number>(item.rentPrice || 0);
 
+  // Selected variant for specific size/color update (if variants exist)
+  const [selectedVariantId, setSelectedVariantId] = useState<string>('all');
+  const [currentVariants, setCurrentVariants] = useState<ClothVariant[]>(item.variants || []);
+
   const handleAddQuick = (amount: number) => {
-    if (targetStock === 'stock1') {
-      setStock1(prev => Math.max(0, prev + amount));
+    if (selectedVariantId !== 'all' && currentVariants.length > 0) {
+      setCurrentVariants(prev => {
+        const next = prev.map(v => {
+          if (v.id === selectedVariantId) {
+            const newS1 = targetStock === 'stock1' ? Math.max(0, (v.stock1 || 0) + amount) : (v.stock1 || 0);
+            const newS2 = targetStock === 'stock2' ? Math.max(0, (v.stock2 || 0) + amount) : (v.stock2 || 0);
+            return {
+              ...v,
+              stock1: newS1,
+              stock2: newS2,
+              stock: newS1 + newS2
+            };
+          }
+          return v;
+        });
+        const totalS1 = next.reduce((sum, v) => sum + (v.stock1 || 0), 0);
+        const totalS2 = next.reduce((sum, v) => sum + (v.stock2 || 0), 0);
+        setStock1(totalS1);
+        setStock2(totalS2);
+        return next;
+      });
     } else {
-      setStock2(prev => Math.max(0, prev + amount));
+      if (targetStock === 'stock1') {
+        setStock1(prev => Math.max(0, prev + amount));
+      } else {
+        setStock2(prev => Math.max(0, prev + amount));
+      }
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(Math.max(0, stock1), Math.max(0, stock2), buyCost, sellPrice, rentPrice);
+    onSave(
+      Math.max(0, stock1), 
+      Math.max(0, stock2), 
+      buyCost, 
+      sellPrice, 
+      rentPrice,
+      currentVariants.length > 0 ? currentVariants : undefined
+    );
   };
 
   return (
@@ -1035,6 +1069,25 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Variant Selector if item has multiple sizes/colors */}
+          {currentVariants.length > 0 && (
+            <div className="space-y-1 bg-blue-50/50 p-2.5 rounded-2xl border border-blue-100">
+              <label className="block text-[11px] font-bold text-blue-900">اختر المقاس واللون المراد تزويده (اختياري):</label>
+              <select
+                value={selectedVariantId}
+                onChange={(e) => setSelectedVariantId(e.target.value)}
+                className="w-full bg-white border border-blue-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none"
+              >
+                <option value="all">📦 تعديل المخزون العام للقطعة</option>
+                {currentVariants.map(v => (
+                  <option key={v.id} value={v.id}>
+                    اللون: {v.color} • المقاس: {v.size} (متوفر: {v.stock} قطعة)
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Choose which stock to add to */}
           <div>
             <label className="block text-xs font-black text-slate-700 mb-2">المخزن المراد التزويد إليه:</label>
@@ -1299,7 +1352,7 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
 };
 
 // ==========================================
-// Full Add/Edit Cloth Form Modal with Barcode Camera Button
+// Full Add/Edit Cloth Form Modal with Barcode Camera Button & Variant Stock Matrix
 // ==========================================
 interface ClothFormModalProps {
   item?: ClothItem | null;
@@ -1310,9 +1363,6 @@ interface ClothFormModalProps {
 }
 
 const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, categories, onClose, onSubmit }) => {
-  const initialS1 = item?.stock1 !== undefined ? item.stock1 : (item?.stock || 1);
-  const initialS2 = item?.stock2 !== undefined ? item.stock2 : 0;
-
   const [name, setName] = useState(item?.name || '');
   const [barcode, setBarcode] = useState(
     item?.barcode || initialBarcode || Math.floor(100000000000 + Math.random() * 900000000000).toString()
@@ -1324,7 +1374,7 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
   const [rentPrice, setRentPrice] = useState(item?.rentPrice || 0);
   const [cautionAmount, setCautionAmount] = useState(item?.cautionAmount || 0);
   
-  // Multiple sizes (المقاسات المتوفرة)
+  // Multiple sizes (المقاسات المتوفرة / لطاي)
   const initialSizes = useMemo(() => {
     if (item?.sizes && item.sizes.length > 0) return item.sizes;
     if (item?.size) return item.size.split(/[,،+/]/).map(s => s.trim()).filter(Boolean);
@@ -1341,10 +1391,47 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
   }, [item]);
   const [selectedColors, setSelectedColors] = useState<string[]>(initialColors);
   const [customColorInput, setCustomColorInput] = useState('');
-  
-  // Stock 1 & Stock 2
-  const [stock1, setStock1] = useState<number>(initialS1);
-  const [stock2, setStock2] = useState<number>(initialS2);
+
+  // Variants state (تفاصيل المقاسات والألوان والكميات لكل لون)
+  const [variants, setVariants] = useState<ClothVariant[]>(() => {
+    if (item?.variants && item.variants.length > 0) {
+      return item.variants;
+    }
+    // Generate initial variants combination
+    const initialList: ClothVariant[] = [];
+    const sizes = (item?.sizes && item.sizes.length > 0) ? item.sizes : (item?.size ? item.size.split(/[,،+/]/).map(s => s.trim()).filter(Boolean) : ['38']);
+    const colors = (item?.colors && item.colors.length > 0) ? item.colors : (item?.color ? item.color.split(/[,،+/]/).map(c => c.trim()).filter(Boolean) : ['أسود']);
+    
+    const count = Math.max(1, sizes.length * colors.length);
+    const s1 = item?.stock1 !== undefined ? item.stock1 : (item?.stock || 1);
+    const s2 = item?.stock2 !== undefined ? item.stock2 : 0;
+    
+    sizes.forEach((sz, sIdx) => {
+      colors.forEach((col, cIdx) => {
+        const vId = `${Date.now()}_${sIdx}_${cIdx}_${Math.random().toString(36).substring(2, 6)}`;
+        const allocatedS1 = count === 1 ? s1 : Math.max(0, Math.floor(s1 / count) || (sIdx === 0 && cIdx === 0 ? s1 : 0));
+        const allocatedS2 = count === 1 ? s2 : Math.max(0, Math.floor(s2 / count) || (sIdx === 0 && cIdx === 0 ? s2 : 0));
+        initialList.push({
+          id: vId,
+          code: item?.barcode ? `${item.barcode}-${sIdx + 1}` : '',
+          size: sz,
+          color: col,
+          stock1: allocatedS1,
+          stock2: allocatedS2,
+          stock: allocatedS1 + allocatedS2,
+          price: item?.sellPrice || 0,
+          rentPrice: item?.rentPrice || 0
+        });
+      });
+    });
+    return initialList;
+  });
+
+  // Bulk fill inputs state
+  const [bulkStock1, setBulkStock1] = useState<number>(1);
+  const [bulkStock2, setBulkStock2] = useState<number>(0);
+  const [showBulkFillBar, setShowBulkFillBar] = useState<boolean>(false);
+  const [activeColorFilter, setActiveColorFilter] = useState<string>('all');
 
   const [imageUrl, setImageUrl] = useState(item?.imageUrl || '');
   const [description, setDescription] = useState(item?.description || '');
@@ -1353,30 +1440,71 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Synchronize variants when sizes or colors change
+  const syncVariants = (newSizes: string[], newColors: string[]) => {
+    setVariants(prevVariants => {
+      const updated: ClothVariant[] = [];
+      const validSizes = newSizes.length > 0 ? newSizes : ['38'];
+      const validColors = newColors.length > 0 ? newColors : ['أسود'];
+
+      validColors.forEach((col, cIdx) => {
+        validSizes.forEach((sz, sIdx) => {
+          const existing = prevVariants.find(v => v.color.trim() === col.trim() && v.size.trim() === sz.trim());
+          if (existing) {
+            updated.push(existing);
+          } else {
+            const vId = `${Date.now()}_${cIdx}_${sIdx}_${Math.random().toString(36).substring(2, 6)}`;
+            updated.push({
+              id: vId,
+              code: barcode ? `${barcode}-${cIdx + 1}${sIdx + 1}` : '',
+              size: sz,
+              color: col,
+              stock1: 1,
+              stock2: 0,
+              stock: 1,
+              price: sellPrice || 0,
+              rentPrice: rentPrice || 0
+            });
+          }
+        });
+      });
+      return updated;
+    });
+  };
+
   // Size management helpers
   const handleToggleSize = (sz: string) => {
     const trimmed = sz.trim();
     if (!trimmed) return;
+    let nextSizes: string[];
     if (selectedSizes.includes(trimmed)) {
       if (selectedSizes.length > 1) {
-        setSelectedSizes(selectedSizes.filter(s => s !== trimmed));
+        nextSizes = selectedSizes.filter(s => s !== trimmed);
+      } else {
+        return;
       }
     } else {
-      setSelectedSizes([...selectedSizes, trimmed]);
+      nextSizes = [...selectedSizes, trimmed];
     }
+    setSelectedSizes(nextSizes);
+    syncVariants(nextSizes, selectedColors);
   };
 
   const handleAddCustomSize = () => {
     const trimmed = customSizeInput.trim();
     if (trimmed && !selectedSizes.includes(trimmed)) {
-      setSelectedSizes([...selectedSizes, trimmed]);
+      const nextSizes = [...selectedSizes, trimmed];
+      setSelectedSizes(nextSizes);
       setCustomSizeInput('');
+      syncVariants(nextSizes, selectedColors);
     }
   };
 
   const handleRemoveSize = (sz: string) => {
     if (selectedSizes.length > 1) {
-      setSelectedSizes(selectedSizes.filter(s => s !== sz));
+      const nextSizes = selectedSizes.filter(s => s !== sz);
+      setSelectedSizes(nextSizes);
+      syncVariants(nextSizes, selectedColors);
     }
   };
 
@@ -1384,35 +1512,102 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
   const handleToggleColor = (col: string) => {
     const trimmed = col.trim();
     if (!trimmed) return;
+    let nextColors: string[];
     if (selectedColors.includes(trimmed)) {
       if (selectedColors.length > 1) {
-        setSelectedColors(selectedColors.filter(c => c !== trimmed));
+        nextColors = selectedColors.filter(c => c !== trimmed);
+      } else {
+        return;
       }
     } else {
-      setSelectedColors([...selectedColors, trimmed]);
+      nextColors = [...selectedColors, trimmed];
     }
+    setSelectedColors(nextColors);
+    syncVariants(selectedSizes, nextColors);
   };
 
   const handleAddCustomColor = () => {
     const trimmed = customColorInput.trim();
     if (trimmed && !selectedColors.includes(trimmed)) {
-      setSelectedColors([...selectedColors, trimmed]);
+      const nextColors = [...selectedColors, trimmed];
+      setSelectedColors(nextColors);
       setCustomColorInput('');
+      syncVariants(selectedSizes, nextColors);
     }
   };
 
   const handleRemoveColor = (col: string) => {
     if (selectedColors.length > 1) {
-      setSelectedColors(selectedColors.filter(c => c !== col));
+      const nextColors = selectedColors.filter(c => c !== col);
+      setSelectedColors(nextColors);
+      syncVariants(selectedSizes, nextColors);
     }
   };
+
+  // Variant quantity handlers
+  const handleUpdateVariantStock = (vId: string, field: 'stock1' | 'stock2', value: number) => {
+    const val = Math.max(0, value || 0);
+    setVariants(prev => prev.map(v => {
+      if (v.id === vId) {
+        const s1 = field === 'stock1' ? val : (v.stock1 || 0);
+        const s2 = field === 'stock2' ? val : (v.stock2 || 0);
+        return {
+          ...v,
+          stock1: s1,
+          stock2: s2,
+          stock: s1 + s2
+        };
+      }
+      return v;
+    }));
+  };
+
+  const handleDeleteVariant = (vId: string) => {
+    if (variants.length <= 1) {
+      alert('يجب أن تتوفر القطعة على الأقل على مقاس ولون واحد!');
+      return;
+    }
+    setVariants(prev => prev.filter(v => v.id !== vId));
+  };
+
+  // Bulk fill for all variants
+  const handleApplyBulkToAll = () => {
+    const s1 = Math.max(0, bulkStock1 || 0);
+    const s2 = Math.max(0, bulkStock2 || 0);
+    setVariants(prev => prev.map(v => ({
+      ...v,
+      stock1: s1,
+      stock2: s2,
+      stock: s1 + s2
+    })));
+    setShowBulkFillBar(false);
+  };
+
+  // Bulk fill for a specific color
+  const handleApplyBulkToColor = (targetColor: string, s1: number, s2: number) => {
+    setVariants(prev => prev.map(v => {
+      if (v.color.trim() === targetColor.trim()) {
+        return {
+          ...v,
+          stock1: s1,
+          stock2: s2,
+          stock: s1 + s2
+        };
+      }
+      return v;
+    }));
+  };
+
+  // Calculated totals
+  const totalStock1 = variants.reduce((sum, v) => sum + (Number(v.stock1) || 0), 0);
+  const totalStock2 = variants.reduce((sum, v) => sum + (Number(v.stock2) || 0), 0);
+  const totalCalculatedStock = totalStock1 + totalStock2;
 
   // Compress & convert file to Base64 with security checks
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Security Check: Validate MIME Type and Extension
     if (!isValidImageFileType(file.type, file.name)) {
       alert('⚠️ ملف غير مسموح به! يرجى رفع صورة فقط (JPG, PNG, WEBP).');
       if (e.target) e.target.value = '';
@@ -1420,7 +1615,7 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
     }
 
     const { secureName } = generateSecureImageFilename(file.name, file.type);
-    console.log(`[Security] Image file verified and renamed to secure asset name: ${secureName}`);
+    console.log(`[Security] Image file verified: ${secureName}`);
 
     setIsProcessingImage(true);
     const reader = new FileReader();
@@ -1441,7 +1636,7 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
         } else {
           if (height > MAX_HEIGHT) {
             width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
+            width = MAX_HEIGHT;
           }
         }
 
@@ -1460,14 +1655,9 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
     reader.readAsDataURL(file);
   };
 
-  const totalCalculatedStock = Math.max(0, Number(stock1) || 0) + Math.max(0, Number(stock2) || 0);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-
-    const s1 = Math.max(0, Number(stock1) || 0);
-    const s2 = Math.max(0, Number(stock2) || 0);
 
     const validSizes = selectedSizes.length > 0 ? selectedSizes : ['38'];
     const validColors = selectedColors.length > 0 ? selectedColors : ['أسود'];
@@ -1485,9 +1675,10 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
       color: validColors.join('، '),
       sizes: validSizes,
       colors: validColors,
-      stock1: s1,
-      stock2: s2,
-      stock: s1 + s2,
+      stock1: totalStock1,
+      stock2: totalStock2,
+      stock: totalCalculatedStock,
+      variants: variants.length > 0 ? variants : undefined,
       rentedCount: item?.rentedCount || 0,
       inCleaningCount: item?.inCleaningCount || 0,
       imageUrl: imageUrl.trim() || undefined,
@@ -1495,14 +1686,31 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
     });
   };
 
+  // Group variants by color for clean display
+  const colorGroups = useMemo(() => {
+    const groups: { [color: string]: ClothVariant[] } = {};
+    variants.forEach(v => {
+      const col = v.color || 'عام';
+      if (!groups[col]) groups[col] = [];
+      groups[col].push(v);
+    });
+    return groups;
+  }, [variants]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto overflow-x-hidden touch-pan-y overscroll-x-none" dir="rtl">
-      <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-xl max-w-full p-4 sm:p-6 shadow-2xl border border-slate-100 max-h-[90vh] sm:max-h-[92vh] overflow-y-auto overflow-x-hidden safe-bottom animate-in fade-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200">
+      <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-3xl max-w-full p-4 sm:p-6 shadow-2xl border border-slate-100 max-h-[92vh] overflow-y-auto overflow-x-hidden safe-bottom animate-in fade-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200">
         <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
         <div className="flex justify-between items-center pb-3 mb-4 border-b border-slate-100">
-          <h3 className="font-black text-blue-600 text-base sm:text-lg">
-            {item ? 'تعديل قطعة الملابس والصورة' : 'إضافة قطعة ملابس / فستان جديد'}
-          </h3>
+          <div>
+            <h3 className="font-black text-blue-900 text-base sm:text-lg flex items-center gap-2">
+              <span>{item ? 'تعديل قطعة الملابس والمخزون' : 'إضافة قطعة ملابس / فستان جديد'}</span>
+              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-lg font-bold">
+                المقاسات والألوان والكميات
+              </span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">أدخل لطاي المتوفرين والألوان وحدد الكمية المتوفرة في كل لون ومقاس</p>
+          </div>
           <button 
             onClick={onClose} 
             aria-label="إغلاق"
@@ -1512,13 +1720,95 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4">
-          {/* Image Upload Area */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Main Info */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">اسم القطعة أو الفستان * (حروف فقط)</label>
+              <LettersInput
+                required
+                value={name}
+                onChange={setName}
+                placeholder="مثال: فستان سهرة مخمل مطرز، قفطان تقليدي..."
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-sm font-bold focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-xs font-bold text-slate-700">الباركود / الكود (أرقام فقط)</label>
+                <button
+                  type="button"
+                  onClick={() => setBarcode(Math.floor(100000000000 + Math.random() * 900000000000).toString())}
+                  className="text-[10px] text-blue-600 font-bold hover:underline"
+                >
+                  توليد كود عشوائي
+                </button>
+              </div>
+              <div className="flex gap-1.5">
+                <NumbersInput
+                  value={barcode}
+                  onChange={setBarcode}
+                  placeholder="امسح بالليزر أو اكتب الكود..."
+                  className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold focus:border-blue-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowInFormScanner(true)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 active:scale-95"
+                  title="مسح الباركود بالكاميرا لتعبئة الكود"
+                >
+                  <Camera className="w-3.5 h-3.5 text-slate-600" />
+                  <span>مسح</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Category & Purpose */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">التصنيف</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:border-slate-400 focus:outline-none"
+              >
+                {categories.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">طبيعة القطعة (الاستخدام)</label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { id: 'both', label: 'كراء + بيع' },
+                  { id: 'rent', label: 'كراء فقط' },
+                  { id: 'sell', label: 'بيع فقط' }
+                ].map(p => (
+                  <button
+                    type="button"
+                    key={p.id}
+                    onClick={() => setPurpose(p.id as PurposeType)}
+                    className={`py-2 px-1 rounded-xl text-xs font-bold border text-center transition-all ${
+                      purpose === p.id 
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Image Upload */}
           <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
             <label className="block text-xs font-bold text-slate-700">صورة المنتج / الفستان</label>
-            
             <div className="flex items-center gap-3">
-              {/* Preview Thumbnail */}
               <div className="w-20 h-20 rounded-2xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 relative group">
                 {imageUrl ? (
                   <>
@@ -1536,8 +1826,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                   <Shirt className="w-8 h-8 text-slate-300" />
                 )}
               </div>
-
-              {/* Upload Controls */}
               <div className="flex-1 space-y-1.5">
                 <input
                   type="file"
@@ -1555,7 +1843,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                   <Upload className="w-3.5 h-3.5 text-slate-600" />
                   <span>{isProcessingImage ? 'جاري تجهيز الصورة...' : 'رفع صورة من الهاتف / الكمبيوتر'}</span>
                 </button>
-
                 <input
                   type="url"
                   value={imageUrl}
@@ -1567,131 +1854,40 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">اسم القطعة أو الفستان * (حروف فقط)</label>
-            <LettersInput
-              required
-              value={name}
-              onChange={setName}
-              placeholder="مثال: فستان سهرة مخمل مطرز، قفطان تقليدي..."
-              className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-sm font-bold focus:border-blue-500 focus:outline-none"
-            />
-          </div>
-
-          {/* Barcode Field with In-Form Camera Scanner Button */}
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="text-xs font-bold text-slate-700">الباركود / الكود (أرقام فقط)</label>
-              <button
-                type="button"
-                onClick={() => setBarcode(Math.floor(100000000000 + Math.random() * 900000000000).toString())}
-                className="text-[10px] text-blue-600 font-bold hover:underline"
-              >
-                توليد كود عشوائي
-              </button>
-            </div>
-            <div className="flex gap-1.5">
-              <NumbersInput
-                value={barcode}
-                onChange={setBarcode}
-                placeholder="امسح بالليزر أو اكتب الكود..."
-                className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold focus:border-blue-500 focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => setShowInFormScanner(true)}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 active:scale-95"
-                title="مسح الباركود بالكاميرا لتعبئة الكود"
-              >
-                <Camera className="w-3.5 h-3.5 text-slate-600" />
-                <span>مسح</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 sm:gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">التصنيف</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:border-slate-400 focus:outline-none"
-              >
-                {categories.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">نوع الاستخدام</label>
-              <select
-                value={purpose}
-                onChange={(e) => setPurpose(e.target.value as PurposeType)}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:border-slate-400 focus:outline-none text-slate-900 font-bold"
-              >
-                <option value="both">كراء + بيع</option>
-                <option value="rent">كراء فقط</option>
-                <option value="sell">بيع فقط</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Multiple Sizes Selection (إضافة لطاي المتوفرين) */}
-          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
+          {/* SIZES SELECTION SECTION (المقاسات المتوفرة / لطاي) */}
+          <div className="bg-blue-50/40 p-3.5 rounded-2xl border border-blue-100 space-y-2.5">
             <div className="flex justify-between items-center">
-              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Ruler className="w-3.5 h-3.5 text-blue-600" />
-                <span>المقاسات المتوفرة (لطاي / Tailles) *</span>
+              <label className="text-xs font-black text-blue-900 flex items-center gap-1.5">
+                <Ruler className="w-4 h-4 text-blue-600" />
+                <span>1. اختر المقاسات المتوفرة (لطاي / Tailles) * :</span>
               </label>
-              <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">
+              <span className="text-[11px] font-bold text-blue-700 bg-white px-2 py-0.5 rounded-lg border border-blue-200">
                 {selectedSizes.length} مقاس محدد
               </span>
             </div>
 
-            {/* Currently Selected Sizes Badges */}
-            <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-white rounded-xl border border-slate-200 items-center">
-              {selectedSizes.map(sz => (
-                <span
-                  key={sz}
-                  className="inline-flex items-center gap-1 bg-blue-600 text-white text-xs font-black px-2.5 py-1 rounded-lg shadow-2xs animate-in zoom-in-95 duration-150"
-                >
-                  <span>{sz}</span>
+            <div className="flex flex-wrap gap-1.5">
+              {STANDARD_SIZES.map((sz) => {
+                const isSelected = selectedSizes.includes(sz);
+                return (
                   <button
                     type="button"
-                    onClick={() => handleRemoveSize(sz)}
-                    className="hover:bg-blue-700 rounded-full p-0.5 ml-0.5 transition-colors"
-                    title="حذف هذا المقاس"
+                    key={sz}
+                    onClick={() => handleToggleSize(sz)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-black border transition-all ${
+                      isSelected
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs scale-105'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'
+                    }`}
                   >
-                    <X className="w-3 h-3" />
+                    {sz} {isSelected && '✓'}
                   </button>
-                </span>
-              ))}
+                );
+              })}
             </div>
 
-            {/* Quick Standard Size Selection Chips */}
-            <div>
-              <span className="text-[10px] font-bold text-slate-500 block mb-1">اختر من المقاسات الجاهزة:</span>
-              <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1">
-                {STANDARD_SIZES.map(sz => {
-                  const isSelected = selectedSizes.includes(sz);
-                  return (
-                    <button
-                      key={sz}
-                      type="button"
-                      onClick={() => handleToggleSize(sz)}
-                      className={`px-2 py-1 rounded-lg text-xs font-bold transition-all border ${
-                        isSelected
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {sz}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Add Custom Size input */}
-            <div className="flex gap-1.5 pt-1">
+            {/* Add Custom Size */}
+            <div className="flex gap-2 pt-1 border-t border-blue-100/60">
               <input
                 type="text"
                 value={customSizeInput}
@@ -1702,86 +1898,59 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                     handleAddCustomSize();
                   }
                 }}
-                placeholder="أضف مقاس مخصص (مثال: 56 أو 36-38)..."
-                className="flex-1 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:border-blue-500"
+                placeholder="أضف مقاس مخصص (مثال: 56، 6XL، تفصيل خاص...)"
+                className="flex-1 bg-white border border-blue-200 rounded-xl px-3 py-1.5 text-xs font-bold focus:outline-none focus:border-blue-500"
               />
               <button
                 type="button"
                 onClick={handleAddCustomSize}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 active:scale-95 shrink-0"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>إضافة</span>
+                <span>إضافة مقاس</span>
               </button>
             </div>
           </div>
 
-          {/* Multiple Colors Selection (إضافة الألوان المتوفرة) */}
+          {/* COLORS SELECTION SECTION (الألوان المتوفرة) */}
           <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
             <div className="flex justify-between items-center">
-              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Palette className="w-3.5 h-3.5 text-blue-900" />
-                <span>الألوان المتوفرة (Couleurs) *</span>
+              <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                <Palette className="w-4 h-4 text-blue-900" />
+                <span>2. اختر الألوان المتوفرة (Couleurs) * :</span>
               </label>
-              <span className="text-[11px] font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">
+              <span className="text-[11px] font-bold text-slate-700 bg-white px-2 py-0.5 rounded-lg border border-slate-200">
                 {selectedColors.length} لون محدد
               </span>
             </div>
 
-            {/* Currently Selected Colors Badges */}
-            <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-white rounded-xl border border-slate-200 items-center">
-              {selectedColors.map(col => (
-                <span
-                  key={col}
-                  className="inline-flex items-center gap-1.5 bg-slate-900 text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-2xs animate-in zoom-in-95 duration-150"
-                >
-                  <span
-                    className="w-2.5 h-2.5 rounded-full border border-white/40 shrink-0"
-                    style={{ backgroundColor: getColorHex(col) }}
-                  />
-                  <span>{col}</span>
+            <div className="flex flex-wrap gap-1.5">
+              {POPULAR_COLORS.map((col) => {
+                const isSelected = selectedColors.includes(col.name);
+                return (
                   <button
                     type="button"
-                    onClick={() => handleRemoveColor(col)}
-                    className="hover:bg-slate-800 rounded-full p-0.5 ml-0.5 transition-colors text-slate-300 hover:text-white"
-                    title="حذف هذا اللون"
+                    key={col.name}
+                    onClick={() => handleToggleColor(col.name)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-bold border inline-flex items-center gap-1.5 transition-all ${
+                      isSelected
+                        ? 'bg-blue-900 text-white border-blue-900 shadow-xs scale-105'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'
+                    }`}
                   >
-                    <X className="w-3 h-3" />
+                    <span
+                      className="w-3 h-3 rounded-full border border-slate-300 shrink-0"
+                      style={{ backgroundColor: col.hex }}
+                    />
+                    <span>{col.name}</span>
+                    {isSelected && <Check className="w-3 h-3 ml-0.5" />}
                   </button>
-                </span>
-              ))}
+                );
+              })}
             </div>
 
-            {/* Quick Popular Color Selection Chips */}
-            <div>
-              <span className="text-[10px] font-bold text-slate-500 block mb-1">اختر من الألوان الشائعة:</span>
-              <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1">
-                {POPULAR_COLORS.map(c => {
-                  const isSelected = selectedColors.includes(c.name);
-                  return (
-                    <button
-                      key={c.name}
-                      type="button"
-                      onClick={() => handleToggleColor(c.name)}
-                      className={`px-2 py-1 rounded-lg text-xs font-bold transition-all border flex items-center gap-1.5 ${
-                        isSelected
-                          ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      <span
-                        className="w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0"
-                        style={{ backgroundColor: c.hex }}
-                      />
-                      <span>{c.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Add Custom Color input */}
-            <div className="flex gap-1.5 pt-1">
+            {/* Add Custom Color */}
+            <div className="flex gap-2 pt-1 border-t border-slate-200">
               <LettersInput
                 value={customColorInput}
                 onChange={setCustomColorInput}
@@ -1791,63 +1960,291 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                     handleAddCustomColor();
                   }
                 }}
-                placeholder="أضف لون مخصص (حروف فقط: بترولي، موطارد)..."
-                className="flex-1 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:border-blue-900"
+                placeholder="أضف لون آخر (حروف فقط: بترولي، موطارد، زيتي...)"
+                className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold focus:outline-none focus:border-blue-900"
               />
               <button
                 type="button"
                 onClick={handleAddCustomColor}
-                className="bg-blue-900 hover:bg-black text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 active:scale-95 shrink-0"
+                className="bg-slate-800 hover:bg-black text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>إضافة</span>
+                <span>إضافة لون</span>
               </button>
             </div>
           </div>
 
-          {/* Two Stocks Section (Stock 1 & Stock 2) */}
-          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
-            <div className="flex justify-between items-center">
-              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Package className="w-3.5 h-3.5 text-slate-600" />
-                <span>كميات المخزون في المخزنين (Stock 1 & Stock 2)</span>
-              </label>
-              <span className="text-[11px] font-bold bg-white border border-slate-200 text-slate-800 px-2.5 py-0.5 rounded-xl">
-                المجموع: {totalCalculatedStock} قطعة
-              </span>
+          {/* QUANTITY MATRIX PER COLOR & SIZE (الكمية المتوفرة في كل لون ومقاس) */}
+          <div className="bg-gradient-to-b from-blue-50/70 to-slate-50 p-3.5 sm:p-4 rounded-3xl border-2 border-blue-200/80 space-y-3 shadow-xs">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 pb-2 border-b border-blue-200/60">
+              <div>
+                <h4 className="text-xs sm:text-sm font-black text-blue-950 flex items-center gap-2">
+                  <Package className="w-4 h-4 text-blue-700" />
+                  <span>3. جدول الكمية المتوفرة في كل لون ومقاس (لطاي)</span>
+                </h4>
+                <p className="text-[11px] text-slate-600 mt-0.5">
+                  حدد عدد القطع الموجودة في المحل (المخزن 1) وفي المستودع (المخزن 2) لكل تشكيلة
+                </p>
+              </div>
+
+              {/* Total Stock Summary Pill */}
+              <div className="flex items-center gap-2 self-start sm:self-auto bg-white px-3 py-1.5 rounded-2xl border border-blue-200 shadow-xs">
+                <span className="text-[11px] font-bold text-slate-500">المجموع:</span>
+                <span className="text-xs font-black text-blue-900 flex items-center gap-1.5">
+                  <span className="text-blue-700">🏬 {totalStock1}</span>
+                  <span>+</span>
+                  <span className="text-blue-950">📦 {totalStock2}</span>
+                  <span>=</span>
+                  <span className="bg-blue-600 text-white px-2 py-0.5 rounded-lg">{totalCalculatedStock} قطعة</span>
+                </span>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-                <label className="block text-[11px] font-bold text-blue-900 mb-1 flex items-center gap-1">
-                  <Store className="w-3.5 h-3.5 text-blue-600" />
-                  <span>المخزون 1 (المحل / المعرض)</span>
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={stock1}
-                  onChange={(e) => setStock1(Number(e.target.value))}
-                  className="w-full border border-blue-200 rounded-xl px-2.5 py-1.5 text-sm font-bold text-blue-950 text-center focus:outline-none focus:border-blue-400"
-                />
+            {/* Quick Bulk Action Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-white/90 p-2.5 rounded-2xl border border-blue-100">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkFillBar(!showBulkFillBar)}
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-colors"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                  <span>⚡ تعبئة كمية موحدة للجميع ({variants.length} تشكيلة)</span>
+                </button>
               </div>
 
-              <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-                <label className="block text-[11px] font-bold text-blue-900 mb-1 flex items-center gap-1">
-                  <Warehouse className="w-3.5 h-3.5 text-blue-900" />
-                  <span>المخزون 2 (المستودع)</span>
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={stock2}
-                  onChange={(e) => setStock2(Number(e.target.value))}
-                  className="w-full border border-blue-200 rounded-xl px-2.5 py-1.5 text-sm font-bold text-blue-950 text-center focus:outline-none focus:border-blue-900"
-                />
+              {/* Color filter tabs if multiple colors */}
+              {Object.keys(colorGroups).length > 1 && (
+                <div className="flex items-center gap-1 overflow-x-auto max-w-full py-0.5">
+                  <span className="text-[10px] font-bold text-slate-400 shrink-0">تصفية:</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveColorFilter('all')}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold shrink-0 transition-colors ${
+                      activeColorFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    الكل ({variants.length})
+                  </button>
+                  {Object.keys(colorGroups).map(col => (
+                    <button
+                      type="button"
+                      key={col}
+                      onClick={() => setActiveColorFilter(col)}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold shrink-0 inline-flex items-center gap-1 transition-colors ${
+                        activeColorFilter === col ? 'bg-blue-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getColorHex(col) }} />
+                      <span>{col}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Bulk Fill Popdown Bar */}
+            {showBulkFillBar && (
+              <div className="bg-blue-900 text-white p-3 rounded-2xl space-y-2 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-300" />
+                    <span>تطبيق نفس الكمية على جميع المقاسات والألوان:</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkFillBar(false)}
+                    className="text-blue-300 hover:text-white text-xs font-bold"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="flex items-center gap-2 bg-blue-950/60 p-1.5 rounded-xl border border-blue-700/50">
+                    <span className="text-[11px] text-blue-200 font-bold shrink-0">🏬 المحل:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={bulkStock1}
+                      onChange={(e) => setBulkStock1(Math.max(0, Number(e.target.value) || 0))}
+                      className="w-full bg-white text-blue-950 font-black rounded-lg px-2 py-1 text-center text-xs focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 bg-blue-950/60 p-1.5 rounded-xl border border-blue-700/50">
+                    <span className="text-[11px] text-blue-200 font-bold shrink-0">📦 المستودع:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={bulkStock2}
+                      onChange={(e) => setBulkStock2(Math.max(0, Number(e.target.value) || 0))}
+                      className="w-full bg-white text-blue-950 font-black rounded-lg px-2 py-1 text-center text-xs focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleApplyBulkToAll}
+                    className="bg-blue-500 hover:bg-blue-400 text-white font-black text-xs py-2 px-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>تطبيق على الكل ({variants.length} تشكيلة)</span>
+                  </button>
+                </div>
               </div>
+            )}
+
+            {/* List of Colors and their Sizes with Stock Controls */}
+            <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+              {(Object.entries(colorGroups) as [string, ClothVariant[]][])
+                .filter(([col]) => activeColorFilter === 'all' || activeColorFilter === col)
+                .map(([col, colorVariants]) => {
+                  const colorStock1 = colorVariants.reduce((sum, v) => sum + (Number(v.stock1) || 0), 0);
+                  const colorStock2 = colorVariants.reduce((sum, v) => sum + (Number(v.stock2) || 0), 0);
+                  const colorTotal = colorStock1 + colorStock2;
+                  const colHex = getColorHex(col);
+
+                  return (
+                    <div key={col} className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+                      {/* Color Header Banner */}
+                      <div className="bg-slate-50/90 px-3 py-2 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-3.5 h-3.5 rounded-full border border-slate-300 shadow-xs shrink-0"
+                            style={{ backgroundColor: colHex }}
+                          />
+                          <span className="font-black text-slate-900 text-xs">اللون: {col}</span>
+                          <span className="text-[10px] text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-md font-bold">
+                            {colorVariants.length} مقاسات
+                          </span>
+                        </div>
+
+                        {/* Quick stock badge for this color */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-bold text-slate-600">
+                            مجموع اللون: <strong className="text-blue-700">{colorTotal}</strong> قطعة (🏬 {colorStock1} | 📦 {colorStock2})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const s1 = prompt(`أدخل الكمية في المحل (Stock 1) لجميع مقاسات اللون "${col}":`, '1');
+                              if (s1 === null) return;
+                              const s2 = prompt(`أدخل الكمية في المستودع (Stock 2) لجميع مقاسات اللون "${col}":`, '0');
+                              if (s2 === null) return;
+                              handleApplyBulkToColor(col, Math.max(0, Number(s1) || 0), Math.max(0, Number(s2) || 0));
+                            }}
+                            className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-md transition-colors"
+                            title="تطبيق كمية سريعة على جميع مقاسات هذا اللون"
+                          >
+                            ⚡ تعبئة سريعة
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Sizes for this Color */}
+                      <div className="p-2.5 divide-y divide-slate-100">
+                        {colorVariants.map((v) => {
+                          const vS1 = Number(v.stock1) || 0;
+                          const vS2 = Number(v.stock2) || 0;
+                          const vTotal = vS1 + vS2;
+
+                          return (
+                            <div key={v.id} className="py-2 first:pt-1 last:pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              {/* Size Badge & Details */}
+                              <div className="flex items-center gap-2">
+                                <span className="w-11 text-center bg-blue-50 border border-blue-200 text-blue-900 font-black text-xs py-1 rounded-xl shrink-0">
+                                  {v.size}
+                                </span>
+                                <div>
+                                  <span className="text-xs font-bold text-slate-800">
+                                    مقاس {v.size} - {v.color}
+                                  </span>
+                                  {v.code && (
+                                    <span className="text-[10px] text-slate-400 font-mono ml-1">#{v.code}</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Quantity Adjusters for Stock 1 & Stock 2 */}
+                              <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap justify-end">
+                                {/* Stock 1 (Store) */}
+                                <div className="flex items-center gap-1 bg-blue-50/60 border border-blue-200/80 px-2 py-1 rounded-xl">
+                                  <span className="text-[10px] font-bold text-blue-900 shrink-0">🏬 المحل:</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateVariantStock(v.id, 'stock1', vS1 - 1)}
+                                    className="w-5 h-5 rounded-md bg-white hover:bg-blue-100 text-blue-800 font-black text-xs flex items-center justify-center border border-blue-200 active:scale-95"
+                                  >
+                                    -
+                                  </button>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={vS1}
+                                    onChange={(e) => handleUpdateVariantStock(v.id, 'stock1', Number(e.target.value))}
+                                    className="w-10 bg-white border border-blue-200 rounded-md text-center text-xs font-black text-blue-900 py-0.5 focus:outline-none"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateVariantStock(v.id, 'stock1', vS1 + 1)}
+                                    className="w-5 h-5 rounded-md bg-white hover:bg-blue-100 text-blue-800 font-black text-xs flex items-center justify-center border border-blue-200 active:scale-95"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+
+                                {/* Stock 2 (Warehouse) */}
+                                <div className="flex items-center gap-1 bg-slate-100 border border-slate-200 px-2 py-1 rounded-xl">
+                                  <span className="text-[10px] font-bold text-slate-700 shrink-0">📦 المستودع:</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateVariantStock(v.id, 'stock2', vS2 - 1)}
+                                    className="w-5 h-5 rounded-md bg-white hover:bg-slate-200 text-slate-800 font-black text-xs flex items-center justify-center border border-slate-300 active:scale-95"
+                                  >
+                                    -
+                                  </button>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={vS2}
+                                    onChange={(e) => handleUpdateVariantStock(v.id, 'stock2', Number(e.target.value))}
+                                    className="w-10 bg-white border border-slate-300 rounded-md text-center text-xs font-black text-slate-900 py-0.5 focus:outline-none"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateVariantStock(v.id, 'stock2', vS2 + 1)}
+                                    className="w-5 h-5 rounded-md bg-white hover:bg-slate-200 text-slate-800 font-black text-xs flex items-center justify-center border border-slate-300 active:scale-95"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+
+                                {/* Variant Total Pill */}
+                                <span className={`text-[11px] font-black px-2 py-1 rounded-lg border shrink-0 ${
+                                  vTotal > 0 ? 'bg-blue-50 text-blue-900 border-blue-200' : 'bg-slate-100 text-slate-400 border-slate-200'
+                                }`}>
+                                  = {vTotal}
+                                </span>
+
+                                {/* Delete variant button if not available */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteVariant(v.id)}
+                                  className="w-6 h-6 rounded-lg text-slate-400 hover:text-black hover:bg-slate-100 flex items-center justify-center transition-colors shrink-0"
+                                  title="حذف هذا المقاس من هذا اللون"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
           </div>
 
+          {/* Pricing Section */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 mb-1">سعر الشراء/التكلفة</label>
@@ -1904,9 +2301,15 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
 
           <button
             type="submit"
-            className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-xs transition-all shadow-md shadow-blue-200 active:scale-[0.98] min-h-[44px]"
+            className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-md shadow-blue-200 active:scale-[0.98] min-h-[44px] flex items-center justify-center gap-2"
           >
-            {item ? 'تحديث بيانات وصورة القطعة' : 'إضافة القطعة للمخزن'}
+            <CheckCircle2 className="w-4 h-4" />
+            <span>
+              {item ? 'حفظ وتحديث بيانات القطعة وتوزيع الكميات' : 'تأكيد وإضافة القطعة مع تفصيل المقاسات والكميات'}
+            </span>
+            <span className="bg-blue-800 px-2.5 py-0.5 rounded-lg text-xs font-black">
+              المجموع: {totalCalculatedStock} قطعة
+            </span>
           </button>
         </form>
       </div>
