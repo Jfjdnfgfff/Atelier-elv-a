@@ -1642,12 +1642,12 @@ export default function App() {
           {/* Top Row: Quick Tools & Actions */}
           <div className="flex items-center justify-between gap-2">
             {/* Action Tools */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5 shrink min-w-0">
               <button
                 onClick={() => setIsScanning(true)}
                 title="مسح الباركود"
                 aria-label="مسح الباركود"
-                className="h-9 px-2.5 sm:px-3 rounded-xl bg-blue-50/50 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-300 border border-blue-100/70 active:scale-95 text-blue-800 flex items-center gap-1.5 transition-all text-xs font-bold group"
+                className="h-9 px-2.5 sm:px-3 rounded-xl bg-blue-50/50 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-300 border border-blue-100/70 active:scale-95 text-blue-800 flex items-center gap-1.5 transition-all text-xs font-bold group shrink-0"
               >
                 <svg className="w-4 h-4 text-blue-600 group-hover:text-blue-700 shrink-0 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <path d="M3 7V5a2 2 0 012-2h2" />
@@ -1670,7 +1670,7 @@ export default function App() {
                 }}
                 title="إخفاء/إظهار المبالغ"
                 aria-label="إخفاء/إظهار المبالغ"
-                className={`h-9 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 transition-all active:scale-95 text-xs font-bold border group ${
+                className={`h-9 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 transition-all active:scale-95 text-xs font-bold border group shrink-0 ${
                   hideFinances 
                     ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800' 
                     : 'bg-slate-100/90 text-slate-700 border-slate-200/70 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'
@@ -1695,7 +1695,7 @@ export default function App() {
               <button 
                 onClick={() => setActiveModal('fullReport')} 
                 title="التقرير المالي"
-                className="h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100/90 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 border border-slate-200/70 rounded-xl transition-all shadow-2xs active:scale-95 group"
+                className="h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100/90 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 border border-slate-200/70 rounded-xl transition-all shadow-2xs active:scale-95 group shrink-0"
               >
                 <svg className="w-4 h-4 text-slate-600 group-hover:text-blue-600 shrink-0 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
@@ -1710,7 +1710,7 @@ export default function App() {
               <button 
                 onClick={() => setCurrentView('caisse')} 
                 title="صندوق اليومية ومتابعة العجز (La Caisse)"
-                className={`h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold rounded-xl transition-all border active:scale-95 group ${
+                className={`h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold rounded-xl transition-all border active:scale-95 group shrink-0 ${
                   currentView === 'caisse'
                     ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                     : 'text-blue-700 bg-blue-50/50 hover:bg-blue-100 hover:text-blue-800 hover:border-blue-300 border-blue-100/70'
@@ -1724,7 +1724,7 @@ export default function App() {
               <button 
                 onClick={() => setCurrentView('logs')} 
                 title="سجل التحديثات والتعديلات (Logs)"
-                className={`h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold rounded-xl transition-all border active:scale-95 group ${
+                className={`h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold rounded-xl transition-all border active:scale-95 group shrink-0 ${
                   currentView === 'logs'
                     ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                     : 'text-slate-700 bg-slate-100/90 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 border-slate-200/70'
@@ -1738,15 +1738,15 @@ export default function App() {
             {/* Primary Add Button */}
             <button
               onClick={() => setActiveModal('addRental')}
-              className="h-9 px-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs shrink-0 transition-all hover:shadow-md hover:shadow-blue-500/20"
+              className="h-9 px-3 sm:px-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs shrink-0 transition-all hover:shadow-md hover:shadow-blue-500/20"
             >
-              <span className="text-sm font-bold">+</span>
-              <span>كراء جديد</span>
+              <span className="text-sm font-bold shrink-0">+</span>
+              <span className="whitespace-nowrap">كراء جديد</span>
             </button>
           </div>
 
-          {/* Bottom Row of Header: All Navigation Icons in a single compact row */}
-          <nav className="grid grid-cols-11 gap-0.5 sm:gap-1 w-full pt-1 border-t border-blue-50" aria-label="أقسام التطبيق">
+          {/* Bottom Row of Header: All Navigation Icons in a responsive row */}
+          <nav className="flex lg:grid lg:grid-cols-11 gap-1 sm:gap-1.5 w-full pt-1.5 pb-0.5 border-t border-blue-50 overflow-x-auto no-scrollbar scroll-smooth overscroll-x-contain" aria-label="أقسام التطبيق">
             <NavButton 
               icon="dashboard" 
               label="الرئيسية" 
