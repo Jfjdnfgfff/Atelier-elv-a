@@ -16,11 +16,11 @@ import {
   Phone,
   ArrowLeft,
 } from 'lucide-react';
-import { Rental, ClothItem, ViewType, MaintenanceOrder, DailyCaisseClosure, Sale, Expense, StaffPayout } from '../types';
+import { Rental, ClothItem, ViewType, MaintenanceOrder, DailyCaisseClosure, Sale, Expense, StaffPayout, Credit } from '../types';
 import { StatCard } from './Shared';
+import { useDashboardStats } from '../hooks/dashboardStatsHook';
 
 interface DashboardViewProps {
-  stats: any;
   rentals: Rental[];
   maintenanceOrders?: MaintenanceOrder[];
   clothes: ClothItem[];
@@ -28,6 +28,7 @@ interface DashboardViewProps {
   sales?: Sale[];
   expenses?: Expense[];
   staffPayouts?: StaffPayout[];
+  credits?: Credit[];
   hideFinances: boolean;
   onPrivacyToggle: () => void;
   onNavigate: (view: ViewType) => void;
@@ -37,7 +38,6 @@ interface DashboardViewProps {
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
-  stats,
   rentals,
   maintenanceOrders = [],
   clothes,
@@ -45,6 +45,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   sales = [],
   expenses = [],
   staffPayouts = [],
+  credits = [],
   hideFinances,
   onPrivacyToggle,
   onNavigate,
@@ -54,6 +55,9 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
 }) => {
   const [financePeriod, setFinancePeriod] = useState<'monthly' | 'yearly' | 'all'>('monthly');
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  
+  // Use the optimized stats hook
+  const stats = useDashboardStats(rentals, sales, expenses, credits, staffPayouts, maintenanceOrders);
 
   const calculateDaysDiff = (expectedDate: string) => {
     const exp = new Date(expectedDate);

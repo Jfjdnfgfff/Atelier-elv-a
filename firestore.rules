@@ -28,18 +28,19 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Helper to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
     // Clothes Collection Rules
     match /clothes/{id} {
-      allow read: if true;
-      allow create, update: if isValidId(id)
+      allow read: if true; // Keeping read true for now for compatibility, restrict write
+      allow write: if isAuthenticated() && isValidId(id)
         && hasRequiredFields(['name'])
-        && isString(request.resource.data.name)
-        && request.resource.data.name.size() > 0
-        && (!('buyCost' in request.resource.data) || isPositiveOrZero(request.resource.data.buyCost))
-        && (!('sellPrice' in request.resource.data) || isPositiveOrZero(request.resource.data.sellPrice))
-        && (!('rentPrice' in request.resource.data) || isPositiveOrZero(request.resource.data.rentPrice));
-      allow delete: if isValidId(id);
+        && isString(request.resource.data.name);
     }
+
 
     // Rentals Collection Rules
     match /rentals/{id} {

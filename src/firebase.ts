@@ -194,10 +194,10 @@ export async function saveItemToFirebase<T extends { id: string }>(
  * Updates specific fields on an existing record by ID in Firebase.
  * Immediately merges updates into memory cache.
  */
-export async function updateItemInFirebase<T extends { id?: string }>(
+export async function updateItemInFirebase<T extends { id?: string } = any>(
   collectionKey: string,
   itemId: string,
-  updates: Partial<T>
+  updates: Partial<T> | Record<string, any>
 ): Promise<boolean> {
   if (!itemId) return false;
 

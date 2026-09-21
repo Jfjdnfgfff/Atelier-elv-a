@@ -30,7 +30,7 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
 
     try {
       const html2canvasModule = await import('html2canvas');
-      const html2canvas = html2canvasModule.default || html2canvasModule;
+      const html2canvas = (html2canvasModule.default || html2canvasModule) as any;
 
       const canvas = await html2canvas(element, {
         scale: 2,

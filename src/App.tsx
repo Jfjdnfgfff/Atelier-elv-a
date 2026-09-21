@@ -495,124 +495,6 @@ export default function App() {
     return maintenanceOrders.filter(o => o.status !== 'delivered').length;
   }, [maintenanceOrders]);
 
-  // Global Financial Statistics
-  const stats = useMemo(() => {
-    const now = new Date();
-    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const currentYearStr = `${now.getFullYear()}`;
-
-    const isThisMonth = (dateStr?: string) => dateStr ? dateStr.startsWith(currentMonthStr) : false;
-    const isThisYear = (dateStr?: string) => dateStr ? dateStr.startsWith(currentYearStr) : false;
-
-    // --- Rentals ---
-    const totalRentalIncome = rentals.reduce((s, r) => s + (r.paidAmount || 0), 0);
-    const monthlyRentalIncome = rentals
-      .filter(r => isThisMonth(r.startDate || r.createdAt))
-      .reduce((s, r) => s + (r.paidAmount || 0), 0);
-    const yearlyRentalIncome = rentals
-      .filter(r => isThisYear(r.startDate || r.createdAt))
-      .reduce((s, r) => s + (r.paidAmount || 0), 0);
-
-    // --- Sales ---
-    const totalSalesRevenue = sales.reduce((s, sl) => s + (sl.totalAmount || 0), 0);
-    const monthlySalesRevenue = sales
-      .filter(s => isThisMonth(s.date))
-      .reduce((s, sl) => s + (sl.totalAmount || 0), 0);
-    const yearlySalesRevenue = sales
-      .filter(s => isThisYear(s.date))
-      .reduce((s, sl) => s + (sl.totalAmount || 0), 0);
-
-    const totalSalesProfit = sales.reduce((s, sl) => s + (sl.profit || 0), 0);
-    const monthlySalesProfit = sales
-      .filter(s => isThisMonth(s.date))
-      .reduce((s, sl) => s + (sl.profit || 0), 0);
-    const yearlySalesProfit = sales
-      .filter(s => isThisYear(s.date))
-      .reduce((s, sl) => s + (sl.profit || 0), 0);
-
-    // --- Tailoring & Maintenance ---
-    const totalTailoringIncome = maintenanceOrders.reduce((s, o) => s + (o.paidAmount || 0), 0);
-    const monthlyTailoringIncome = maintenanceOrders
-      .filter(o => isThisMonth(o.receivedDate || o.createdAt))
-      .reduce((s, o) => s + (o.paidAmount || 0), 0);
-    const yearlyTailoringIncome = maintenanceOrders
-      .filter(o => isThisYear(o.receivedDate || o.createdAt))
-      .reduce((s, o) => s + (o.paidAmount || 0), 0);
-    const totalTailoringCost = maintenanceOrders.reduce((s, o) => s + (o.cost || 0), 0);
-    const tailoringProfit = totalTailoringIncome - totalTailoringCost;
-
-    // --- Expenses ---
-    const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
-    const monthlyExpenses = expenses
-      .filter(e => isThisMonth(e.date))
-      .reduce((s, e) => s + Number(e.amount || 0), 0);
-    const yearlyExpenses = expenses
-      .filter(e => isThisYear(e.date))
-      .reduce((s, e) => s + Number(e.amount || 0), 0);
-
-    // --- Staff Payouts ---
-    const totalStaff = staffPayouts.reduce((s, p) => s + Number(p.amount || 0), 0);
-    const monthlyStaff = staffPayouts
-      .filter(p => isThisMonth(p.date))
-      .reduce((s, p) => s + Number(p.amount || 0), 0);
-    const yearlyStaff = staffPayouts
-      .filter(p => isThisYear(p.date))
-      .reduce((s, p) => s + Number(p.amount || 0), 0);
-    
-    // --- Debts ---
-    const totalRentalDebt = rentals.reduce((s, r) => s + (r.status !== 'returned' ? (r.remainingAmount || 0) : 0), 0);
-    const totalTailoringDebt = maintenanceOrders.reduce((s, o) => s + (o.status !== 'delivered' ? (o.remainingAmount || 0) : 0), 0);
-    const totalDirectDebt = credits.reduce((s, c) => s + Number(c.amount || 0), 0);
-    const totalDebt = totalRentalDebt + totalDirectDebt + totalTailoringDebt;
-
-    // --- Net Profits ---
-    // Net profit = (Rental Income + Sales Profit + Tailoring Profit) - (Expenses + Staff)
-    const netProf = (totalRentalIncome + totalSalesProfit + totalTailoringIncome) - (totalExpenses + totalStaff + totalTailoringCost);
-    const monthlyNetProfit = (monthlyRentalIncome + monthlySalesProfit + monthlyTailoringIncome) - (monthlyExpenses + monthlyStaff);
-    const yearlyNetProfit = (yearlyRentalIncome + yearlySalesProfit + yearlyTailoringIncome) - (yearlyExpenses + yearlyStaff);
-
-    // --- Total Gross Revenues (Combined) ---
-    const totalGrossRevenue = totalRentalIncome + totalSalesRevenue + totalTailoringIncome;
-    const monthlyGrossRevenue = monthlyRentalIncome + monthlySalesRevenue + monthlyTailoringIncome;
-    const yearlyGrossRevenue = yearlyRentalIncome + yearlySalesRevenue + yearlyTailoringIncome;
-
-    return {
-      // Rental
-      totalRentalIncome,
-      monthlyRentalIncome,
-      yearlyRentalIncome,
-      // Sales
-      totalSalesRevenue,
-      monthlySalesRevenue,
-      yearlySalesRevenue,
-      totalSalesProfit,
-      monthlySalesProfit,
-      yearlySalesProfit,
-      // Tailoring
-      totalTailoringIncome,
-      monthlyTailoringIncome,
-      yearlyTailoringIncome,
-      totalTailoringCost,
-      tailoringProfit,
-      // Expenses & Staff
-      totalExpenses,
-      monthlyExpenses,
-      yearlyExpenses,
-      totalStaffPayouts: totalStaff,
-      monthlyStaffPayouts: monthlyStaff,
-      yearlyStaffPayouts: yearlyStaff,
-      // Combined Totals
-      totalGrossRevenue,
-      monthlyGrossRevenue,
-      yearlyGrossRevenue,
-      // Debts & Net Profits
-      totalDebt,
-      netProfit: netProf,
-      monthlyNetProfit,
-      yearlyNetProfit
-    };
-  }, [rentals, sales, expenses, staffPayouts, credits, maintenanceOrders]);
-
   // ==========================
   // RENTAL HANDLERS
   // ==========================
@@ -1998,7 +1880,6 @@ export default function App() {
         <React.Suspense fallback={<LoadingFallback />}>
           {currentView === 'dashboard' && (
             <DashboardView 
-              stats={stats} 
               rentals={rentals} 
               maintenanceOrders={maintenanceOrders}
               clothes={clothes}
@@ -2006,6 +1887,7 @@ export default function App() {
               sales={sales}
               expenses={expenses}
               staffPayouts={staffPayouts}
+              credits={credits}
               hideFinances={hideFinances}
               onPrivacyToggle={() => {
                 if (hideFinances) {
