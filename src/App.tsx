@@ -190,18 +190,8 @@ export default function App() {
       const unsub = subscribeToCloudCollection<T>(collectionKey, (items) => {
         if (items && Array.isArray(items)) {
           isRemoteUpdateRef.current[refKey] = true;
-          setter((prev) => {
-            // Smart ID merge: update or insert incoming cloud items while preserving local historical records
-            if (!prev || prev.length === 0) return items;
-            const map = new Map<string, T>();
-            for (const p of prev) {
-              if (p?.id) map.set(p.id, p);
-            }
-            for (const item of items) {
-              if (item?.id) map.set(item.id, item);
-            }
-            return Array.from(map.values());
-          });
+          // Set exact query dataset to prevent cross-view cache and state pollution
+          setter(items);
           setLastCloudSyncTime(new Date());
         }
       }, options);
@@ -229,7 +219,14 @@ export default function App() {
     const yearStartStr = `${currentYearStr}-01-01`;
 
     if (needsRentals) {
-      sub<Rental>(FIREBASE_COLLECTIONS.RENTALS, setRentals, STORAGE_KEYS.RENTALS, 'rentals', { limit: 200 });
+      if (currentView === 'dashboard') {
+        sub<Rental>(FIREBASE_COLLECTIONS.RENTALS, setRentals, STORAGE_KEYS.RENTALS, 'rentals', { 
+          orderBy: 'startDate', 
+          startAt: yearStartStr 
+        });
+      } else {
+        sub<Rental>(FIREBASE_COLLECTIONS.RENTALS, setRentals, STORAGE_KEYS.RENTALS, 'rentals', { limit: 200 });
+      }
     }
     if (needsSales) {
       if (currentView === 'dashboard') {
@@ -265,7 +262,14 @@ export default function App() {
       }
     }
     if (needsMaintenance) {
-      sub<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, setMaintenanceOrders, STORAGE_KEYS.MAINTENANCE, 'maintenanceOrders', { limit: 100 });
+      if (currentView === 'dashboard') {
+        sub<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, setMaintenanceOrders, STORAGE_KEYS.MAINTENANCE, 'maintenanceOrders', { 
+          orderBy: 'receivedDate', 
+          startAt: yearStartStr 
+        });
+      } else {
+        sub<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, setMaintenanceOrders, STORAGE_KEYS.MAINTENANCE, 'maintenanceOrders', { limit: 100 });
+      }
     }
     if (needsClothes) {
       sub<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, setClothes, STORAGE_KEYS.CLOTHES, 'clothes');

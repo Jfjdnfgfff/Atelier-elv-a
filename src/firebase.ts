@@ -213,7 +213,35 @@ export async function saveItemToFirebase<T extends { id: string }>(
       if (idx >= 0) {
         qList[idx] = item;
       } else {
-        qList.unshift(item);
+        let matches = true;
+        // Check date startAt
+        if (qKey.includes('|sa:')) {
+          const saMatch = qKey.match(/\|sa:([^|]+)/);
+          if (saMatch) {
+            const saVal = saMatch[1];
+            const itemDate = (item as any).date || (item as any).startDate || (item as any).receivedDate || (item as any).createdAt || '';
+            if (itemDate && itemDate < saVal) matches = false;
+          }
+        }
+        // Check date endAt
+        if (qKey.includes('|ea:')) {
+          const eaMatch = qKey.match(/\|ea:([^|]+)/);
+          if (eaMatch) {
+            const eaVal = eaMatch[1];
+            const itemDate = (item as any).date || (item as any).startDate || (item as any).receivedDate || (item as any).createdAt || '';
+            if (itemDate && itemDate > eaVal) matches = false;
+          }
+        }
+        if (matches) {
+          qList.unshift(item);
+          if (qKey.includes('|lim:')) {
+            const limMatch = qKey.match(/\|lim:(\d+)/);
+            if (limMatch) {
+              const lim = parseInt(limMatch[1], 10);
+              if (qList.length > lim) qList.splice(lim);
+            }
+          }
+        }
       }
     }
   }
@@ -242,11 +270,16 @@ export async function saveItemToFirebase<T extends { id: string }>(
       colStore.delete(item.id);
     }
     memoryCache.set(collectionKey, Array.from(colStore.values()));
-    // Invalidate affected query caches to ensure fresh data on next read
-    for (const qKey of Array.from(queryMemoryCache.keys())) {
+    for (const [qKey, qList] of queryMemoryCache.entries()) {
       if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
-        queryMemoryCache.delete(qKey);
-        queryCacheTimestamps.delete(qKey);
+        const idx = qList.findIndex(x => x.id === item.id);
+        if (idx >= 0) {
+          if (hadItem) {
+            qList[idx] = prevItem;
+          } else {
+            qList.splice(idx, 1);
+          }
+        }
       }
     }
     updateStatus('error', err?.message || 'تعذر حفظ العنصر في السحابة');
@@ -310,14 +343,16 @@ export async function updateItemInFirebase<T extends { id?: string } = any>(
   } catch (err: any) {
     console.warn(`[Firebase RTDB item update error on ${writeKey}]:`, err?.message || err);
     // Rollback
-    if (hadItem) {
+    if (hadItem && prevItem) {
       colStore.set(itemId, prevItem);
       memoryCache.set(collectionKey, Array.from(colStore.values()));
-    }
-    for (const qKey of Array.from(queryMemoryCache.keys())) {
-      if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
-        queryMemoryCache.delete(qKey);
-        queryCacheTimestamps.delete(qKey);
+      for (const [qKey, qList] of queryMemoryCache.entries()) {
+        if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
+          const idx = qList.findIndex(x => x.id === itemId);
+          if (idx >= 0) {
+            qList[idx] = prevItem;
+          }
+        }
       }
     }
     updateStatus('error', err?.message || 'تعذر تحديث العنصر في السحابة');
@@ -376,14 +411,15 @@ export async function deleteItemFromFirebase(
   } catch (err: any) {
     console.warn(`[Firebase RTDB item delete error on ${writeKey}]:`, err?.message || err);
     // Rollback
-    if (hadItem) {
+    if (hadItem && prevItem) {
       colStore.set(itemId, prevItem);
       memoryCache.set(collectionKey, Array.from(colStore.values()));
-    }
-    for (const qKey of Array.from(queryMemoryCache.keys())) {
-      if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
-        queryMemoryCache.delete(qKey);
-        queryCacheTimestamps.delete(qKey);
+      for (const [qKey, qList] of queryMemoryCache.entries()) {
+        if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
+          if (!qList.some(x => x.id === itemId)) {
+            qList.unshift(prevItem);
+          }
+        }
       }
     }
     updateStatus('error', err?.message || 'تعذر حذف العنصر من السحابة');

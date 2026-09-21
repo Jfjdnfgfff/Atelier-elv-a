@@ -44,13 +44,51 @@ async function startServer() {
     res.json({ status: 'ok', hasGeminiKey: !!process.env.GEMINI_API_KEY });
   });
 
+  // Lightweight in-memory rate limiter for OCR endpoint (20 requests per minute per IP)
+  const ocrRateLimitMap = new Map<string, { count: number; resetTime: number }>();
+  const OCR_RATE_LIMIT = 20;
+  const OCR_WINDOW_MS = 60 * 1000;
+
   // OCR ID and Customer Document Extraction Route (isolated 10mb parser)
   app.post('/api/ocr-id', ocrJsonParser, ocrUrlParser, async (req, res) => {
     try {
+      // IP-based rate limiting check
+      const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+      const ipKey = String(clientIp);
+      const now = Date.now();
+      const ipRecord = ocrRateLimitMap.get(ipKey);
+
+      if (ipRecord && now < ipRecord.resetTime) {
+        if (ipRecord.count >= OCR_RATE_LIMIT) {
+          return res.status(429).json({ 
+            error: 'تم تجاوز الحد المسموح به لطلبات استخراج البيانات (20 طلب بالدقيقة). يرجى الانتظار قليلاً.' 
+          });
+        }
+        ipRecord.count += 1;
+      } else {
+        ocrRateLimitMap.set(ipKey, { count: 1, resetTime: now + OCR_WINDOW_MS });
+      }
+
+      // Cleanup old entries periodically
+      if (ocrRateLimitMap.size > 1000) {
+        for (const [k, v] of ocrRateLimitMap.entries()) {
+          if (now >= v.resetTime) ocrRateLimitMap.delete(k);
+        }
+      }
+
       const { imageBase64, mimeType = 'image/jpeg', textInput } = req.body;
 
       if (!imageBase64 && !textInput) {
         return res.status(400).json({ error: 'صورة البطاقة أو النص مطلوب' });
+      }
+
+      // Validate textInput length if provided to prevent abuse
+      let cleanTextInput = '';
+      if (textInput) {
+        if (typeof textInput !== 'string' || textInput.length > 2000) {
+          return res.status(400).json({ error: 'النص المدخل طويل جداً أو غير صالح' });
+        }
+        cleanTextInput = textInput.trim();
       }
 
       // Security check: Validate MIME Type
@@ -90,6 +128,11 @@ async function startServer() {
             mimeType: cleanMime,
             data: cleanBase64,
           },
+        });
+      }
+      if (cleanTextInput) {
+        parts.push({
+          text: `Additional textual document context provided by user: ${cleanTextInput}`
         });
       }
 

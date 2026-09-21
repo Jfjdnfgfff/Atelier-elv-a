@@ -526,8 +526,24 @@ export const saveToStorage = <T>(key: string, data: T, syncFirebase: boolean = f
   }
   lastWrittenRef.set(key, data);
 
-  // Update in-memory cache instantly for zero latency
-  memoryStore.set(key, data);
+  // If saving an array of items with IDs (e.g. sales, rentals, expenses), merge with existing stored items to preserve local offline history
+  let dataToPersist: any = data;
+  if (Array.isArray(data) && data.length > 0 && (data[0] as any)?.id) {
+    const existing = memoryStore.get(key);
+    if (Array.isArray(existing) && existing.length > 0) {
+      const map = new Map<string, any>();
+      for (const item of existing) {
+        if (item && item.id) map.set(item.id, item);
+      }
+      for (const item of data) {
+        if (item && item.id) map.set(item.id, item);
+      }
+      dataToPersist = Array.from(map.values());
+    }
+  }
+
+  // Update in-memory cache instantly
+  memoryStore.set(key, dataToPersist);
 
   // Debounce disk/localStorage I/O to avoid freezing UI thread on frequent updates
   if (storageFlushDebouncers.has(key)) {
@@ -536,12 +552,12 @@ export const saveToStorage = <T>(key: string, data: T, syncFirebase: boolean = f
 
   const timer = setTimeout(() => {
     try {
-      localStorage.setItem(key, JSON.stringify(data));
+      localStorage.setItem(key, JSON.stringify(dataToPersist));
     } catch (e) {
       console.error(`Error saving key ${key} to storage:`, e);
     }
     storageFlushDebouncers.delete(key);
-  }, 100);
+  }, 150);
 
   storageFlushDebouncers.set(key, timer);
 
