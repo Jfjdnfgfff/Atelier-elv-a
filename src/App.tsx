@@ -225,20 +225,44 @@ export default function App() {
     const needsCaisse = currentView === 'caisse';
     const needsLogs = currentView === 'logs';
 
+    const currentYearStr = `${new Date().getFullYear()}`;
+    const yearStartStr = `${currentYearStr}-01-01`;
+
     if (needsRentals) {
       sub<Rental>(FIREBASE_COLLECTIONS.RENTALS, setRentals, STORAGE_KEYS.RENTALS, 'rentals', { limit: 200 });
     }
     if (needsSales) {
-      sub<Sale>(FIREBASE_COLLECTIONS.SALES, setSales, STORAGE_KEYS.SALES, 'sales', { limit: 200 });
+      if (currentView === 'dashboard') {
+        sub<Sale>(FIREBASE_COLLECTIONS.SALES, setSales, STORAGE_KEYS.SALES, 'sales', { 
+          orderBy: 'date', 
+          startAt: yearStartStr 
+        });
+      } else {
+        sub<Sale>(FIREBASE_COLLECTIONS.SALES, setSales, STORAGE_KEYS.SALES, 'sales', { limit: 200 });
+      }
     }
     if (needsExpenses) {
-      sub<Expense>(FIREBASE_COLLECTIONS.EXPENSES, setExpenses, STORAGE_KEYS.EXPENSES, 'expenses', { limit: 200 });
+      if (currentView === 'dashboard') {
+        sub<Expense>(FIREBASE_COLLECTIONS.EXPENSES, setExpenses, STORAGE_KEYS.EXPENSES, 'expenses', { 
+          orderBy: 'date', 
+          startAt: yearStartStr 
+        });
+      } else {
+        sub<Expense>(FIREBASE_COLLECTIONS.EXPENSES, setExpenses, STORAGE_KEYS.EXPENSES, 'expenses', { limit: 200 });
+      }
     }
     if (needsCredits) {
       sub<Credit>(FIREBASE_COLLECTIONS.CREDITS, setCredits, STORAGE_KEYS.CREDITS, 'credits', { limit: 150 });
     }
     if (needsStaffPayouts) {
-      sub<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, setStaffPayouts, STORAGE_KEYS.STAFF_PAYOUTS, 'staffPayouts', { limit: 100 });
+      if (currentView === 'dashboard') {
+        sub<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, setStaffPayouts, STORAGE_KEYS.STAFF_PAYOUTS, 'staffPayouts', { 
+          orderBy: 'date', 
+          startAt: yearStartStr 
+        });
+      } else {
+        sub<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, setStaffPayouts, STORAGE_KEYS.STAFF_PAYOUTS, 'staffPayouts', { limit: 100 });
+      }
     }
     if (needsMaintenance) {
       sub<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, setMaintenanceOrders, STORAGE_KEYS.MAINTENANCE, 'maintenanceOrders', { limit: 100 });

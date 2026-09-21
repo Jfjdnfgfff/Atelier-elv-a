@@ -72,6 +72,13 @@ function updateStatus(status: SyncStatus, error?: string) {
 }
 
 // In-memory cache for all collections for zero-latency UI and deduplication
+// 1. Canonical store tracks all known items by ID across queries
+const canonicalStoreCache = new Map<string, Map<string, any>>();
+// 2. Query cache strictly isolates results by unique query signature
+const queryMemoryCache = new Map<string, any[]>();
+const queryCacheTimestamps = new Map<string, number>();
+
+// Backward-compatible memoryCache mapping collectionKey -> canonical items array
 const memoryCache = new Map<string, any[]>();
 const cacheTimestamps = new Map<string, number>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
@@ -80,15 +87,25 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
 const pendingItemWrites = new Map<string, number>();
 
 /**
- * Manually invalidate cached collection in memory
+ * Manually invalidate cached collection in memory (both query and canonical caches)
  */
 export function invalidateMemoryCache(key?: string): void {
   if (key) {
     memoryCache.delete(key);
     cacheTimestamps.delete(key);
+    canonicalStoreCache.delete(key);
+    for (const qKey of Array.from(queryMemoryCache.keys())) {
+      if (qKey === key || qKey.startsWith(`${key}|`)) {
+        queryMemoryCache.delete(qKey);
+        queryCacheTimestamps.delete(qKey);
+      }
+    }
   } else {
     memoryCache.clear();
     cacheTimestamps.clear();
+    canonicalStoreCache.clear();
+    queryMemoryCache.clear();
+    queryCacheTimestamps.clear();
   }
 }
 
@@ -165,7 +182,7 @@ export function getLocalCachedData<T>(key: string): T[] {
 
 /**
  * Saves or overwrites a single item in Firebase by ID without rewriting the whole collection.
- * Immediately updates in-memory cache for 0ms UI latency.
+ * Immediately updates in-memory cache for 0ms UI latency with automatic rollback on network failure.
  */
 export async function saveItemToFirebase<T extends { id: string }>(
   collectionKey: string,
@@ -177,15 +194,29 @@ export async function saveItemToFirebase<T extends { id: string }>(
   pendingItemWrites.set(writeKey, Date.now());
   pendingItemWrites.set(collectionKey, Date.now());
 
-  // Optimistically update memory cache
-  const current = memoryCache.get(collectionKey) || [];
-  const idx = current.findIndex(x => x.id === item.id);
-  if (idx >= 0) {
-    current[idx] = item;
-  } else {
-    current.unshift(item);
+  // Snapshot previous canonical state for rollback
+  let colStore = canonicalStoreCache.get(collectionKey);
+  if (!colStore) {
+    colStore = new Map<string, any>();
+    canonicalStoreCache.set(collectionKey, colStore);
   }
-  memoryCache.set(collectionKey, [...current]);
+  const prevItem = colStore.get(item.id);
+  const hadItem = colStore.has(item.id);
+
+  // Optimistically update canonical & query caches
+  colStore.set(item.id, item);
+  memoryCache.set(collectionKey, Array.from(colStore.values()));
+  
+  for (const [qKey, qList] of queryMemoryCache.entries()) {
+    if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
+      const idx = qList.findIndex(x => x.id === item.id);
+      if (idx >= 0) {
+        qList[idx] = item;
+      } else {
+        qList.unshift(item);
+      }
+    }
+  }
 
   updateStatus('syncing');
 
@@ -204,6 +235,20 @@ export async function saveItemToFirebase<T extends { id: string }>(
     return true;
   } catch (err: any) {
     console.warn(`[Firebase RTDB item save error on ${writeKey}]:`, err?.message || err);
+    // Rollback optimistic update
+    if (hadItem) {
+      colStore.set(item.id, prevItem);
+    } else {
+      colStore.delete(item.id);
+    }
+    memoryCache.set(collectionKey, Array.from(colStore.values()));
+    // Invalidate affected query caches to ensure fresh data on next read
+    for (const qKey of Array.from(queryMemoryCache.keys())) {
+      if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
+        queryMemoryCache.delete(qKey);
+        queryCacheTimestamps.delete(qKey);
+      }
+    }
     updateStatus('error', err?.message || 'تعذر حفظ العنصر في السحابة');
     return false;
   }
@@ -211,7 +256,7 @@ export async function saveItemToFirebase<T extends { id: string }>(
 
 /**
  * Updates specific fields on an existing record by ID in Firebase.
- * Immediately merges updates into memory cache.
+ * Immediately merges updates into memory cache with automatic rollback on network failure.
  */
 export async function updateItemInFirebase<T extends { id?: string } = any>(
   collectionKey: string,
@@ -224,12 +269,26 @@ export async function updateItemInFirebase<T extends { id?: string } = any>(
   pendingItemWrites.set(writeKey, Date.now());
   pendingItemWrites.set(collectionKey, Date.now());
 
-  // Optimistically update memory cache
-  const current = memoryCache.get(collectionKey) || [];
-  const idx = current.findIndex(x => x.id === itemId);
-  if (idx >= 0) {
-    current[idx] = { ...current[idx], ...updates };
-    memoryCache.set(collectionKey, [...current]);
+  let colStore = canonicalStoreCache.get(collectionKey);
+  if (!colStore) {
+    colStore = new Map<string, any>();
+    canonicalStoreCache.set(collectionKey, colStore);
+  }
+  const prevItem = colStore.get(itemId);
+  const hadItem = colStore.has(itemId);
+
+  if (hadItem && prevItem) {
+    const merged = { ...prevItem, ...updates };
+    colStore.set(itemId, merged);
+    memoryCache.set(collectionKey, Array.from(colStore.values()));
+    for (const [qKey, qList] of queryMemoryCache.entries()) {
+      if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
+        const idx = qList.findIndex(x => x.id === itemId);
+        if (idx >= 0) {
+          qList[idx] = { ...qList[idx], ...updates };
+        }
+      }
+    }
   }
 
   updateStatus('syncing');
@@ -250,6 +309,17 @@ export async function updateItemInFirebase<T extends { id?: string } = any>(
     return true;
   } catch (err: any) {
     console.warn(`[Firebase RTDB item update error on ${writeKey}]:`, err?.message || err);
+    // Rollback
+    if (hadItem) {
+      colStore.set(itemId, prevItem);
+      memoryCache.set(collectionKey, Array.from(colStore.values()));
+    }
+    for (const qKey of Array.from(queryMemoryCache.keys())) {
+      if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
+        queryMemoryCache.delete(qKey);
+        queryCacheTimestamps.delete(qKey);
+      }
+    }
     updateStatus('error', err?.message || 'تعذر تحديث العنصر في السحابة');
     return false;
   }
@@ -257,7 +327,7 @@ export async function updateItemInFirebase<T extends { id?: string } = any>(
 
 /**
  * Deletes a single item by ID from Firebase.
- * Immediately removes from memory cache.
+ * Immediately removes from memory cache with automatic rollback on network failure.
  */
 export async function deleteItemFromFirebase(
   collectionKey: string,
@@ -269,9 +339,25 @@ export async function deleteItemFromFirebase(
   pendingItemWrites.set(writeKey, Date.now());
   pendingItemWrites.set(collectionKey, Date.now());
 
-  // Optimistically remove from memory cache
-  const current = memoryCache.get(collectionKey) || [];
-  memoryCache.set(collectionKey, current.filter(x => x.id !== itemId));
+  let colStore = canonicalStoreCache.get(collectionKey);
+  if (!colStore) {
+    colStore = new Map<string, any>();
+    canonicalStoreCache.set(collectionKey, colStore);
+  }
+  const prevItem = colStore.get(itemId);
+  const hadItem = colStore.has(itemId);
+
+  // Optimistically remove from canonical and query caches
+  colStore.delete(itemId);
+  memoryCache.set(collectionKey, Array.from(colStore.values()));
+  for (const [qKey, qList] of queryMemoryCache.entries()) {
+    if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
+      const idx = qList.findIndex(x => x.id === itemId);
+      if (idx >= 0) {
+        qList.splice(idx, 1);
+      }
+    }
+  }
 
   updateStatus('syncing');
 
@@ -289,6 +375,17 @@ export async function deleteItemFromFirebase(
     return true;
   } catch (err: any) {
     console.warn(`[Firebase RTDB item delete error on ${writeKey}]:`, err?.message || err);
+    // Rollback
+    if (hadItem) {
+      colStore.set(itemId, prevItem);
+      memoryCache.set(collectionKey, Array.from(colStore.values()));
+    }
+    for (const qKey of Array.from(queryMemoryCache.keys())) {
+      if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
+        queryMemoryCache.delete(qKey);
+        queryCacheTimestamps.delete(qKey);
+      }
+    }
     updateStatus('error', err?.message || 'تعذر حذف العنصر من السحابة');
     return false;
   }
@@ -379,19 +476,25 @@ export function buildQueryRegistryKey(key: string, options?: SubscribeQueryOptio
 
 /**
  * Subscribes to real-time changes on a collection with singleton listener multiplexing,
- * pagination/limiting on heavy historical collections, and echo loop prevention.
+ * strict query-level cache isolation, and echo loop prevention.
  */
 export function subscribeToFirebaseKey<T extends { id?: string }>(
   key: string,
   onDataReceived: (data: T[]) => void,
   options?: SubscribeQueryOptions
 ): () => void {
-  // If we already have cached data, immediately deliver it to caller
-  if (memoryCache.has(key)) {
+  const registryKey = buildQueryRegistryKey(key, options);
+
+  // If we already have query-isolated cache data, immediately deliver it to caller
+  if (queryMemoryCache.has(registryKey)) {
+    const cachedQueryData = queryMemoryCache.get(registryKey) as T[];
+    if (cachedQueryData && cachedQueryData.length > 0) {
+      onDataReceived(cachedQueryData);
+    }
+  } else if (!options && memoryCache.has(key)) {
+    // For full unconstrained subscriptions only, use canonical cache
     onDataReceived(memoryCache.get(key) as T[]);
   }
-
-  const registryKey = buildQueryRegistryKey(key, options);
 
   // Check if a shared listener already exists for this exact collection + query combination
   const registryEntry = activeListenersRegistry.get(registryKey);
@@ -418,7 +521,7 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
 
   try {
     const isHeavy = HEAVY_COLLECTIONS.has(key);
-    const limitCount = options?.limit || (isHeavy ? 120 : undefined);
+    const limitCount = options?.limit || (isHeavy && !options?.startAt ? 120 : undefined);
     
     // Connect directly to the records subnode for true indexed item limits
     const recordsRef = ref(rtdb, `boutique_store/${key}/records`);
@@ -454,30 +557,27 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
             const val = snapshot.val();
             const normalized = normalizeSnapshotData<T>(val);
             
-            // Smart merge into memory cache by ID to preserve local historical records
-            const existing = (memoryCache.get(key) || []) as T[];
-            let finalData: T[];
-            if (existing.length > 0 && normalized.length > 0) {
-              const map = new Map<string, T>();
-              for (const item of existing) {
-                if (item?.id) map.set(item.id, item);
-              }
-              for (const item of normalized) {
-                if (item?.id) map.set(item.id, item);
-              }
-              finalData = Array.from(map.values());
-            } else {
-              finalData = normalized;
-            }
+            // 1. Store strictly in the isolated query cache
+            queryMemoryCache.set(registryKey, normalized);
+            queryCacheTimestamps.set(registryKey, Date.now());
 
-            memoryCache.set(key, finalData);
+            // 2. Register into canonical store by ID without overwriting other query results
+            let colStore = canonicalStoreCache.get(key);
+            if (!colStore) {
+              colStore = new Map<string, any>();
+              canonicalStoreCache.set(key, colStore);
+            }
+            for (const item of normalized) {
+              if (item?.id) colStore.set(item.id, item);
+            }
+            memoryCache.set(key, Array.from(colStore.values()));
             cacheTimestamps.set(key, Date.now());
             
             const currentEntry = activeListenersRegistry.get(registryKey);
             if (currentEntry) {
               currentEntry.callbacks.forEach(cb => {
                 try {
-                  cb(finalData);
+                  cb(normalized);
                 } catch (e) {
                   console.error('Error in listener callback:', e);
                 }
@@ -493,7 +593,17 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
                 const parentVal = parentSnap.val();
                 const normalized = normalizeSnapshotData<T>(parentVal);
                 if (normalized.length > 0) {
-                  memoryCache.set(key, normalized);
+                  queryMemoryCache.set(registryKey, normalized);
+                  queryCacheTimestamps.set(registryKey, Date.now());
+                  let colStore = canonicalStoreCache.get(key);
+                  if (!colStore) {
+                    colStore = new Map<string, any>();
+                    canonicalStoreCache.set(key, colStore);
+                  }
+                  for (const item of normalized) {
+                    if (item?.id) colStore.set(item.id, item);
+                  }
+                  memoryCache.set(key, Array.from(colStore.values()));
                   cacheTimestamps.set(key, Date.now());
                   const currentEntry = activeListenersRegistry.get(registryKey);
                   if (currentEntry) {
@@ -503,9 +613,9 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
                   return;
                 }
               }
-              const existingCache = memoryCache.get(key) || [];
+              const existingCache = queryMemoryCache.get(registryKey) || [];
               if (existingCache.length === 0) {
-                memoryCache.set(key, []);
+                queryMemoryCache.set(registryKey, []);
                 const currentEntry = activeListenersRegistry.get(registryKey);
                 if (currentEntry) {
                   currentEntry.callbacks.forEach(cb => cb([]));
@@ -550,18 +660,31 @@ export async function getCachedOrFetchData<T extends { id?: string }>(
 ): Promise<T[]> {
   const cached = memoryCache.get(key);
   const timestamp = cacheTimestamps.get(key) || 0;
-  if (cached && Date.now() - timestamp < maxAgeMs) {
+  if (cached && cached.length > 0 && Date.now() - timestamp < maxAgeMs) {
     return cached as T[];
   }
 
   try {
     const recordsRef = ref(rtdb, `boutique_store/${key}/records`);
-    const snap = await get(recordsRef);
+    const dateField = COLLECTION_DATE_FIELDS[key];
+    const q = dateField
+      ? query(recordsRef, orderByChild(dateField), limitToLast(300))
+      : query(recordsRef, limitToLast(300));
+    const snap = await get(q);
     if (snap.exists()) {
       const normalized = normalizeSnapshotData<T>(snap.val());
-      memoryCache.set(key, normalized);
+      let colStore = canonicalStoreCache.get(key);
+      if (!colStore) {
+        colStore = new Map<string, any>();
+        canonicalStoreCache.set(key, colStore);
+      }
+      for (const item of normalized) {
+        if (item?.id) colStore.set(item.id, item);
+      }
+      const fullList = Array.from(colStore.values()) as T[];
+      memoryCache.set(key, fullList);
       cacheTimestamps.set(key, Date.now());
-      return normalized;
+      return fullList;
     }
     if (!checkedLegacyCollections.has(key)) {
       checkedLegacyCollections.add(key);
@@ -581,7 +704,8 @@ export async function getCachedOrFetchData<T extends { id?: string }>(
 }
 
 /**
- * Fetches full historical data on demand without keeping permanent high-memory listener
+ * Fetches full historical data on demand without keeping permanent high-memory listener.
+ * Respects chronological order and preserves canonical cache.
  */
 export async function fetchHistoricalCollection<T extends { id?: string }>(
   key: string,
@@ -589,18 +713,36 @@ export async function fetchHistoricalCollection<T extends { id?: string }>(
 ): Promise<T[]> {
   try {
     const recordsRef = ref(rtdb, `boutique_store/${key}/records`);
-    const q = query(recordsRef, limitToLast(limit));
+    const dateField = COLLECTION_DATE_FIELDS[key];
+    const q = dateField
+      ? query(recordsRef, orderByChild(dateField), limitToLast(limit))
+      : query(recordsRef, limitToLast(limit));
     const snap = await get(q);
     if (snap.exists()) {
       const normalized = normalizeSnapshotData<T>(snap.val());
-      memoryCache.set(key, normalized);
+      const queryKey = buildQueryRegistryKey(key, { orderBy: dateField, limit });
+      queryMemoryCache.set(queryKey, normalized);
+      queryCacheTimestamps.set(queryKey, Date.now());
+
+      let colStore = canonicalStoreCache.get(key);
+      if (!colStore) {
+        colStore = new Map<string, any>();
+        canonicalStoreCache.set(key, colStore);
+      }
+      for (const item of normalized) {
+        if (item?.id) colStore.set(item.id, item);
+      }
+      memoryCache.set(key, Array.from(colStore.values()));
       cacheTimestamps.set(key, Date.now());
       return normalized;
     }
     if (!checkedLegacyCollections.has(key)) {
       checkedLegacyCollections.add(key);
       const legacyRef = ref(rtdb, `boutique_store/${key}`);
-      const legacySnap = await get(query(legacyRef, limitToLast(limit)));
+      const legacyQ = dateField
+        ? query(legacyRef, orderByChild(dateField), limitToLast(limit))
+        : query(legacyRef, limitToLast(limit));
+      const legacySnap = await get(legacyQ);
       if (legacySnap.exists()) {
         const normalized = normalizeSnapshotData<T>(legacySnap.val());
         memoryCache.set(key, normalized);
