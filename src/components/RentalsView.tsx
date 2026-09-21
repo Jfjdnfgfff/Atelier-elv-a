@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Rental, ClothItem } from '../types';
 import { 
   Shirt, 
@@ -29,7 +29,7 @@ interface RentalsViewProps {
   onScanBarcode?: () => void;
 }
 
-export const RentalsView: React.FC<RentalsViewProps> = ({
+export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
   rentals,
   clothes,
   onAddRental,
@@ -47,7 +47,7 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
   const [handoverCollectedAmount, setHandoverCollectedAmount] = useState<number>(0);
   const [handoverNotes, setHandoverNotes] = useState<string>('');
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const getDaysDiffFromToday = (dateStr: string) => {
     const d1 = new Date(dateStr);
@@ -108,34 +108,45 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [clothes, onAddRental]);
 
-  // Status classification
-  const reservedRentals = rentals.filter(r => r.status === 'reserved');
-  const activeRentalsList = rentals.filter(r => r.status === 'active' && new Date(r.expectedReturnDate) >= new Date(today));
-  const overdueRentalsList = rentals.filter(r => r.status === 'active' && new Date(r.expectedReturnDate) < new Date(today));
-  const returnedRentalsList = rentals.filter(r => r.status === 'returned');
+  // Status classification with memoization
+  const { reservedRentals, activeRentalsList, overdueRentalsList, returnedRentalsList, filteredRentals } = useMemo(() => {
+    const todayDate = new Date(today);
+    const reserved = rentals.filter(r => r.status === 'reserved');
+    const activeList = rentals.filter(r => r.status === 'active' && new Date(r.expectedReturnDate) >= todayDate);
+    const overdueList = rentals.filter(r => r.status === 'active' && new Date(r.expectedReturnDate) < todayDate);
+    const returnedList = rentals.filter(r => r.status === 'returned');
 
-  const filteredRentals = rentals.filter(r => {
-    const isReserved = r.status === 'reserved';
-    const isReturned = r.status === 'returned';
-    const isOverdue = r.status === 'active' && new Date(r.expectedReturnDate) < new Date(today);
-    const isActive = r.status === 'active' && !isOverdue;
+    const filtered = rentals.filter(r => {
+      const isReserved = r.status === 'reserved';
+      const isReturned = r.status === 'returned';
+      const isOverdue = r.status === 'active' && new Date(r.expectedReturnDate) < todayDate;
+      const isActive = r.status === 'active' && !isOverdue;
 
-    if (filter === 'reserved' && !isReserved) return false;
-    if (filter === 'active' && !isActive) return false;
-    if (filter === 'overdue' && !isOverdue) return false;
-    if (filter === 'returned' && !isReturned) return false;
+      if (filter === 'reserved' && !isReserved) return false;
+      if (filter === 'active' && !isActive) return false;
+      if (filter === 'overdue' && !isOverdue) return false;
+      if (filter === 'returned' && !isReturned) return false;
 
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      return (
-        r.customerName.toLowerCase().includes(q) ||
-        r.customerPhone.includes(q) ||
-        r.itemName.toLowerCase().includes(q) ||
-        (r.customerIdNumber && r.customerIdNumber.includes(q))
-      );
-    }
-    return true;
-  });
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        return (
+          r.customerName.toLowerCase().includes(q) ||
+          r.customerPhone.includes(q) ||
+          r.itemName.toLowerCase().includes(q) ||
+          (r.customerIdNumber && r.customerIdNumber.includes(q))
+        );
+      }
+      return true;
+    });
+
+    return {
+      reservedRentals: reserved,
+      activeRentalsList: activeList,
+      overdueRentalsList: overdueList,
+      returnedRentalsList: returnedList,
+      filteredRentals: filtered
+    };
+  }, [rentals, filter, search, today]);
 
   return (
     <div className="space-y-5 p-3 sm:p-6" dir="rtl">
@@ -610,4 +621,4 @@ export const RentalsView: React.FC<RentalsViewProps> = ({
       )}
     </div>
   );
-};
+});

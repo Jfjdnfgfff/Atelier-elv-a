@@ -493,24 +493,51 @@ export const DEFAULT_CAISSE_CLOSURES: DailyCaisseClosure[] = [
   }
 ];
 
+// In-memory cache for fast, synchronous lookups without reading localStorage repeatedly
+const memoryStore = new Map<string, any>();
+const storageFlushDebouncers = new Map<string, any>();
+
 export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
+  if (memoryStore.has(key)) {
+    return memoryStore.get(key) as T;
+  }
   try {
     const item = localStorage.getItem(key);
-    if (!item) return defaultValue;
-    return JSON.parse(item);
+    if (!item) {
+      memoryStore.set(key, defaultValue);
+      return defaultValue;
+    }
+    const parsed = JSON.parse(item);
+    memoryStore.set(key, parsed);
+    return parsed;
   } catch (e) {
     console.error(`Error loading key ${key} from storage:`, e);
+    memoryStore.set(key, defaultValue);
     return defaultValue;
   }
 };
 
-export const saveToStorage = <T>(key: string, data: T, syncFirebase: boolean = true): void => {
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch (e) {
-    console.error(`Error saving key ${key} to storage:`, e);
+export const saveToStorage = <T>(key: string, data: T, syncFirebase: boolean = false): void => {
+  // Update in-memory cache instantly for zero latency
+  memoryStore.set(key, data);
+
+  // Debounce disk/localStorage I/O to avoid freezing UI thread on frequent updates
+  if (storageFlushDebouncers.has(key)) {
+    clearTimeout(storageFlushDebouncers.get(key));
   }
-  if (syncFirebase) {
+
+  const timer = setTimeout(() => {
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {
+      console.error(`Error saving key ${key} to storage:`, e);
+    }
+    storageFlushDebouncers.delete(key);
+  }, 100);
+
+  storageFlushDebouncers.set(key, timer);
+
+  if (syncFirebase && Array.isArray(data)) {
     saveToFirebase(key, data).catch((err) => {
       console.warn(`[Firebase sync warning for ${key}]:`, err);
     });

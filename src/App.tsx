@@ -35,31 +35,47 @@ import {
 } from './storage';
 import { 
   syncCollectionToCloud, 
+  saveCollectionToFirebase,
+  saveItemToFirebase,
+  updateItemInFirebase,
+  deleteItemFromFirebase,
   subscribeToCloudCollection, 
   FIREBASE_COLLECTIONS,
-  firebaseConfig 
+  firebaseConfig,
+  onSyncStatusChange,
+  SyncStatus
 } from './firebase';
 
-// Components
-import { BarcodeScanner } from './components/BarcodeScanner';
-import { FullReport } from './components/FullReport';
+// Shared Components
 import { NavButton, Modal } from './components/Shared';
-import { DashboardView } from './components/DashboardView';
-import { RentalsView } from './components/RentalsView';
-import { RentalModal } from './components/RentalModal';
-import { ReturnRentalModal } from './components/ReturnRentalModal';
-import { RentalReceiptModal } from './components/RentalReceiptModal';
-import { InventoryView } from './components/InventoryView';
-import { SalesPOSView } from './components/SalesPOSView';
-import { ExpensesView } from './components/ExpensesView';
-import { CreditsView } from './components/CreditsView';
-import { StaffPayoutsModal } from './components/StaffPayoutsModal';
-import { TailoringView } from './components/TailoringView';
-import { TailoringModal } from './components/TailoringModal';
-import { TailoringReceiptModal } from './components/TailoringReceiptModal';
-import { CaisseView } from './components/CaisseView';
-import { PartnersView } from './components/PartnersView';
-import { LogsView } from './components/LogsView';
+
+// Lazy Loaded Components for high speed code-splitting and instant initial load
+const DashboardView = React.lazy(() => import('./components/DashboardView').then(m => ({ default: m.DashboardView })));
+const RentalsView = React.lazy(() => import('./components/RentalsView').then(m => ({ default: m.RentalsView })));
+const InventoryView = React.lazy(() => import('./components/InventoryView').then(m => ({ default: m.InventoryView })));
+const SalesPOSView = React.lazy(() => import('./components/SalesPOSView').then(m => ({ default: m.SalesPOSView })));
+const ExpensesView = React.lazy(() => import('./components/ExpensesView').then(m => ({ default: m.ExpensesView })));
+const CreditsView = React.lazy(() => import('./components/CreditsView').then(m => ({ default: m.CreditsView })));
+const TailoringView = React.lazy(() => import('./components/TailoringView').then(m => ({ default: m.TailoringView })));
+const CaisseView = React.lazy(() => import('./components/CaisseView').then(m => ({ default: m.CaisseView })));
+const PartnersView = React.lazy(() => import('./components/PartnersView').then(m => ({ default: m.PartnersView })));
+const LogsView = React.lazy(() => import('./components/LogsView').then(m => ({ default: m.LogsView })));
+const FullReport = React.lazy(() => import('./components/FullReport').then(m => ({ default: m.FullReport })));
+const RentalModal = React.lazy(() => import('./components/RentalModal').then(m => ({ default: m.RentalModal })));
+const ReturnRentalModal = React.lazy(() => import('./components/ReturnRentalModal').then(m => ({ default: m.ReturnRentalModal })));
+const RentalReceiptModal = React.lazy(() => import('./components/RentalReceiptModal').then(m => ({ default: m.RentalReceiptModal })));
+const TailoringModal = React.lazy(() => import('./components/TailoringModal').then(m => ({ default: m.TailoringModal })));
+const TailoringReceiptModal = React.lazy(() => import('./components/TailoringReceiptModal').then(m => ({ default: m.TailoringReceiptModal })));
+const StaffPayoutsModal = React.lazy(() => import('./components/StaffPayoutsModal').then(m => ({ default: m.StaffPayoutsModal })));
+const BarcodeScanner = React.lazy(() => import('./components/BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
+
+// Lightweight Skeleton/Spinner fallback
+const LoadingFallback: React.FC = () => (
+  <div className="flex flex-col items-center justify-center min-h-[320px] p-8 text-center" dir="rtl">
+    <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+    <p className="text-xs font-bold text-slate-500">جاري التحميل...</p>
+  </div>
+);
 import { 
   Scale, 
   Shirt, 
@@ -152,7 +168,7 @@ export default function App() {
   // Real-time Cloud Subscriptions on Mount
   useEffect(() => {
     // 1. Subscribe to Clothes
-    const unsubClothes = subscribeToCloudCollection<ClothItem[]>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
+    const unsubClothes = subscribeToCloudCollection<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.clothes = true;
         setClothes(items);
@@ -165,7 +181,7 @@ export default function App() {
     });
 
     // 2. Subscribe to Rentals
-    const unsubRentals = subscribeToCloudCollection<Rental[]>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
+    const unsubRentals = subscribeToCloudCollection<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.rentals = true;
         setRentals(items);
@@ -178,7 +194,7 @@ export default function App() {
     });
 
     // 3. Subscribe to Sales
-    const unsubSales = subscribeToCloudCollection<Sale[]>(FIREBASE_COLLECTIONS.SALES, (items) => {
+    const unsubSales = subscribeToCloudCollection<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.sales = true;
         setSales(items);
@@ -188,7 +204,7 @@ export default function App() {
     });
 
     // 4. Subscribe to Expenses
-    const unsubExpenses = subscribeToCloudCollection<Expense[]>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
+    const unsubExpenses = subscribeToCloudCollection<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.expenses = true;
         setExpenses(items);
@@ -201,7 +217,7 @@ export default function App() {
     });
 
     // 5. Subscribe to Credits
-    const unsubCredits = subscribeToCloudCollection<Credit[]>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
+    const unsubCredits = subscribeToCloudCollection<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.credits = true;
         setCredits(items);
@@ -211,7 +227,7 @@ export default function App() {
     });
 
     // 6. Subscribe to Staff Payouts
-    const unsubStaffPayouts = subscribeToCloudCollection<StaffPayout[]>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
+    const unsubStaffPayouts = subscribeToCloudCollection<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.staffPayouts = true;
         setStaffPayouts(items);
@@ -221,7 +237,7 @@ export default function App() {
     });
 
     // 7. Subscribe to Staff Members
-    const unsubStaffMembers = subscribeToCloudCollection<StaffMember[]>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, (items) => {
+    const unsubStaffMembers = subscribeToCloudCollection<StaffMember>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.staffMembers = true;
         setStaffMembers(items);
@@ -234,7 +250,7 @@ export default function App() {
     });
 
     // 8. Subscribe to Staff Absences
-    const unsubStaffAbsences = subscribeToCloudCollection<StaffAbsence[]>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, (items) => {
+    const unsubStaffAbsences = subscribeToCloudCollection<StaffAbsence>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, (items) => {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.staffAbsences = true;
         setStaffAbsences(items);
@@ -244,7 +260,7 @@ export default function App() {
     });
 
     // 9. Subscribe to Maintenance Orders
-    const unsubMaintenance = subscribeToCloudCollection<MaintenanceOrder[]>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
+    const unsubMaintenance = subscribeToCloudCollection<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.maintenanceOrders = true;
         setMaintenanceOrders(items);
@@ -257,7 +273,7 @@ export default function App() {
     });
 
     // 10. Subscribe to Suppliers
-    const unsubSuppliers = subscribeToCloudCollection<Supplier[]>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
+    const unsubSuppliers = subscribeToCloudCollection<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.suppliers = true;
         setSuppliers(items);
@@ -270,7 +286,7 @@ export default function App() {
     });
 
     // 11. Subscribe to Caisse Closures
-    const unsubCaisse = subscribeToCloudCollection<DailyCaisseClosure[]>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
+    const unsubCaisse = subscribeToCloudCollection<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.caisseClosures = true;
         setCaisseClosures(items);
@@ -283,7 +299,7 @@ export default function App() {
     });
 
     // 12. Subscribe to Seamstresses
-    const unsubSeamstresses = subscribeToCloudCollection<Seamstress[]>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
+    const unsubSeamstresses = subscribeToCloudCollection<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.seamstresses = true;
         setSeamstresses(items);
@@ -296,7 +312,7 @@ export default function App() {
     });
 
     // 13. Subscribe to Raw Materials
-    const unsubRawMaterials = subscribeToCloudCollection<RawMaterial[]>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
+    const unsubRawMaterials = subscribeToCloudCollection<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.rawMaterials = true;
         setRawMaterials(items);
@@ -309,7 +325,7 @@ export default function App() {
     });
 
     // 14. Subscribe to Activity Logs
-    const unsubLogs = subscribeToCloudCollection<ActivityLog[]>(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, (items) => {
+    const unsubLogs = subscribeToCloudCollection<ActivityLog>(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.activityLogs = true;
         setActivityLogs(items);
@@ -340,187 +356,21 @@ export default function App() {
   }, []);
 
   // Sync to Local Storage & Debounced Sync to Firebase Cloud
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.CLOTHES, clothes);
-    if (isRemoteUpdateRef.current.clothes) {
-      isRemoteUpdateRef.current.clothes = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.CLOTHES, clothes);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [clothes]);
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.RENTALS, rentals);
-    if (isRemoteUpdateRef.current.rentals) {
-      isRemoteUpdateRef.current.rentals = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.RENTALS, rentals);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [rentals]);
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.SALES, sales);
-    if (isRemoteUpdateRef.current.sales) {
-      isRemoteUpdateRef.current.sales = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.SALES, sales);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [sales]);
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.EXPENSES, expenses);
-    if (isRemoteUpdateRef.current.expenses) {
-      isRemoteUpdateRef.current.expenses = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.EXPENSES, expenses);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [expenses]);
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.CREDITS, credits);
-    if (isRemoteUpdateRef.current.credits) {
-      isRemoteUpdateRef.current.credits = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.CREDITS, credits);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [credits]);
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, staffPayouts);
-    if (isRemoteUpdateRef.current.staffPayouts) {
-      isRemoteUpdateRef.current.staffPayouts = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, staffPayouts);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [staffPayouts]);
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, staffMembers);
-    if (isRemoteUpdateRef.current.staffMembers) {
-      isRemoteUpdateRef.current.staffMembers = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_MEMBERS, staffMembers);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [staffMembers]);
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, staffAbsences);
-    if (isRemoteUpdateRef.current.staffAbsences) {
-      isRemoteUpdateRef.current.staffAbsences = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_ABSENCES, staffAbsences);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [staffAbsences]);
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.MAINTENANCE, maintenanceOrders);
-    if (isRemoteUpdateRef.current.maintenanceOrders) {
-      isRemoteUpdateRef.current.maintenanceOrders = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, maintenanceOrders);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [maintenanceOrders]);
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.SUPPLIERS, suppliers);
-    if (isRemoteUpdateRef.current.suppliers) {
-      isRemoteUpdateRef.current.suppliers = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, suppliers);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [suppliers]);
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.SEAMSTRESSES, seamstresses);
-    if (isRemoteUpdateRef.current.seamstresses) {
-      isRemoteUpdateRef.current.seamstresses = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, seamstresses);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [seamstresses]);
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.RAW_MATERIALS, rawMaterials);
-    if (isRemoteUpdateRef.current.rawMaterials) {
-      isRemoteUpdateRef.current.rawMaterials = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, rawMaterials);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [rawMaterials]);
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, caisseClosures);
-    if (isRemoteUpdateRef.current.caisseClosures) {
-      isRemoteUpdateRef.current.caisseClosures = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, caisseClosures);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [caisseClosures]);
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.ACTIVITY_LOGS, activityLogs);
-    if (isRemoteUpdateRef.current.activityLogs) {
-      isRemoteUpdateRef.current.activityLogs = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, activityLogs);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [activityLogs]);
+  // High-performance asynchronous Local Storage persistence
+  useEffect(() => { saveToStorage(STORAGE_KEYS.CLOTHES, clothes, false); }, [clothes]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.RENTALS, rentals, false); }, [rentals]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.SALES, sales, false); }, [sales]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.EXPENSES, expenses, false); }, [expenses]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.CREDITS, credits, false); }, [credits]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, staffPayouts, false); }, [staffPayouts]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, staffMembers, false); }, [staffMembers]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, staffAbsences, false); }, [staffAbsences]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.MAINTENANCE, maintenanceOrders, false); }, [maintenanceOrders]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.SUPPLIERS, suppliers, false); }, [suppliers]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.SEAMSTRESSES, seamstresses, false); }, [seamstresses]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.RAW_MATERIALS, rawMaterials, false); }, [rawMaterials]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, caisseClosures, false); }, [caisseClosures]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.ACTIVITY_LOGS, activityLogs, false); }, [activityLogs]);
 
   // Central Activity Logging Helper
   const logActivity = (
@@ -2104,171 +1954,174 @@ export default function App() {
 
       {/* Main Views Container */}
       <main className="flex-1 max-w-6xl mx-auto w-full px-3 sm:px-6 md:px-8 py-4 pb-12 overflow-y-auto">
-        {currentView === 'dashboard' && (
-          <DashboardView 
-            stats={stats} 
-            rentals={rentals} 
-            maintenanceOrders={maintenanceOrders}
-            clothes={clothes}
-            caisseClosures={caisseClosures}
-            sales={sales}
-            expenses={expenses}
-            staffPayouts={staffPayouts}
-            hideFinances={hideFinances}
-            onPrivacyToggle={() => {
-              if (hideFinances) {
-                setActiveModal('privacyPassword');
-              } else {
-                setHideFinances(true);
-                localStorage.setItem('bm_hideFinances', 'true');
-              }
-            }}
-            onNavigate={(v) => setCurrentView(v)}
-            onOpenAddRental={() => setActiveModal('addRental')}
-            onOpenReturnModal={(r) => { setSelectedRental(r); setActiveModal('returnRental'); }}
-            onSendMessage={(r) => { setSelectedRental(r); setActiveModal('messageModal'); }}
-          />
-        )}
+        <React.Suspense fallback={<LoadingFallback />}>
+          {currentView === 'dashboard' && (
+            <DashboardView 
+              stats={stats} 
+              rentals={rentals} 
+              maintenanceOrders={maintenanceOrders}
+              clothes={clothes}
+              caisseClosures={caisseClosures}
+              sales={sales}
+              expenses={expenses}
+              staffPayouts={staffPayouts}
+              hideFinances={hideFinances}
+              onPrivacyToggle={() => {
+                if (hideFinances) {
+                  setActiveModal('privacyPassword');
+                } else {
+                  setHideFinances(true);
+                  localStorage.setItem('bm_hideFinances', 'true');
+                }
+              }}
+              onNavigate={(v) => setCurrentView(v)}
+              onOpenAddRental={() => setActiveModal('addRental')}
+              onOpenReturnModal={(r) => { setSelectedRental(r); setActiveModal('returnRental'); }}
+              onSendMessage={(r) => { setSelectedRental(r); setActiveModal('messageModal'); }}
+            />
+          )}
 
-        {currentView === 'rentals' && (
-          <RentalsView 
-            rentals={rentals} 
-            clothes={clothes}
-            onAddRental={(itemId) => {
-              setPreselectedRentalItemId(itemId);
-              setActiveModal('addRental');
-            }}
-            onEditRental={(r) => { setSelectedRental(r); setActiveModal('editRental'); }}
-            onDeleteRental={handleDeleteRental}
-            onActivateRental={handleActivateRental}
-            onOpenReturnModal={(r) => { setSelectedRental(r); setActiveModal('returnRental'); }}
-            onOpenReceiptModal={(r) => { setSelectedRental(r); setActiveModal('receiptModal'); }}
-            onSendMessage={(r) => { setSelectedRental(r); setActiveModal('messageModal'); }}
-            onScanBarcode={() => setIsScanning(true)}
-          />
-        )}
+          {currentView === 'rentals' && (
+            <RentalsView 
+              rentals={rentals} 
+              clothes={clothes}
+              onAddRental={(itemId) => {
+                setPreselectedRentalItemId(itemId);
+                setActiveModal('addRental');
+              }}
+              onEditRental={(r) => { setSelectedRental(r); setActiveModal('editRental'); }}
+              onDeleteRental={handleDeleteRental}
+              onActivateRental={handleActivateRental}
+              onOpenReturnModal={(r) => { setSelectedRental(r); setActiveModal('returnRental'); }}
+              onOpenReceiptModal={(r) => { setSelectedRental(r); setActiveModal('receiptModal'); }}
+              onSendMessage={(r) => { setSelectedRental(r); setActiveModal('messageModal'); }}
+              onScanBarcode={() => setIsScanning(true)}
+            />
+          )}
 
-        {currentView === 'inventory' && (
-          <InventoryView 
-            clothes={clothes}
-            rawMaterials={rawMaterials}
-            suppliers={suppliers}
-            onAddCloth={handleAddCloth}
-            onUpdateCloth={handleUpdateCloth}
-            onDeleteCloth={handleDeleteCloth}
-            onAddRawMaterial={handleAddRawMaterial}
-            onUpdateRawMaterial={handleUpdateRawMaterial}
-            onDeleteRawMaterial={handleDeleteRawMaterial}
-            onScanBarcode={() => setIsScanning(true)}
-          />
-        )}
+          {currentView === 'inventory' && (
+            <InventoryView 
+              clothes={clothes}
+              rawMaterials={rawMaterials}
+              suppliers={suppliers}
+              onAddCloth={handleAddCloth}
+              onUpdateCloth={handleUpdateCloth}
+              onDeleteCloth={handleDeleteCloth}
+              onAddRawMaterial={handleAddRawMaterial}
+              onUpdateRawMaterial={handleUpdateRawMaterial}
+              onDeleteRawMaterial={handleDeleteRawMaterial}
+              onScanBarcode={() => setIsScanning(true)}
+            />
+          )}
 
-        {currentView === 'sales' && (
-          <SalesPOSView 
-            clothes={clothes}
-            sales={sales}
-            onCompleteSale={handleCompleteSale}
-            onDeleteSale={handleDeleteSale}
-            onScanBarcode={() => setIsScanning(true)}
-            scannedCode={posScannedBarcode}
-            onClearScannedCode={() => setPosScannedBarcode(null)}
-          />
-        )}
+          {currentView === 'sales' && (
+            <SalesPOSView 
+              clothes={clothes}
+              sales={sales}
+              onCompleteSale={handleCompleteSale}
+              onDeleteSale={handleDeleteSale}
+              onScanBarcode={() => setIsScanning(true)}
+              scannedCode={posScannedBarcode}
+              onClearScannedCode={() => setPosScannedBarcode(null)}
+            />
+          )}
 
-        {currentView === 'tailoring' && (
-          <TailoringView 
-            orders={maintenanceOrders}
-            clothes={clothes}
-            onOpenAddModal={() => setActiveModal('addTailoring')}
-            onEditOrder={(order) => { setSelectedTailoringOrder(order); setActiveModal('editTailoring'); }}
-            onDeleteOrder={handleDeleteTailoringOrder}
-            onUpdateStatus={handleUpdateTailoringStatus}
-            onOpenReceiptModal={(order) => { setSelectedTailoringOrder(order); setActiveModal('tailoringReceipt'); }}
-          />
-        )}
+          {currentView === 'tailoring' && (
+            <TailoringView 
+              orders={maintenanceOrders}
+              clothes={clothes}
+              onOpenAddModal={() => setActiveModal('addTailoring')}
+              onEditOrder={(order) => { setSelectedTailoringOrder(order); setActiveModal('editTailoring'); }}
+              onDeleteOrder={handleDeleteTailoringOrder}
+              onUpdateStatus={handleUpdateTailoringStatus}
+              onOpenReceiptModal={(order) => { setSelectedTailoringOrder(order); setActiveModal('tailoringReceipt'); }}
+            />
+          )}
 
-        {currentView === 'expenses' && (
-          <ExpensesView 
-            expenses={expenses}
-            suppliers={suppliers}
-            credits={credits}
-            onAddExpense={handleAddExpense}
-            onDeleteExpense={handleDeleteExpense}
-            onSettleSupplierCredit={handleSettleSupplierCredit}
-            onAddSupplier={handleAddSupplier}
-          />
-        )}
+          {currentView === 'expenses' && (
+            <ExpensesView 
+              expenses={expenses}
+              suppliers={suppliers}
+              credits={credits}
+              onAddExpense={handleAddExpense}
+              onDeleteExpense={handleDeleteExpense}
+              onSettleSupplierCredit={handleSettleSupplierCredit}
+              onAddSupplier={handleAddSupplier}
+            />
+          )}
 
-        {currentView === 'credits' && (
-          <CreditsView 
-            credits={credits}
-            suppliers={suppliers}
-            onAddCredit={handleAddCredit}
-            onSettleCredit={handleSettleCredit}
-            onDeleteCredit={handleDeleteCredit}
-          />
-        )}
+          {currentView === 'credits' && (
+            <CreditsView 
+              credits={credits}
+              suppliers={suppliers}
+              onAddCredit={handleAddCredit}
+              onSettleCredit={handleSettleCredit}
+              onDeleteCredit={handleDeleteCredit}
+            />
+          )}
 
-        {currentView === 'caisse' && (
-          <CaisseView 
-            sales={sales}
-            rentals={rentals}
-            expenses={expenses}
-            staffPayouts={staffPayouts}
-            maintenanceOrders={maintenanceOrders}
-            caisseClosures={caisseClosures}
-            onSaveClosure={handleSaveCaisseClosure}
-            onDeleteClosure={handleDeleteCaisseClosure}
-            hideFinances={hideFinances}
-            onPrivacyToggle={() => {
-              if (hideFinances) {
-                setActiveModal('privacyPassword');
-              } else {
-                setHideFinances(true);
-                localStorage.setItem('bm_hideFinances', 'true');
-              }
-            }}
-          />
-        )}
+          {currentView === 'caisse' && (
+            <CaisseView 
+              sales={sales}
+              rentals={rentals}
+              expenses={expenses}
+              staffPayouts={staffPayouts}
+              maintenanceOrders={maintenanceOrders}
+              caisseClosures={caisseClosures}
+              onSaveClosure={handleSaveCaisseClosure}
+              onDeleteClosure={handleDeleteCaisseClosure}
+              hideFinances={hideFinances}
+              onPrivacyToggle={() => {
+                if (hideFinances) {
+                  setActiveModal('privacyPassword');
+                } else {
+                  setHideFinances(true);
+                  localStorage.setItem('bm_hideFinances', 'true');
+                }
+              }}
+            />
+          )}
 
-        {currentView === 'partners' && (
-          <PartnersView 
-            suppliers={suppliers}
-            seamstresses={seamstresses}
-            expenses={expenses}
-            maintenanceOrders={maintenanceOrders}
-            credits={credits}
-            onAddSupplier={handleAddSupplier}
-            onUpdateSupplier={handleUpdateSupplier}
-            onDeleteSupplier={handleDeleteSupplier}
-            onAddSeamstress={handleAddSeamstress}
-            onUpdateSeamstress={handleUpdateSeamstress}
-            onDeleteSeamstress={handleDeleteSeamstress}
-            onSettleSupplierCredit={handleSettleSupplierCredit}
-          />
-        )}
+          {currentView === 'partners' && (
+            <PartnersView 
+              suppliers={suppliers}
+              seamstresses={seamstresses}
+              expenses={expenses}
+              maintenanceOrders={maintenanceOrders}
+              credits={credits}
+              onAddSupplier={handleAddSupplier}
+              onUpdateSupplier={handleUpdateSupplier}
+              onDeleteSupplier={handleDeleteSupplier}
+              onAddSeamstress={handleAddSeamstress}
+              onUpdateSeamstress={handleUpdateSeamstress}
+              onDeleteSeamstress={handleDeleteSeamstress}
+              onSettleSupplierCredit={handleSettleSupplierCredit}
+            />
+          )}
 
-        {currentView === 'logs' && (
-          <LogsView 
-            logs={activityLogs}
-            onDeleteLog={handleDeleteLog}
-            onClearAllLogs={handleClearAllLogs}
-            onAddLog={handleAddManualLog}
-          />
-        )}
+          {currentView === 'logs' && (
+            <LogsView 
+              logs={activityLogs}
+              onDeleteLog={handleDeleteLog}
+              onClearAllLogs={handleClearAllLogs}
+              onAddManualLog={handleAddManualLog}
+              showToast={showToast}
+            />
+          )}
+        </React.Suspense>
       </main>
 
       {/* ================= MODALS ================= */}
-
-      {/* Add Tailoring Modal */}
-      {activeModal === 'addTailoring' && (
-        <TailoringModal
-          clothes={clothes}
-          staffMembers={staffMembers}
-          onSave={handleAddTailoringOrder}
-          onClose={() => setActiveModal(null)}
-        />
-      )}
+      <React.Suspense fallback={null}>
+        {/* Add Tailoring Modal */}
+        {activeModal === 'addTailoring' && (
+          <TailoringModal
+            clothes={clothes}
+            staffMembers={staffMembers}
+            onSave={handleAddTailoringOrder}
+            onClose={() => setActiveModal(null)}
+          />
+        )}
 
       {/* Edit Tailoring Modal */}
       {activeModal === 'editTailoring' && selectedTailoringOrder && (
@@ -2875,6 +2728,7 @@ export default function App() {
           </div>
         </Modal>
       )}
+      </React.Suspense>
     </div>
   );
 }

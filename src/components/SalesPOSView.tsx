@@ -36,7 +36,7 @@ interface SalesPOSViewProps {
   onClearScannedCode?: () => void;
 }
 
-export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
+export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
   clothes,
   sales,
   onCompleteSale,
@@ -1395,4 +1395,4 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
       )}
     </div>
   );
-};
+});

@@ -12,7 +12,7 @@ interface FullReportProps {
   hideFinances: boolean;
 }
 
-export const FullReport: React.FC<FullReportProps> = ({
+export const FullReport: React.FC<FullReportProps> = React.memo(({
   clothes,
   rentals,
   sales,
@@ -188,4 +188,4 @@ export const FullReport: React.FC<FullReportProps> = ({
       </div>
     </div>
   );
-};
+});

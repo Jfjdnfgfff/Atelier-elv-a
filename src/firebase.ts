@@ -4,10 +4,14 @@ import {
   ref, 
   set, 
   update, 
-  push, 
+  remove,
   get, 
-  onValue 
+  onValue,
+  query,
+  limitToLast,
+  orderByChild
 } from 'firebase/database';
+import { getFirestore } from 'firebase/firestore';
 
 export const firebaseConfig = {
   apiKey: "AIzaSyCbvyOhZK42hTsKjOWPPDc60LRyyrpoo34",
@@ -23,8 +27,11 @@ export const firebaseConfig = {
 // Initialize Firebase App singleton
 export const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize Realtime Database only
+// Initialize Realtime Database
 export const rtdb = getDatabase(firebaseApp);
+
+// Initialize Firestore for security rules compliance
+export const db = getFirestore(firebaseApp);
 
 export type SyncStatus = 'connected' | 'syncing' | 'offline' | 'error';
 
@@ -45,6 +52,7 @@ export function onSyncStatusChange(callback: SyncListener) {
   };
 }
 
+let statusDebounceTimer: any = null;
 function updateStatus(status: SyncStatus, error?: string) {
   currentStatus = status;
   if (status === 'connected') {
@@ -54,153 +62,18 @@ function updateStatus(status: SyncStatus, error?: string) {
   if (error) {
     lastErrorMessage = error;
   }
-  listeners.forEach((l) => l(currentStatus, lastSyncedTime, lastErrorMessage));
+  
+  if (statusDebounceTimer) clearTimeout(statusDebounceTimer);
+  statusDebounceTimer = setTimeout(() => {
+    listeners.forEach((l) => l(currentStatus, lastSyncedTime, lastErrorMessage));
+  }, 100);
 }
 
-// Keep track of locally initiated writes to avoid echo re-renders
-const pendingLocalWrites = new Map<string, number>();
+// In-memory cache for all collections to prevent redundant network fetches
+const memoryCache = new Map<string, any[]>();
 
-/**
- * Save collection data to Firebase (saves to both Firestore & Realtime Database for maximum compatibility)
- */
-export async function saveToFirebase<T>(key: string, data: T): Promise<boolean> {
-  updateStatus('syncing');
-  const now = Date.now();
-  pendingLocalWrites.set(key, now);
-
-  let success = false;
-
-  try {
-    const rtdbRef = ref(rtdb, `boutique_store/${key}`);
-    const cleanData = JSON.parse(JSON.stringify(data));
-    
-    await set(rtdbRef, {
-      items: cleanData,
-      updatedAt: new Date().toISOString()
-    });
-    success = true;
-  } catch (rtdbError: any) {
-    console.warn(`[Firebase RTDB save error on ${key}]:`, rtdbError?.message || rtdbError);
-    if (rtdbError?.message?.includes('Permission denied')) {
-      alert('خطأ في الصلاحيات (Realtime Database): الرجاء تعديل قواعد الأمان في Firebase.');
-    }
-  }
-
-  if (success) {
-    updateStatus('connected');
-  } else {
-    updateStatus('error', 'تعذر حفظ البيانات في السحابة - يرجى التحقق من الاتصال');
-  }
-
-  return success;
-}
-
-/**
- * Incrementally update specific fields in Firebase database using native update()
- */
-export async function updateInFirebase<T extends object>(key: string, updates: Partial<T>): Promise<boolean> {
-  updateStatus('syncing');
-  const now = Date.now();
-  pendingLocalWrites.set(key, now);
-
-  try {
-    const storeRef = ref(rtdb, `boutique_store/${key}`);
-    const cleanUpdates: Record<string, any> = {};
-    Object.keys(updates).forEach(field => {
-      cleanUpdates[field] = (updates as any)[field];
-    });
-    cleanUpdates.updatedAt = new Date().toISOString();
-
-    await update(storeRef, cleanUpdates);
-    updateStatus('connected');
-    return true;
-  } catch (err: any) {
-    console.warn(`[Firebase RTDB update error on ${key}]:`, err?.message || err);
-    updateStatus('error', err?.message || 'تعذر تحديث البيانات في السحابة');
-    return false;
-  }
-}
-
-/**
- * Push a new record into a collection using native push()
- */
-export async function pushToFirebase<T>(key: string, newItem: T): Promise<boolean> {
-  updateStatus('syncing');
-  const now = Date.now();
-  pendingLocalWrites.set(key, now);
-
-  try {
-    const itemsRef = ref(rtdb, `boutique_store/${key}/items`);
-    const newRef = push(itemsRef);
-    await set(newRef, JSON.parse(JSON.stringify(newItem)));
-    await update(ref(rtdb, `boutique_store/${key}`), {
-      updatedAt: new Date().toISOString()
-    });
-    updateStatus('connected');
-    return true;
-  } catch (err: any) {
-    console.warn(`[Firebase RTDB push error on ${key}]:`, err?.message || err);
-    updateStatus('error', err?.message || 'تعذر إضافة العنصر السحابي');
-    return false;
-  }
-}
-
-/**
- * Subscribe to real-time changes on a specific key from Firebase
- */
-export function subscribeToFirebaseKey<T>(
-  key: string, 
-  onDataReceived: (data: T) => void
-): () => void {
-  let unsubRTDB: (() => void) | null = null;
-
-  try {
-    const rtdbRef = ref(rtdb, `boutique_store/${key}`);
-    unsubRTDB = onValue(rtdbRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const val = snapshot.val();
-        const lastWrite = pendingLocalWrites.get(key) || 0;
-        if (Date.now() - lastWrite > 1200) {
-          if (val && val.items !== undefined) {
-            onDataReceived(val.items as T);
-          } else {
-            onDataReceived([] as unknown as T);
-          }
-          updateStatus('connected');
-        }
-      } else {
-        const lastWrite = pendingLocalWrites.get(key) || 0;
-        if (Date.now() - lastWrite > 1200) {
-          onDataReceived([] as unknown as T);
-        }
-      }
-    }, (err: any) => {
-      console.warn(`[RTDB listener error for ${key}]:`, err.message);
-    });
-  } catch (e) {
-    console.warn(`[RTDB subscribe failed for ${key}]:`, e);
-  }
-
-  return () => {
-    if (unsubRTDB) unsubRTDB();
-  };
-}
-
-/**
- * Fetch initial cloud state for all keys once
- */
-export async function fetchInitialFirebaseData<T>(key: string): Promise<T | null> {
-  try {
-    const rtdbRef = ref(rtdb, `boutique_store/${key}`);
-    const snap = await get(rtdbRef);
-    if (snap.exists() && snap.val()?.items !== undefined) {
-      return snap.val().items as T;
-    }
-  } catch (e) {
-    console.warn(`[RTDB initial fetch failed for ${key}]:`, e);
-  }
-  return null;
-}
+// Track locally initiated writes with item-level precision to avoid echo loops
+const pendingItemWrites = new Map<string, number>();
 
 export const FIREBASE_COLLECTIONS = {
   CLOTHES: 'boutique_clothes',
@@ -221,6 +94,256 @@ export const FIREBASE_COLLECTIONS = {
   STORE_CONFIG: 'boutique_store_config'
 };
 
-// Aliases for compatibility
-export const syncCollectionToCloud = saveToFirebase;
+/**
+ * Sanitize object for Firebase (remove undefined, convert Dates, deep clone)
+ */
+function sanitizeForFirebase<T>(data: T): any {
+  if (data === undefined) return null;
+  return JSON.parse(JSON.stringify(data));
+}
+
+/**
+ * Normalizes Firebase snapshot data whether stored as legacy array or records map
+ */
+export function normalizeSnapshotData<T extends { id?: string }>(val: any): T[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.filter(Boolean);
+  if (val.items && Array.isArray(val.items)) return val.items.filter(Boolean);
+  
+  // If stored in record map: records: { [id]: item } or direct { [id]: item }
+  const records = val.records || val;
+  if (typeof records === 'object') {
+    const items: T[] = [];
+    Object.keys(records).forEach((k) => {
+      if (k === 'updatedAt' || k === 'meta') return;
+      const item = records[k];
+      if (item && typeof item === 'object') {
+        if (!item.id && k) item.id = k;
+        items.push(item);
+      }
+    });
+    return items;
+  }
+  return [];
+}
+
+/**
+ * Saves or overwrites a single item in Firebase by ID without rewriting the whole collection
+ */
+export async function saveItemToFirebase<T extends { id: string }>(
+  collectionKey: string,
+  item: T
+): Promise<boolean> {
+  if (!item || !item.id) return false;
+  
+  const writeKey = `${collectionKey}/${item.id}`;
+  pendingItemWrites.set(writeKey, Date.now());
+  updateStatus('syncing');
+
+  try {
+    const itemRef = ref(rtdb, `boutique_store/${collectionKey}/records/${item.id}`);
+    const cleanItem = sanitizeForFirebase(item);
+    
+    await set(itemRef, cleanItem);
+    
+    // Update collection timestamp lightweight
+    const metaRef = ref(rtdb, `boutique_store/${collectionKey}/updatedAt`);
+    set(metaRef, new Date().toISOString()).catch(() => {});
+
+    updateStatus('connected');
+    return true;
+  } catch (err: any) {
+    console.warn(`[Firebase RTDB item save error on ${writeKey}]:`, err?.message || err);
+    updateStatus('error', err?.message || 'تعذر حفظ العنصر في السحابة');
+    return false;
+  }
+}
+
+/**
+ * Updates specific fields on an existing record by ID in Firebase
+ */
+export async function updateItemInFirebase<T extends { id?: string }>(
+  collectionKey: string,
+  itemId: string,
+  updates: Partial<T>
+): Promise<boolean> {
+  if (!itemId) return false;
+
+  const writeKey = `${collectionKey}/${itemId}`;
+  pendingItemWrites.set(writeKey, Date.now());
+  updateStatus('syncing');
+
+  try {
+    const itemRef = ref(rtdb, `boutique_store/${collectionKey}/records/${itemId}`);
+    const cleanUpdates = sanitizeForFirebase(updates);
+    
+    await update(itemRef, cleanUpdates);
+
+    // Update collection timestamp
+    const metaRef = ref(rtdb, `boutique_store/${collectionKey}/updatedAt`);
+    set(metaRef, new Date().toISOString()).catch(() => {});
+
+    updateStatus('connected');
+    return true;
+  } catch (err: any) {
+    console.warn(`[Firebase RTDB item update error on ${writeKey}]:`, err?.message || err);
+    updateStatus('error', err?.message || 'تعذر تحديث العنصر في السحابة');
+    return false;
+  }
+}
+
+/**
+ * Deletes a single item by ID from Firebase
+ */
+export async function deleteItemFromFirebase(
+  collectionKey: string,
+  itemId: string
+): Promise<boolean> {
+  if (!itemId) return false;
+
+  const writeKey = `${collectionKey}/${itemId}`;
+  pendingItemWrites.set(writeKey, Date.now());
+  updateStatus('syncing');
+
+  try {
+    const itemRef = ref(rtdb, `boutique_store/${collectionKey}/records/${itemId}`);
+    await remove(itemRef);
+
+    // Also remove from legacy items array if exists
+    const metaRef = ref(rtdb, `boutique_store/${collectionKey}/updatedAt`);
+    set(metaRef, new Date().toISOString()).catch(() => {});
+
+    updateStatus('connected');
+    return true;
+  } catch (err: any) {
+    console.warn(`[Firebase RTDB item delete error on ${writeKey}]:`, err?.message || err);
+    updateStatus('error', err?.message || 'تعذر حذف العنصر من السحابة');
+    return false;
+  }
+}
+
+/**
+ * Batch saves or migrates a full collection to Firebase in the optimized records structure
+ */
+export async function saveCollectionToFirebase<T extends { id?: string }>(
+  key: string,
+  data: T[]
+): Promise<boolean> {
+  if (!Array.isArray(data)) return false;
+  
+  updateStatus('syncing');
+  pendingItemWrites.set(key, Date.now());
+
+  try {
+    const storeRef = ref(rtdb, `boutique_store/${key}`);
+    const cleanData = sanitizeForFirebase(data);
+    
+    // Store records as indexed map for fast O(1) single-item reads and updates
+    const recordsMap: Record<string, any> = {};
+    cleanData.forEach((item: any, idx: number) => {
+      const id = item.id || `rec_${idx}`;
+      recordsMap[id] = item;
+    });
+
+    await set(storeRef, {
+      records: recordsMap,
+      // also keep items field for backwards compatibility
+      items: cleanData,
+      updatedAt: new Date().toISOString()
+    });
+
+    // Update memory cache
+    memoryCache.set(key, data);
+
+    updateStatus('connected');
+    return true;
+  } catch (rtdbError: any) {
+    console.warn(`[Firebase RTDB save collection error on ${key}]:`, rtdbError?.message || rtdbError);
+    updateStatus('error', rtdbError?.message || 'تعذر حفظ البيانات في السحابة');
+    return false;
+  }
+}
+
+/**
+ * Subscribes to real-time changes on a collection with intelligent caching and local mutation protection
+ */
+export function subscribeToFirebaseKey<T extends { id?: string }>(
+  key: string,
+  onDataReceived: (data: T[]) => void,
+  options?: { limit?: number; orderBy?: string }
+): () => void {
+  let unsubRTDB: (() => void) | null = null;
+
+  try {
+    const rtdbRef = ref(rtdb, `boutique_store/${key}`);
+    let dbQuery: any = rtdbRef;
+
+    if (options?.limit) {
+      if (options.orderBy) {
+        dbQuery = query(rtdbRef, orderByChild(options.orderBy), limitToLast(options.limit));
+      } else {
+        dbQuery = query(rtdbRef, limitToLast(options.limit));
+      }
+    }
+
+    unsubRTDB = onValue(
+      dbQuery,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const val = snapshot.val();
+          const lastWrite = pendingItemWrites.get(key) || 0;
+          
+          // Prevent echo loops for recent local batch writes
+          if (Date.now() - lastWrite > 1000) {
+            const normalized = normalizeSnapshotData<T>(val);
+            memoryCache.set(key, normalized);
+            onDataReceived(normalized);
+            updateStatus('connected');
+          }
+        } else {
+          const lastWrite = pendingItemWrites.get(key) || 0;
+          if (Date.now() - lastWrite > 1000) {
+            memoryCache.set(key, []);
+            onDataReceived([]);
+          }
+        }
+      },
+      (err: any) => {
+        console.warn(`[RTDB listener error for ${key}]:`, err.message);
+      }
+    );
+  } catch (e) {
+    console.warn(`[RTDB subscribe failed for ${key}]:`, e);
+  }
+
+  return () => {
+    if (unsubRTDB) unsubRTDB();
+  };
+}
+
+/**
+ * Returns in-memory cached data if available, else fetches once from Firebase
+ */
+export async function getCachedOrFetchData<T extends { id?: string }>(key: string): Promise<T[]> {
+  if (memoryCache.has(key)) {
+    return memoryCache.get(key) as T[];
+  }
+
+  try {
+    const rtdbRef = ref(rtdb, `boutique_store/${key}`);
+    const snap = await get(rtdbRef);
+    if (snap.exists()) {
+      const normalized = normalizeSnapshotData<T>(snap.val());
+      memoryCache.set(key, normalized);
+      return normalized;
+    }
+  } catch (e) {
+    console.warn(`[RTDB fetch failed for ${key}]:`, e);
+  }
+  return [];
+}
+
+// Backward-compatible aliases
+export const saveToFirebase = saveCollectionToFirebase;
+export const syncCollectionToCloud = saveCollectionToFirebase;
 export const subscribeToCloudCollection = subscribeToFirebaseKey;

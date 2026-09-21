@@ -38,7 +38,7 @@ interface PartnersViewProps {
   onSettleSupplierCredit?: (expenseId: string, paidNow: number) => void;
 }
 
-export const PartnersView: React.FC<PartnersViewProps> = ({
+export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
   suppliers,
   seamstresses,
   expenses,
@@ -1172,4 +1172,4 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
       )}
     </div>
   );
-};
+});

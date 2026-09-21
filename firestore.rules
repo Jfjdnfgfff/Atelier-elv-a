@@ -1,9 +1,189 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read and write for all authorized store operations
+
+    // Helper functions for data sanitization and validation
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isString(val) {
+      return val is string;
+    }
+
+    function isNumber(val) {
+      return val is number;
+    }
+
+    function isPositiveOrZero(val) {
+      return val is number && val >= 0;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    // Default deny for unmatched collections
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
+    }
+
+    // Clothes Collection Rules
+    match /clothes/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id)
+        && hasRequiredFields(['name'])
+        && isString(request.resource.data.name)
+        && request.resource.data.name.size() > 0
+        && (!('buyCost' in request.resource.data) || isPositiveOrZero(request.resource.data.buyCost))
+        && (!('sellPrice' in request.resource.data) || isPositiveOrZero(request.resource.data.sellPrice))
+        && (!('rentPrice' in request.resource.data) || isPositiveOrZero(request.resource.data.rentPrice));
+      allow delete: if isValidId(id);
+    }
+
+    // Rentals Collection Rules
+    match /rentals/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id)
+        && hasRequiredFields(['customerName', 'itemId', 'startDate', 'expectedReturnDate', 'status'])
+        && isString(request.resource.data.customerName)
+        && isString(request.resource.data.itemId)
+        && isString(request.resource.data.status)
+        && (!('rentPrice' in request.resource.data) || isPositiveOrZero(request.resource.data.rentPrice))
+        && (!('paidAmount' in request.resource.data) || isPositiveOrZero(request.resource.data.paidAmount));
+      allow delete: if isValidId(id);
+    }
+
+    // Sales Collection Rules
+    match /sales/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id)
+        && hasRequiredFields(['totalAmount', 'paidAmount'])
+        && isPositiveOrZero(request.resource.data.totalAmount)
+        && isPositiveOrZero(request.resource.data.paidAmount);
+      allow delete: if isValidId(id);
+    }
+
+    // Expenses Collection Rules
+    match /expenses/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id)
+        && hasRequiredFields(['amount', 'category'])
+        && isPositiveOrZero(request.resource.data.amount)
+        && isString(request.resource.data.category);
+      allow delete: if isValidId(id);
+    }
+
+    // Credits / Debts Collection Rules
+    match /credits/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id)
+        && hasRequiredFields(['name', 'amount'])
+        && isString(request.resource.data.name)
+        && isPositiveOrZero(request.resource.data.amount);
+      allow delete: if isValidId(id);
+    }
+
+    // Maintenance / Tailoring Orders Rules
+    match /maintenance/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id)
+        && hasRequiredFields(['itemName', 'serviceType', 'status'])
+        && isString(request.resource.data.itemName)
+        && isString(request.resource.data.status);
+      allow delete: if isValidId(id);
+    }
+
+    // Staff Members Collection Rules
+    match /staff_members/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id)
+        && hasRequiredFields(['name', 'role', 'baseSalary'])
+        && isString(request.resource.data.name)
+        && isPositiveOrZero(request.resource.data.baseSalary);
+      allow delete: if isValidId(id);
+    }
+
+    // Staff Payouts Collection Rules
+    match /staff_payouts/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id)
+        && hasRequiredFields(['staffId', 'amount', 'type'])
+        && isString(request.resource.data.staffId)
+        && isPositiveOrZero(request.resource.data.amount);
+      allow delete: if isValidId(id);
+    }
+
+    // Staff Absences Collection Rules
+    match /staff_absences/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id)
+        && hasRequiredFields(['staffId', 'date', 'status'])
+        && isString(request.resource.data.staffId);
+      allow delete: if isValidId(id);
+    }
+
+    // Suppliers Collection Rules
+    match /suppliers/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id)
+        && hasRequiredFields(['name'])
+        && isString(request.resource.data.name);
+      allow delete: if isValidId(id);
+    }
+
+    // Seamstresses Collection Rules
+    match /seamstresses/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id)
+        && hasRequiredFields(['name'])
+        && isString(request.resource.data.name);
+      allow delete: if isValidId(id);
+    }
+
+    // Raw Materials Collection Rules
+    match /raw_materials/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id)
+        && hasRequiredFields(['name'])
+        && isString(request.resource.data.name);
+      allow delete: if isValidId(id);
+    }
+
+    // Daily Caisse Closures Rules
+    match /caisse_closures/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id)
+        && hasRequiredFields(['date', 'actualAmount', 'theoreticalAmount'])
+        && isString(request.resource.data.date)
+        && isNumber(request.resource.data.actualAmount)
+        && isNumber(request.resource.data.theoreticalAmount);
+      allow delete: if isValidId(id);
+    }
+
+    // Customers Collection Rules
+    match /customers/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id)
+        && hasRequiredFields(['name'])
+        && isString(request.resource.data.name);
+      allow delete: if isValidId(id);
+    }
+
+    // Activity Logs Collection Rules
+    match /activity_logs/{id} {
+      allow read: if true;
+      allow create: if isValidId(id)
+        && hasRequiredFields(['title', 'actionType', 'category', 'timestamp'])
+        && isString(request.resource.data.title);
+      allow update: if false; // Logs are immutable once created
+      allow delete: if isValidId(id);
+    }
+
+    // Store Config Collection Rules
+    match /store_config/{id} {
+      allow read: if true;
+      allow write: if isValidId(id);
     }
   }
 }

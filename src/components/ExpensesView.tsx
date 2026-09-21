@@ -30,7 +30,7 @@ interface ExpensesViewProps {
   onAddSupplier?: (sup: Supplier) => void;
 }
 
-export const ExpensesView: React.FC<ExpensesViewProps> = ({
+export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
   expenses,
   suppliers = [],
   credits = [],
@@ -987,4 +987,4 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
       )}
     </div>
   );
-};
+});

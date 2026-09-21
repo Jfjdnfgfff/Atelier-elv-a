@@ -44,7 +44,7 @@ interface CaisseViewProps {
   onPrivacyToggle: () => void;
 }
 
-export const CaisseView: React.FC<CaisseViewProps> = ({
+export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
   sales,
   rentals,
   expenses,
@@ -1097,4 +1097,4 @@ export const CaisseView: React.FC<CaisseViewProps> = ({
       )}
     </div>
   );
-};
+});

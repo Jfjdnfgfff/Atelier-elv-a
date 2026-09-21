@@ -23,7 +23,7 @@ interface CreditsViewProps {
   onDeleteCredit: (id: string) => void;
 }
 
-export const CreditsView: React.FC<CreditsViewProps> = ({
+export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
   credits,
   suppliers = [],
   onAddCredit,
@@ -414,4 +414,4 @@ export const CreditsView: React.FC<CreditsViewProps> = ({
       </div>
     </div>
   );
-};
+});

@@ -12,7 +12,7 @@ interface TailoringViewProps {
   onOpenReceiptModal: (order: MaintenanceOrder) => void;
 }
 
-export const TailoringView: React.FC<TailoringViewProps> = ({
+export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
   orders,
   clothes,
   onOpenAddModal,
@@ -385,5 +385,5 @@ export const TailoringView: React.FC<TailoringViewProps> = ({
       )}
     </div>
   );
-};
+});
 

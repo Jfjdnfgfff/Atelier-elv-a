@@ -43,7 +43,7 @@ interface LogsViewProps {
   showToast: (message: string, type?: 'success' | 'error') => void;
 }
 
-export const LogsView: React.FC<LogsViewProps> = ({
+export const LogsView: React.FC<LogsViewProps> = React.memo(({
   logs,
   onDeleteLog,
   onClearAllLogs,
@@ -926,4 +926,4 @@ export const LogsView: React.FC<LogsViewProps> = ({
 
     </div>
   );
-};
+});

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Sparkles,
   Scissors,
@@ -36,7 +36,7 @@ interface DashboardViewProps {
   onSendMessage: (rental: Rental) => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({
+export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   stats,
   rentals,
   maintenanceOrders = [],
@@ -53,7 +53,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onSendMessage
 }) => {
   const [financePeriod, setFinancePeriod] = useState<'monthly' | 'yearly' | 'all'>('monthly');
-  const today = new Date().toISOString().split('T')[0];
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const calculateDaysDiff = (expectedDate: string) => {
     const exp = new Date(expectedDate);
@@ -62,21 +62,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   // Urgent rentals: Overdue or due today (only for active rentals)
-  const urgentRentals = rentals.filter(r => {
-    if (r.status !== 'active') return false;
-    const diff = calculateDaysDiff(r.expectedReturnDate);
-    return diff <= 0;
-  });
+  const urgentRentals = useMemo(() => {
+    return rentals.filter(r => {
+      if (r.status !== 'active') return false;
+      const exp = new Date(r.expectedReturnDate);
+      const now = new Date(today);
+      return Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) <= 0;
+    });
+  }, [rentals, today]);
 
   // Tailoring due within 10 days
-  const urgentTailoringOrders = maintenanceOrders.filter(o => {
-    if (o.status === 'delivered') return false;
-    const diff = calculateDaysDiff(o.expectedDeliveryDate);
-    return diff <= 10;
-  });
+  const urgentTailoringOrders = useMemo(() => {
+    return maintenanceOrders.filter(o => {
+      if (o.status === 'delivered') return false;
+      const exp = new Date(o.expectedDeliveryDate);
+      const now = new Date(today);
+      return Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) <= 10;
+    });
+  }, [maintenanceOrders, today]);
 
-  const activeRentals = rentals.filter(r => r.status === 'active');
-  const reservedRentals = rentals.filter(r => r.status === 'reserved');
+  const activeRentals = useMemo(() => rentals.filter(r => r.status === 'active'), [rentals]);
+  const reservedRentals = useMemo(() => rentals.filter(r => r.status === 'reserved'), [rentals]);
 
   // Values based on selected period
   const currentRentalIncome = financePeriod === 'monthly' 
@@ -117,18 +123,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     : (stats.netProfit || 0);
 
   // Today's Caisse calculations for dashboard banner
-  const todaySales = sales.filter(s => s.date && s.date.startsWith(today)).reduce((sum, s) => sum + (s.paidAmount !== undefined ? s.paidAmount : s.totalAmount || 0), 0);
-  const todayRentals = rentals.filter(r => (r.createdAt && r.createdAt.startsWith(today)) || (r.startDate && r.startDate.startsWith(today))).reduce((sum, r) => sum + (r.paidAmount || 0), 0);
-  const todayTailoring = maintenanceOrders.filter(o => (o.receivedDate && o.receivedDate.startsWith(today)) || (o.createdAt && o.createdAt.startsWith(today))).reduce((sum, o) => sum + (o.paidAmount || 0), 0);
-  const todayExpenses = expenses.filter(e => e.date && e.date.startsWith(today)).reduce((sum, e) => sum + Number(e.amount || 0), 0);
-  const todayStaff = staffPayouts.filter(p => p.date && p.date.startsWith(today)).reduce((sum, p) => sum + Number(p.amount || 0), 0);
-  const todayIncome = todaySales + todayRentals + todayTailoring;
-  const todayExpectedCash = todayIncome - (todayExpenses + todayStaff);
+  const { todayIncome, todayExpectedCash, todayClosure, monthVariance } = useMemo(() => {
+    const todaySales = sales.filter(s => s.date && s.date.startsWith(today)).reduce((sum, s) => sum + (s.paidAmount !== undefined ? s.paidAmount : s.totalAmount || 0), 0);
+    const todayRentals = rentals.filter(r => (r.createdAt && r.createdAt.startsWith(today)) || (r.startDate && r.startDate.startsWith(today))).reduce((sum, r) => sum + (r.paidAmount || 0), 0);
+    const todayTailoring = maintenanceOrders.filter(o => (o.receivedDate && o.receivedDate.startsWith(today)) || (o.createdAt && o.createdAt.startsWith(today))).reduce((sum, o) => sum + (o.paidAmount || 0), 0);
+    const todayExp = expenses.filter(e => e.date && e.date.startsWith(today)).reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    const todayStf = staffPayouts.filter(p => p.date && p.date.startsWith(today)).reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const inc = todaySales + todayRentals + todayTailoring;
+    const expCash = inc - (todayExp + todayStf);
 
-  const todayClosure = caisseClosures.find(c => c.date === today);
-  const currentMonth = today.substring(0, 7);
-  const monthClosures = caisseClosures.filter(c => c.date.startsWith(currentMonth));
-  const monthVariance = monthClosures.reduce((s, c) => s + (c.difference || 0), 0);
+    const closure = caisseClosures.find(c => c.date === today);
+    const currentMonth = today.substring(0, 7);
+    const mClosures = caisseClosures.filter(c => c.date.startsWith(currentMonth));
+    const mVariance = mClosures.reduce((s, c) => s + (c.difference || 0), 0);
+
+    return {
+      todayIncome: inc,
+      todayExpectedCash: expCash,
+      todayClosure: closure,
+      monthVariance: mVariance
+    };
+  }, [sales, rentals, maintenanceOrders, expenses, staffPayouts, caisseClosures, today]);
 
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6" dir="rtl">
@@ -793,4 +808,4 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
     </div>
   );
-};
+});

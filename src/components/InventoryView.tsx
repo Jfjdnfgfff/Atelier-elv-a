@@ -68,7 +68,7 @@ interface InventoryViewProps {
   onScanBarcode?: () => void;
 }
 
-export const InventoryView: React.FC<InventoryViewProps> = ({
+export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   clothes,
   rawMaterials = [],
   suppliers = [],
@@ -952,7 +952,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       )}
     </div>
   );
-};
+});
 
 // ==========================================
 // Quick Stock Modal (إضافة وتحديث المخزون 1 والمخزون 2)
