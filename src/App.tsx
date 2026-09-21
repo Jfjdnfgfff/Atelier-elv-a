@@ -43,7 +43,8 @@ import {
   FIREBASE_COLLECTIONS,
   firebaseConfig,
   onSyncStatusChange,
-  SyncStatus
+  SyncStatus,
+  SubscribeQueryOptions
 } from './firebase';
 
 // Shared Components
@@ -174,162 +175,87 @@ export default function App() {
     hasMountedRef.current = true;
   }, []);
 
-  // 1. Core Real-time Cloud Subscriptions (Essential for Dashboard, Operations & Caisse)
-  useEffect(() => {
-    const unsubClothes = subscribeToCloudCollection<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
-      if (items && Array.isArray(items) && items.length > 0) {
-        isRemoteUpdateRef.current.clothes = true;
-        setClothes(items);
-        saveToStorage(STORAGE_KEYS.CLOTHES, items, false);
-        setLastCloudSyncTime(new Date());
-      }
-    });
-
-    const unsubRentals = subscribeToCloudCollection<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
-      if (items && Array.isArray(items) && items.length > 0) {
-        isRemoteUpdateRef.current.rentals = true;
-        setRentals(items);
-        saveToStorage(STORAGE_KEYS.RENTALS, items, false);
-        setLastCloudSyncTime(new Date());
-      }
-    }, { limit: 120 });
-
-    const unsubSales = subscribeToCloudCollection<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
-      if (items && Array.isArray(items)) {
-        isRemoteUpdateRef.current.sales = true;
-        setSales(items);
-        saveToStorage(STORAGE_KEYS.SALES, items, false);
-        setLastCloudSyncTime(new Date());
-      }
-    }, { limit: 120 });
-
-    const unsubExpenses = subscribeToCloudCollection<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
-      if (items && Array.isArray(items) && items.length > 0) {
-        isRemoteUpdateRef.current.expenses = true;
-        setExpenses(items);
-        saveToStorage(STORAGE_KEYS.EXPENSES, items, false);
-        setLastCloudSyncTime(new Date());
-      }
-    }, { limit: 120 });
-
-    const unsubCredits = subscribeToCloudCollection<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
-      if (items && Array.isArray(items)) {
-        isRemoteUpdateRef.current.credits = true;
-        setCredits(items);
-        saveToStorage(STORAGE_KEYS.CREDITS, items, false);
-        setLastCloudSyncTime(new Date());
-      }
-    }, { limit: 100 });
-
-    const unsubStaffPayouts = subscribeToCloudCollection<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
-      if (items && Array.isArray(items)) {
-        isRemoteUpdateRef.current.staffPayouts = true;
-        setStaffPayouts(items);
-        saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, items, false);
-        setLastCloudSyncTime(new Date());
-      }
-    }, { limit: 60 });
-
-    const unsubMaintenance = subscribeToCloudCollection<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
-      if (items && Array.isArray(items) && items.length > 0) {
-        isRemoteUpdateRef.current.maintenanceOrders = true;
-        setMaintenanceOrders(items);
-        saveToStorage(STORAGE_KEYS.MAINTENANCE, items, false);
-        setLastCloudSyncTime(new Date());
-      }
-    }, { limit: 80 });
-
-    const unsubCaisse = subscribeToCloudCollection<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
-      if (items && Array.isArray(items) && items.length > 0) {
-        isRemoteUpdateRef.current.caisseClosures = true;
-        setCaisseClosures(items);
-        saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, items, false);
-        setLastCloudSyncTime(new Date());
-      }
-    }, { limit: 30 });
-
-    return () => {
-      unsubClothes();
-      unsubRentals();
-      unsubSales();
-      unsubExpenses();
-      unsubCredits();
-      unsubStaffPayouts();
-      unsubMaintenance();
-      unsubCaisse();
-    };
-  }, []);
-
-  // 2. View-specific On-Demand Subscriptions (Lazy loaded only when navigating to specific views)
+  // View-Driven On-Demand Real-time Cloud Subscriptions
+  // Loads and monitors ONLY the collections required for the active screen
   useEffect(() => {
     const unsubs: (() => void)[] = [];
 
-    // Partners & Suppliers
-    if (currentView === 'partners') {
-      const unsubSuppliers = subscribeToCloudCollection<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
-        if (items && Array.isArray(items) && items.length > 0) {
-          isRemoteUpdateRef.current.suppliers = true;
-          setSuppliers(items);
-          saveToStorage(STORAGE_KEYS.SUPPLIERS, items, false);
-          setLastCloudSyncTime(new Date());
-        }
-      });
-      const unsubSeamstresses = subscribeToCloudCollection<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
-        if (items && Array.isArray(items) && items.length > 0) {
-          isRemoteUpdateRef.current.seamstresses = true;
-          setSeamstresses(items);
-          saveToStorage(STORAGE_KEYS.SEAMSTRESSES, items, false);
-          setLastCloudSyncTime(new Date());
-        }
-      });
-      unsubs.push(unsubSuppliers, unsubSeamstresses);
-    }
-
-    // Raw Materials (Inventory & Partners)
-    if (currentView === 'inventory' || currentView === 'partners') {
-      const unsubRawMaterials = subscribeToCloudCollection<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
-        if (items && Array.isArray(items) && items.length > 0) {
-          isRemoteUpdateRef.current.rawMaterials = true;
-          setRawMaterials(items);
-          saveToStorage(STORAGE_KEYS.RAW_MATERIALS, items, false);
-          setLastCloudSyncTime(new Date());
-        }
-      });
-      unsubs.push(unsubRawMaterials);
-    }
-
-    // Staff Members & Absences
-    if (currentView === 'staff') {
-      const unsubStaffMembers = subscribeToCloudCollection<StaffMember>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, (items) => {
-        if (items && Array.isArray(items) && items.length > 0) {
-          isRemoteUpdateRef.current.staffMembers = true;
-          setStaffMembers(items);
-          saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, items, false);
-          setLastCloudSyncTime(new Date());
-        }
-      });
-      const unsubStaffAbsences = subscribeToCloudCollection<StaffAbsence>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, (items) => {
+    const sub = <T extends { id?: string }>(
+      collectionKey: string,
+      setter: React.Dispatch<React.SetStateAction<T[]>>,
+      storageKey: string,
+      refKey: string,
+      options?: SubscribeQueryOptions
+    ) => {
+      const unsub = subscribeToCloudCollection<T>(collectionKey, (items) => {
         if (items && Array.isArray(items)) {
-          isRemoteUpdateRef.current.staffAbsences = true;
-          setStaffAbsences(items);
-          saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, items, false);
+          isRemoteUpdateRef.current[refKey] = true;
+          setter(items);
+          saveToStorage(storageKey, items, false);
           setLastCloudSyncTime(new Date());
         }
-      });
-      unsubs.push(unsubStaffMembers, unsubStaffAbsences);
-    }
+      }, options);
+      unsubs.push(unsub);
+    };
 
-    // Activity Logs
-    if (currentView === 'logs') {
-      const unsubLogs = subscribeToCloudCollection<ActivityLog>(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, (items) => {
-        if (items && Array.isArray(items) && items.length > 0) {
-          isRemoteUpdateRef.current.activityLogs = true;
-          setActivityLogs(items);
-          saveToStorage(STORAGE_KEYS.ACTIVITY_LOGS, items, false);
-          setLastCloudSyncTime(new Date());
-        }
-      }, { limit: 120 });
-      unsubs.push(unsubLogs);
+    // Determine what needs to be listened to for the currentView
+    const needsRentals = currentView === 'dashboard' || currentView === 'rentals' || currentView === 'caisse';
+    const needsSales = currentView === 'dashboard' || currentView === 'sales' || currentView === 'caisse';
+    const needsExpenses = currentView === 'dashboard' || currentView === 'expenses' || currentView === 'caisse';
+    const needsCredits = currentView === 'dashboard' || currentView === 'credits';
+    const needsStaffPayouts = currentView === 'dashboard' || currentView === 'staff' || currentView === 'caisse';
+    const needsMaintenance = currentView === 'dashboard' || currentView === 'tailoring';
+
+    const needsClothes = currentView === 'inventory' || currentView === 'sales' || currentView === 'rentals';
+    const needsRawMaterials = currentView === 'inventory' || currentView === 'partners';
+    const needsSuppliers = currentView === 'partners';
+    const needsSeamstresses = currentView === 'partners';
+    const needsStaffMembers = currentView === 'staff';
+    const needsStaffAbsences = currentView === 'staff';
+    const needsCaisse = currentView === 'caisse';
+    const needsLogs = currentView === 'logs';
+
+    if (needsRentals) {
+      sub<Rental>(FIREBASE_COLLECTIONS.RENTALS, setRentals, STORAGE_KEYS.RENTALS, 'rentals', { limit: 120 });
+    }
+    if (needsSales) {
+      sub<Sale>(FIREBASE_COLLECTIONS.SALES, setSales, STORAGE_KEYS.SALES, 'sales', { limit: 120 });
+    }
+    if (needsExpenses) {
+      sub<Expense>(FIREBASE_COLLECTIONS.EXPENSES, setExpenses, STORAGE_KEYS.EXPENSES, 'expenses', { limit: 120 });
+    }
+    if (needsCredits) {
+      sub<Credit>(FIREBASE_COLLECTIONS.CREDITS, setCredits, STORAGE_KEYS.CREDITS, 'credits', { limit: 100 });
+    }
+    if (needsStaffPayouts) {
+      sub<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, setStaffPayouts, STORAGE_KEYS.STAFF_PAYOUTS, 'staffPayouts', { limit: 60 });
+    }
+    if (needsMaintenance) {
+      sub<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, setMaintenanceOrders, STORAGE_KEYS.MAINTENANCE, 'maintenanceOrders', { limit: 80 });
+    }
+    if (needsClothes) {
+      sub<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, setClothes, STORAGE_KEYS.CLOTHES, 'clothes');
+    }
+    if (needsRawMaterials) {
+      sub<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, setRawMaterials, STORAGE_KEYS.RAW_MATERIALS, 'rawMaterials');
+    }
+    if (needsSuppliers) {
+      sub<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, setSuppliers, STORAGE_KEYS.SUPPLIERS, 'suppliers');
+    }
+    if (needsSeamstresses) {
+      sub<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, setSeamstresses, STORAGE_KEYS.SEAMSTRESSES, 'seamstresses');
+    }
+    if (needsStaffMembers) {
+      sub<StaffMember>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, setStaffMembers, STORAGE_KEYS.STAFF_MEMBERS, 'staffMembers');
+    }
+    if (needsStaffAbsences) {
+      sub<StaffAbsence>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, setStaffAbsences, STORAGE_KEYS.STAFF_ABSENCES, 'staffAbsences');
+    }
+    if (needsCaisse) {
+      sub<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, setCaisseClosures, STORAGE_KEYS.CAISSE_CLOSURES, 'caisseClosures', { limit: 30 });
+    }
+    if (needsLogs) {
+      sub<ActivityLog>(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, setActivityLogs, STORAGE_KEYS.ACTIVITY_LOGS, 'activityLogs', { limit: 120 });
     }
 
     return () => {

@@ -8,7 +8,10 @@ import {
   get, 
   onValue,
   query,
-  limitToLast
+  limitToLast,
+  orderByChild,
+  startAt,
+  endAt
 } from 'firebase/database';
 import { getFirestore } from 'firebase/firestore';
 
@@ -339,6 +342,16 @@ interface ListenerRegistryEntry {
 }
 const activeListenersRegistry = new Map<string, ListenerRegistryEntry>();
 
+// Track collections that have already been checked for legacy root fallback
+const checkedLegacyCollections = new Set<string>();
+
+export interface SubscribeQueryOptions {
+  limit?: number;
+  orderBy?: string;
+  startAt?: string | number;
+  endAt?: string | number;
+}
+
 /**
  * Subscribes to real-time changes on a collection with singleton listener multiplexing,
  * pagination/limiting on heavy historical collections, and echo loop prevention.
@@ -346,7 +359,7 @@ const activeListenersRegistry = new Map<string, ListenerRegistryEntry>();
 export function subscribeToFirebaseKey<T extends { id?: string }>(
   key: string,
   onDataReceived: (data: T[]) => void,
-  options?: { limit?: number; orderBy?: string }
+  options?: SubscribeQueryOptions
 ): () => void {
   // If we already have cached data, immediately deliver it to caller
   if (memoryCache.has(key)) {
@@ -384,8 +397,22 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
     const recordsRef = ref(rtdb, `boutique_store/${key}/records`);
     let dbQuery: any = recordsRef;
 
+    const queryConstraints: any[] = [];
+    if (options?.orderBy) {
+      queryConstraints.push(orderByChild(options.orderBy));
+    }
+    if (options?.startAt !== undefined) {
+      queryConstraints.push(startAt(options.startAt));
+    }
+    if (options?.endAt !== undefined) {
+      queryConstraints.push(endAt(options.endAt));
+    }
     if (limitCount) {
-      dbQuery = query(recordsRef, limitToLast(limitCount));
+      queryConstraints.push(limitToLast(limitCount));
+    }
+
+    if (queryConstraints.length > 0) {
+      dbQuery = query(recordsRef, ...queryConstraints);
     }
 
     unsubRTDB = onValue(
@@ -412,8 +439,9 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
               });
             }
             updateStatus('connected');
-          } else {
-            // Check legacy root node boutique_store/${key} for backward compatibility
+          } else if (!checkedLegacyCollections.has(key)) {
+            // Check legacy root node boutique_store/${key} ONCE for backward compatibility
+            checkedLegacyCollections.add(key);
             const parentRef = ref(rtdb, `boutique_store/${key}`);
             get(parentRef).then((parentSnap) => {
               if (parentSnap.exists()) {

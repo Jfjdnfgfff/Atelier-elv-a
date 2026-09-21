@@ -14,84 +14,204 @@ export function useDashboardStats(
     const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const currentYearStr = `${now.getFullYear()}`;
 
-    const isThisMonth = (dateStr?: string) => dateStr ? dateStr.startsWith(currentMonthStr) : false;
-    const isThisYear = (dateStr?: string) => dateStr ? dateStr.startsWith(currentYearStr) : false;
+    // Single pass for rentals
+    let totalRentalIncome = 0;
+    let monthlyRentalIncome = 0;
+    let yearlyRentalIncome = 0;
+    let totalRentalDebt = 0;
 
-    // Helper to filter by period
-    const filterByDate = (date: string, period: 'monthly' | 'yearly') => {
-      if (period === 'monthly') return isThisMonth(date);
-      if (period === 'yearly') return isThisYear(date);
-      return true;
-    };
+    for (let i = 0; i < rentals.length; i++) {
+      const r = rentals[i];
+      const paid = r.paidAmount || 0;
+      totalRentalIncome += paid;
 
-    const totalRentalIncome = rentals.reduce((s, r) => s + (r.paidAmount || 0), 0);
-    const totalSalesRevenue = sales.reduce((s, sl) => s + (sl.totalAmount || 0), 0);
-    const totalSalesProfit = sales.reduce((s, sl) => s + (sl.profit || 0), 0);
-    const totalTailoringIncome = maintenanceOrders.reduce((s, o) => s + (o.paidAmount || 0), 0);
-    const totalTailoringCost = maintenanceOrders.reduce((s, o) => s + (o.cost || 0), 0);
-    
-    // Categorize expenses
-    const rentalExpenses = expenses.filter(e => e.category === 'كراء');
-    const salesExpenses = expenses.filter(e => e.category === 'مبيعات');
-    const tailoringExpenses = expenses.filter(e => e.category === 'خياطة');
-    const generalExpenses = expenses.filter(e => e.category === 'عام');
-    
-    const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
-    const totalStaff = staffPayouts.reduce((s, p) => s + Number(p.amount || 0), 0);
-    const totalRentalDebt = rentals.reduce((s, r) => s + (r.status !== 'returned' ? (r.remainingAmount || 0) : 0), 0);
-    const totalTailoringDebt = maintenanceOrders.reduce((s, o) => s + (o.status !== 'delivered' ? (o.remainingAmount || 0) : 0), 0);
-    const totalDirectDebt = credits.reduce((s, c) => s + Number(c.amount || 0), 0);
+      const dateStr = r.startDate || r.createdAt || '';
+      if (dateStr.startsWith(currentMonthStr)) {
+        monthlyRentalIncome += paid;
+      }
+      if (dateStr.startsWith(currentYearStr)) {
+        yearlyRentalIncome += paid;
+      }
+
+      if (r.status !== 'returned') {
+        totalRentalDebt += (r.remainingAmount || 0);
+      }
+    }
+
+    // Single pass for sales
+    let totalSalesRevenue = 0;
+    let monthlySalesRevenue = 0;
+    let yearlySalesRevenue = 0;
+    let totalSalesProfit = 0;
+    let monthlySalesProfit = 0;
+    let yearlySalesProfit = 0;
+
+    for (let i = 0; i < sales.length; i++) {
+      const s = sales[i];
+      const amount = s.totalAmount || 0;
+      const profit = s.profit || 0;
+
+      totalSalesRevenue += amount;
+      totalSalesProfit += profit;
+
+      const dateStr = s.date || '';
+      if (dateStr.startsWith(currentMonthStr)) {
+        monthlySalesRevenue += amount;
+        monthlySalesProfit += profit;
+      }
+      if (dateStr.startsWith(currentYearStr)) {
+        yearlySalesRevenue += amount;
+        yearlySalesProfit += profit;
+      }
+    }
+
+    // Single pass for maintenance (tailoring)
+    let totalTailoringIncome = 0;
+    let monthlyTailoringIncome = 0;
+    let yearlyTailoringIncome = 0;
+    let totalTailoringCost = 0;
+    let monthlyTailoringProfit = 0;
+    let yearlyTailoringProfit = 0;
+    let totalTailoringDebt = 0;
+
+    for (let i = 0; i < maintenanceOrders.length; i++) {
+      const o = maintenanceOrders[i];
+      const paid = o.paidAmount || 0;
+      const cost = o.cost || 0;
+
+      totalTailoringIncome += paid;
+      totalTailoringCost += cost;
+
+      const dateStr = o.receivedDate || o.createdAt || '';
+      if (dateStr.startsWith(currentMonthStr)) {
+        monthlyTailoringIncome += paid;
+        monthlyTailoringProfit += (paid - cost);
+      }
+      if (dateStr.startsWith(currentYearStr)) {
+        yearlyTailoringIncome += paid;
+        yearlyTailoringProfit += (paid - cost);
+      }
+
+      if (o.status !== 'delivered') {
+        totalTailoringDebt += (o.remainingAmount || 0);
+      }
+    }
+
+    // Single pass for expenses (including category breakdowns)
+    let totalExpenses = 0;
+    let monthlyExpenses = 0;
+    let yearlyExpenses = 0;
+
+    let monthlyRentalExpenses = 0;
+    let yearlyRentalExpenses = 0;
+
+    let monthlySalesExpenses = 0;
+    let yearlySalesExpenses = 0;
+
+    let monthlyTailoringExpenses = 0;
+    let yearlyTailoringExpenses = 0;
+
+    for (let i = 0; i < expenses.length; i++) {
+      const e = expenses[i];
+      const amt = Number(e.amount || 0);
+      totalExpenses += amt;
+
+      const dateStr = e.date || '';
+      const isM = dateStr.startsWith(currentMonthStr);
+      const isY = dateStr.startsWith(currentYearStr);
+
+      if (isM) {
+        monthlyExpenses += amt;
+      }
+      if (isY) {
+        yearlyExpenses += amt;
+      }
+
+      if (e.category === 'كراء') {
+        if (isM) monthlyRentalExpenses += amt;
+        if (isY) yearlyRentalExpenses += amt;
+      } else if (e.category === 'مبيعات') {
+        if (isM) monthlySalesExpenses += amt;
+        if (isY) yearlySalesExpenses += amt;
+      } else if (e.category === 'خياطة') {
+        if (isM) monthlyTailoringExpenses += amt;
+        if (isY) yearlyTailoringExpenses += amt;
+      }
+    }
+
+    // Single pass for staff payouts
+    let totalStaff = 0;
+    let monthlyStaffPayouts = 0;
+    let yearlyStaffPayouts = 0;
+
+    for (let i = 0; i < staffPayouts.length; i++) {
+      const p = staffPayouts[i];
+      const amt = Number(p.amount || 0);
+      totalStaff += amt;
+
+      const dateStr = p.date || '';
+      if (dateStr.startsWith(currentMonthStr)) {
+        monthlyStaffPayouts += amt;
+      }
+      if (dateStr.startsWith(currentYearStr)) {
+        yearlyStaffPayouts += amt;
+      }
+    }
+
+    // Single pass for credits (direct debt)
+    let totalDirectDebt = 0;
+    for (let i = 0; i < credits.length; i++) {
+      totalDirectDebt += Number(credits[i].amount || 0);
+    }
+
+    const totalTailoringProfit = totalTailoringIncome - totalTailoringCost;
+    const totalDebt = totalRentalDebt + totalDirectDebt + totalTailoringDebt;
+    const netProfit = (totalRentalIncome + totalSalesProfit + totalTailoringIncome) - (totalExpenses + totalStaff + totalTailoringCost);
+    const monthlyNetProfit = (monthlyRentalIncome + monthlySalesProfit + monthlyTailoringIncome) - (monthlyExpenses + monthlyStaffPayouts);
+    const yearlyNetProfit = (yearlyRentalIncome + yearlySalesProfit + yearlyTailoringIncome) - (yearlyExpenses + yearlyStaffPayouts);
 
     return {
       totalRentalIncome,
-      monthlyRentalIncome: rentals.filter(r => filterByDate(r.startDate || r.createdAt || '', 'monthly')).reduce((s, r) => s + (r.paidAmount || 0), 0),
-      yearlyRentalIncome: rentals.filter(r => filterByDate(r.startDate || r.createdAt || '', 'yearly')).reduce((s, r) => s + (r.paidAmount || 0), 0),
-      monthlyRentalExpenses: rentalExpenses.filter(e => filterByDate(e.date || '', 'monthly')).reduce((s, e) => s + Number(e.amount || 0), 0),
-      yearlyRentalExpenses: rentalExpenses.filter(e => filterByDate(e.date || '', 'yearly')).reduce((s, e) => s + Number(e.amount || 0), 0),
+      monthlyRentalIncome,
+      yearlyRentalIncome,
+      monthlyRentalExpenses,
+      yearlyRentalExpenses,
       
       totalSalesRevenue,
-      monthlySalesRevenue: sales.filter(s => filterByDate(s.date || '', 'monthly')).reduce((s, sl) => s + (sl.totalAmount || 0), 0),
-      yearlySalesRevenue: sales.filter(s => filterByDate(s.date || '', 'yearly')).reduce((s, sl) => s + (sl.totalAmount || 0), 0),
-      monthlySalesExpenses: salesExpenses.filter(e => filterByDate(e.date || '', 'monthly')).reduce((s, e) => s + Number(e.amount || 0), 0),
-      yearlySalesExpenses: salesExpenses.filter(e => filterByDate(e.date || '', 'yearly')).reduce((s, e) => s + Number(e.amount || 0), 0),
+      monthlySalesRevenue,
+      yearlySalesRevenue,
+      monthlySalesExpenses,
+      yearlySalesExpenses,
 
       totalSalesProfit,
-      monthlySalesProfit: sales.filter(s => filterByDate(s.date || '', 'monthly')).reduce((s, sl) => s + (sl.profit || 0), 0),
-      yearlySalesProfit: sales.filter(s => filterByDate(s.date || '', 'yearly')).reduce((s, sl) => s + (sl.profit || 0), 0),
+      monthlySalesProfit,
+      yearlySalesProfit,
 
       totalTailoringIncome,
-      monthlyTailoringIncome: maintenanceOrders.filter(o => filterByDate(o.receivedDate || o.createdAt || '', 'monthly')).reduce((s, o) => s + (o.paidAmount || 0), 0),
-      yearlyTailoringIncome: maintenanceOrders.filter(o => filterByDate(o.receivedDate || o.createdAt || '', 'yearly')).reduce((s, o) => s + (o.paidAmount || 0), 0),
-      monthlyTailoringExpenses: tailoringExpenses.filter(e => filterByDate(e.date || '', 'monthly')).reduce((s, e) => s + Number(e.amount || 0), 0),
-      yearlyTailoringExpenses: tailoringExpenses.filter(e => filterByDate(e.date || '', 'yearly')).reduce((s, e) => s + Number(e.amount || 0), 0),
+      monthlyTailoringIncome,
+      yearlyTailoringIncome,
+      monthlyTailoringExpenses,
+      yearlyTailoringExpenses,
       
       totalTailoringCost,
-      tailoringProfit: totalTailoringIncome - totalTailoringCost,
-      monthlyTailoringProfit: maintenanceOrders.filter(o => filterByDate(o.receivedDate || o.createdAt || '', 'monthly')).reduce((s, o) => s + (o.paidAmount || 0) - (o.cost || 0), 0),
-      yearlyTailoringProfit: maintenanceOrders.filter(o => filterByDate(o.receivedDate || o.createdAt || '', 'yearly')).reduce((s, o) => s + (o.paidAmount || 0) - (o.cost || 0), 0),
+      tailoringProfit: totalTailoringProfit,
+      monthlyTailoringProfit,
+      yearlyTailoringProfit,
 
       totalExpenses,
-      monthlyExpenses: expenses.filter(e => filterByDate(e.date || '', 'monthly')).reduce((s, e) => s + Number(e.amount || 0), 0),
-      yearlyExpenses: expenses.filter(e => filterByDate(e.date || '', 'yearly')).reduce((s, e) => s + Number(e.amount || 0), 0),
+      monthlyExpenses,
+      yearlyExpenses,
 
       totalStaff,
       totalStaffPayouts: totalStaff,
-      monthlyStaffPayouts: staffPayouts.filter(p => filterByDate(p.date || '', 'monthly')).reduce((s, p) => s + Number(p.amount || 0), 0),
-      yearlyStaffPayouts: staffPayouts.filter(p => filterByDate(p.date || '', 'yearly')).reduce((s, p) => s + Number(p.amount || 0), 0),
+      monthlyStaffPayouts,
+      yearlyStaffPayouts,
       
-      totalDebt: totalRentalDebt + totalDirectDebt + totalTailoringDebt,
-      netProf: (totalRentalIncome + totalSalesProfit + totalTailoringIncome) - (totalExpenses + totalStaff + totalTailoringCost),
-      netProfit: (totalRentalIncome + totalSalesProfit + totalTailoringIncome) - (totalExpenses + totalStaff + totalTailoringCost),
-      monthlyNetProfit: (rentals.filter(r => filterByDate(r.startDate || r.createdAt || '', 'monthly')).reduce((s, r) => s + (r.paidAmount || 0), 0) +
-                         sales.filter(s => filterByDate(s.date || '', 'monthly')).reduce((s, sl) => s + (sl.profit || 0), 0) +
-                         maintenanceOrders.filter(o => filterByDate(o.receivedDate || o.createdAt || '', 'monthly')).reduce((s, o) => s + (o.paidAmount || 0), 0)) -
-                        (expenses.filter(e => filterByDate(e.date || '', 'monthly')).reduce((s, e) => s + Number(e.amount || 0), 0) +
-                         staffPayouts.filter(p => filterByDate(p.date || '', 'monthly')).reduce((s, p) => s + Number(p.amount || 0), 0)),
-      yearlyNetProfit: (rentals.filter(r => filterByDate(r.startDate || r.createdAt || '', 'yearly')).reduce((s, r) => s + (r.paidAmount || 0), 0) +
-                        sales.filter(s => filterByDate(s.date || '', 'yearly')).reduce((s, sl) => s + (sl.profit || 0), 0) +
-                        maintenanceOrders.filter(o => filterByDate(o.receivedDate || o.createdAt || '', 'yearly')).reduce((s, o) => s + (o.paidAmount || 0), 0)) -
-                       (expenses.filter(e => filterByDate(e.date || '', 'yearly')).reduce((s, e) => s + Number(e.amount || 0), 0) +
-                        staffPayouts.filter(p => filterByDate(p.date || '', 'yearly')).reduce((s, p) => s + Number(p.amount || 0), 0))
+      totalDebt,
+      netProf: netProfit,
+      netProfit,
+      monthlyNetProfit,
+      yearlyNetProfit
     };
   }, [rentals, sales, expenses, credits, staffPayouts, maintenanceOrders]);
 }
