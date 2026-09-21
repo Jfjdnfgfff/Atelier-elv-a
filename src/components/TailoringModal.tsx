@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { MaintenanceOrder, MaintenanceServiceType, MaintenanceTargetType, MaintenanceStatus, ClothItem, StaffMember } from '../types';
 import { Modal, LettersInput, NumbersInput } from './Shared';
-import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
+const CustomerIdScannerModal = React.lazy(() => import('./CustomerIdScannerModal').then(m => ({ default: m.CustomerIdScannerModal })));
+import type { ExtractedCustomerData } from './CustomerIdScannerModal';
 import { User, Tag, CreditCard } from 'lucide-react';
 import { sanitizeName, sanitizePhone, sanitizeText } from '../utils/security';
 
@@ -425,11 +426,13 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
 
       {/* Smart Customer ID Scanner */}
       {showCustomerIdScanner && (
-        <CustomerIdScannerModal
-          title="مسح بطاقة تعريف أو باركود الزبونة"
-          onExtract={handleCustomerExtracted}
-          onClose={() => setShowCustomerIdScanner(false)}
-        />
+        <React.Suspense fallback={null}>
+          <CustomerIdScannerModal
+            title="مسح بطاقة تعريف أو باركود الزبونة"
+            onExtract={handleCustomerExtracted}
+            onClose={() => setShowCustomerIdScanner(false)}
+          />
+        </React.Suspense>
       )}
     </Modal>
   );

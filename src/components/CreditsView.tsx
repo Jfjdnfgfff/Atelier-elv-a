@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Credit, Supplier } from '../types';
-import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
+import type { ExtractedCustomerData } from './CustomerIdScannerModal';
+const CustomerIdScannerModal = React.lazy(() => import('./CustomerIdScannerModal').then(m => ({ default: m.CustomerIdScannerModal })));
 import { LettersInput, NumbersInput } from './Shared';
 import { sanitizeName, sanitizePhone, sanitizeText } from '../utils/security';
 import {
@@ -308,11 +309,13 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
 
       {/* Scanner Modal */}
       {showScanner && (
-        <CustomerIdScannerModal
-          title="مسح بطاقة هوية أو باركود الزبون (كريدي)"
-          onExtract={handleCustomerExtracted}
-          onClose={() => setShowScanner(false)}
-        />
+        <React.Suspense fallback={null}>
+          <CustomerIdScannerModal
+            title="مسح بطاقة هوية أو باركود الزبون (كريدي)"
+            onExtract={handleCustomerExtracted}
+            onClose={() => setShowScanner(false)}
+          />
+        </React.Suspense>
       )}
 
       {/* Credit List with Filters */}

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ClothItem, Sale, SaleItem } from '../types';
-import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
-import { BarcodeScanner } from './BarcodeScanner';
+const CustomerIdScannerModal = React.lazy(() => import('./CustomerIdScannerModal').then(m => ({ default: m.CustomerIdScannerModal })));
+const BarcodeScanner = React.lazy(() => import('./BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
+import type { ExtractedCustomerData } from './CustomerIdScannerModal';
 import { LettersInput, NumbersInput } from './Shared';
 import { 
   playPosScannerBeep, 
@@ -835,23 +836,27 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
 
       {/* Customer ID & Barcode Scanner Modal */}
       {showCustomerIdScanner && (
-        <CustomerIdScannerModal
-          title="مسح بطاقة تعريف أو باركود الزبون"
-          onExtract={handleCustomerExtracted}
-          onClose={() => setShowCustomerIdScanner(false)}
-        />
+        <React.Suspense fallback={null}>
+          <CustomerIdScannerModal
+            title="مسح بطاقة تعريف أو باركود الزبون"
+            onExtract={handleCustomerExtracted}
+            onClose={() => setShowCustomerIdScanner(false)}
+          />
+        </React.Suspense>
       )}
 
       {/* Barcode Camera Scanner Modal */}
       {showCameraScanner && (
-        <BarcodeScanner
-          title="مسح باركود القطعة للبيع 📷"
-          onScan={(code) => {
-            setShowCameraScanner(false);
-            handleBarcodeCode(code);
-          }}
-          onClose={() => setShowCameraScanner(false)}
-        />
+        <React.Suspense fallback={null}>
+          <BarcodeScanner
+            title="مسح باركود القطعة للبيع 📷"
+            onScan={(code) => {
+              setShowCameraScanner(false);
+              handleBarcodeCode(code);
+            }}
+            onClose={() => setShowCameraScanner(false)}
+          />
+        </React.Suspense>
       )}
 
       {/* Barcode Scanned Item Quantity Selection Modal */}

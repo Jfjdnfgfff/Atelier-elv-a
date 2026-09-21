@@ -11,6 +11,24 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules/firebase')) {
+              return 'firebase-vendor';
+            }
+            if (id.includes('node_modules/@zxing')) {
+              return 'scanner-vendor';
+            }
+            if (id.includes('node_modules/motion') || id.includes('node_modules/lucide-react')) {
+              return 'ui-vendor';
+            }
+          },
+        },
+      },
+    },
     server: {
       host: '0.0.0.0',
       port: 3000,

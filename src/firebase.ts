@@ -70,9 +70,24 @@ function updateStatus(status: SyncStatus, error?: string) {
 
 // In-memory cache for all collections for zero-latency UI and deduplication
 const memoryCache = new Map<string, any[]>();
+const cacheTimestamps = new Map<string, number>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
 
 // Track locally initiated writes with item-level precision to avoid echo loops
 const pendingItemWrites = new Map<string, number>();
+
+/**
+ * Manually invalidate cached collection in memory
+ */
+export function invalidateMemoryCache(key?: string): void {
+  if (key) {
+    memoryCache.delete(key);
+    cacheTimestamps.delete(key);
+  } else {
+    memoryCache.clear();
+    cacheTimestamps.clear();
+  }
+}
 
 export const FIREBASE_COLLECTIONS = {
   CLOTHES: 'boutique_clothes',
@@ -172,14 +187,15 @@ export async function saveItemToFirebase<T extends { id: string }>(
   updateStatus('syncing');
 
   try {
-    const itemRef = ref(rtdb, `boutique_store/${collectionKey}/records/${item.id}`);
     const cleanItem = sanitizeForFirebase(item);
+    const multiUpdates: Record<string, any> = {
+      [`boutique_store/${collectionKey}/records/${item.id}`]: cleanItem,
+      [`boutique_store/${collectionKey}/updatedAt`]: new Date().toISOString()
+    };
     
-    await set(itemRef, cleanItem);
-    
-    // Update collection timestamp lightweight without touching item data
-    const metaRef = ref(rtdb, `boutique_store/${collectionKey}/updatedAt`);
-    set(metaRef, new Date().toISOString()).catch(() => {});
+    // Single atomic network request instead of multiple sets
+    await update(ref(rtdb), multiUpdates);
+    cacheTimestamps.set(collectionKey, Date.now());
 
     updateStatus('connected');
     return true;
@@ -216,14 +232,16 @@ export async function updateItemInFirebase<T extends { id?: string } = any>(
   updateStatus('syncing');
 
   try {
-    const itemRef = ref(rtdb, `boutique_store/${collectionKey}/records/${itemId}`);
     const cleanUpdates = sanitizeForFirebase(updates);
+    const multiUpdates: Record<string, any> = {};
+    Object.keys(cleanUpdates).forEach(k => {
+      multiUpdates[`boutique_store/${collectionKey}/records/${itemId}/${k}`] = cleanUpdates[k];
+    });
+    multiUpdates[`boutique_store/${collectionKey}/updatedAt`] = new Date().toISOString();
     
-    await update(itemRef, cleanUpdates);
-
-    // Update collection timestamp
-    const metaRef = ref(rtdb, `boutique_store/${collectionKey}/updatedAt`);
-    set(metaRef, new Date().toISOString()).catch(() => {});
+    // Single atomic multi-location update
+    await update(ref(rtdb), multiUpdates);
+    cacheTimestamps.set(collectionKey, Date.now());
 
     updateStatus('connected');
     return true;
@@ -255,11 +273,14 @@ export async function deleteItemFromFirebase(
   updateStatus('syncing');
 
   try {
-    const itemRef = ref(rtdb, `boutique_store/${collectionKey}/records/${itemId}`);
-    await remove(itemRef);
-
-    const metaRef = ref(rtdb, `boutique_store/${collectionKey}/updatedAt`);
-    set(metaRef, new Date().toISOString()).catch(() => {});
+    const multiUpdates: Record<string, any> = {
+      [`boutique_store/${collectionKey}/records/${itemId}`]: null,
+      [`boutique_store/${collectionKey}/updatedAt`]: new Date().toISOString()
+    };
+    
+    // Single atomic multi-location delete
+    await update(ref(rtdb), multiUpdates);
+    cacheTimestamps.set(collectionKey, Date.now());
 
     updateStatus('connected');
     return true;
@@ -359,12 +380,12 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
     const isHeavy = HEAVY_COLLECTIONS.has(key);
     const limitCount = options?.limit || (isHeavy ? 100 : undefined);
     
-    // Connect to the collection reference
-    const rtdbRef = ref(rtdb, `boutique_store/${key}`);
-    let dbQuery: any = rtdbRef;
+    // Connect directly to the records subnode for true indexed item limits
+    const recordsRef = ref(rtdb, `boutique_store/${key}/records`);
+    let dbQuery: any = recordsRef;
 
     if (limitCount) {
-      dbQuery = query(rtdbRef, limitToLast(limitCount));
+      dbQuery = query(recordsRef, limitToLast(limitCount));
     }
 
     unsubRTDB = onValue(
@@ -378,6 +399,7 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
             const val = snapshot.val();
             const normalized = normalizeSnapshotData<T>(val);
             memoryCache.set(key, normalized);
+            cacheTimestamps.set(key, Date.now());
             
             const currentEntry = activeListenersRegistry.get(key);
             if (currentEntry) {
@@ -391,15 +413,32 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
             }
             updateStatus('connected');
           } else {
-            // Snapshot doesn't exist yet on cloud
-            const existingCache = memoryCache.get(key) || [];
-            if (existingCache.length === 0) {
-              memoryCache.set(key, []);
-              const currentEntry = activeListenersRegistry.get(key);
-              if (currentEntry) {
-                currentEntry.callbacks.forEach(cb => cb([]));
+            // Check legacy root node boutique_store/${key} for backward compatibility
+            const parentRef = ref(rtdb, `boutique_store/${key}`);
+            get(parentRef).then((parentSnap) => {
+              if (parentSnap.exists()) {
+                const parentVal = parentSnap.val();
+                const normalized = normalizeSnapshotData<T>(parentVal);
+                if (normalized.length > 0) {
+                  memoryCache.set(key, normalized);
+                  cacheTimestamps.set(key, Date.now());
+                  const currentEntry = activeListenersRegistry.get(key);
+                  if (currentEntry) {
+                    currentEntry.callbacks.forEach(cb => cb(normalized));
+                  }
+                  updateStatus('connected');
+                  return;
+                }
               }
-            }
+              const existingCache = memoryCache.get(key) || [];
+              if (existingCache.length === 0) {
+                memoryCache.set(key, []);
+                const currentEntry = activeListenersRegistry.get(key);
+                if (currentEntry) {
+                  currentEntry.callbacks.forEach(cb => cb([]));
+                }
+              }
+            }).catch(() => {});
           }
         }
       },
@@ -430,25 +469,39 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
 }
 
 /**
- * Returns in-memory cached data if available, else fetches once from Firebase
+ * Returns in-memory cached data if fresh, else fetches once from Firebase
  */
-export async function getCachedOrFetchData<T extends { id?: string }>(key: string): Promise<T[]> {
-  if (memoryCache.has(key)) {
-    return memoryCache.get(key) as T[];
+export async function getCachedOrFetchData<T extends { id?: string }>(
+  key: string,
+  maxAgeMs: number = CACHE_TTL_MS
+): Promise<T[]> {
+  const cached = memoryCache.get(key);
+  const timestamp = cacheTimestamps.get(key) || 0;
+  if (cached && Date.now() - timestamp < maxAgeMs) {
+    return cached as T[];
   }
 
   try {
-    const rtdbRef = ref(rtdb, `boutique_store/${key}`);
-    const snap = await get(rtdbRef);
+    const recordsRef = ref(rtdb, `boutique_store/${key}/records`);
+    const snap = await get(recordsRef);
     if (snap.exists()) {
       const normalized = normalizeSnapshotData<T>(snap.val());
       memoryCache.set(key, normalized);
+      cacheTimestamps.set(key, Date.now());
+      return normalized;
+    }
+    const legacyRef = ref(rtdb, `boutique_store/${key}`);
+    const legacySnap = await get(legacyRef);
+    if (legacySnap.exists()) {
+      const normalized = normalizeSnapshotData<T>(legacySnap.val());
+      memoryCache.set(key, normalized);
+      cacheTimestamps.set(key, Date.now());
       return normalized;
     }
   } catch (e) {
     console.warn(`[RTDB fetch failed for ${key}]:`, e);
   }
-  return [];
+  return (memoryCache.get(key) || []) as T[];
 }
 
 /**
@@ -459,12 +512,21 @@ export async function fetchHistoricalCollection<T extends { id?: string }>(
   limit: number = 500
 ): Promise<T[]> {
   try {
-    const rtdbRef = ref(rtdb, `boutique_store/${key}`);
-    const q = query(rtdbRef, limitToLast(limit));
+    const recordsRef = ref(rtdb, `boutique_store/${key}/records`);
+    const q = query(recordsRef, limitToLast(limit));
     const snap = await get(q);
     if (snap.exists()) {
       const normalized = normalizeSnapshotData<T>(snap.val());
       memoryCache.set(key, normalized);
+      cacheTimestamps.set(key, Date.now());
+      return normalized;
+    }
+    const legacyRef = ref(rtdb, `boutique_store/${key}`);
+    const legacySnap = await get(query(legacyRef, limitToLast(limit)));
+    if (legacySnap.exists()) {
+      const normalized = normalizeSnapshotData<T>(legacySnap.val());
+      memoryCache.set(key, normalized);
+      cacheTimestamps.set(key, Date.now());
       return normalized;
     }
   } catch (e) {

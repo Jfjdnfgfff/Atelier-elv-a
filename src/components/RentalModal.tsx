@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { ClothItem, Rental } from '../types';
-import { BarcodeScanner } from './BarcodeScanner';
-import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
+const BarcodeScanner = React.lazy(() => import('./BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
+const CustomerIdScannerModal = React.lazy(() => import('./CustomerIdScannerModal').then(m => ({ default: m.CustomerIdScannerModal })));
+import type { ExtractedCustomerData } from './CustomerIdScannerModal';
 import { LettersInput, NumbersInput } from './Shared';
 import { sanitizeName, sanitizePhone, sanitizeDigitsOnly, sanitizeText } from '../utils/security';
 import { 
@@ -948,20 +949,24 @@ export const RentalModal: React.FC<RentalModalProps> = ({
 
       {/* Embedded Barcode Scanner Camera Modal for Clothes */}
       {showBarcodeScanner && (
-        <BarcodeScanner
-          title="مسح باركود فستان الكراء"
-          onScan={(code) => handleBarcodeScanned(code)}
-          onClose={() => setShowBarcodeScanner(false)}
-        />
+        <React.Suspense fallback={null}>
+          <BarcodeScanner
+            title="مسح باركود فستان الكراء"
+            onScan={(code) => handleBarcodeScanned(code)}
+            onClose={() => setShowBarcodeScanner(false)}
+          />
+        </React.Suspense>
       )}
 
       {/* Smart Customer ID & Barcode Scanner Modal */}
       {showCustomerIdScanner && (
-        <CustomerIdScannerModal
-          title="مسح بطاقة تعريف أو باركود الزبونة"
-          onExtract={handleCustomerExtracted}
-          onClose={() => setShowCustomerIdScanner(false)}
-        />
+        <React.Suspense fallback={null}>
+          <CustomerIdScannerModal
+            title="مسح بطاقة تعريف أو باركود الزبونة"
+            onExtract={handleCustomerExtracted}
+            onClose={() => setShowCustomerIdScanner(false)}
+          />
+        </React.Suspense>
       )}
     </form>
   );

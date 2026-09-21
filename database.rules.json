@@ -1,0 +1,53 @@
+{
+  "rules": {
+    "boutique_store": {
+      ".read": true,
+      ".write": true,
+      "boutique_clothes": {
+        "records": {
+          ".indexOn": ["category", "code", "updatedAt"]
+        }
+      },
+      "boutique_rentals": {
+        "records": {
+          ".indexOn": ["status", "startDate", "expectedReturnDate", "createdAt", "updatedAt"]
+        }
+      },
+      "boutique_sales": {
+        "records": {
+          ".indexOn": ["date", "createdAt", "updatedAt"]
+        }
+      },
+      "boutique_expenses": {
+        "records": {
+          ".indexOn": ["date", "category", "createdAt"]
+        }
+      },
+      "boutique_credits": {
+        "records": {
+          ".indexOn": ["date", "phone", "relatedRentalId"]
+        }
+      },
+      "boutique_staff_payouts": {
+        "records": {
+          ".indexOn": ["staffId", "date"]
+        }
+      },
+      "boutique_maintenance": {
+        "records": {
+          ".indexOn": ["status", "expectedDeliveryDate", "receivedDate"]
+        }
+      },
+      "boutique_caisse_closures": {
+        "records": {
+          ".indexOn": ["date"]
+        }
+      },
+      "boutique_activity_logs": {
+        "records": {
+          ".indexOn": ["timestamp", "actionType", "category"]
+        }
+      }
+    }
+  }
+}
