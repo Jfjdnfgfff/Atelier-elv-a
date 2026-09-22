@@ -54,6 +54,7 @@ import {
 } from '../types';
 import { StatCard, Modal } from './Shared';
 import { useDashboardStats } from '../hooks/dashboardStatsHook';
+import { clearAllFirebaseData } from '../firebase';
 
 interface DashboardViewProps {
   stats?: ReturnType<typeof useDashboardStats>;
@@ -140,6 +141,13 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   const getStoredPin = useCallback(() => {
     return localStorage.getItem('bm_security_pin') || '9296';
   }, []);
+
+  const handleClearAllData = async () => {
+    if (window.confirm('⚠️ تحذير: هل أنت متأكد من تفريغ جميع البيانات وحذف كل محتويات المخزون والعمليات من سحابة فايرباس والموقع نهائياً؟')) {
+      await clearAllFirebaseData();
+      window.location.reload();
+    }
+  };
 
   const handleVerifyPinAndExecute = useCallback(() => {
     const validPin = getStoredPin();
@@ -430,6 +438,15 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           >
             <Plus className="w-3.5 h-3.5" />
             <span>كراء جديد</span>
+          </button>
+
+          <button
+            onClick={handleClearAllData}
+            className="flex items-center justify-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-2 rounded-xl text-xs font-bold transition-all border border-rose-200 shadow-2xs min-h-[36px] active:scale-95"
+            title="تفريغ جميع البيانات من الموقع وفايرباس"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>تفريغ جميع البيانات</span>
           </button>
         </div>
       </div>
