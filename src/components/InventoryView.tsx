@@ -198,7 +198,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   const [initialBarcodeForAdd, setInitialBarcodeForAdd] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
   const [variantsModalItem, setVariantsModalItem] = useState<ClothItem | null>(null);
-  const [imageDisplayMode, setImageDisplayMode] = useState<'fill' | 'cover' | 'contain' | 'natural'>('fill');
 
   // Quick Stock & Transfer Modal
   const [stockModalItem, setStockModalItem] = useState<ClothItem | null>(null);
@@ -881,64 +880,11 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
       </div>
 
       {/* Grid of Clothes Items with Images and Stock 1 / Stock 2 Badges */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1 pb-2">
+      <div className="flex items-center justify-between gap-2.5 pt-1 pb-2">
         <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
           <Shirt className="w-4 h-4 text-blue-900" />
           <span>قائمة القطع في المخزن ({filteredClothes.length})</span>
         </span>
-
-        {/* Display Mode Switcher (100% complete view vs 100% fill vs cover vs natural) */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs shadow-2xs">
-          <span className="text-[11px] font-bold text-slate-500 px-1 hidden sm:inline">طريقة العرض:</span>
-          <button
-            type="button"
-            onClick={() => setImageDisplayMode('fill')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all flex items-center gap-1 ${
-              imageDisplayMode === 'fill'
-                ? 'bg-blue-900 text-white shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
-            title="تأخذ الصورة مساحة القائمة 100% كاملة في العرض والارتفاع بدون اقتصاص"
-          >
-            <span>ملء 100% كاملة (موصى به)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setImageDisplayMode('natural')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all flex items-center gap-1 ${
-              imageDisplayMode === 'natural'
-                ? 'bg-blue-900 text-white shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
-            title="عرض بعرض 100% وارتفاع تلقائي يطابق الصورة الأصلية بالكامل"
-          >
-            <span>أبعاد طبيعية (ارتفاع حر)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setImageDisplayMode('cover')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all flex items-center gap-1 ${
-              imageDisplayMode === 'cover'
-                ? 'bg-blue-900 text-white shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
-            title="تغطية الإطار 100% مع اقتصاص الأطراف الزائدة"
-          >
-            <span>تغطية الإطار (Cover)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setImageDisplayMode('contain')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all flex items-center gap-1 ${
-              imageDisplayMode === 'contain'
-                ? 'bg-blue-900 text-white shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
-            title="احتواء داخل الإطار مع خلفية ضبابية"
-          >
-            <span>احتواء (Contain)</span>
-          </button>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -961,38 +907,19 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
               key={item.id}
               className="bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all duration-200 flex flex-col justify-between group"
             >
-              {/* Product Image Box - Takes 100% of card width & vertical height and displays dress completely */}
+              {/* Product Image Box - Takes 100% of card width & vertical height with 100% fill */}
               <div 
                 onClick={() => setVariantsModalItem(item)}
-                className={`relative bg-slate-900/5 overflow-hidden cursor-pointer flex items-center justify-center group w-full ${
-                  imageDisplayMode === 'natural' ? 'min-h-[260px] max-h-[500px]' : 'aspect-[3/4]'
-                }`}
+                className="relative bg-slate-900/5 overflow-hidden cursor-pointer flex items-center justify-center group w-full aspect-[3/4]"
                 title="اضغط لعرض الألوان والمقاسات (Déclinaisons)"
               >
                 {item.imageUrl ? (
                   <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
-                    {/* Ambient blurred backdrop: fills 100% of the box edge-to-edge */}
-                    {imageDisplayMode !== 'fill' && (
-                      <img
-                        src={item.imageUrl}
-                        alt=""
-                        className="absolute inset-0 w-full h-full object-cover blur-xl scale-125 opacity-35 select-none pointer-events-none"
-                        aria-hidden="true"
-                      />
-                    )}
-                    {/* Main dress image: spans 100% of card space and displays completely */}
+                    {/* Main dress image: spans 100% of card space with full 100% fill */}
                     <img
                       src={item.imageUrl}
                       alt={item.name}
-                      className={`relative z-1 w-full transition-transform duration-300 group-hover:scale-103 select-none ${
-                        imageDisplayMode === 'fill'
-                          ? 'h-full object-fill'
-                          : imageDisplayMode === 'cover'
-                          ? 'h-full object-cover object-top'
-                          : imageDisplayMode === 'natural'
-                          ? 'h-auto max-h-[500px] object-contain'
-                          : 'h-full object-contain'
-                      }`}
+                      className="relative z-1 w-full h-full object-fill transition-transform duration-300 group-hover:scale-103 select-none"
                       loading="lazy"
                       onError={(e) => {
                         (e.target as HTMLElement).style.display = 'none';
