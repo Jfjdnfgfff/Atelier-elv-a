@@ -418,7 +418,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
               <img 
                 src={selectedItem.imageUrl} 
                 alt={selectedItem.name} 
-                className="w-12 h-12 rounded-xl object-cover border border-slate-200 shadow-xs shrink-0" 
+                className="w-12 h-12 rounded-xl object-contain bg-slate-50 border border-slate-200 shadow-xs shrink-0 p-0.5" 
               />
             ) : (
               <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-xl shrink-0">

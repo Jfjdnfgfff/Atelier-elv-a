@@ -6,7 +6,7 @@ import { RawMaterialsSection } from './RawMaterialsSection';
 import { ProductVariantsModal } from './ProductVariantsModal';
 import { SecurityPasswordModal, checkSecurityPin } from './SecurityPasswordModal';
 import { isValidImageFileType, generateSecureImageFilename, sanitizeText, sanitizeNumericAmount } from '../utils/security';
-import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 
 export const STANDARD_SIZES = [
   '34', '36', '38', '40', '42', '44', '46', '48', '50', '52', '54',
@@ -14,45 +14,151 @@ export const STANDARD_SIZES = [
   'Standard', 'Sur Mesure (تفصيل)'
 ];
 
-export const POPULAR_COLORS = [
-  { name: 'أسود', hex: '#000000', border: false },
-  { name: 'أبيض', hex: '#FFFFFF', border: true },
-  { name: 'أحمر', hex: '#DC2626', border: false },
-  { name: 'أزرق ملكي', hex: '#1D4ED8', border: false },
-  { name: 'أزرق سماوي', hex: '#38BDF8', border: false },
-  { name: 'كحلي', hex: '#1E293B', border: false },
-  { name: 'ذهبي', hex: '#D97706', border: false },
-  { name: 'فضي', hex: '#94A3B8', border: false },
-  { name: 'وردي', hex: '#EC4899', border: false },
-  { name: 'وردي بودري', hex: '#FBCFE8', border: true },
-  { name: 'أخضر زمردي', hex: '#059669', border: false },
-  { name: 'أخضر ملكي', hex: '#064E3B', border: false },
-  { name: 'بنفسجي', hex: '#7C3AED', border: false },
-  { name: 'بوردو', hex: '#881337', border: false },
-  { name: 'بيج', hex: '#FEF08A', border: true },
-  { name: 'رمادي', hex: '#64748B', border: false },
-  { name: 'خردلي', hex: '#CA8A04', border: false },
-  { name: 'برونزي', hex: '#78350F', border: false },
-  { name: 'فوشيا', hex: '#C026D3', border: false },
-  { name: 'أخضر فستقي', hex: '#A3E635', border: false }
+export interface ColorDefinition {
+  name: string;
+  hex: string;
+  border?: boolean;
+  category?: 'basics' | 'yellow_gold' | 'red_pink' | 'blue' | 'green' | 'purple' | 'earth';
+}
+
+export const POPULAR_COLORS: ColorDefinition[] = [
+  // 1. درجات الأصفر والذهبي (Yellows & Golds) - مطلوب بشكل خاص من المستخدم
+  { name: 'أصفر', hex: '#EAB308', border: true, category: 'yellow_gold' },
+  { name: 'أصفر كناري', hex: '#FACC15', border: true, category: 'yellow_gold' },
+  { name: 'أصفر ليموني', hex: '#FEF08A', border: true, category: 'yellow_gold' },
+  { name: 'أصفر خردلي (موطارد)', hex: '#CA8A04', border: false, category: 'yellow_gold' },
+  { name: 'ذهبي ملكي', hex: '#D97706', border: false, category: 'yellow_gold' },
+  { name: 'ذهبي برّاق', hex: '#F59E0B', border: false, category: 'yellow_gold' },
+  { name: 'نحاسي', hex: '#B45309', border: false, category: 'yellow_gold' },
+  { name: 'برونزي', hex: '#78350F', border: false, category: 'yellow_gold' },
+
+  // 2. الألوان الأساسية والمحايدة (Basics & Neutrals)
+  { name: 'أسود', hex: '#000000', border: false, category: 'basics' },
+  { name: 'أبيض', hex: '#FFFFFF', border: true, category: 'basics' },
+  { name: 'أوف وايت (عاجي)', hex: '#F8FAFC', border: true, category: 'basics' },
+  { name: 'سكري (كريمي)', hex: '#FEF9C3', border: true, category: 'basics' },
+  { name: 'بيج', hex: '#E2D9C8', border: true, category: 'basics' },
+  { name: 'نيود (ترابي)', hex: '#D4B996', border: true, category: 'basics' },
+  { name: 'رمادي', hex: '#64748B', border: false, category: 'basics' },
+  { name: 'رمادي فاتح', hex: '#CBD5E1', border: true, category: 'basics' },
+  { name: 'فضي', hex: '#94A3B8', border: false, category: 'basics' },
+
+  // 3. درجات الأحمر والوردي والبرتقالي (Reds, Pinks & Oranges)
+  { name: 'أحمر', hex: '#DC2626', border: false, category: 'red_pink' },
+  { name: 'أحمر ملكي', hex: '#B91C1C', border: false, category: 'red_pink' },
+  { name: 'بوردو', hex: '#881337', border: false, category: 'red_pink' },
+  { name: 'عنابي (دم الغزال)', hex: '#991B1B', border: false, category: 'red_pink' },
+  { name: 'برغندي', hex: '#4C0519', border: false, category: 'red_pink' },
+  { name: 'وردي', hex: '#EC4899', border: false, category: 'red_pink' },
+  { name: 'وردي بودري', hex: '#FBCFE8', border: true, category: 'red_pink' },
+  { name: 'فوشيا', hex: '#C026D3', border: false, category: 'red_pink' },
+  { name: 'مرجاني (كوراي)', hex: '#F43F5E', border: false, category: 'red_pink' },
+  { name: 'برتقالي', hex: '#EA580C', border: false, category: 'red_pink' },
+  { name: 'خوخي (مشمشي)', hex: '#FB923C', border: false, category: 'red_pink' },
+  { name: 'سلمون', hex: '#FDA4AF', border: false, category: 'red_pink' },
+
+  // 4. درجات الأزرق والنيلي (Blues & Teals)
+  { name: 'أزرق ملكي', hex: '#1D4ED8', border: false, category: 'blue' },
+  { name: 'كحلي', hex: '#1E293B', border: false, category: 'blue' },
+  { name: 'أزرق نيلي', hex: '#3730A3', border: false, category: 'blue' },
+  { name: 'أزرق سماوي', hex: '#38BDF8', border: false, category: 'blue' },
+  { name: 'تركواز (فيروزي)', hex: '#06B6D4', border: false, category: 'blue' },
+  { name: 'أزرق بترولي', hex: '#0E7490', border: false, category: 'blue' },
+  { name: 'تيل (أزرق مخضر)', hex: '#0D9488', border: false, category: 'blue' },
+
+  // 5. درجات الأخضر والزيتي (Greens & Olives)
+  { name: 'أخضر زمردي', hex: '#059669', border: false, category: 'green' },
+  { name: 'أخضر ملكي', hex: '#064E3B', border: false, category: 'green' },
+  { name: 'زيتي (كاكي)', hex: '#4D7C0F', border: false, category: 'green' },
+  { name: 'أخضر فستقي', hex: '#84CC16', border: false, category: 'green' },
+  { name: 'نعناعي (مينت)', hex: '#6EE7B7', border: true, category: 'green' },
+  { name: 'أخضر تفاحي', hex: '#A3E635', border: false, category: 'green' },
+
+  // 6. درجات البنفسجي واللافندر (Purples & Lilacs)
+  { name: 'بنفسجي', hex: '#7C3AED', border: false, category: 'purple' },
+  { name: 'موف', hex: '#A855F7', border: false, category: 'purple' },
+  { name: 'ليلكي (لافندر)', hex: '#C084FC', border: false, category: 'purple' },
+  { name: 'برقوقي (باذنجاني)', hex: '#581C87', border: false, category: 'purple' },
+
+  // 7. درجات البني والألوان الترابية (Browns & Earthy)
+  { name: 'بني شوكولا', hex: '#451A03', border: false, category: 'earth' },
+  { name: 'بني كستنائي', hex: '#78350F', border: false, category: 'earth' },
+  { name: 'عسلي (جملي)', hex: '#D97706', border: false, category: 'earth' },
+  { name: 'موكا', hex: '#A16207', border: false, category: 'earth' },
+  { name: 'تيراكوتا (آجوري)', hex: '#C2410C', border: false, category: 'earth' }
 ];
 
 export const getColorHex = (colorName: string): string => {
   if (!colorName) return '#94A3B8';
-  const c = colorName.trim();
-  const found = POPULAR_COLORS.find(item => c.includes(item.name) || item.name.includes(c));
+  const c = colorName.trim().toLowerCase();
+
+  // 1. Direct or partial match in POPULAR_COLORS
+  const found = POPULAR_COLORS.find(item => 
+    c === item.name.toLowerCase() || 
+    c.includes(item.name.toLowerCase()) || 
+    item.name.toLowerCase().includes(c)
+  );
   if (found) return found.hex;
-  if (c.includes('أسود') || c.toLowerCase().includes('black') || c.toLowerCase().includes('noir')) return '#000000';
-  if (c.includes('أبيض') || c.toLowerCase().includes('white') || c.toLowerCase().includes('blanc')) return '#FFFFFF';
-  if (c.includes('أحمر') || c.toLowerCase().includes('red') || c.toLowerCase().includes('rouge')) return '#DC2626';
-  if (c.includes('أزرق') || c.toLowerCase().includes('blue') || c.toLowerCase().includes('bleu')) return '#1D4ED8';
-  if (c.includes('ذهب') || c.toLowerCase().includes('gold') || c.toLowerCase().includes('or')) return '#D97706';
-  if (c.includes('فض') || c.toLowerCase().includes('silver') || c.toLowerCase().includes('argent')) return '#94A3B8';
-  if (c.includes('ورد') || c.toLowerCase().includes('pink') || c.toLowerCase().includes('rose')) return '#EC4899';
-  if (c.includes('أخضر') || c.toLowerCase().includes('green') || c.toLowerCase().includes('vert')) return '#059669';
-  if (c.includes('بنفسج') || c.toLowerCase().includes('purple') || c.toLowerCase().includes('violet')) return '#7C3AED';
-  if (c.includes('بوردو') || c.toLowerCase().includes('bordeaux')) return '#881337';
-  if (c.includes('بيج') || c.toLowerCase().includes('beige')) return '#E2D9C8';
+
+  // 2. Yellows & Golds (أصفر ومشتقاته)
+  if (c.includes('أصفر') || c.includes('اصفر') || c.includes('jaune') || c.includes('yellow')) return '#EAB308';
+  if (c.includes('ليمون') || c.includes('كناري') || c.includes('citron')) return '#FACC15';
+  if (c.includes('خردل') || c.includes('موطارد') || c.includes('moutarde') || c.includes('mustard')) return '#CA8A04';
+  if (c.includes('ذهب') || c.includes('gold') || c.includes('or')) return '#D97706';
+  if (c.includes('نحاس') || c.includes('cuivre') || c.includes('copper')) return '#B45309';
+  if (c.includes('برونز') || c.includes('bronze')) return '#78350F';
+
+  // 3. Neutrals (أسود، أبيض، بيج، رمادي...)
+  if (c.includes('أسود') || c.includes('اسود') || c.includes('black') || c.includes('noir')) return '#000000';
+  if (c.includes('أبيض') || c.includes('ابيض') || c.includes('white') || c.includes('blanc')) return '#FFFFFF';
+  if (c.includes('عاج') || c.includes('أوف وايت') || c.includes('اوكرو') || c.includes('ivoire') || c.includes('ecru')) return '#F8FAFC';
+  if (c.includes('سكر') || c.includes('كريم') || c.includes('creme') || c.includes('cream')) return '#FEF9C3';
+  if (c.includes('بيج') || c.includes('beige')) return '#E2D9C8';
+  if (c.includes('نيود') || c.includes('تراب') || c.includes('nude')) return '#D4B996';
+  if (c.includes('رماد') || c.includes('gris') || c.includes('grey') || c.includes('gray')) return '#64748B';
+  if (c.includes('فض') || c.includes('silver') || c.includes('argent')) return '#94A3B8';
+
+  // 4. Reds & Pinks & Oranges
+  if (c.includes('أحمر') || c.includes('احمر') || c.includes('red') || c.includes('rouge')) return '#DC2626';
+  if (c.includes('بوردو') || c.includes('bordeaux')) return '#881337';
+  if (c.includes('عناب') || c.includes('خمري') || c.includes('برغند') || c.includes('دم الغزال') || c.includes('burgundy')) return '#991B1B';
+  if (c.includes('فوشيا') || c.includes('fuchsia')) return '#C026D3';
+  if (c.includes('ورد') || c.includes('زهري') || c.includes('pink') || c.includes('rose')) return '#EC4899';
+  if (c.includes('مرجان') || c.includes('كوراي') || c.includes('corail') || c.includes('coral')) return '#F43F5E';
+  if (c.includes('برتقال') || c.includes('orange')) return '#EA580C';
+  if (c.includes('مشمش') || c.includes('خوخ') || c.includes('peche') || c.includes('peach')) return '#FB923C';
+  if (c.includes('سلمون') || c.includes('saumon') || c.includes('salmon')) return '#FDA4AF';
+
+  // 5. Blues & Teals
+  if (c.includes('أزرق') || c.includes('ازرق') || c.includes('blue') || c.includes('bleu')) return '#1D4ED8';
+  if (c.includes('كحل') || c.includes('marine') || c.includes('navy')) return '#1E293B';
+  if (c.includes('نيلي') || c.includes('indigo')) return '#3730A3';
+  if (c.includes('سماو') || c.includes('ciel') || c.includes('sky')) return '#38BDF8';
+  if (c.includes('تركواز') || c.includes('فيروز') || c.includes('turquoise')) return '#06B6D4';
+  if (c.includes('بترول') || c.includes('petrole')) return '#0E7490';
+  if (c.includes('تيل') || c.includes('teal')) return '#0D9488';
+
+  // 6. Greens
+  if (c.includes('أخضر') || c.includes('اخضر') || c.includes('green') || c.includes('vert')) return '#059669';
+  if (c.includes('زمرد') || c.includes('emeraude')) return '#059669';
+  if (c.includes('زيت') || c.includes('كاكي') || c.includes('kaki') || c.includes('olive')) return '#4D7C0F';
+  if (c.includes('فستق') || c.includes('pistache')) return '#84CC16';
+  if (c.includes('نعناع') || c.includes('مينت') || c.includes('menthe') || c.includes('mint')) return '#6EE7B7';
+  if (c.includes('تفاح') || c.includes('pomme')) return '#A3E635';
+
+  // 7. Purples
+  if (c.includes('بنفسج') || c.includes('purple') || c.includes('violet')) return '#7C3AED';
+  if (c.includes('موف') || c.includes('mauve')) return '#A855F7';
+  if (c.includes('ليلك') || c.includes('لافندر') || c.includes('lavande') || c.includes('lilac')) return '#C084FC';
+  if (c.includes('برقوق') || c.includes('باذنجان') || c.includes('aubergine')) return '#581C87';
+
+  // 8. Browns & Earthy
+  if (c.includes('شوكولا') || c.includes('chocolat')) return '#451A03';
+  if (c.includes('بني') || c.includes('marron') || c.includes('brown')) return '#78350F';
+  if (c.includes('جمل') || c.includes('عسل') || c.includes('camel')) return '#D97706';
+  if (c.includes('موكا') || c.includes('mocha')) return '#A16207';
+  if (c.includes('طين') || c.includes('آجور') || c.includes('terracotta')) return '#C2410C';
+
   return '#94A3B8';
 };
 
@@ -92,6 +198,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   const [initialBarcodeForAdd, setInitialBarcodeForAdd] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
   const [variantsModalItem, setVariantsModalItem] = useState<ClothItem | null>(null);
+  const [imageDisplayMode, setImageDisplayMode] = useState<'fill' | 'cover' | 'contain' | 'natural'>('fill');
 
   // Quick Stock & Transfer Modal
   const [stockModalItem, setStockModalItem] = useState<ClothItem | null>(null);
@@ -127,6 +234,18 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
       reason: `يرجى إدخال رمز المرور للموافقة على تحويل كميات (${item.name}) بين المخزن 1 والمخزن 2`,
       onConfirm: () => {
         setQuickTransferItem(item);
+        setSecurityModal(null);
+      }
+    });
+  };
+
+  const handleInitiateEditCloth = (item: ClothItem) => {
+    setSecurityModal({
+      isOpen: true,
+      title: 'كلمة المرور لتعديل المنتج',
+      reason: `يرجى إدخال رمز المرور أو كلمة السر للترخيص بتعديل بيانات القطعة (${item.name})`,
+      onConfirm: () => {
+        setEditingItem(item);
         setSecurityModal(null);
       }
     });
@@ -733,6 +852,66 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
       </div>
 
       {/* Grid of Clothes Items with Images and Stock 1 / Stock 2 Badges */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1 pb-2">
+        <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+          <Shirt className="w-4 h-4 text-blue-900" />
+          <span>قائمة القطع في المخزن ({filteredClothes.length})</span>
+        </span>
+
+        {/* Display Mode Switcher (100% complete view vs 100% fill vs cover vs natural) */}
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs shadow-2xs">
+          <span className="text-[11px] font-bold text-slate-500 px-1 hidden sm:inline">طريقة العرض:</span>
+          <button
+            type="button"
+            onClick={() => setImageDisplayMode('fill')}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all flex items-center gap-1 ${
+              imageDisplayMode === 'fill'
+                ? 'bg-blue-900 text-white shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+            title="تأخذ الصورة مساحة القائمة 100% كاملة في العرض والارتفاع بدون اقتصاص"
+          >
+            <span>ملء 100% كاملة (موصى به)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setImageDisplayMode('natural')}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all flex items-center gap-1 ${
+              imageDisplayMode === 'natural'
+                ? 'bg-blue-900 text-white shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+            title="عرض بعرض 100% وارتفاع تلقائي يطابق الصورة الأصلية بالكامل"
+          >
+            <span>أبعاد طبيعية (ارتفاع حر)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setImageDisplayMode('cover')}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all flex items-center gap-1 ${
+              imageDisplayMode === 'cover'
+                ? 'bg-blue-900 text-white shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+            title="تغطية الإطار 100% مع اقتصاص الأطراف الزائدة"
+          >
+            <span>تغطية الإطار (Cover)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setImageDisplayMode('contain')}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all flex items-center gap-1 ${
+              imageDisplayMode === 'contain'
+                ? 'bg-blue-900 text-white shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+            title="احتواء داخل الإطار مع خلفية ضبابية"
+          >
+            <span>احتواء (Contain)</span>
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {paginatedClothes.map(item => {
           const s1 = getItemStock1(item);
@@ -753,26 +932,48 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
               key={item.id}
               className="bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all duration-200 flex flex-col justify-between group"
             >
-              {/* Product Image Box - Opens Colors & Sizes (Déclinaisons) Modal */}
+              {/* Product Image Box - Takes 100% of card width & vertical height and displays dress completely */}
               <div 
                 onClick={() => setVariantsModalItem(item)}
-                className="relative aspect-4/3 sm:aspect-16/10 bg-slate-50 overflow-hidden cursor-pointer flex items-center justify-center group"
+                className={`relative bg-slate-900/5 overflow-hidden cursor-pointer flex items-center justify-center group w-full ${
+                  imageDisplayMode === 'natural' ? 'min-h-[260px] max-h-[500px]' : 'aspect-[3/4]'
+                }`}
                 title="اضغط لعرض الألوان والمقاسات (Déclinaisons)"
               >
                 {item.imageUrl ? (
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
-                    loading="lazy"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
-                  />
+                  <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
+                    {/* Ambient blurred backdrop: fills 100% of the box edge-to-edge */}
+                    {imageDisplayMode !== 'fill' && (
+                      <img
+                        src={item.imageUrl}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover blur-xl scale-125 opacity-35 select-none pointer-events-none"
+                        aria-hidden="true"
+                      />
+                    )}
+                    {/* Main dress image: spans 100% of card space and displays completely */}
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className={`relative z-1 w-full transition-transform duration-300 group-hover:scale-103 select-none ${
+                        imageDisplayMode === 'fill'
+                          ? 'h-full object-fill'
+                          : imageDisplayMode === 'cover'
+                          ? 'h-full object-cover object-top'
+                          : imageDisplayMode === 'natural'
+                          ? 'h-auto max-h-[500px] object-contain'
+                          : 'h-full object-contain'
+                      }`}
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center text-slate-400 gap-1.5 p-4">
-                    <Shirt className="w-8 h-8 text-slate-300" />
-                    <span className="text-[10px] font-medium">بدون صورة</span>
+                  <div className="flex flex-col items-center justify-center text-slate-400 gap-2 p-4">
+                    <Shirt className="w-10 h-10 text-slate-300" />
+                    <span className="text-xs font-bold text-slate-400">بدون صورة</span>
                   </div>
                 )}
 
@@ -949,9 +1150,9 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                   </button>
 
                   <button
-                    onClick={() => setEditingItem(item)}
+                    onClick={() => handleInitiateEditCloth(item)}
                     className="py-1.5 px-2 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-xl text-xs font-medium transition-all active:scale-95 shadow-2xs"
-                    title="تعديل بيانات وصورة القطعة"
+                    title="تعديل بيانات وصورة القطعة (يتطلب كلمة المرور)"
                   >
                     <Pencil className="w-3.5 h-3.5 text-slate-500" />
                   </button>
@@ -1218,7 +1419,7 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
         {/* Item Info Summary */}
         <div className="flex items-center gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200 mb-4">
           {item.imageUrl ? (
-            <img src={item.imageUrl} alt={item.name} className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0" />
+            <img src={item.imageUrl} alt={item.name} className="w-14 h-14 rounded-xl object-contain bg-white border border-slate-200 shrink-0 p-0.5 shadow-2xs" />
           ) : (
             <div className="w-14 h-14 rounded-xl bg-slate-200 text-slate-400 flex items-center justify-center shrink-0">
               <Shirt className="w-6 h-6 text-slate-400" />
@@ -1621,6 +1822,9 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
   }, [item]);
   const [selectedColors, setSelectedColors] = useState<string[]>(initialColors);
   const [customColorInput, setCustomColorInput] = useState('');
+  const [colorCategoryFilter, setColorCategoryFilter] = useState<string>('all');
+  const [colorSearchQuery, setColorSearchQuery] = useState<string>('');
+  const [customColorPickerHex, setCustomColorPickerHex] = useState<string>('#EAB308');
 
   // Variants state (تفاصيل المقاسات والألوان والكميات لكل لون)
   const [variants, setVariants] = useState<ClothVariant[]>(() => {
@@ -1833,7 +2037,7 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
   const totalStock2 = variants.reduce((sum, v) => sum + (Number(v.stock2) || 0), 0);
   const totalCalculatedStock = totalStock1 + totalStock2;
 
-  // Compress & convert file to Base64 with security checks
+  // Compress & convert file to Base64 with automatic downscaling and aspect ratio preservation so it displays completely
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1853,20 +2057,18 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 700;
-        const MAX_HEIGHT = 700;
+        // Max dimension bounds: 1600px ensures ultra-crisp details on all screens without cropping
+        const MAX_DIM = 1600;
         let width = img.width;
         let height = img.height;
 
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            width = MAX_HEIGHT;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
           }
         }
 
@@ -1874,13 +2076,23 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         if (ctx) {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, width, height);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
           setImageUrl(dataUrl);
         }
         setIsProcessingImage(false);
       };
+      img.onerror = () => {
+        setIsProcessingImage(false);
+        alert('تعذر قراءة ملف الصورة، يرجى اختيار صورة أخرى');
+      };
       img.src = event.target?.result as string;
+    };
+    reader.onerror = () => {
+      setIsProcessingImage(false);
+      alert('حدث خطأ أثناء تحميل الملف');
     };
     reader.readAsDataURL(file);
   };
@@ -2036,27 +2248,37 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
           </div>
 
           {/* Image Upload */}
-          <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
-            <label className="block text-xs font-bold text-slate-700">صورة المنتج / الفستان</label>
-            <div className="flex items-center gap-3">
-              <div className="w-20 h-20 rounded-2xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 relative group">
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+            <div className="flex justify-between items-center">
+              <label className="block text-xs font-black text-slate-800">صورة الفستان / القطعة</label>
+              <span className="text-[10px] text-blue-900 font-bold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-blue-700" />
+                <span>تأخذ 100% من مساحة القائمة وتظهر كاملة</span>
+              </span>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+              <div className="w-36 h-48 sm:w-44 sm:h-56 rounded-2xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 relative group shadow-xs">
                 {imageUrl ? (
-                  <>
-                    <img src={imageUrl} alt="معاينة" className="w-full h-full object-cover" />
+                  <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
+                    <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-lg scale-110 opacity-30 select-none" />
+                    <img src={imageUrl} alt="معاينة الفستان كاملة" className="relative z-1 w-full h-full object-contain select-none" />
                     <button
                       type="button"
                       onClick={() => setImageUrl('')}
-                      className="absolute inset-0 bg-slate-900/80 text-white font-bold text-[10px] opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity"
+                      className="absolute inset-0 z-10 bg-slate-900/80 text-white font-bold text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>حذف</span>
+                      <Trash2 className="w-4 h-4 text-red-400" />
+                      <span>حذف الصورة</span>
                     </button>
-                  </>
+                  </div>
                 ) : (
-                  <Shirt className="w-8 h-8 text-slate-300" />
+                  <div className="flex flex-col items-center justify-center text-slate-400 gap-2 p-3 text-center">
+                    <Shirt className="w-10 h-10 text-slate-300" />
+                    <span className="text-xs font-bold text-slate-400">معاينة الصورة</span>
+                  </div>
                 )}
               </div>
-              <div className="flex-1 space-y-1.5">
+              <div className="flex-1 w-full space-y-2">
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -2068,18 +2290,21 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isProcessingImage}
-                  className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                  className="w-full py-2.5 bg-blue-900 hover:bg-blue-950 text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 active:scale-95 shadow-2xs"
                 >
-                  <Upload className="w-3.5 h-3.5 text-slate-600" />
-                  <span>{isProcessingImage ? 'جاري تجهيز الصورة...' : 'رفع صورة من الهاتف / الكمبيوتر'}</span>
+                  <Upload className="w-4 h-4" />
+                  <span>{isProcessingImage ? 'جاري معالجة وحفظ الصورة بأعلى جودة...' : 'رفع صورة من الهاتف / الكمبيوتر'}</span>
                 </button>
                 <input
                   type="url"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="أو ضع رابط صورة إنترنت (URL)..."
-                  className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-[11px] focus:outline-none focus:border-slate-400"
+                  placeholder="أو ضع رابط صورة إنترنت مباشرة (URL)..."
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-blue-900"
                 />
+                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                  يتم حفظ الصورة بدقة فائقة وأبعاد طبيعية، لتأخذ 100% من مساحة البطاقة وتظهر واضحة وكاملة بدون أي اقتصاص لأطراف الفستان.
+                </p>
               </div>
             </div>
           </div>
@@ -2144,7 +2369,7 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
           </div>
 
           {/* COLORS SELECTION SECTION (الألوان المتوفرة) */}
-          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
+          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-3">
             <div className="flex justify-between items-center">
               <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
                 <Palette className="w-4 h-4 text-blue-900" />
@@ -2155,22 +2380,106 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
               </span>
             </div>
 
-            <div className="flex flex-wrap gap-1.5">
-              {POPULAR_COLORS.map((col) => {
+            {/* Currently Selected Color Chips with One-click Remove */}
+            <div className="flex flex-wrap items-center gap-1.5 p-2 bg-white rounded-xl border border-slate-200 min-h-[38px]">
+              <span className="text-[10px] text-slate-500 font-bold ml-1">الألوان المختارة:</span>
+              {selectedColors.map((colName) => (
+                <span
+                  key={colName}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black bg-blue-900 text-white shadow-2xs transition-all"
+                >
+                  <span
+                    className="w-2.5 h-2.5 rounded-full border border-white/50 shrink-0 shadow-2xs"
+                    style={{ backgroundColor: getColorHex(colName) }}
+                  />
+                  <span>{colName}</span>
+                  {selectedColors.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveColor(colName)}
+                      className="hover:text-red-300 transition-colors ml-0.5"
+                      title="إزالة هذا اللون"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </span>
+              ))}
+            </div>
+
+            {/* Category Filter Tabs & Quick Search */}
+            <div className="space-y-2">
+              {/* Category Filter Pills */}
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar text-xs">
+                {[
+                  { id: 'all', label: `الكل (${POPULAR_COLORS.length})` },
+                  { id: 'yellow_gold', label: '🟡 أصفر وذهبي' },
+                  { id: 'basics', label: '⚪ أساسي ونيود' },
+                  { id: 'red_pink', label: '🔴 أحمر ووردي' },
+                  { id: 'blue', label: '🔵 أزرق وتركواز' },
+                  { id: 'green', label: '🟢 أخضر وزيتي' },
+                  { id: 'purple', label: '🟣 بنفسجي وموف' },
+                  { id: 'earth', label: '🟤 بني وترابي' },
+                ].map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setColorCategoryFilter(cat.id)}
+                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all ${
+                      colorCategoryFilter === cat.id
+                        ? 'bg-blue-900 text-white shadow-xs'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Quick Search */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={colorSearchQuery}
+                  onChange={(e) => setColorSearchQuery(e.target.value)}
+                  placeholder="ابحث عن لون سريعاً (أصفر، ليموني، زيتي، كحلي، خوخي...)"
+                  className="w-full bg-white border border-slate-200 rounded-xl pr-8 pl-8 py-1.5 text-xs font-bold focus:outline-none focus:border-blue-900 placeholder:text-slate-400"
+                />
+                {colorSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setColorSearchQuery('')}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Color Swatch Badges Grid */}
+            <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto p-1.5 bg-white/70 rounded-xl border border-slate-200/80">
+              {POPULAR_COLORS.filter((col) => {
+                const matchesCat = colorCategoryFilter === 'all' || col.category === colorCategoryFilter;
+                const q = colorSearchQuery.trim().toLowerCase();
+                const matchesSearch = !q || col.name.toLowerCase().includes(q);
+                return matchesCat && matchesSearch;
+              }).map((col) => {
                 const isSelected = selectedColors.includes(col.name);
                 return (
                   <button
                     type="button"
                     key={col.name}
                     onClick={() => handleToggleColor(col.name)}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-bold border inline-flex items-center gap-1.5 transition-all ${
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border inline-flex items-center gap-1.5 transition-all active:scale-95 ${
                       isSelected
-                        ? 'bg-blue-900 text-white border-blue-900 shadow-xs scale-105'
-                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'
+                        ? 'bg-blue-900 text-white border-blue-900 shadow-xs scale-102 ring-2 ring-blue-900/20'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400 hover:bg-slate-50'
                     }`}
                   >
                     <span
-                      className="w-3 h-3 rounded-full border border-slate-300 shrink-0"
+                      className={`w-3.5 h-3.5 rounded-full shrink-0 shadow-2xs ${col.border ? 'border border-slate-300' : ''}`}
                       style={{ backgroundColor: col.hex }}
                     />
                     <span>{col.name}</span>
@@ -2180,8 +2489,18 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
               })}
             </div>
 
-            {/* Add Custom Color */}
-            <div className="flex gap-2 pt-1 border-t border-slate-200">
+            {/* Add Custom Color (بدرجة مخصصة أو اسم حر) */}
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 pt-2 border-t border-slate-200">
+              <div className="flex items-center gap-1.5 shrink-0 bg-white border border-slate-200 rounded-xl px-2 py-1 shadow-2xs">
+                <span className="text-[10px] text-slate-500 font-bold">الدرجة:</span>
+                <input
+                  type="color"
+                  value={customColorPickerHex}
+                  onChange={(e) => setCustomColorPickerHex(e.target.value)}
+                  className="w-6 h-6 rounded-md cursor-pointer border-0 p-0 bg-transparent"
+                  title="اختر درجة اللون بدقة من لوحة الألوان"
+                />
+              </div>
               <LettersInput
                 value={customColorInput}
                 onChange={setCustomColorInput}
@@ -2191,13 +2510,13 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                     handleAddCustomColor();
                   }
                 }}
-                placeholder="أضف لون آخر (حروف فقط: بترولي، موطارد، زيتي...)"
+                placeholder="اكتب اسم أي لون إضافي مخصص غير موجود (مثال: أصفر فاقع، موطارد هادئ، بترولي...)"
                 className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold focus:outline-none focus:border-blue-900"
               />
               <button
                 type="button"
                 onClick={handleAddCustomColor}
-                className="bg-slate-800 hover:bg-black text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 shrink-0"
+                className="bg-blue-900 hover:bg-blue-950 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 shrink-0 active:scale-95 shadow-2xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>إضافة لون</span>

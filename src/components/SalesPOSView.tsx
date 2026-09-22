@@ -104,6 +104,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
   const [barcodeInput, setBarcodeInput] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('الكل');
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
+  const [imageDisplayMode, setImageDisplayMode] = useState<'fill' | 'cover' | 'contain'>('fill');
   const [lastScannedItem, setLastScannedItem] = useState<string | null>(null);
 
   const barcodeInputRef = useRef<HTMLInputElement>(null);
@@ -511,18 +512,54 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
             </div>
 
             {/* Category Filter Pills */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs hide-scrollbar">
-              {categories.map(cat => (
+            <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 text-xs hide-scrollbar">
+              <div className="flex gap-1.5 shrink-0">
+                {categories.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-3 py-1 rounded-xl text-xs font-medium shrink-0 transition-colors ${
+                      selectedCategory === cat ? 'bg-slate-900 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              {/* Image Mode Switcher */}
+              <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[11px] shrink-0">
                 <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1 rounded-xl text-xs font-medium shrink-0 transition-colors ${
-                    selectedCategory === cat ? 'bg-slate-900 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  type="button"
+                  onClick={() => setImageDisplayMode('fill')}
+                  className={`px-2 py-0.5 rounded-md font-bold transition-all ${
+                    imageDisplayMode === 'fill' ? 'bg-blue-900 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
+                  title="ملء 100% كاملة في البطاقة"
                 >
-                  {cat}
+                  ملء 100%
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setImageDisplayMode('cover')}
+                  className={`px-2 py-0.5 rounded-md font-bold transition-all ${
+                    imageDisplayMode === 'cover' ? 'bg-blue-900 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="تغطية الإطار"
+                >
+                  تغطية
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageDisplayMode('contain')}
+                  className={`px-2 py-0.5 rounded-md font-bold transition-all ${
+                    imageDisplayMode === 'contain' ? 'bg-blue-900 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="احتواء كامل"
+                >
+                  احتواء
+                </button>
+              </div>
             </div>
           </div>
 
@@ -544,21 +581,37 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                   {/* Photo Container */}
                   <div 
                     onClick={() => addToCart(item)}
-                    className="relative aspect-4/3 bg-slate-100 overflow-hidden flex items-center justify-center cursor-pointer"
+                    className="relative aspect-[3/4] bg-slate-900/5 overflow-hidden flex items-center justify-center cursor-pointer group"
                   >
                     {item.imageUrl ? (
-                      <img
-                        src={item.imageUrl}
-                        alt={item.name}
-                        className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
-                        loading="lazy"
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = 'none';
-                        }}
-                      />
+                      <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
+                        {imageDisplayMode !== 'fill' && (
+                          <img
+                            src={item.imageUrl}
+                            alt=""
+                            className="absolute inset-0 w-full h-full object-cover blur-xl scale-125 opacity-35 select-none pointer-events-none"
+                            aria-hidden="true"
+                          />
+                        )}
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className={`relative z-1 w-full h-full transition-transform duration-300 group-hover:scale-103 select-none ${
+                            imageDisplayMode === 'fill'
+                              ? 'object-fill'
+                              : imageDisplayMode === 'cover'
+                              ? 'object-cover object-top'
+                              : 'object-contain'
+                          }`}
+                          loading="lazy"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center text-slate-400">
-                        <Package className="w-8 h-8 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                        <Package className="w-10 h-10 text-slate-300 group-hover:text-slate-500 transition-colors" />
                       </div>
                     )}
 
@@ -696,9 +749,9 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                     <div key={`${item.itemId}_${source}_${idx}`} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-xs space-y-2">
                       <div className="flex justify-between items-center gap-2">
                         {/* Item Photo / Icon */}
-                        <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
                           {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
                           ) : (
                             <Package className="w-4 h-4 text-slate-400" />
                           )}
@@ -913,7 +966,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                 <img
                   src={scannedItemModal.item.imageUrl}
                   alt={scannedItemModal.item.name}
-                  className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0"
+                  className="w-16 h-16 rounded-xl object-contain bg-slate-50 border border-slate-200 shrink-0 p-0.5"
                 />
               ) : (
                 <div className="w-16 h-16 rounded-xl bg-slate-200 text-slate-400 flex items-center justify-center shrink-0">
@@ -1128,9 +1181,9 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                 <div key={sale.id} className="py-3 flex justify-between items-center text-xs gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     {/* First item photo thumbnail if available */}
-                    <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                    <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
                       {sale.items[0]?.imageUrl ? (
-                        <img src={sale.items[0].imageUrl} alt="صورة" className="w-full h-full object-cover" />
+                        <img src={sale.items[0].imageUrl} alt="صورة" className="w-full h-full object-contain" />
                       ) : (
                         <ShoppingBag className="w-4 h-4 text-slate-400" />
                       )}
@@ -1240,7 +1293,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                 <img 
                   src={scannedItemModal.item.imageUrl} 
                   alt={scannedItemModal.item.name} 
-                  className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0"
+                  className="w-16 h-16 rounded-xl object-contain bg-white border border-slate-200 shrink-0 p-0.5"
                 />
               ) : (
                 <div className="w-16 h-16 rounded-xl bg-slate-200 flex items-center justify-center shrink-0 text-slate-400">

@@ -20,7 +20,7 @@ import {
   Barcode,
   ArrowUpDown
 } from 'lucide-react';
-import { getColorHex } from './InventoryView';
+import { getColorHex, POPULAR_COLORS } from './InventoryView';
 
 interface ProductVariantsModalProps {
   item: ClothItem;
@@ -268,7 +268,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                     <img 
                       src={item.imageUrl} 
                       alt={item.name} 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform" 
+                      className="w-full h-full object-contain p-0.5 group-hover:scale-105 transition-transform" 
                     />
                     <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
                       <ZoomIn className="w-4 h-4" />
@@ -400,7 +400,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                         <img 
                           src={variant.imageUrl || item.imageUrl} 
                           alt={`${item.name} - ${variant.size}`} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
+                          className="w-full h-full object-contain p-0.5 group-hover:scale-105 transition-transform" 
                           loading="lazy"
                         />
                       ) : (
@@ -626,13 +626,38 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
               </div>
               <div>
                 <label className="text-[10px] text-slate-600 font-bold block mb-1">اللون:</label>
-                <input 
-                  type="text" 
-                  value={newColor} 
-                  onChange={(e) => setNewColor(e.target.value)} 
-                  placeholder="مثال: أسود"
-                  className="w-full px-2.5 py-1.5 bg-white rounded-lg border border-slate-300 font-bold"
-                />
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    value={newColor} 
+                    onChange={(e) => setNewColor(e.target.value)} 
+                    placeholder="مثال: أصفر أو أسود"
+                    list="variants-color-suggestions"
+                    className="w-full px-2.5 py-1.5 bg-white rounded-lg border border-slate-300 font-bold"
+                  />
+                  <datalist id="variants-color-suggestions">
+                    {POPULAR_COLORS.map(c => (
+                      <option key={c.name} value={c.name} />
+                    ))}
+                  </datalist>
+                </div>
+                {/* Quick Popular Color Chips */}
+                <div className="flex flex-wrap gap-1 mt-1.5 max-h-16 overflow-y-auto">
+                  {['أصفر', 'أصفر كناري', 'ذهبي ملكي', 'أسود', 'أبيض', 'أحمر', 'أزرق ملكي', 'أخضر زمردي', 'بوردو', 'وردي', 'بيج', 'زيتي (كاكي)'].map(colName => (
+                    <button
+                      key={colName}
+                      type="button"
+                      onClick={() => setNewColor(colName)}
+                      className={`px-1.5 py-0.5 text-[9px] font-black rounded-md border transition-all ${
+                        newColor === colName 
+                          ? 'bg-blue-900 text-white border-blue-900 shadow-2xs' 
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {colName}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="text-[10px] text-slate-600 font-bold block mb-1">كود المرجع (#):</label>

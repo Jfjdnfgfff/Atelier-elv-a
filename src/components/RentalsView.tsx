@@ -354,7 +354,7 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
                         <img 
                           src={matchedCloth.imageUrl} 
                           alt={rental.itemName} 
-                          className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" 
+                          className="w-12 h-12 rounded-xl object-contain bg-slate-50 border border-slate-200 shrink-0 p-0.5" 
                         />
                       ) : (
                         <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 font-bold bg-slate-100 text-slate-500">

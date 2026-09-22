@@ -677,7 +677,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
                 <div key={rental.id} className="bg-white p-3.5 rounded-xl border border-slate-200/90 flex justify-between items-center text-xs gap-2 shadow-2xs">
                   <div className="flex items-center gap-2.5 min-w-0">
                     {cloth?.imageUrl ? (
-                      <img src={cloth.imageUrl} alt={rental.itemName} className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0" />
+                      <img src={cloth.imageUrl} alt={rental.itemName} className="w-10 h-10 rounded-xl object-contain bg-slate-50 border border-slate-200 shrink-0 p-0.5" />
                     ) : (
                       <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
                         <Sparkles className="w-5 h-5 text-slate-400" />
@@ -825,7 +825,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
                 <div key={rental.id} className="py-3 flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-xs">
                   <div className="flex items-center gap-2.5 min-w-0">
                     {cloth?.imageUrl ? (
-                      <img src={cloth.imageUrl} alt={rental.itemName} className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0" />
+                      <img src={cloth.imageUrl} alt={rental.itemName} className="w-10 h-10 rounded-xl object-contain bg-slate-50 border border-slate-200 shrink-0 p-0.5" />
                     ) : (
                       <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
                         <Sparkles className="w-5 h-5 text-slate-400" />
