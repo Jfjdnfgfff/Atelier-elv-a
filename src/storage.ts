@@ -499,6 +499,27 @@ const lastWrittenRef = new Map<string, any>();
 const dirtyKeys = new Set<string>();
 let idleFlushScheduled = false;
 
+export interface CacheMeta {
+  timestamp: number;
+  version: number;
+  updatedAt?: string;
+}
+
+export interface CollectionCacheResult<T> {
+  data: T[];
+  isFresh: boolean;
+  timestamp: number;
+}
+
+const cacheMetaStore = new Map<string, CacheMeta>();
+export const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes TTL
+
+export const isCacheFresh = (key: string, ttlMs: number = DEFAULT_CACHE_TTL_MS): boolean => {
+  const meta = cacheMetaStore.get(key);
+  if (!meta) return false;
+  return (Date.now() - meta.timestamp) < ttlMs;
+};
+
 /**
  * Flushes all pending dirty collections immediately to localStorage synchronously.
  * Called automatically on beforeunload, pagehide, and visibilitychange to prevent data loss.
@@ -515,7 +536,13 @@ export function flushPendingStorageSynchronously(): void {
     if (dataToPersist === undefined) continue;
 
     try {
-      localStorage.setItem(key, JSON.stringify(dataToPersist));
+      const meta = cacheMetaStore.get(key) || { timestamp: Date.now(), version: 1 };
+      const cacheEnvelope = {
+        data: dataToPersist,
+        timestamp: meta.timestamp,
+        version: meta.version
+      };
+      localStorage.setItem(key, JSON.stringify(cacheEnvelope));
     } catch (e: any) {
       if (e?.name === 'QuotaExceededError' || e?.code === 22) {
         console.warn(`[localStorage quota exceeded for ${key}]. User data remains 100% intact in memoryStore and cloud database.`);
@@ -562,17 +589,36 @@ export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
     const item = localStorage.getItem(key);
     if (!item) {
       memoryStore.set(key, defaultValue);
+      cacheMetaStore.set(key, { timestamp: Date.now(), version: 1 });
       return defaultValue;
     }
     const parsed = JSON.parse(item);
-    memoryStore.set(key, parsed);
-    lastWrittenRef.set(key, parsed);
-    return parsed;
+    let dataToReturn: any = parsed;
+    let timestamp = Date.now();
+
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Array.isArray(parsed.data)) {
+      dataToReturn = parsed.data;
+      timestamp = parsed.timestamp || Date.now();
+    }
+
+    memoryStore.set(key, dataToReturn);
+    cacheMetaStore.set(key, { timestamp, version: 1 });
+    lastWrittenRef.set(key, dataToReturn);
+    return dataToReturn as T;
   } catch (e) {
     console.error(`Error loading key ${key} from storage:`, e);
     memoryStore.set(key, defaultValue);
+    cacheMetaStore.set(key, { timestamp: Date.now(), version: 1 });
     return defaultValue;
   }
+};
+
+export const getCachedCollection = <T>(key: string, defaultValue: T[] = []): CollectionCacheResult<T> => {
+  const loaded = loadFromStorage<T[]>(key, defaultValue);
+  const meta = cacheMetaStore.get(key);
+  const timestamp = meta?.timestamp || Date.now();
+  const isFresh = meta ? (Date.now() - meta.timestamp < DEFAULT_CACHE_TTL_MS) : false;
+  return { data: loaded, isFresh, timestamp };
 };
 
 export const saveToStorage = <T>(key: string, data: T, syncFirebase: boolean = false): void => {
@@ -581,6 +627,7 @@ export const saveToStorage = <T>(key: string, data: T, syncFirebase: boolean = f
     return;
   }
   lastWrittenRef.set(key, data);
+  cacheMetaStore.set(key, { timestamp: Date.now(), version: 1 });
 
   // Update in-memory cache instantly with 0ms latency
   memoryStore.set(key, data);

@@ -20,6 +20,7 @@ import { Scale, Plus } from 'lucide-react';
 
 export interface AppNavigationProps {
   onInitNav?: (navFn: (view: ViewType) => void, getViewFn: () => ViewType) => void;
+  onViewChange?: (view: ViewType) => void;
 
   // Counts for badges
   overdueCount: number;
@@ -146,6 +147,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
   onUpdateSeamstress,
   onDeleteSeamstress,
   onInitNav,
+  onViewChange,
 }) => {
   // Navigation State isolated entirely from App.tsx
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
@@ -154,7 +156,10 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
 
   const navigateTo = useCallback((view: ViewType) => {
     setCurrentView(view);
-  }, []);
+    if (onViewChange) {
+      onViewChange(view);
+    }
+  }, [onViewChange]);
 
   React.useEffect(() => {
     if (onInitNav) {

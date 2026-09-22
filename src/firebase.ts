@@ -894,6 +894,22 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
     if (cachedMemData) {
       onDataReceived(cachedMemData);
     }
+  } else if (!options) {
+    try {
+      const localItem = localStorage.getItem(key);
+      if (localItem) {
+        const parsed = JSON.parse(localItem);
+        const dataArr = (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Array.isArray(parsed.data))
+          ? parsed.data
+          : (Array.isArray(parsed) ? parsed : null);
+        if (dataArr && dataArr.length > 0) {
+          setMemoryCacheEntry(key, dataArr);
+          onDataReceived(dataArr as T[]);
+        }
+      }
+    } catch (e) {
+      // Ignore
+    }
   }
 
   // Check if a shared listener already exists for this exact collection + query combination
