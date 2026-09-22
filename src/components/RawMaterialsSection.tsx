@@ -55,7 +55,12 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [securityModal, setSecurityModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    reason: string;
+    onConfirm: () => void;
+  } | null>(null);
   const [editingMaterial, setEditingMaterial] = useState<RawMaterial | null>(null);
   const [consumeModalMaterial, setConsumeModalMaterial] = useState<RawMaterial | null>(null);
   const [consumeMeters, setConsumeMeters] = useState<string>('');
@@ -133,39 +138,80 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
   }, [rawMaterials, filterType, filterColor, showLowStockOnly, search]);
 
   const handleOpenAdd = () => {
-    setEditingMaterial(null);
-    setName('');
-    setCode('FAB-' + Math.floor(100 + Math.random() * 900));
-    setFabricType(FABRIC_TYPES[0]);
-    setColor('أسود');
-    setCustomColor('');
-    setRollCount('2');
-    setMetersPerRoll('25');
-    setLooseMeters('0');
-    setCostPerMeter('1200');
-    setSupplierName(suppliers[0]?.name || '');
-    setStorageLocation('ورشة الخياطة');
-    setMinAlertMeters('10');
-    setNotes('');
-    setShowSecurityModal(true);
+    setSecurityModal({
+      isOpen: true,
+      title: 'كلمة المرور لإضافة قماش جديد',
+      reason: 'يرجى إدخال رمز المرور أو كلمة السر للترخيص بإضافة قماش أو سلعة أولية جديدة إلى المخزن',
+      onConfirm: () => {
+        setEditingMaterial(null);
+        setName('');
+        setCode('FAB-' + Math.floor(100 + Math.random() * 900));
+        setFabricType(FABRIC_TYPES[0]);
+        setColor('أسود');
+        setCustomColor('');
+        setRollCount('2');
+        setMetersPerRoll('25');
+        setLooseMeters('0');
+        setCostPerMeter('1200');
+        setSupplierName(suppliers[0]?.name || '');
+        setStorageLocation('ورشة الخياطة');
+        setMinAlertMeters('10');
+        setNotes('');
+        setShowAddModal(true);
+        setSecurityModal(null);
+      }
+    });
+  };
+
+  const handleOpenAddRolls = (mat: RawMaterial) => {
+    setSecurityModal({
+      isOpen: true,
+      title: 'كلمة المرور لإضافة مخزون ورولويات',
+      reason: `يرجى إدخال رمز المرور للترخيص بإضافة رولويات ومخزون جديد للقماش (${mat.name})`,
+      onConfirm: () => {
+        setAddRollsModalMaterial(mat);
+        setAddRollsCount('1');
+        setSecurityModal(null);
+      }
+    });
   };
 
   const handleOpenEdit = (mat: RawMaterial) => {
-    setEditingMaterial(mat);
-    setName(mat.name);
-    setCode(mat.code || '');
-    setFabricType(mat.fabricType || FABRIC_TYPES[0]);
-    setColor(mat.color);
-    setCustomColor('');
-    setRollCount(String(mat.rollCount || 0));
-    setMetersPerRoll(String(mat.metersPerRoll || 25));
-    setLooseMeters(String(mat.looseMeters || 0));
-    setCostPerMeter(String(mat.costPerMeter || 0));
-    setSupplierName(mat.supplierName || '');
-    setStorageLocation(mat.storageLocation || 'ورشة الخياطة');
-    setMinAlertMeters(String(mat.minAlertMeters || 10));
-    setNotes(mat.notes || '');
-    setShowAddModal(true);
+    setSecurityModal({
+      isOpen: true,
+      title: 'كلمة المرور لتعديل القماش',
+      reason: `يرجى إدخال رمز المرور أو كلمة السر للترخيص بتعديل بيانات القماش (${mat.name})`,
+      onConfirm: () => {
+        setEditingMaterial(mat);
+        setName(mat.name);
+        setCode(mat.code || '');
+        setFabricType(mat.fabricType || FABRIC_TYPES[0]);
+        setColor(mat.color);
+        setCustomColor('');
+        setRollCount(String(mat.rollCount || 0));
+        setMetersPerRoll(String(mat.metersPerRoll || 25));
+        setLooseMeters(String(mat.looseMeters || 0));
+        setCostPerMeter(String(mat.costPerMeter || 0));
+        setSupplierName(mat.supplierName || '');
+        setStorageLocation(mat.storageLocation || 'ورشة الخياطة');
+        setMinAlertMeters(String(mat.minAlertMeters || 10));
+        setNotes(mat.notes || '');
+        setShowAddModal(true);
+        setSecurityModal(null);
+      }
+    });
+  };
+
+  const handleDeleteMaterial = (mat: RawMaterial) => {
+    setSecurityModal({
+      isOpen: true,
+      title: 'كلمة المرور لحذف القماش',
+      reason: `يرجى إدخال رمز المرور للتأكيد على حذف القماش (${mat.name}) نهائياً من المخزن`,
+      onConfirm: () => {
+        onDeleteRawMaterial(mat.id);
+        setSecurityModal(null);
+      }
+    });
   };
 
   const handleSaveMaterial = (e: React.FormEvent) => {
@@ -495,12 +541,9 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
                       <span>قص أمتار</span>
                     </button>
                     <button
-                      onClick={() => {
-                        setAddRollsModalMaterial(item);
-                        setAddRollsCount('1');
-                      }}
+                      onClick={() => handleOpenAddRolls(item)}
                       className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95"
-                      title="إضافة رولويات جديدة"
+                      title="إضافة رولويات ومخزون جديد (يتطلب كلمة المرور)"
                     >
                       <PlusCircle className="w-3.5 h-3.5" />
                       <span>+ رولو</span>
@@ -511,18 +554,14 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
                     <button
                       onClick={() => handleOpenEdit(item)}
                       className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-all"
-                      title="تعديل"
+                      title="تعديل (يتطلب كلمة المرور)"
                     >
                       <Edit3 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => {
-                        if (confirm(`هل أنت متأكد من حذف القماش "${item.name}"؟`)) {
-                          onDeleteRawMaterial(item.id);
-                        }
-                      }}
+                      onClick={() => handleDeleteMaterial(item)}
                       className="p-1.5 text-slate-400 hover:text-black rounded-lg hover:bg-slate-100 transition-all"
-                      title="حذف"
+                      title="حذف (يتطلب كلمة المرور)"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -534,16 +573,13 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
         </div>
       )}
 
-      {/* Add / Edit Modal */}
-      {showSecurityModal && (
+      {/* Security Password Prompt Modal */}
+      {securityModal && (
         <SecurityPasswordModal
-          title="كلمة المرور لإضافة قماش جديد"
-          reason="يرجى إدخال رمز المرور أو كلمة السر للترخيص بإضافة قماش أو سلعة أولية جديدة"
-          onSuccess={() => {
-            setShowSecurityModal(false);
-            setShowAddModal(true);
-          }}
-          onClose={() => setShowSecurityModal(false)}
+          title={securityModal.title}
+          reason={securityModal.reason}
+          onSuccess={securityModal.onConfirm}
+          onClose={() => setSecurityModal(null)}
         />
       )}
 

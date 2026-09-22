@@ -227,6 +227,18 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
     });
   };
 
+  const handleInitiateAddStock = (item: ClothItem) => {
+    setSecurityModal({
+      isOpen: true,
+      title: 'كلمة المرور لإضافة المخزون',
+      reason: `يرجى إدخال رمز المرور أو كلمة السر للترخيص بإضافة أو تعديل كميات مخزون القطعة (${item.name})`,
+      onConfirm: () => {
+        setStockModalItem(item);
+        setSecurityModal(null);
+      }
+    });
+  };
+
   const handleInitiateTransfer = (item: ClothItem) => {
     setSecurityModal({
       isOpen: true,
@@ -246,6 +258,18 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
       reason: `يرجى إدخال رمز المرور أو كلمة السر للترخيص بتعديل بيانات القطعة (${item.name})`,
       onConfirm: () => {
         setEditingItem(item);
+        setSecurityModal(null);
+      }
+    });
+  };
+
+  const handleInitiateDeleteCloth = (item: ClothItem) => {
+    setSecurityModal({
+      isOpen: true,
+      title: 'كلمة المرور لحذف القطعة',
+      reason: `يرجى إدخال رمز المرور للتأكيد على حذف القطعة (${item.name}) نهائياً من المخزن`,
+      onConfirm: () => {
+        onDeleteCloth(item.id);
         setSecurityModal(null);
       }
     });
@@ -364,10 +388,10 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
     );
 
     if (existing) {
-      setStockModalItem(existing);
+      setShowScannerModal(false);
+      handleInitiateAddStock(existing);
       setBarcodeActionNotice(`تم العثور على: ${existing.name} (${existing.size})`);
       setTimeout(() => setBarcodeActionNotice(null), 3500);
-      setShowScannerModal(false);
     } else {
       // Item not found -> open Add modal with password check
       setShowScannerModal(false);
@@ -1137,9 +1161,9 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                 {/* Card Actions */}
                 <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-1.5">
                   <button
-                    onClick={() => setStockModalItem(item)}
+                    onClick={() => handleInitiateAddStock(item)}
                     className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 active:scale-95 shadow-2xs"
-                    title="تعديل أو زيادة كمية المخزون 1 أو 2"
+                    title="تعديل أو زيادة كمية المخزون 1 أو 2 (يتطلب كلمة المرور)"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>إضافة مخزون</span>
@@ -1148,7 +1172,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                   <button
                     onClick={() => handleInitiateTransfer(item)}
                     className="py-1.5 px-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1 active:scale-95 shadow-2xs"
-                    title="تحويل كميات بين مخزون 1 ومخزون 2"
+                    title="تحويل كميات بين مخزون 1 ومخزون 2 (يتطلب كلمة المرور)"
                   >
                     <ArrowLeftRight className="w-3.5 h-3.5 text-slate-500" />
                     <span>تحويل</span>
@@ -1163,9 +1187,9 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                   </button>
 
                   <button
-                    onClick={() => onDeleteCloth(item.id)}
+                    onClick={() => handleInitiateDeleteCloth(item)}
                     className="p-2 bg-white hover:bg-red-50 hover:text-red-600 text-slate-400 hover:border-red-200 rounded-xl text-xs font-bold transition-all active:scale-95 border border-slate-200 shadow-2xs"
-                    title="حذف القطعة"
+                    title="حذف القطعة (يتطلب كلمة المرور)"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
