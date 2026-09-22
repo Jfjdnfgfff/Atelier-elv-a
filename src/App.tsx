@@ -32,29 +32,34 @@ import {
 import { 
   syncCollectionToCloud, 
   subscribeToCloudCollection, 
+  saveItemToFirebase,
+  updateItemInFirebase,
+  deleteItemFromFirebase,
   FIREBASE_COLLECTIONS,
   firebaseConfig 
 } from './firebase';
+import { useDashboardStats } from './hooks/dashboardStatsHook';
 
 // Components
-import { BarcodeScanner } from './components/BarcodeScanner';
-import { FullReport } from './components/FullReport';
 import { NavButton, Modal } from './components/Shared';
 import { DashboardView } from './components/DashboardView';
-import { RentalsView } from './components/RentalsView';
-import { RentalModal } from './components/RentalModal';
-import { ReturnRentalModal } from './components/ReturnRentalModal';
-import { RentalReceiptModal } from './components/RentalReceiptModal';
-import { InventoryView } from './components/InventoryView';
-import { SalesPOSView } from './components/SalesPOSView';
-import { ExpensesView } from './components/ExpensesView';
-import { CreditsView } from './components/CreditsView';
-import { StaffPayoutsModal } from './components/StaffPayoutsModal';
-import { TailoringView } from './components/TailoringView';
-import { TailoringModal } from './components/TailoringModal';
-import { TailoringReceiptModal } from './components/TailoringReceiptModal';
-import { CaisseView } from './components/CaisseView';
-import { PartnersView } from './components/PartnersView';
+
+const BarcodeScanner = React.lazy(() => import('./components/BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
+const FullReport = React.lazy(() => import('./components/FullReport').then(m => ({ default: m.FullReport })));
+const RentalsView = React.lazy(() => import('./components/RentalsView').then(m => ({ default: m.RentalsView })));
+const RentalModal = React.lazy(() => import('./components/RentalModal').then(m => ({ default: m.RentalModal })));
+const ReturnRentalModal = React.lazy(() => import('./components/ReturnRentalModal').then(m => ({ default: m.ReturnRentalModal })));
+const RentalReceiptModal = React.lazy(() => import('./components/RentalReceiptModal').then(m => ({ default: m.RentalReceiptModal })));
+const InventoryView = React.lazy(() => import('./components/InventoryView').then(m => ({ default: m.InventoryView })));
+const SalesPOSView = React.lazy(() => import('./components/SalesPOSView').then(m => ({ default: m.SalesPOSView })));
+const ExpensesView = React.lazy(() => import('./components/ExpensesView').then(m => ({ default: m.ExpensesView })));
+const CreditsView = React.lazy(() => import('./components/CreditsView').then(m => ({ default: m.CreditsView })));
+const StaffPayoutsModal = React.lazy(() => import('./components/StaffPayoutsModal').then(m => ({ default: m.StaffPayoutsModal })));
+const TailoringView = React.lazy(() => import('./components/TailoringView').then(m => ({ default: m.TailoringView })));
+const TailoringModal = React.lazy(() => import('./components/TailoringModal').then(m => ({ default: m.TailoringModal })));
+const TailoringReceiptModal = React.lazy(() => import('./components/TailoringReceiptModal').then(m => ({ default: m.TailoringReceiptModal })));
+const CaisseView = React.lazy(() => import('./components/CaisseView').then(m => ({ default: m.CaisseView })));
+const PartnersView = React.lazy(() => import('./components/PartnersView').then(m => ({ default: m.PartnersView })));
 import { 
   Scale, 
   Shirt, 
@@ -561,123 +566,8 @@ export default function App() {
     return maintenanceOrders.filter(o => o.status !== 'delivered').length;
   }, [maintenanceOrders]);
 
-  // Global Financial Statistics
-  const stats = useMemo(() => {
-    const now = new Date();
-    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const currentYearStr = `${now.getFullYear()}`;
-
-    const isThisMonth = (dateStr?: string) => dateStr ? dateStr.startsWith(currentMonthStr) : false;
-    const isThisYear = (dateStr?: string) => dateStr ? dateStr.startsWith(currentYearStr) : false;
-
-    // --- Rentals ---
-    const totalRentalIncome = rentals.reduce((s, r) => s + (r.paidAmount || 0), 0);
-    const monthlyRentalIncome = rentals
-      .filter(r => isThisMonth(r.startDate || r.createdAt))
-      .reduce((s, r) => s + (r.paidAmount || 0), 0);
-    const yearlyRentalIncome = rentals
-      .filter(r => isThisYear(r.startDate || r.createdAt))
-      .reduce((s, r) => s + (r.paidAmount || 0), 0);
-
-    // --- Sales ---
-    const totalSalesRevenue = sales.reduce((s, sl) => s + (sl.totalAmount || 0), 0);
-    const monthlySalesRevenue = sales
-      .filter(s => isThisMonth(s.date))
-      .reduce((s, sl) => s + (sl.totalAmount || 0), 0);
-    const yearlySalesRevenue = sales
-      .filter(s => isThisYear(s.date))
-      .reduce((s, sl) => s + (sl.totalAmount || 0), 0);
-
-    const totalSalesProfit = sales.reduce((s, sl) => s + (sl.profit || 0), 0);
-    const monthlySalesProfit = sales
-      .filter(s => isThisMonth(s.date))
-      .reduce((s, sl) => s + (sl.profit || 0), 0);
-    const yearlySalesProfit = sales
-      .filter(s => isThisYear(s.date))
-      .reduce((s, sl) => s + (sl.profit || 0), 0);
-
-    // --- Tailoring & Maintenance ---
-    const totalTailoringIncome = maintenanceOrders.reduce((s, o) => s + (o.paidAmount || 0), 0);
-    const monthlyTailoringIncome = maintenanceOrders
-      .filter(o => isThisMonth(o.receivedDate || o.createdAt))
-      .reduce((s, o) => s + (o.paidAmount || 0), 0);
-    const yearlyTailoringIncome = maintenanceOrders
-      .filter(o => isThisYear(o.receivedDate || o.createdAt))
-      .reduce((s, o) => s + (o.paidAmount || 0), 0);
-    const totalTailoringCost = maintenanceOrders.reduce((s, o) => s + (o.cost || 0), 0);
-    const tailoringProfit = totalTailoringIncome - totalTailoringCost;
-
-    // --- Expenses ---
-    const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
-    const monthlyExpenses = expenses
-      .filter(e => isThisMonth(e.date))
-      .reduce((s, e) => s + Number(e.amount || 0), 0);
-    const yearlyExpenses = expenses
-      .filter(e => isThisYear(e.date))
-      .reduce((s, e) => s + Number(e.amount || 0), 0);
-
-    // --- Staff Payouts ---
-    const totalStaff = staffPayouts.reduce((s, p) => s + Number(p.amount || 0), 0);
-    const monthlyStaff = staffPayouts
-      .filter(p => isThisMonth(p.date))
-      .reduce((s, p) => s + Number(p.amount || 0), 0);
-    const yearlyStaff = staffPayouts
-      .filter(p => isThisYear(p.date))
-      .reduce((s, p) => s + Number(p.amount || 0), 0);
-    
-    // --- Debts ---
-    const totalRentalDebt = rentals.reduce((s, r) => s + (r.status !== 'returned' ? (r.remainingAmount || 0) : 0), 0);
-    const totalTailoringDebt = maintenanceOrders.reduce((s, o) => s + (o.status !== 'delivered' ? (o.remainingAmount || 0) : 0), 0);
-    const totalDirectDebt = credits.reduce((s, c) => s + Number(c.amount || 0), 0);
-    const totalDebt = totalRentalDebt + totalDirectDebt + totalTailoringDebt;
-
-    // --- Net Profits ---
-    // Net profit = (Rental Income + Sales Profit + Tailoring Profit) - (Expenses + Staff)
-    const netProf = (totalRentalIncome + totalSalesProfit + totalTailoringIncome) - (totalExpenses + totalStaff + totalTailoringCost);
-    const monthlyNetProfit = (monthlyRentalIncome + monthlySalesProfit + monthlyTailoringIncome) - (monthlyExpenses + monthlyStaff);
-    const yearlyNetProfit = (yearlyRentalIncome + yearlySalesProfit + yearlyTailoringIncome) - (yearlyExpenses + yearlyStaff);
-
-    // --- Total Gross Revenues (Combined) ---
-    const totalGrossRevenue = totalRentalIncome + totalSalesRevenue + totalTailoringIncome;
-    const monthlyGrossRevenue = monthlyRentalIncome + monthlySalesRevenue + monthlyTailoringIncome;
-    const yearlyGrossRevenue = yearlyRentalIncome + yearlySalesRevenue + yearlyTailoringIncome;
-
-    return {
-      // Rental
-      totalRentalIncome,
-      monthlyRentalIncome,
-      yearlyRentalIncome,
-      // Sales
-      totalSalesRevenue,
-      monthlySalesRevenue,
-      yearlySalesRevenue,
-      totalSalesProfit,
-      monthlySalesProfit,
-      yearlySalesProfit,
-      // Tailoring
-      totalTailoringIncome,
-      monthlyTailoringIncome,
-      yearlyTailoringIncome,
-      totalTailoringCost,
-      tailoringProfit,
-      // Expenses & Staff
-      totalExpenses,
-      monthlyExpenses,
-      yearlyExpenses,
-      totalStaffPayouts: totalStaff,
-      monthlyStaffPayouts: monthlyStaff,
-      yearlyStaffPayouts: yearlyStaff,
-      // Combined Totals
-      totalGrossRevenue,
-      monthlyGrossRevenue,
-      yearlyGrossRevenue,
-      // Debts & Net Profits
-      totalDebt,
-      netProfit: netProf,
-      monthlyNetProfit,
-      yearlyNetProfit
-    };
-  }, [rentals, sales, expenses, staffPayouts, credits, maintenanceOrders]);
+  // Global Financial Statistics (Optimized Single-Pass Memoized Hook)
+  const stats = useDashboardStats(rentals, sales, expenses, credits, staffPayouts, maintenanceOrders);
 
   // ==========================
   // RENTAL HANDLERS

@@ -206,6 +206,11 @@ export function useDashboardStats(
       totalStaffPayouts: totalStaff,
       monthlyStaffPayouts,
       yearlyStaffPayouts,
+
+      // Combined Gross Revenues
+      totalGrossRevenue: totalRentalIncome + totalSalesRevenue + totalTailoringIncome,
+      monthlyGrossRevenue: monthlyRentalIncome + monthlySalesRevenue + monthlyTailoringIncome,
+      yearlyGrossRevenue: yearlyRentalIncome + yearlySalesRevenue + yearlyTailoringIncome,
       
       totalDebt,
       netProf: netProfit,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Expense, Supplier, Credit } from '../types';
 import { LettersInput, NumbersInput } from './Shared';
 import { sanitizeName, sanitizePhone, sanitizeText } from '../utils/security';
@@ -17,7 +17,9 @@ import {
   Check,
   Trash2,
   Search,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 interface ExpensesViewProps {
@@ -236,6 +238,19 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
     }
     return true;
   });
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 20;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterTab, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredExpenses.length / PAGE_SIZE));
+  const paginatedExpenses = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredExpenses.slice(start, start + PAGE_SIZE);
+  }, [filteredExpenses, currentPage]);
 
   return (
     <div className="space-y-6 p-3 sm:p-6" dir="rtl">
@@ -672,7 +687,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredExpenses.map(exp => {
+            {paginatedExpenses.map(exp => {
               const isSupplier = exp.isSupplierPurchase;
               const hasCredit = isSupplier && (exp.creditAmount || 0) > 0;
               const paidVal = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
@@ -812,6 +827,43 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 mt-4">
+            <div className="text-xs text-slate-500 font-medium">
+              عرض {((currentPage - 1) * PAGE_SIZE) + 1} - {Math.min(currentPage * PAGE_SIZE, filteredExpenses.length)} من إجمالي {filteredExpenses.length} عملية
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all"
+              >
+                <ChevronRight className="w-4 h-4" />
+                <span>السابق</span>
+              </button>
+              
+              <div className="flex items-center gap-1 text-xs font-bold text-slate-800 px-2">
+                <span>صفحة</span>
+                <span className="font-mono bg-white border border-slate-200 px-2 py-0.5 rounded-lg">{currentPage}</span>
+                <span>من</span>
+                <span className="font-mono">{totalPages}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all"
+              >
+                <span>التالي</span>
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>

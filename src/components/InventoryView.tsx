@@ -6,7 +6,7 @@ import { RawMaterialsSection } from './RawMaterialsSection';
 import { ProductVariantsModal } from './ProductVariantsModal';
 import { SecurityPasswordModal, checkSecurityPin } from './SecurityPasswordModal';
 import { isValidImageFileType, generateSecureImageFilename, sanitizeText, sanitizeNumericAmount } from '../utils/security';
-import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap } from 'lucide-react';
+import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const STANDARD_SIZES = [
   '34', '36', '38', '40', '42', '44', '46', '48', '50', '52', '54',
@@ -319,6 +319,19 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
     }
     return true;
   });
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 24;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredClothes.length / PAGE_SIZE));
+  const paginatedClothes = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredClothes.slice(start, start + PAGE_SIZE);
+  }, [filteredClothes, currentPage]);
 
   return (
     <div className="space-y-4 sm:space-y-5 p-3 sm:p-6" dir="rtl">
@@ -661,7 +674,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
 
       {/* Grid of Clothes Items with Images and Stock 1 / Stock 2 Badges */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredClothes.map(item => {
+        {paginatedClothes.map(item => {
           const s1 = getItemStock1(item);
           const s2 = getItemStock2(item);
           const totalStock = s1 + s2;
@@ -896,6 +909,43 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           );
         })}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+          <div className="text-xs text-slate-500 font-medium">
+            عرض {((currentPage - 1) * PAGE_SIZE) + 1} - {Math.min(currentPage * PAGE_SIZE, filteredClothes.length)} من إجمالي {filteredClothes.length} قطعة
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all"
+            >
+              <ChevronRight className="w-4 h-4" />
+              <span>السابق</span>
+            </button>
+            
+            <div className="flex items-center gap-1 text-xs font-bold text-slate-800 px-2">
+              <span>صفحة</span>
+              <span className="font-mono bg-slate-100 px-2 py-0.5 rounded-lg">{currentPage}</span>
+              <span>من</span>
+              <span className="font-mono">{totalPages}</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all"
+            >
+              <span>التالي</span>
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Image Preview Modal */}
       {previewImage && (

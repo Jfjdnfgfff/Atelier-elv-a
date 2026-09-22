@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Credit, Supplier } from '../types';
 import type { ExtractedCustomerData } from './CustomerIdScannerModal';
 const CustomerIdScannerModal = React.lazy(() => import('./CustomerIdScannerModal').then(m => ({ default: m.CustomerIdScannerModal })));
@@ -13,7 +13,9 @@ import {
   Calendar,
   Check,
   Trash2,
-  Plus
+  Plus,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 interface CreditsViewProps {
@@ -105,6 +107,19 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
     if (filterTab === 'suppliers') return !!c.supplierDebt;
     return true;
   });
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 20;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterTab]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCredits.length / PAGE_SIZE));
+  const paginatedCredits = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredCredits.slice(start, start + PAGE_SIZE);
+  }, [filteredCredits, currentPage]);
 
   return (
     <div className="space-y-4 pb-8" dir="rtl">
@@ -357,7 +372,7 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
           <p className="text-xs text-slate-400 text-center py-6">لا توجد أي ديون مسجلة في هذا القسم.</p>
         ) : (
           <div className="divide-y divide-slate-100">
-            {filteredCredits.map(credit => {
+            {paginatedCredits.map(credit => {
               const isSupplierDebt = credit.supplierDebt;
 
               return (
@@ -412,6 +427,43 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 mt-4">
+            <div className="text-xs text-slate-500 font-medium">
+              عرض {((currentPage - 1) * PAGE_SIZE) + 1} - {Math.min(currentPage * PAGE_SIZE, filteredCredits.length)} من إجمالي {filteredCredits.length} دين
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all"
+              >
+                <ChevronRight className="w-4 h-4" />
+                <span>السابق</span>
+              </button>
+              
+              <div className="flex items-center gap-1 text-xs font-bold text-slate-800 px-2">
+                <span>صفحة</span>
+                <span className="font-mono bg-white border border-slate-200 px-2 py-0.5 rounded-lg">{currentPage}</span>
+                <span>من</span>
+                <span className="font-mono">{totalPages}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all"
+              >
+                <span>التالي</span>
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>
