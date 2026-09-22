@@ -829,6 +829,7 @@ export async function saveCollectionToFirebase<T extends { id?: string }>(
 interface ListenerRegistryEntry {
   unsub: () => void;
   callbacks: Set<(data: any[]) => void>;
+  cleanupTimer?: any;
 }
 const activeListenersRegistry = new Map<string, ListenerRegistryEntry>();
 
@@ -896,14 +897,24 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
   const registryEntry = activeListenersRegistry.get(registryKey);
   
   if (registryEntry) {
+    if (registryEntry.cleanupTimer) {
+      clearTimeout(registryEntry.cleanupTimer);
+      registryEntry.cleanupTimer = undefined;
+    }
     registryEntry.callbacks.add(onDataReceived);
     return () => {
       const entry = activeListenersRegistry.get(registryKey);
       if (entry) {
         entry.callbacks.delete(onDataReceived);
         if (entry.callbacks.size === 0) {
-          entry.unsub();
-          activeListenersRegistry.delete(registryKey);
+          if (entry.cleanupTimer) clearTimeout(entry.cleanupTimer);
+          entry.cleanupTimer = setTimeout(() => {
+            const current = activeListenersRegistry.get(registryKey);
+            if (current && current.callbacks.size === 0) {
+              current.unsub();
+              activeListenersRegistry.delete(registryKey);
+            }
+          }, 30000);
         }
       }
     };
@@ -1118,8 +1129,14 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
     if (entry) {
       entry.callbacks.delete(onDataReceived);
       if (entry.callbacks.size === 0) {
-        entry.unsub();
-        activeListenersRegistry.delete(registryKey);
+        if (entry.cleanupTimer) clearTimeout(entry.cleanupTimer);
+        entry.cleanupTimer = setTimeout(() => {
+          const current = activeListenersRegistry.get(registryKey);
+          if (current && current.callbacks.size === 0) {
+            current.unsub();
+            activeListenersRegistry.delete(registryKey);
+          }
+        }, 30000);
       }
     }
   };
