@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, startTransition } from 'react';
 import { 
   ClothItem, 
   Rental, 
@@ -451,6 +451,38 @@ export default function App() {
 
   // Global Financial Statistics (Optimized Single-Pass Memoized Hook)
   const stats = useDashboardStats(rentals, sales, expenses, credits, staffPayouts, maintenanceOrders);
+
+  // Memoized clothes barcode and ID index for O(1) instantaneous scanning lookups
+  const clothesBarcodeIndex = useMemo(() => {
+    const map = new Map<string, ClothItem>();
+    for (let i = 0; i < clothes.length; i++) {
+      const item = clothes[i];
+      if (item.barcode) {
+        map.set(item.barcode.trim().toLowerCase(), item);
+      }
+      if (item.id) {
+        map.set(item.id.trim().toLowerCase(), item);
+      }
+    }
+    return map;
+  }, [clothes]);
+
+  // Non-blocking navigation transitions
+  const navigateTo = useCallback((view: ViewType) => {
+    startTransition(() => {
+      setCurrentView(view);
+    });
+  }, []);
+
+  const goDashboard = useCallback(() => navigateTo('dashboard'), [navigateTo]);
+  const goRentals = useCallback(() => navigateTo('rentals'), [navigateTo]);
+  const goInventory = useCallback(() => navigateTo('inventory'), [navigateTo]);
+  const goSales = useCallback(() => navigateTo('sales'), [navigateTo]);
+  const goTailoring = useCallback(() => navigateTo('tailoring'), [navigateTo]);
+  const goExpenses = useCallback(() => navigateTo('expenses'), [navigateTo]);
+  const goCredits = useCallback(() => navigateTo('credits'), [navigateTo]);
+  const goPartners = useCallback(() => navigateTo('partners'), [navigateTo]);
+  const goCaisse = useCallback(() => navigateTo('caisse'), [navigateTo]);
 
   // ==========================
   // RENTAL HANDLERS
@@ -1395,7 +1427,7 @@ export default function App() {
               </button>
 
               <button 
-                onClick={() => setCurrentView('caisse')} 
+                onClick={goCaisse} 
                 title="صندوق اليومية ومتابعة العجز (La Caisse)"
                 className={`h-7 sm:h-9 px-2 sm:px-3 flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold rounded-lg sm:rounded-xl transition-all border active:scale-95 group ${
                   currentView === 'caisse'
@@ -1424,57 +1456,57 @@ export default function App() {
             <NavButton 
               icon="dashboard" 
               label="الرئيسية" 
-              onClick={() => setCurrentView('dashboard')} 
+              onClick={goDashboard} 
               active={currentView === 'dashboard'} 
             />
             <NavButton 
               icon="rentals" 
               label="الكراء" 
-              onClick={() => setCurrentView('rentals')} 
+              onClick={goRentals} 
               active={currentView === 'rentals'} 
               badge={overdueCount}
             />
             <NavButton 
               icon="inventory" 
               label="المخزون" 
-              onClick={() => setCurrentView('inventory')} 
+              onClick={goInventory} 
               active={currentView === 'inventory'} 
             />
             <NavButton 
               icon="sales" 
               label="المبيعات" 
-              onClick={() => setCurrentView('sales')} 
+              onClick={goSales} 
               active={currentView === 'sales'} 
             />
             <NavButton 
               icon="tailoring" 
               label="الخياطة" 
-              onClick={() => setCurrentView('tailoring')} 
+              onClick={goTailoring} 
               active={currentView === 'tailoring'} 
               badge={activeMaintenanceCount}
             />
             <NavButton 
               icon="expenses" 
               label="المصاريف" 
-              onClick={() => setCurrentView('expenses')} 
+              onClick={goExpenses} 
               active={currentView === 'expenses'} 
             />
             <NavButton 
               icon="credits" 
               label="الكريدي" 
-              onClick={() => setCurrentView('credits')} 
+              onClick={goCredits} 
               active={currentView === 'credits'} 
             />
             <NavButton 
               icon="partners" 
               label="الموردين والخياطات" 
-              onClick={() => setCurrentView('partners')} 
+              onClick={goPartners} 
               active={currentView === 'partners'} 
             />
             <NavButton 
               icon="caisse" 
               label="الصندوق" 
-              onClick={() => setCurrentView('caisse')} 
+              onClick={goCaisse} 
               active={currentView === 'caisse'} 
             />
             <NavButton 
@@ -1508,7 +1540,7 @@ export default function App() {
                 localStorage.setItem('bm_hideFinances', 'true');
               }
             }}
-            onNavigate={(v) => setCurrentView(v)}
+            onNavigate={navigateTo}
             onOpenAddRental={() => setActiveModal('addRental')}
             onOpenReturnModal={(r) => { setSelectedRental(r); setActiveModal('returnRental'); }}
             onSendMessage={(r) => { setSelectedRental(r); setActiveModal('messageModal'); }}
@@ -1958,7 +1990,7 @@ export default function App() {
         <BarcodeScanner 
           onScan={(code) => {
             const cleanCode = code.trim().toLowerCase();
-            const item = clothes.find(c => c.barcode.trim().toLowerCase() === cleanCode);
+            const item = clothesBarcodeIndex.get(cleanCode);
             setIsScanning(false);
 
             if (item) {

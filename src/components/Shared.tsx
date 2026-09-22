@@ -59,7 +59,7 @@ export const NavButton: React.FC<{
   active?: boolean;
   color?: string;
   badge?: number;
-}> = ({ icon, label, onClick, active, badge }) => {
+}> = React.memo(({ icon, label, onClick, active, badge }) => {
   const getIcon = () => {
     const iconClass = "w-4 h-4";
     switch (icon) {
@@ -109,7 +109,7 @@ export const NavButton: React.FC<{
       )}
     </button>
   );
-};
+});
 
 export const StatCard: React.FC<{
   title: string;

@@ -49,6 +49,18 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
+  const rentClothesBarcodeMap = useMemo(() => {
+    const map = new Map<string, ClothItem>();
+    for (let i = 0; i < clothes.length; i++) {
+      const c = clothes[i];
+      if (c.purpose === 'rent' || c.purpose === 'both') {
+        if (c.barcode) map.set(c.barcode.trim().toLowerCase(), c);
+        if (c.id) map.set(c.id.trim().toLowerCase(), c);
+      }
+    }
+    return map;
+  }, [clothes]);
+
   const getDaysDiffFromToday = (dateStr: string) => {
     const d1 = new Date(dateStr);
     const d2 = new Date(today);
@@ -91,9 +103,7 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
         if (buffer.length >= 3) {
           e.preventDefault();
           const cleanCode = buffer.trim().toLowerCase();
-          const found = clothes.find(
-            c => (c.purpose === 'rent' || c.purpose === 'both') && c.barcode.trim().toLowerCase() === cleanCode
-          );
+          const found = rentClothesBarcodeMap.get(cleanCode);
           if (found) {
             onAddRental(found.id);
           }
@@ -106,7 +116,7 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [clothes, onAddRental]);
+  }, [rentClothesBarcodeMap, onAddRental]);
 
   // Status classification with memoization
   const { reservedRentals, activeRentalsList, overdueRentalsList, returnedRentalsList, filteredRentals } = useMemo(() => {

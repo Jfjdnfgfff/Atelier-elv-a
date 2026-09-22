@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ClothItem, Sale, SaleItem } from '../types';
 import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
 import { BarcodeScanner } from './BarcodeScanner';
@@ -48,10 +48,26 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
   const getItemStock2 = (c: ClothItem) => c.stock2 !== undefined ? c.stock2 : 0;
   const getItemTotalStock = (c: ClothItem) => getItemStock1(c) + getItemStock2(c);
 
-  const sellableClothes = clothes.filter(c => 
-    (c.purpose === 'sell' || c.purpose === 'both') && 
-    (getItemTotalStock(c) - (c.rentedCount || 0) > 0)
-  );
+  const sellableClothes = useMemo(() => {
+    return clothes.filter(c => 
+      (c.purpose === 'sell' || c.purpose === 'both') && 
+      (getItemTotalStock(c) - (c.rentedCount || 0) > 0)
+    );
+  }, [clothes]);
+
+  const clothesBarcodeMap = useMemo(() => {
+    const map = new Map<string, ClothItem>();
+    for (let i = 0; i < clothes.length; i++) {
+      const c = clothes[i];
+      if (c.barcode) {
+        map.set(c.barcode.trim().toLowerCase(), c);
+      }
+      if (c.id) {
+        map.set(c.id.trim().toLowerCase(), c);
+      }
+    }
+    return map;
+  }, [clothes]);
 
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [customerName, setCustomerName] = useState('');
@@ -113,7 +129,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
     const code = validation.isValid ? validation.code : rawCode.trim();
     if (!code) return;
 
-    const matched = clothes.find(c => c.barcode.trim().toLowerCase() === code.toLowerCase());
+    const matched = clothesBarcodeMap.get(code.toLowerCase());
     if (matched) {
       const s1 = getItemStock1(matched);
       const s2 = getItemStock2(matched);
@@ -336,9 +352,20 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
     }));
   };
 
-  const totalAmount = cart.reduce((s, ci) => s + ci.total, 0);
-  const totalCost = cart.reduce((s, ci) => s + (ci.cost * ci.qty), 0);
-  const totalProfit = totalAmount - totalCost;
+  const { totalAmount, totalCost, totalProfit } = useMemo(() => {
+    let amount = 0;
+    let cost = 0;
+    for (let i = 0; i < cart.length; i++) {
+      const ci = cart[i];
+      amount += ci.total;
+      cost += (ci.cost * ci.qty);
+    }
+    return {
+      totalAmount: amount,
+      totalCost: cost,
+      totalProfit: amount - cost
+    };
+  }, [cart]);
 
   const actualPaid = paidAmount === '' ? totalAmount : Number(paidAmount);
   const debtAmount = Math.max(0, totalAmount - actualPaid);
@@ -380,14 +407,16 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = ({
     setSaleDate(getTodayDateString());
   };
 
-  const filteredClothes = sellableClothes.filter(c => {
-    if (selectedCategory !== 'الكل' && c.category !== selectedCategory) {
-      return false;
-    }
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return c.name.toLowerCase().includes(q) || c.barcode.includes(q) || c.color.toLowerCase().includes(q) || c.size.toLowerCase().includes(q);
-  });
+  const filteredClothes = useMemo(() => {
+    return sellableClothes.filter(c => {
+      if (selectedCategory !== 'الكل' && c.category !== selectedCategory) {
+        return false;
+      }
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return c.name.toLowerCase().includes(q) || c.barcode.includes(q) || c.color.toLowerCase().includes(q) || c.size.toLowerCase().includes(q);
+    });
+  }, [sellableClothes, selectedCategory, search]);
 
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6" dir="rtl">

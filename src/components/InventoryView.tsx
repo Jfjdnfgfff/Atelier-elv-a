@@ -273,52 +273,65 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
     setQuickTransferItem(null);
   };
 
-  const filteredClothes = clothes.filter(item => {
-    if (filterPurpose !== 'all') {
-      if (filterPurpose === 'rent' && item.purpose === 'sell') return false;
-      if (filterPurpose === 'sell' && item.purpose === 'rent') return false;
+  const { rentCount, sellCount } = useMemo(() => {
+    let rent = 0;
+    let sell = 0;
+    for (let i = 0; i < clothes.length; i++) {
+      const c = clothes[i];
+      if (c.purpose === 'rent' || c.purpose === 'both') rent++;
+      if (c.purpose === 'sell' || c.purpose === 'both') sell++;
     }
+    return { rentCount: rent, sellCount: sell };
+  }, [clothes]);
 
-    if (filterStockLoc === 'stock1') {
-      if (getItemStock1(item) <= 0) return false;
-    } else if (filterStockLoc === 'stock2') {
-      if (getItemStock2(item) <= 0) return false;
-    } else if (filterStockLoc === 'low') {
-      if (getItemStock1(item) > 1 && getItemStock2(item) > 1) return false;
-    }
-
-    if (filterCategory !== 'all' && item.category !== filterCategory) return false;
-
-    // Filter by Size (لطاي)
-    if (filterSize !== 'all') {
-      const itemSizes = item.sizes && item.sizes.length > 0
-        ? item.sizes
-        : (item.size ? item.size.split(/[,،+/]/).map(s => s.trim()) : []);
-      if (!itemSizes.includes(filterSize) && !item.size.toLowerCase().includes(filterSize.toLowerCase())) {
-        return false;
+  const filteredClothes = useMemo(() => {
+    return clothes.filter(item => {
+      if (filterPurpose !== 'all') {
+        if (filterPurpose === 'rent' && item.purpose === 'sell') return false;
+        if (filterPurpose === 'sell' && item.purpose === 'rent') return false;
       }
-    }
 
-    // Filter by Color (اللون)
-    if (filterColor !== 'all') {
-      const itemColors = item.colors && item.colors.length > 0
-        ? item.colors
-        : (item.color ? item.color.split(/[,،+/]/).map(c => c.trim()) : []);
-      if (!itemColors.includes(filterColor) && !item.color.toLowerCase().includes(filterColor.toLowerCase())) {
-        return false;
+      if (filterStockLoc === 'stock1') {
+        if (getItemStock1(item) <= 0) return false;
+      } else if (filterStockLoc === 'stock2') {
+        if (getItemStock2(item) <= 0) return false;
+      } else if (filterStockLoc === 'low') {
+        if (getItemStock1(item) > 1 && getItemStock2(item) > 1) return false;
       }
-    }
 
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      const matchName = item.name.toLowerCase().includes(q);
-      const matchBarcode = item.barcode.includes(q);
-      const matchColor = item.color.toLowerCase().includes(q) || (item.colors && item.colors.some(c => c.toLowerCase().includes(q)));
-      const matchSize = item.size.toLowerCase().includes(q) || (item.sizes && item.sizes.some(s => s.toLowerCase().includes(q)));
-      return matchName || matchBarcode || matchColor || matchSize;
-    }
-    return true;
-  });
+      if (filterCategory !== 'all' && item.category !== filterCategory) return false;
+
+      // Filter by Size (لطاي)
+      if (filterSize !== 'all') {
+        const itemSizes = item.sizes && item.sizes.length > 0
+          ? item.sizes
+          : (item.size ? item.size.split(/[,،+/]/).map(s => s.trim()) : []);
+        if (!itemSizes.includes(filterSize) && !item.size.toLowerCase().includes(filterSize.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Filter by Color (اللون)
+      if (filterColor !== 'all') {
+        const itemColors = item.colors && item.colors.length > 0
+          ? item.colors
+          : (item.color ? item.color.split(/[,،+/]/).map(c => c.trim()) : []);
+        if (!itemColors.includes(filterColor) && !item.color.toLowerCase().includes(filterColor.toLowerCase())) {
+          return false;
+        }
+      }
+
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const matchName = item.name.toLowerCase().includes(q);
+        const matchBarcode = item.barcode.includes(q);
+        const matchColor = item.color.toLowerCase().includes(q) || (item.colors && item.colors.some(c => c.toLowerCase().includes(q)));
+        const matchSize = item.size.toLowerCase().includes(q) || (item.sizes && item.sizes.some(s => s.toLowerCase().includes(q)));
+        return matchName || matchBarcode || matchColor || matchSize;
+      }
+      return true;
+    });
+  }, [clothes, filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 24;
@@ -511,7 +524,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
               }`}
             >
               <Shirt className="w-3.5 h-3.5 text-slate-400" />
-              <span>كراء ({clothes.filter(c => c.purpose === 'rent' || c.purpose === 'both').length})</span>
+              <span>كراء ({rentCount})</span>
             </button>
             <button
               onClick={() => setFilterPurpose('sell')}
@@ -520,7 +533,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
               }`}
             >
               <Tag className="w-3.5 h-3.5 text-slate-400" />
-              <span>بيع ({clothes.filter(c => c.purpose === 'sell' || c.purpose === 'both').length})</span>
+              <span>بيع ({sellCount})</span>
             </button>
 
             <span className="w-px h-5 bg-slate-200 self-center mx-1 shrink-0" />
