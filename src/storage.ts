@@ -515,15 +515,14 @@ export function flushPendingStorageSynchronously(): void {
     if (dataToPersist === undefined) continue;
 
     try {
-      const storagePayload = Array.isArray(dataToPersist) && dataToPersist.length > 300
-        ? dataToPersist.slice(0, 300)
-        : dataToPersist;
-      localStorage.setItem(key, JSON.stringify(storagePayload));
+      localStorage.setItem(key, JSON.stringify(dataToPersist));
     } catch (e: any) {
       if (e?.name === 'QuotaExceededError' || e?.code === 22) {
+        console.warn(`[localStorage quota exceeded for ${key}], trimming older offline snapshot safely`);
         try {
           if (Array.isArray(dataToPersist)) {
-            localStorage.setItem(key, JSON.stringify(dataToPersist.slice(0, 50)));
+            // Trim to safe subset only when browser storage quota is truly exhausted
+            localStorage.setItem(key, JSON.stringify(dataToPersist.slice(0, Math.min(dataToPersist.length, 500))));
           }
         } catch (_) {}
       } else {

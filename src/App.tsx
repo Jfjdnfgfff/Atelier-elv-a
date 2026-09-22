@@ -145,6 +145,15 @@ export default function App() {
     caisseClosures: false
   });
 
+  const lastSyncUpdateTimestampRef = useRef<number>(0);
+  const markCloudSyncActive = useCallback(() => {
+    const now = Date.now();
+    if (now - lastSyncUpdateTimestampRef.current > 2500) {
+      lastSyncUpdateTimestampRef.current = now;
+      setLastCloudSyncTime(new Date());
+    }
+  }, []);
+
   // Real-time Cloud Subscriptions on Mount
   useEffect(() => {
     // 1. Subscribe to Clothes
@@ -152,7 +161,7 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.clothes = true;
         setClothes(items);
-        setLastCloudSyncTime(new Date());
+        markCloudSyncActive();
       } else {
         const local = loadFromStorage<ClothItem[]>(STORAGE_KEYS.CLOTHES, []);
         if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.CLOTHES, local);
@@ -164,7 +173,7 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.rentals = true;
         setRentals(items);
-        setLastCloudSyncTime(new Date());
+        markCloudSyncActive();
       } else {
         const local = loadFromStorage<Rental[]>(STORAGE_KEYS.RENTALS, []);
         if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.RENTALS, local);
@@ -176,7 +185,7 @@ export default function App() {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.sales = true;
         setSales(items);
-        setLastCloudSyncTime(new Date());
+        markCloudSyncActive();
       }
     });
 
@@ -185,7 +194,7 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.expenses = true;
         setExpenses(items);
-        setLastCloudSyncTime(new Date());
+        markCloudSyncActive();
       } else {
         const local = loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, []);
         if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.EXPENSES, local);
@@ -197,7 +206,7 @@ export default function App() {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.credits = true;
         setCredits(items);
-        setLastCloudSyncTime(new Date());
+        markCloudSyncActive();
       }
     });
 
@@ -206,7 +215,7 @@ export default function App() {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.staffPayouts = true;
         setStaffPayouts(items);
-        setLastCloudSyncTime(new Date());
+        markCloudSyncActive();
       }
     });
 
@@ -215,7 +224,7 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.staffMembers = true;
         setStaffMembers(items);
-        setLastCloudSyncTime(new Date());
+        markCloudSyncActive();
       } else {
         const local = loadFromStorage<StaffMember[]>(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF);
         if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_MEMBERS, local);
@@ -227,7 +236,7 @@ export default function App() {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.staffAbsences = true;
         setStaffAbsences(items);
-        setLastCloudSyncTime(new Date());
+        markCloudSyncActive();
       }
     });
 
@@ -236,7 +245,7 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.maintenanceOrders = true;
         setMaintenanceOrders(items);
-        setLastCloudSyncTime(new Date());
+        markCloudSyncActive();
       } else {
         const local = loadFromStorage<MaintenanceOrder[]>(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE);
         if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, local);
@@ -248,7 +257,7 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.suppliers = true;
         setSuppliers(items);
-        setLastCloudSyncTime(new Date());
+        markCloudSyncActive();
       } else {
         const local = loadFromStorage<Supplier[]>(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS);
         if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, local);
@@ -260,7 +269,7 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.caisseClosures = true;
         setCaisseClosures(items);
-        setLastCloudSyncTime(new Date());
+        markCloudSyncActive();
       } else {
         const local = loadFromStorage<DailyCaisseClosure[]>(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES);
         if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, local);
@@ -272,7 +281,7 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.seamstresses = true;
         setSeamstresses(items);
-        setLastCloudSyncTime(new Date());
+        markCloudSyncActive();
       } else {
         const local = loadFromStorage<Seamstress[]>(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES);
         if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, local);
@@ -284,7 +293,7 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.rawMaterials = true;
         setRawMaterials(items);
-        setLastCloudSyncTime(new Date());
+        markCloudSyncActive();
       } else {
         const local = loadFromStorage<RawMaterial[]>(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS);
         if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, local);
@@ -497,10 +506,59 @@ export default function App() {
     }
   }, [hideFinances]);
 
+  // Stable Modal and Navigation Callback Handlers
+  const handleOpenAddRental = useCallback(() => {
+    setPreselectedRentalItemId(undefined);
+    setActiveModal('addRental');
+  }, []);
+
+  const handleOpenAddRentalWithItem = useCallback((itemId?: string) => {
+    setPreselectedRentalItemId(itemId);
+    setActiveModal('addRental');
+  }, []);
+
+  const handleOpenEditRentalModal = useCallback((r: Rental) => {
+    setSelectedRental(r);
+    setActiveModal('editRental');
+  }, []);
+
+  const handleOpenReturnModal = useCallback((r: Rental) => {
+    setSelectedRental(r);
+    setActiveModal('returnRental');
+  }, []);
+
+  const handleOpenReceiptModal = useCallback((r: Rental) => {
+    setSelectedRental(r);
+    setActiveModal('receiptModal');
+  }, []);
+
+  const handleOpenMessageModal = useCallback((r: Rental) => {
+    setSelectedRental(r);
+    setActiveModal('messageModal');
+  }, []);
+
+  const handleOpenAddTailoringModal = useCallback(() => {
+    setActiveModal('addTailoring');
+  }, []);
+
+  const handleOpenEditTailoringModal = useCallback((order: MaintenanceOrder) => {
+    setSelectedTailoringOrder(order);
+    setActiveModal('editTailoring');
+  }, []);
+
+  const handleOpenTailoringReceiptModal = useCallback((order: MaintenanceOrder) => {
+    setSelectedTailoringOrder(order);
+    setActiveModal('tailoringReceipt');
+  }, []);
+
+  const handleClearPosScannedBarcode = useCallback(() => {
+    setPosScannedBarcode(null);
+  }, []);
+
   // ==========================
   // RENTAL HANDLERS
   // ==========================
-  const handleAddRental = (rentalData: any) => {
+  const handleAddRental = useCallback((rentalData: any) => {
     const newRental: Rental = { ...rentalData, id: generateId() };
     
     // Add rental to state
@@ -539,9 +597,9 @@ export default function App() {
     }
 
     setActiveModal(null);
-  };
+  }, []);
 
-  const handleActivateRental = (rental: Rental, collectedAmount: number = 0, handoverNotes: string = '') => {
+  const handleActivateRental = useCallback((rental: Rental, collectedAmount: number = 0, handoverNotes: string = '') => {
     const newPaid = (rental.paidAmount || 0) + (collectedAmount || 0);
     const newRemaining = Math.max(0, rental.rentPrice - newPaid);
     const todayStr = new Date().toISOString().split('T')[0];
@@ -603,156 +661,160 @@ export default function App() {
     });
 
     showToast('تمت الصفقة وتسليم الفستان بنجاح! دخل الفستان في الكراء الجاري وتم خصمه من المخزن');
-  };
+  }, []);
 
-  const handleUpdateRental = (id: string, updatedData: any) => {
-    const prevRental = rentals.find(r => r.id === id);
-    if (prevRental) {
-      const wasActive = prevRental.status === 'active';
-      const isNowActive = updatedData.status === 'active';
-      
-      if (!wasActive && isNowActive) {
-        // Transitioned to active -> increment item rentedCount
-        setClothes(prev => prev.map(c => {
-          if (c.id === updatedData.itemId) {
-            const updatedCount = (c.rentedCount || 0) + (updatedData.qty || 1);
-            updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
-            return { ...c, rentedCount: updatedCount };
-          }
-          return c;
-        }));
-      } else if (wasActive && !isNowActive) {
-        // Transitioned from active to reserved or returned -> decrement item rentedCount
-        setClothes(prev => prev.map(c => {
-          if (c.id === prevRental.itemId) {
-            const updatedCount = Math.max(0, (c.rentedCount || 0) - (prevRental.qty || 1));
-            updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
-            return { ...c, rentedCount: updatedCount };
-          }
-          return c;
-        }));
-      }
-    }
-
-    setRentals(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
-    updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, id, updatedData);
-    showToast('تم تحديث بيانات الكراء');
-    setActiveModal(null);
-  };
-
-  const handleDeleteRental = (id: string) => {
-    const target = rentals.find(r => r.id === id);
-    if (!target) return;
-
-    setConfirmDelete({
-      title: target.status === 'reserved' ? 'إلغاء حجز الفستان' : 'حذف عملية الكراء',
-      message: target.status === 'reserved'
-        ? 'هل أنت متأكد من إلغاء وحذف حجز الفستان المستقبلي؟'
-        : 'هل أنت متأكد من حذف عملية الكراء؟ سيتم استرجاع القطعة إلى المخزن.',
-      onConfirm: () => {
-        if (target.status === 'active' || target.status === 'overdue') {
-          // Return item count to inventory only if it was active
-          setClothes(prev => prev.map(c => {
-            if (c.id === target.itemId) {
-              const updatedCount = Math.max(0, (c.rentedCount || 0) - (target.qty || 1));
+  const handleUpdateRental = useCallback((id: string, updatedData: any) => {
+    setRentals(prev => {
+      const prevRental = prev.find(r => r.id === id);
+      if (prevRental) {
+        const wasActive = prevRental.status === 'active';
+        const isNowActive = updatedData.status === 'active';
+        
+        if (!wasActive && isNowActive) {
+          // Transitioned to active -> increment item rentedCount
+          setClothes(clothesPrev => clothesPrev.map(c => {
+            if (c.id === updatedData.itemId) {
+              const updatedCount = (c.rentedCount || 0) + (updatedData.qty || 1);
+              updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
+              return { ...c, rentedCount: updatedCount };
+            }
+            return c;
+          }));
+        } else if (wasActive && !isNowActive) {
+          // Transitioned from active to reserved or returned -> decrement item rentedCount
+          setClothes(clothesPrev => clothesPrev.map(c => {
+            if (c.id === prevRental.itemId) {
+              const updatedCount = Math.max(0, (c.rentedCount || 0) - (prevRental.qty || 1));
               updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
               return { ...c, rentedCount: updatedCount };
             }
             return c;
           }));
         }
-        setRentals(prev => prev.filter(r => r.id !== id));
-        deleteItemFromFirebase(FIREBASE_COLLECTIONS.RENTALS, id);
-        credits.filter(c => c.relatedRentalId === id).forEach(c => {
-          deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
-        });
-        setCredits(prev => prev.filter(c => c.relatedRentalId !== id));
-        showToast(target.status === 'reserved' ? 'تم إلغاء الحجز بنجاح' : 'تم حذف عملية الكراء بنجاح');
-        setConfirmDelete(null);
       }
+      return prev.map(r => r.id === id ? { ...r, ...updatedData } : r);
     });
-  };
 
-  const handleConfirmReturn = (rentalId: string, returnData: any) => {
-    const target = rentals.find(r => r.id === rentalId);
-    if (!target) return;
+    updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, id, updatedData);
+    showToast('تم تحديث بيانات الكراء');
+    setActiveModal(null);
+  }, []);
 
-    const returnUpdates = {
-      status: 'returned',
-      actualReturnDate: new Date().toISOString().split('T')[0],
-      conditionOnReturn: returnData.condition,
-      cautionStatus: returnData.cautionAction === 'refund' ? 'refunded' : 'deducted',
-      penaltyAmount: returnData.penaltyAmount,
-      paidAmount: target.paidAmount + (returnData.collectedRemaining || 0),
-      remainingAmount: Math.max(0, (target.remainingAmount || 0) - (returnData.collectedRemaining || 0)),
-      notes: returnData.notes ? `${target.notes ? target.notes + ' | ' : ''}إرجاع: ${returnData.notes}` : target.notes
-    };
+  const handleDeleteRental = useCallback((id: string) => {
+    setRentals(currentRentals => {
+      const target = currentRentals.find(r => r.id === id);
+      if (!target) return currentRentals;
 
-    // Update rental status
-    setRentals(prev => prev.map(r => {
-      if (r.id === rentalId) {
-        return {
-          ...r,
-          ...returnUpdates
-        };
-      }
-      return r;
-    }));
-    updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, rentalId, returnUpdates);
-
-    // Update inventory: decrease rentedCount, add to inCleaningCount if requested
-    setClothes(prev => prev.map(c => {
-      if (c.id === target.itemId) {
-        const newRented = Math.max(0, (c.rentedCount || 0) - (target.qty || 1));
-        const newCleaning = returnData.sendToCleaning ? (c.inCleaningCount || 0) + (target.qty || 1) : (c.inCleaningCount || 0);
-        updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, {
-          rentedCount: newRented,
-          inCleaningCount: newCleaning
-        });
-        return {
-          ...c,
-          rentedCount: newRented,
-          inCleaningCount: newCleaning
-        };
-      }
-      return c;
-    }));
-
-    // If penalty was deducted or caution kept as revenue/compensation
-    if (returnData.penaltyAmount > 0) {
-      showToast(`تم استرجاع الفستان وخصم غرامة بقيمة ${returnData.penaltyAmount} دج`);
-    } else {
-      showToast('تم تأكيد استرجاع الفستان وتسوية الحساب بنجاح');
-    }
-
-    // Auto clear linked credit if collected
-    if (returnData.collectedRemaining > 0) {
-      credits.filter(c => c.relatedRentalId === rentalId).forEach(c => {
-        deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
+      setConfirmDelete({
+        title: target.status === 'reserved' ? 'إلغاء حجز الفستان' : 'حذف عملية الكراء',
+        message: target.status === 'reserved'
+          ? 'هل أنت متأكد من إلغاء وحذف حجز الفستان المستقبلي؟'
+          : 'هل أنت متأكد من حذف عملية الكراء؟ سيتم استرجاع القطعة إلى المخزن.',
+        onConfirm: () => {
+          if (target.status === 'active' || target.status === 'overdue') {
+            // Return item count to inventory only if it was active
+            setClothes(prev => prev.map(c => {
+              if (c.id === target.itemId) {
+                const updatedCount = Math.max(0, (c.rentedCount || 0) - (target.qty || 1));
+                updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
+                return { ...c, rentedCount: updatedCount };
+              }
+              return c;
+            }));
+          }
+          setRentals(prev => prev.filter(r => r.id !== id));
+          deleteItemFromFirebase(FIREBASE_COLLECTIONS.RENTALS, id);
+          setCredits(prev => {
+            prev.filter(c => c.relatedRentalId === id).forEach(c => {
+              deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
+            });
+            return prev.filter(c => c.relatedRentalId !== id);
+          });
+          showToast(target.status === 'reserved' ? 'تم إلغاء الحجز بنجاح' : 'تم حذف عملية الكراء بنجاح');
+          setConfirmDelete(null);
+        }
       });
-      setCredits(prev => prev.filter(c => c.relatedRentalId !== rentalId));
-    }
+      return currentRentals;
+    });
+  }, []);
+
+  const handleConfirmReturn = useCallback((rentalId: string, returnData: any) => {
+    setRentals(currentRentals => {
+      const target = currentRentals.find(r => r.id === rentalId);
+      if (!target) return currentRentals;
+
+      const returnUpdates = {
+        status: 'returned',
+        actualReturnDate: new Date().toISOString().split('T')[0],
+        conditionOnReturn: returnData.condition,
+        cautionStatus: returnData.cautionAction === 'refund' ? 'refunded' : 'deducted',
+        penaltyAmount: returnData.penaltyAmount,
+        paidAmount: target.paidAmount + (returnData.collectedRemaining || 0),
+        remainingAmount: Math.max(0, (target.remainingAmount || 0) - (returnData.collectedRemaining || 0)),
+        notes: returnData.notes ? `${target.notes ? target.notes + ' | ' : ''}إرجاع: ${returnData.notes}` : target.notes
+      };
+
+      // Update rental status
+      updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, rentalId, returnUpdates);
+
+      // Update inventory: decrease rentedCount, add to inCleaningCount if requested
+      setClothes(prev => prev.map(c => {
+        if (c.id === target.itemId) {
+          const newRented = Math.max(0, (c.rentedCount || 0) - (target.qty || 1));
+          const newCleaning = returnData.sendToCleaning ? (c.inCleaningCount || 0) + (target.qty || 1) : (c.inCleaningCount || 0);
+          updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, {
+            rentedCount: newRented,
+            inCleaningCount: newCleaning
+          });
+          return {
+            ...c,
+            rentedCount: newRented,
+            inCleaningCount: newCleaning
+          };
+        }
+        return c;
+      }));
+
+      // If penalty was deducted or caution kept as revenue/compensation
+      if (returnData.penaltyAmount > 0) {
+        showToast(`تم استرجاع الفستان وخصم غرامة بقيمة ${returnData.penaltyAmount} دج`);
+      } else {
+        showToast('تم تأكيد استرجاع الفستان وتسوية الحساب بنجاح');
+      }
+
+      // Auto clear linked credit if collected
+      if (returnData.collectedRemaining > 0) {
+        setCredits(prev => {
+          prev.filter(c => c.relatedRentalId === rentalId).forEach(c => {
+            deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
+          });
+          return prev.filter(c => c.relatedRentalId !== rentalId);
+        });
+      }
+
+      return currentRentals.map(r => r.id === rentalId ? { ...r, ...returnUpdates } : r);
+    });
 
     setActiveModal(null);
-  };
+  }, []);
 
   // ==========================
   // CLOTHES & INVENTORY HANDLERS
   // ==========================
-  const handleAddCloth = (itemData: any) => {
+  const handleAddCloth = useCallback((itemData: any) => {
     const newCloth: ClothItem = { ...itemData, id: generateId() };
     setClothes(prev => [newCloth, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.CLOTHES, newCloth);
     showToast('تمت إضافة قطعة الملابس للمخزن');
-  };
+  }, []);
 
-  const handleUpdateCloth = (id: string, itemData: any) => {
+  const handleUpdateCloth = useCallback((id: string, itemData: any) => {
     setClothes(prev => prev.map(c => c.id === id ? { ...c, ...itemData } : c));
     updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, id, itemData);
     showToast('تم تحديث بيانات القطعة');
-  };
+  }, []);
 
-  const handleDeleteCloth = (id: string) => {
+  const handleDeleteCloth = useCallback((id: string) => {
     setConfirmDelete({
       title: 'حذف قطعة من المخزن',
       message: 'هل أنت متأكد من حذف هذه القطعة من المخزن؟ لا يمكن التراجع عن هذا الإجراء.',
@@ -763,12 +825,12 @@ export default function App() {
         setConfirmDelete(null);
       }
     });
-  };
+  }, []);
 
   // ==========================
   // SALES HANDLERS
   // ==========================
-  const handleCompleteSale = (saleData: any) => {
+  const handleCompleteSale = useCallback((saleData: any) => {
     const newSale: Sale = { ...saleData, id: generateId() };
     setSales(prev => [newSale, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.SALES, newSale);
@@ -821,9 +883,9 @@ export default function App() {
     }
 
     showToast('تم إتمام عملية البيع بنجاح');
-  };
+  }, []);
 
-  const handleDeleteSale = (sale: Sale) => {
+  const handleDeleteSale = useCallback((sale: Sale) => {
     setConfirmDelete({
       title: 'إلغاء عملية البيع',
       message: 'هل تريد إلغاء عملية البيع واسترجاع القطع للمخزن؟',
@@ -864,12 +926,12 @@ export default function App() {
         setConfirmDelete(null);
       }
     });
-  };
+  }, []);
 
   // ==========================
   // EXPENSES, SUPPLIERS & CREDITS
   // ==========================
-  const handleAddExpense = (expData: any) => {
+  const handleAddExpense = useCallback((expData: any) => {
     const newExpId = generateId();
     const newExp: Expense = { ...expData, id: newExpId };
     setExpenses(prev => [newExp, ...prev]);
@@ -900,19 +962,21 @@ export default function App() {
     } else {
       showToast('تم تسجيل المصروف بنجاح');
     }
-  };
+  }, []);
 
-  const handleDeleteExpense = (id: string) => {
+  const handleDeleteExpense = useCallback((id: string) => {
     setExpenses(prev => prev.filter(e => e.id !== id));
     deleteItemFromFirebase(FIREBASE_COLLECTIONS.EXPENSES, id);
-    credits.filter(c => c.relatedExpenseId === id).forEach(c => {
-      deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
+    setCredits(prev => {
+      prev.filter(c => c.relatedExpenseId === id).forEach(c => {
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
+      });
+      return prev.filter(c => c.relatedExpenseId !== id);
     });
-    setCredits(prev => prev.filter(c => c.relatedExpenseId !== id));
     showToast('تم حذف سجل المصروف');
-  };
+  }, []);
 
-  const handleSettleSupplierCredit = (expenseId: string, paidNow: number) => {
+  const handleSettleSupplierCredit = useCallback((expenseId: string, paidNow: number) => {
     // 1. Update expense record
     setExpenses(prev => prev.map(exp => {
       if (exp.id === expenseId) {
@@ -953,24 +1017,24 @@ export default function App() {
     });
 
     showToast(`تم خلاص وتسديد مبلغ ${paidNow.toLocaleString()} دج للمورد بنجاح`);
-  };
+  }, []);
 
-  const handleAddSupplier = (newSup: Supplier) => {
+  const handleAddSupplier = useCallback((newSup: Supplier) => {
     setSuppliers(prev => {
       if (prev.some(s => s.name.trim().toLowerCase() === newSup.name.trim().toLowerCase())) return prev;
       saveItemToFirebase(FIREBASE_COLLECTIONS.SUPPLIERS, newSup);
       return [newSup, ...prev];
     });
     showToast(`تمت إضافة المورد: ${newSup.name}`);
-  };
+  }, []);
 
-  const handleUpdateSupplier = (id: string, data: Partial<Supplier>) => {
+  const handleUpdateSupplier = useCallback((id: string, data: Partial<Supplier>) => {
     setSuppliers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
     updateItemInFirebase(FIREBASE_COLLECTIONS.SUPPLIERS, id, data);
     showToast('تم تحديث بيانات المورد');
-  };
+  }, []);
 
-  const handleDeleteSupplier = (id: string) => {
+  const handleDeleteSupplier = useCallback((id: string) => {
     setConfirmDelete({
       title: 'حذف المورد',
       message: 'هل أنت متأكد من حذف هذا المورد؟',
@@ -981,24 +1045,24 @@ export default function App() {
         setConfirmDelete(null);
       }
     });
-  };
+  }, []);
 
   // ==========================
   // SEAMSTRESSES & RAW MATERIALS HANDLERS
   // ==========================
-  const handleAddSeamstress = (seam: Seamstress) => {
+  const handleAddSeamstress = useCallback((seam: Seamstress) => {
     setSeamstresses(prev => [seam, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.SEAMSTRESSES, seam);
     showToast(`تمت إضافة الخياطة: ${seam.name}`);
-  };
+  }, []);
 
-  const handleUpdateSeamstress = (id: string, data: Partial<Seamstress>) => {
+  const handleUpdateSeamstress = useCallback((id: string, data: Partial<Seamstress>) => {
     setSeamstresses(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
     updateItemInFirebase(FIREBASE_COLLECTIONS.SEAMSTRESSES, id, data);
     showToast('تم تحديث بيانات الخياطة');
-  };
+  }, []);
 
-  const handleDeleteSeamstress = (id: string) => {
+  const handleDeleteSeamstress = useCallback((id: string) => {
     setConfirmDelete({
       title: 'حذف الخياطة',
       message: 'هل تريد حذف هذه الخياطة من النظام؟',
@@ -1009,21 +1073,21 @@ export default function App() {
         setConfirmDelete(null);
       }
     });
-  };
+  }, []);
 
-  const handleAddRawMaterial = (mat: RawMaterial) => {
+  const handleAddRawMaterial = useCallback((mat: RawMaterial) => {
     setRawMaterials(prev => [mat, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, mat);
     showToast(`تمت إضافة القماش / السلعة: ${mat.name}`);
-  };
+  }, []);
 
-  const handleUpdateRawMaterial = (id: string, data: Partial<RawMaterial>) => {
+  const handleUpdateRawMaterial = useCallback((id: string, data: Partial<RawMaterial>) => {
     setRawMaterials(prev => prev.map(m => m.id === id ? { ...m, ...data, updatedAt: new Date().toISOString() } : m));
     updateItemInFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, id, { ...data, updatedAt: new Date().toISOString() });
     showToast('تم تحديث بيانات القماش');
-  };
+  }, []);
 
-  const handleDeleteRawMaterial = (id: string) => {
+  const handleDeleteRawMaterial = useCallback((id: string) => {
     setConfirmDelete({
       title: 'حذف السلعة الأولية أو القماش',
       message: 'هل أنت متأكد من حذف هذا القماش من سجل المخزن؟',
@@ -1034,63 +1098,65 @@ export default function App() {
         setConfirmDelete(null);
       }
     });
-  };
+  }, []);
 
-  const handleAddCredit = (credData: any) => {
+  const handleAddCredit = useCallback((credData: any) => {
     const newCred: Credit = { ...credData, id: generateId() };
     setCredits(prev => [newCred, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCred);
     showToast(credData.supplierDebt ? 'تم تسجيل دين للمورد' : 'تم تسجيل الدين على الزبون');
-  };
+  }, []);
 
-  const handleSettleCredit = (id: string) => {
-    const cred = credits.find(c => c.id === id);
-    if (cred && cred.relatedExpenseId) {
-      // Also update linked expense when settled from credits view
-      setExpenses(prev => prev.map(exp => {
-        if (exp.id === cred.relatedExpenseId) {
-          const currentPaid = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
-          const newPaid = currentPaid + cred.amount;
-          const updated = {
-            ...exp,
-            paidAmount: newPaid,
-            amount: newPaid,
-            creditAmount: 0
-          };
-          updateItemInFirebase(FIREBASE_COLLECTIONS.EXPENSES, cred.relatedExpenseId!, {
-            paidAmount: newPaid,
-            amount: newPaid,
-            creditAmount: 0
-          });
-          return updated;
-        }
-        return exp;
-      }));
-    }
-    setCredits(prev => prev.filter(c => c.id !== id));
-    deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, id);
+  const handleSettleCredit = useCallback((id: string) => {
+    setCredits(currentCredits => {
+      const cred = currentCredits.find(c => c.id === id);
+      if (cred && cred.relatedExpenseId) {
+        // Also update linked expense when settled from credits view
+        setExpenses(prev => prev.map(exp => {
+          if (exp.id === cred.relatedExpenseId) {
+            const currentPaid = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
+            const newPaid = currentPaid + cred.amount;
+            const updated = {
+              ...exp,
+              paidAmount: newPaid,
+              amount: newPaid,
+              creditAmount: 0
+            };
+            updateItemInFirebase(FIREBASE_COLLECTIONS.EXPENSES, cred.relatedExpenseId!, {
+              paidAmount: newPaid,
+              amount: newPaid,
+              creditAmount: 0
+            });
+            return updated;
+          }
+          return exp;
+        }));
+      }
+      deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, id);
+      return currentCredits.filter(c => c.id !== id);
+    });
     showToast('تم تسديد وتصفية الدين بنجاح');
-  };
+  }, []);
 
-  const handleDeleteCredit = (id: string) => {
+  const handleDeleteCredit = useCallback((id: string) => {
     setCredits(prev => prev.filter(c => c.id !== id));
     deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, id);
     showToast('تم حذف السجل');
-  };
+  }, []);
 
   // ==========================
   // CAISSE (CASH REGISTER) HANDLERS
   // ==========================
-  const handleSaveCaisseClosure = (closure: DailyCaisseClosure) => {
+  const handleSaveCaisseClosure = useCallback((closure: DailyCaisseClosure) => {
     setCaisseClosures(prev => {
       const filtered = prev.filter(c => c.date !== closure.date);
       return [closure, ...filtered];
     });
     saveItemToFirebase(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, closure);
     showToast(`تم إقفال وحفظ صندوق يوم ${closure.date} بنجاح`);
-  };
+  }, []);
 
-  const handleDeleteCaisseClosure = (id: string) => {
+  const handleDeleteCaisseClosure = useCallback((id: string) => {
     setConfirmDelete({
       title: 'حذف إقفال الصندوق',
       message: 'هل أنت متأكد من حذف هذا السجل لصندوق اليومية؟',
@@ -1101,12 +1167,12 @@ export default function App() {
         setConfirmDelete(null);
       }
     });
-  };
+  }, []);
 
   // ==========================
   // STAFF & ABSENCES HANDLERS
   // ==========================
-  const handleAddStaffPayout = (data: any, deductedAbsenceIds?: string[]) => {
+  const handleAddStaffPayout = useCallback((data: any, deductedAbsenceIds?: string[]) => {
     const payoutId = generateId();
     const newPayout: StaffPayout = { ...data, id: payoutId };
     setStaffPayouts(prev => [newPayout, ...prev]);
@@ -1125,9 +1191,9 @@ export default function App() {
     }
 
     showToast('تم صرف الراتب وتطبيق خصم الغيابات بنجاح');
-  };
+  }, []);
 
-  const handleDeleteStaffPayout = (id: string) => {
+  const handleDeleteStaffPayout = useCallback((id: string) => {
     setStaffPayouts(prev => prev.filter(p => p.id !== id));
     deleteItemFromFirebase(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, id);
     // Restore deducted status if payout is deleted
@@ -1139,22 +1205,22 @@ export default function App() {
       return a;
     }));
     showToast('تم حذف سجل الراتب');
-  };
+  }, []);
 
-  const handleAddStaffMember = (data: any) => {
+  const handleAddStaffMember = useCallback((data: any) => {
     const newMember: StaffMember = { ...data, id: generateId() };
     setStaffMembers(prev => [...prev, newMember]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.STAFF_MEMBERS, newMember);
     showToast(`تمت إضافة العامل/ة ${data.name}`);
-  };
+  }, []);
 
-  const handleUpdateStaffMember = (id: string, data: any) => {
+  const handleUpdateStaffMember = useCallback((id: string, data: any) => {
     setStaffMembers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
     updateItemInFirebase(FIREBASE_COLLECTIONS.STAFF_MEMBERS, id, data);
     showToast('تم تحديث بيانات العامل');
-  };
+  }, []);
 
-  const handleDeleteStaffMember = (id: string) => {
+  const handleDeleteStaffMember = useCallback((id: string) => {
     setConfirmDelete({
       title: 'حذف العامل',
       message: 'هل تريد حذف هذا العامل من النظام؟',
@@ -1165,25 +1231,25 @@ export default function App() {
         setConfirmDelete(null);
       }
     });
-  };
+  }, []);
 
-  const handleAddAbsence = (data: any) => {
+  const handleAddAbsence = useCallback((data: any) => {
     const newAbsence: StaffAbsence = { ...data, id: generateId() };
     setStaffAbsences(prev => [newAbsence, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.STAFF_ABSENCES, newAbsence);
     showToast(`تم تسجيل غياب ${data.staffName} بقيمة خصم ${data.deductionAmount} دج`);
-  };
+  }, []);
 
-  const handleDeleteAbsence = (id: string) => {
+  const handleDeleteAbsence = useCallback((id: string) => {
     setStaffAbsences(prev => prev.filter(a => a.id !== id));
     deleteItemFromFirebase(FIREBASE_COLLECTIONS.STAFF_ABSENCES, id);
     showToast('تم حذف سجل الغياب');
-  };
+  }, []);
 
   // ==========================
   // TAILORING & MAINTENANCE HANDLERS
   // ==========================
-  const handleAddTailoringOrder = (data: Partial<MaintenanceOrder>) => {
+  const handleAddTailoringOrder = useCallback((data: Partial<MaintenanceOrder>) => {
     const newOrder: MaintenanceOrder = {
       id: generateId(),
       orderNumber: `TAIL-${Math.floor(100 + Math.random() * 900)}`,
@@ -1226,16 +1292,16 @@ export default function App() {
 
     showToast('تم تسجيل طلب الخياطة والصيانة بنجاح');
     setActiveModal(null);
-  };
+  }, []);
 
-  const handleUpdateTailoringOrder = (id: string, data: Partial<MaintenanceOrder>) => {
+  const handleUpdateTailoringOrder = useCallback((id: string, data: Partial<MaintenanceOrder>) => {
     setMaintenanceOrders(prev => prev.map(o => o.id === id ? { ...o, ...data } : o));
     updateItemInFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, id, data);
     showToast('تم تحديث بيانات طلب الخياطة');
     setActiveModal(null);
-  };
+  }, []);
 
-  const handleUpdateTailoringStatus = (id: string, newStatus: MaintenanceStatus) => {
+  const handleUpdateTailoringStatus = useCallback((id: string, newStatus: MaintenanceStatus) => {
     const updates = { 
       status: newStatus, 
       actualDeliveryDate: newStatus === 'delivered' ? new Date().toISOString().split('T')[0] : undefined 
@@ -1251,9 +1317,9 @@ export default function App() {
     }));
     updateItemInFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, id, updates);
     showToast('تم تحديث حالة الطلب');
-  };
+  }, []);
 
-  const handleDeleteTailoringOrder = (id: string) => {
+  const handleDeleteTailoringOrder = useCallback((id: string) => {
     setConfirmDelete({
       title: 'حذف طلب الصيانة والخياطة',
       message: 'هل أنت متأكد من حذف هذا الطلب من سجل الخياطة؟',
@@ -1264,7 +1330,7 @@ export default function App() {
         setConfirmDelete(null);
       }
     });
-  };
+  }, []);
 
   // ==========================
   // MESSAGING (WHATSAPP / SMS)
@@ -1538,18 +1604,11 @@ export default function App() {
             expenses={expenses}
             staffPayouts={staffPayouts}
             hideFinances={hideFinances}
-            onPrivacyToggle={() => {
-              if (hideFinances) {
-                setActiveModal('privacyPassword');
-              } else {
-                setHideFinances(true);
-                localStorage.setItem('bm_hideFinances', 'true');
-              }
-            }}
+            onPrivacyToggle={toggleFinances}
             onNavigate={navigateTo}
-            onOpenAddRental={() => setActiveModal('addRental')}
-            onOpenReturnModal={(r) => { setSelectedRental(r); setActiveModal('returnRental'); }}
-            onSendMessage={(r) => { setSelectedRental(r); setActiveModal('messageModal'); }}
+            onOpenAddRental={handleOpenAddRental}
+            onOpenReturnModal={handleOpenReturnModal}
+            onSendMessage={handleOpenMessageModal}
           />
         )}
 
@@ -1557,17 +1616,14 @@ export default function App() {
           <RentalsView 
             rentals={rentals} 
             clothes={clothes}
-            onAddRental={(itemId) => {
-              setPreselectedRentalItemId(itemId);
-              setActiveModal('addRental');
-            }}
-            onEditRental={(r) => { setSelectedRental(r); setActiveModal('editRental'); }}
+            onAddRental={handleOpenAddRentalWithItem}
+            onEditRental={handleOpenEditRentalModal}
             onDeleteRental={handleDeleteRental}
             onActivateRental={handleActivateRental}
-            onOpenReturnModal={(r) => { setSelectedRental(r); setActiveModal('returnRental'); }}
-            onOpenReceiptModal={(r) => { setSelectedRental(r); setActiveModal('receiptModal'); }}
-            onSendMessage={(r) => { setSelectedRental(r); setActiveModal('messageModal'); }}
-            onScanBarcode={() => setIsScanning(true)}
+            onOpenReturnModal={handleOpenReturnModal}
+            onOpenReceiptModal={handleOpenReceiptModal}
+            onSendMessage={handleOpenMessageModal}
+            onScanBarcode={openBarcodeScan}
           />
         )}
 
@@ -1582,7 +1638,7 @@ export default function App() {
             onAddRawMaterial={handleAddRawMaterial}
             onUpdateRawMaterial={handleUpdateRawMaterial}
             onDeleteRawMaterial={handleDeleteRawMaterial}
-            onScanBarcode={() => setIsScanning(true)}
+            onScanBarcode={openBarcodeScan}
           />
         )}
 
@@ -1592,9 +1648,9 @@ export default function App() {
             sales={sales}
             onCompleteSale={handleCompleteSale}
             onDeleteSale={handleDeleteSale}
-            onScanBarcode={() => setIsScanning(true)}
+            onScanBarcode={openBarcodeScan}
             scannedCode={posScannedBarcode}
-            onClearScannedCode={() => setPosScannedBarcode(null)}
+            onClearScannedCode={handleClearPosScannedBarcode}
           />
         )}
 
@@ -1602,11 +1658,11 @@ export default function App() {
           <TailoringView 
             orders={maintenanceOrders}
             clothes={clothes}
-            onOpenAddModal={() => setActiveModal('addTailoring')}
-            onEditOrder={(order) => { setSelectedTailoringOrder(order); setActiveModal('editTailoring'); }}
+            onOpenAddModal={handleOpenAddTailoringModal}
+            onEditOrder={handleOpenEditTailoringModal}
             onDeleteOrder={handleDeleteTailoringOrder}
             onUpdateStatus={handleUpdateTailoringStatus}
-            onOpenReceiptModal={(order) => { setSelectedTailoringOrder(order); setActiveModal('tailoringReceipt'); }}
+            onOpenReceiptModal={handleOpenTailoringReceiptModal}
           />
         )}
 
@@ -1643,14 +1699,7 @@ export default function App() {
             onSaveClosure={handleSaveCaisseClosure}
             onDeleteClosure={handleDeleteCaisseClosure}
             hideFinances={hideFinances}
-            onPrivacyToggle={() => {
-              if (hideFinances) {
-                setActiveModal('privacyPassword');
-              } else {
-                setHideFinances(true);
-                localStorage.setItem('bm_hideFinances', 'true');
-              }
-            }}
+            onPrivacyToggle={toggleFinances}
           />
         )}
 
