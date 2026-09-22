@@ -17,7 +17,9 @@ import {
   DollarSign, 
   Clock, 
   Info,
-  Barcode
+  Barcode,
+  Trash2,
+  RotateCcw
 } from 'lucide-react';
 
 interface RentalModalProps {
@@ -290,10 +292,10 @@ export const RentalModal: React.FC<RentalModalProps> = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-slate-800" dir="rtl">
       {/* Booking Mode Selector (كراء فوري مباشر vs مستأجرة مستقبلاً) */}
-      <div className="bg-slate-900 text-white p-3.5 rounded-3xl shadow-xs space-y-2">
+      <div className="bg-blue-900 text-white p-3.5 rounded-3xl shadow-xs space-y-2">
         <div className="flex justify-between items-center">
-          <span className="text-xs font-bold text-slate-200">نوع العملية والتسليم:</span>
-          <span className="text-[10px] bg-white/10 text-slate-300 px-2 py-0.5 rounded-md font-bold">
+          <span className="text-xs font-bold text-blue-200">نوع العملية والتسليم:</span>
+          <span className="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-md font-bold">
             {bookingType === 'reserved' ? 'حجز لمناسبة قادمة' : 'تسليم فوري مباشر'}
           </span>
         </div>
@@ -304,11 +306,11 @@ export const RentalModal: React.FC<RentalModalProps> = ({
             onClick={() => setBookingType('active')}
             className={`p-2.5 rounded-2xl text-xs font-bold transition-all flex flex-col items-center gap-1 border ${
               bookingType === 'active'
-                ? 'bg-slate-800 border-slate-600 text-white shadow-xs'
-                : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:bg-slate-800/50'
+                ? 'bg-blue-600 border-blue-400 text-white shadow-xs'
+                : 'bg-blue-950/60 border-blue-800 text-blue-200 hover:bg-blue-800/50'
             }`}
           >
-            <Shirt className="w-5 h-5 text-slate-200" />
+            <Shirt className="w-5 h-5 text-blue-200" />
             <span>كراء فوري مباشر</span>
             <span className="text-[9px] font-normal opacity-80">تسليم الفستان الآن</span>
           </button>
@@ -318,26 +320,26 @@ export const RentalModal: React.FC<RentalModalProps> = ({
             onClick={() => setBookingType('reserved')}
             className={`p-2.5 rounded-2xl text-xs font-bold transition-all flex flex-col items-center gap-1 border ${
               bookingType === 'reserved'
-                ? 'bg-slate-800 border-slate-600 text-white shadow-xs'
-                : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:bg-slate-800/50'
+                ? 'bg-blue-600 border-blue-400 text-white shadow-xs'
+                : 'bg-blue-950/60 border-blue-800 text-blue-200 hover:bg-blue-800/50'
             }`}
           >
-            <Calendar className="w-5 h-5 text-slate-200" />
+            <Calendar className="w-5 h-5 text-blue-200" />
             <span>مستأجرة مستقبلاً (حجز)</span>
             <span className="text-[9px] font-normal opacity-80">لمناسبة قادمة + عربون</span>
           </button>
         </div>
 
         {bookingType === 'reserved' ? (
-          <div className="bg-slate-800/80 border border-slate-700/60 p-2.5 rounded-xl text-[11px] text-slate-300 flex items-start gap-2">
-            <Info className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+          <div className="bg-blue-950/80 border border-blue-700/60 p-2.5 rounded-xl text-[11px] text-blue-200 flex items-start gap-2">
+            <Info className="w-4 h-4 text-blue-300 shrink-0 mt-0.5" />
             <span>
               <strong>مستأجرة مستقبلاً:</strong> يُسجل الحجز والعربون، ولا يدخل الفستان في الكراء الجاري ولا ينقص من مخزن المحل الفعلي حتى يحين موعد الاستلام وتتم الصفقة وتسليم الفستان للزبونة.
             </span>
           </div>
         ) : (
-          <div className="bg-slate-800/80 border border-slate-700/60 p-2.5 rounded-xl text-[11px] text-slate-300 flex items-start gap-2">
-            <Info className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+          <div className="bg-blue-950/80 border border-blue-700/60 p-2.5 rounded-xl text-[11px] text-blue-200 flex items-start gap-2">
+            <Info className="w-4 h-4 text-blue-300 shrink-0 mt-0.5" />
             <span>
               <strong>كراء فوري:</strong> يتم تسليم الفستان الآن ويدخل مباشرة في الكراء الجاري ويتم خصمه من المخزن المتوفر.
             </span>
@@ -444,8 +446,8 @@ export const RentalModal: React.FC<RentalModalProps> = ({
               onClick={() => setStockSource('stock1')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
                 stockSource === 'stock1' 
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs' 
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
+                  : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
               }`}
             >
               <Building2 className="w-3.5 h-3.5" />
@@ -456,8 +458,8 @@ export const RentalModal: React.FC<RentalModalProps> = ({
               onClick={() => setStockSource('stock2')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
                 stockSource === 'stock2' 
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs' 
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
+                  : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
               }`}
             >
               <Package className="w-3.5 h-3.5" />
@@ -510,8 +512,8 @@ export const RentalModal: React.FC<RentalModalProps> = ({
                       onClick={() => setItemColor(col)}
                       className={`px-2 py-1 rounded-lg text-xs font-bold transition-all border flex items-center gap-1 ${
                         itemColor === col
-                          ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                          : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
                       }`}
                     >
                       <span>{col}</span>
@@ -600,11 +602,11 @@ export const RentalModal: React.FC<RentalModalProps> = ({
                 setScanNotice('تم مسح وتفريغ بيانات الزبون');
                 setTimeout(() => setScanNotice(null), 3000);
               }}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1"
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1.5"
               title="مسح وتفريغ جميع الحقول"
             >
-              <span>🗑️</span>
-              <span>مسح / تفريغ الحقول</span>
+              <RotateCcw className="w-3.5 h-3.5 text-slate-600" />
+              <span>تفريغ الحقول</span>
             </button>
 
             <button
@@ -704,8 +706,8 @@ export const RentalModal: React.FC<RentalModalProps> = ({
             }}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 ${
               hasAccessories
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'bg-white text-blue-700 border border-blue-200 hover:bg-blue-50'
             }`}
           >
             {hasAccessories ? (
@@ -935,9 +937,9 @@ export const RentalModal: React.FC<RentalModalProps> = ({
 
       <button
         type="submit"
-        className="w-full py-3.5 active:scale-[0.98] bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-xs sm:text-sm shadow-xs transition-all min-h-[44px] flex items-center justify-center gap-2"
+        className="w-full py-3.5 active:scale-[0.98] bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-xs sm:text-sm shadow-xs transition-all min-h-[44px] flex items-center justify-center gap-2"
       >
-        <Check className="w-4 h-4 text-slate-200" />
+        <Check className="w-4 h-4 text-white" />
         <span>
           {rental 
             ? 'حفظ تعديلات العملية' 

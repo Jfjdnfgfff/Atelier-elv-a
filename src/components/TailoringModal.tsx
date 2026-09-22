@@ -143,8 +143,8 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
               }}
               className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all text-center flex items-center justify-center gap-1.5 ${
                 targetType === 'customer_order'
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                  : 'bg-white border-blue-200 text-blue-800 hover:bg-blue-50'
               }`}
             >
               <User className="w-3.5 h-3.5" />
@@ -162,8 +162,8 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
               }}
               className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all text-center flex items-center justify-center gap-1.5 ${
                 targetType === 'internal_stock'
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                  : 'bg-white border-blue-200 text-blue-800 hover:bg-blue-50'
               }`}
             >
               <Tag className="w-3.5 h-3.5" />
@@ -410,7 +410,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
         <div className="flex gap-2 pt-3">
           <button
             type="submit"
-            className="flex-1 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-xs min-h-[44px]"
+            className="flex-1 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-xs min-h-[44px]"
           >
             {order ? 'حفظ التعديلات' : 'حفظ وتسجيل الطلب'}
           </button>

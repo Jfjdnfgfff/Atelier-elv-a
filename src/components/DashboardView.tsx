@@ -15,6 +15,10 @@ import {
   MessageCircle,
   Phone,
   ArrowLeft,
+  BarChart3,
+  Calendar,
+  CalendarRange,
+  Shirt,
 } from 'lucide-react';
 import { Rental, ClothItem, ViewType, MaintenanceOrder, DailyCaisseClosure, Sale, Expense, StaffPayout, Credit } from '../types';
 import { StatCard } from './Shared';
@@ -196,7 +200,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           <button
             onClick={onPrivacyToggle}
             className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all min-h-[38px] active:scale-95 ${
-              hideFinances ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              hideFinances ? 'bg-blue-900 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-900 border border-blue-200'
             }`}
             title={hideFinances ? 'إظهار الأرقام' : 'إخفاء الأرقام'}
           >
@@ -368,14 +372,16 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
       </div>
 
       {/* التفصيل المالي الدقيق لكل نشاط (كراء، بيع، خياطة) شهرياً وسنوياً */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
+      <div className="bg-white p-5 rounded-3xl border border-blue-100 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-blue-50 pb-3">
           <div>
-            <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-              <span className="p-1.5 bg-blue-50 text-blue-600 rounded-xl">📊</span>
+            <h3 className="text-base font-black text-blue-950 flex items-center gap-2">
+              <span className="p-1.5 bg-blue-50 text-blue-600 rounded-xl">
+                <BarChart3 className="w-5 h-5 text-blue-600" />
+              </span>
               <span>التقرير المالي المفصل للأنشطة الثلاثة (الأرباح والمصاريف الشهرية والسنوية)</span>
             </h3>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
+            <p className="text-xs text-blue-600 font-medium mt-0.5">
               متابعة دقيقة لأرباح ومصاريف كل قسم على حدة (كراء فساتين، بيع فساتين، وخياطة وتفصيل).
             </p>
           </div>
@@ -383,76 +389,82 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* 1. نشاط كراء الفساتين */}
-          <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
+          <div className="bg-blue-50/40 p-4 rounded-2xl border border-blue-100 space-y-3">
+            <div className="flex items-center justify-between border-b border-blue-100 pb-2.5">
               <div className="flex items-center gap-2">
                 <span className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
-                  ✨
+                  <Shirt className="w-4 h-4 text-blue-600" />
                 </span>
                 <div>
-                  <h4 className="text-sm font-black text-blue-900">نشاط كراء وتأجير الفساتين</h4>
-                  <span className="text-[10px] text-slate-500 font-medium">Rentals & Locations</span>
+                  <h4 className="text-sm font-black text-blue-950">نشاط كراء وتأجير الفساتين</h4>
+                  <span className="text-[10px] text-blue-600 font-medium">Rentals & Locations</span>
                 </div>
               </div>
               <button
                 onClick={() => onNavigate('rentals')}
-                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-white px-2 py-1 rounded-lg border border-slate-200"
+                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-white px-2 py-1 rounded-lg border border-blue-200 shadow-2xs"
               >
                 عرض القسم ←
               </button>
             </div>
 
             {/* Monthly Rentals */}
-            <div className="bg-white p-3 rounded-xl border border-slate-200/60 space-y-2">
+            <div className="bg-white p-3 rounded-xl border border-blue-100 space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-700">📅 أرباح ومصاريف هذا الشهر:</span>
+                <span className="font-bold text-blue-900 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                  <span>أرباح ومصاريف هذا الشهر:</span>
+                </span>
                 <span className="font-bold text-blue-700">{today.substring(0, 7)}</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="bg-blue-50/50 p-2 rounded-lg">
-                  <span className="text-slate-500 block">مداخيل الكراء</span>
+                <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-50">
+                  <span className="text-blue-600 block">مداخيل الكراء</span>
                   <span className="font-black text-blue-700 font-mono text-xs">
                     {hideFinances ? '••••' : `${(stats.monthlyRentalIncome || 0).toLocaleString()} دج`}
                   </span>
                 </div>
-                <div className="bg-blue-50/50 p-2 rounded-lg">
-                  <span className="text-slate-500 block">مصاريف وغسيل الكراء</span>
-                  <span className="font-black text-black font-mono text-xs">
+                <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-50">
+                  <span className="text-blue-600 block">مصاريف وغسيل الكراء</span>
+                  <span className="font-black text-blue-800 font-mono text-xs">
                     {hideFinances ? '••••' : `${(stats.monthlyRentalExpenses || 0).toLocaleString()} دج`}
                   </span>
                 </div>
               </div>
-              <div className="flex justify-between items-center bg-slate-900 text-white p-2 rounded-lg text-xs font-bold">
+              <div className="flex justify-between items-center bg-blue-600 text-white p-2 rounded-lg text-xs font-bold shadow-xs">
                 <span>الربح الشهري الصافي:</span>
-                <span className="font-mono text-blue-900 font-black">
+                <span className="font-mono text-white font-black">
                   {hideFinances ? '••••' : `${((stats.monthlyRentalIncome || 0) - (stats.monthlyRentalExpenses || 0)).toLocaleString()} دج`}
                 </span>
               </div>
             </div>
 
             {/* Yearly Rentals */}
-            <div className="bg-white p-3 rounded-xl border border-slate-200/60 space-y-2">
+            <div className="bg-white p-3 rounded-xl border border-blue-100 space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-700">🗓️ أرباح ومصاريف هذه السنة:</span>
+                <span className="font-bold text-blue-900 flex items-center gap-1">
+                  <CalendarRange className="w-3.5 h-3.5 text-blue-600" />
+                  <span>أرباح ومصاريف هذه السنة:</span>
+                </span>
                 <span className="font-bold text-blue-700">{today.substring(0, 4)}</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="bg-blue-50/50 p-2 rounded-lg">
-                  <span className="text-slate-500 block">مداخيل الكراء السنوية</span>
+                <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-50">
+                  <span className="text-blue-600 block">مداخيل الكراء السنوية</span>
                   <span className="font-black text-blue-700 font-mono text-xs">
                     {hideFinances ? '••••' : `${(stats.yearlyRentalIncome || 0).toLocaleString()} دج`}
                   </span>
                 </div>
-                <div className="bg-blue-50/50 p-2 rounded-lg">
-                  <span className="text-slate-500 block">مصاريف الكراء السنوية</span>
-                  <span className="font-black text-black font-mono text-xs">
+                <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-50">
+                  <span className="text-blue-600 block">مصاريف الكراء السنوية</span>
+                  <span className="font-black text-blue-800 font-mono text-xs">
                     {hideFinances ? '••••' : `${(stats.yearlyRentalExpenses || 0).toLocaleString()} دج`}
                   </span>
                 </div>
               </div>
-              <div className="flex justify-between items-center bg-blue-900 text-white p-2 rounded-lg text-xs font-bold">
+              <div className="flex justify-between items-center bg-blue-600 text-white p-2 rounded-lg text-xs font-bold shadow-xs">
                 <span>الربح السنوي الصافي:</span>
-                <span className="font-mono text-blue-100 font-black">
+                <span className="font-mono text-white font-black">
                   {hideFinances ? '••••' : `${((stats.yearlyRentalIncome || 0) - (stats.yearlyRentalExpenses || 0)).toLocaleString()} دج`}
                 </span>
               </div>
@@ -460,20 +472,20 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           </div>
 
           {/* 2. نشاط بيع الفساتين والملابس */}
-          <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 space-y-3">
+          <div className="bg-blue-50/40 p-4 rounded-2xl border border-blue-100 space-y-3">
             <div className="flex items-center justify-between border-b border-blue-100 pb-2.5">
               <div className="flex items-center gap-2">
                 <span className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
-                  🛍️
+                  <ShoppingBag className="w-4 h-4 text-blue-600" />
                 </span>
                 <div>
-                  <h4 className="text-sm font-black text-blue-900">نشاط بيع الملابس والفساتين</h4>
-                  <span className="text-[10px] text-slate-500 font-medium">Ventes & Prêt-à-porter</span>
+                  <h4 className="text-sm font-black text-blue-950">نشاط بيع الملابس والفساتين</h4>
+                  <span className="text-[10px] text-blue-600 font-medium">Ventes & Prêt-à-porter</span>
                 </div>
               </div>
               <button
                 onClick={() => onNavigate('sales')}
-                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-white px-2 py-1 rounded-lg border border-blue-100"
+                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-white px-2 py-1 rounded-lg border border-blue-200 shadow-2xs"
               >
                 عرض القسم ←
               </button>
@@ -482,26 +494,29 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
             {/* Monthly Sales */}
             <div className="bg-white p-3 rounded-xl border border-blue-100 space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-700">📅 مبيعات ومصاريف هذا الشهر:</span>
+                <span className="font-bold text-blue-900 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                  <span>مبيعات ومصاريف هذا الشهر:</span>
+                </span>
                 <span className="font-bold text-blue-700">{today.substring(0, 7)}</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="bg-blue-50 p-2 rounded-lg">
-                  <span className="text-slate-500 block">مبيعات الملابس</span>
+                <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-50">
+                  <span className="text-blue-600 block">مبيعات الملابس</span>
                   <span className="font-black text-blue-700 font-mono text-xs">
                     {hideFinances ? '••••' : `${(stats.monthlySalesRevenue || 0).toLocaleString()} دج`}
                   </span>
                 </div>
-                <div className="bg-blue-50 p-2 rounded-lg">
-                  <span className="text-slate-500 block">مصاريف وتكاليف البيع</span>
-                  <span className="font-black text-black font-mono text-xs">
+                <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-50">
+                  <span className="text-blue-600 block">مصاريف وتكاليف البيع</span>
+                  <span className="font-black text-blue-800 font-mono text-xs">
                     {hideFinances ? '••••' : `${(stats.monthlySalesExpenses || 0).toLocaleString()} دج`}
                   </span>
                 </div>
               </div>
-              <div className="flex justify-between items-center bg-blue-900 text-white p-2 rounded-lg text-xs font-bold">
+              <div className="flex justify-between items-center bg-blue-600 text-white p-2 rounded-lg text-xs font-bold shadow-xs">
                 <span>الربح الشهري من البيع:</span>
-                <span className="font-mono text-blue-100 font-black">
+                <span className="font-mono text-white font-black">
                   {hideFinances ? '••••' : `${(stats.monthlySalesProfit || 0).toLocaleString()} دج`}
                 </span>
               </div>
@@ -510,26 +525,29 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
             {/* Yearly Sales */}
             <div className="bg-white p-3 rounded-xl border border-blue-100 space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-700">🗓️ مبيعات ومصاريف هذه السنة:</span>
+                <span className="font-bold text-blue-900 flex items-center gap-1">
+                  <CalendarRange className="w-3.5 h-3.5 text-blue-600" />
+                  <span>مبيعات ومصاريف هذه السنة:</span>
+                </span>
                 <span className="font-bold text-blue-700">{today.substring(0, 4)}</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="bg-blue-50 p-2 rounded-lg">
-                  <span className="text-slate-500 block">مبيعات الملابس السنوية</span>
+                <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-50">
+                  <span className="text-blue-600 block">مبيعات الملابس السنوية</span>
                   <span className="font-black text-blue-700 font-mono text-xs">
                     {hideFinances ? '••••' : `${(stats.yearlySalesRevenue || 0).toLocaleString()} دج`}
                   </span>
                 </div>
-                <div className="bg-blue-50 p-2 rounded-lg">
-                  <span className="text-slate-500 block">مصاريف البيع السنوية</span>
-                  <span className="font-black text-black font-mono text-xs">
+                <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-50">
+                  <span className="text-blue-600 block">مصاريف البيع السنوية</span>
+                  <span className="font-black text-blue-800 font-mono text-xs">
                     {hideFinances ? '••••' : `${(stats.yearlySalesExpenses || 0).toLocaleString()} دج`}
                   </span>
                 </div>
               </div>
-              <div className="flex justify-between items-center bg-blue-900 text-white p-2 rounded-lg text-xs font-bold">
+              <div className="flex justify-between items-center bg-blue-600 text-white p-2 rounded-lg text-xs font-bold shadow-xs">
                 <span>الربح السنوي من البيع:</span>
-                <span className="font-mono text-blue-100 font-black">
+                <span className="font-mono text-white font-black">
                   {hideFinances ? '••••' : `${(stats.yearlySalesProfit || 0).toLocaleString()} دج`}
                 </span>
               </div>
@@ -537,20 +555,20 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           </div>
 
           {/* 3. نشاط الخياطة والتفصيل والصيانة */}
-          <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 space-y-3">
+          <div className="bg-blue-50/40 p-4 rounded-2xl border border-blue-100 space-y-3">
             <div className="flex items-center justify-between border-b border-blue-100 pb-2.5">
               <div className="flex items-center gap-2">
                 <span className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
-                  ✂️
+                  <Scissors className="w-4 h-4 text-blue-600" />
                 </span>
                 <div>
-                  <h4 className="text-sm font-black text-blue-900">نشاط الخياطة والتفصيل</h4>
-                  <span className="text-[10px] text-slate-500 font-medium">Couture & Atelier</span>
+                  <h4 className="text-sm font-black text-blue-950">نشاط الخياطة والتفصيل</h4>
+                  <span className="text-[10px] text-blue-600 font-medium">Couture & Atelier</span>
                 </div>
               </div>
               <button
                 onClick={() => onNavigate('tailoring')}
-                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-white px-2 py-1 rounded-lg border border-blue-100"
+                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-white px-2 py-1 rounded-lg border border-blue-200 shadow-2xs"
               >
                 عرض القسم ←
               </button>
@@ -559,26 +577,29 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
             {/* Monthly Tailoring */}
             <div className="bg-white p-3 rounded-xl border border-blue-100 space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-700">📅 خياطة ومصاريف هذا الشهر:</span>
+                <span className="font-bold text-blue-900 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                  <span>خياطة ومصاريف هذا الشهر:</span>
+                </span>
                 <span className="font-bold text-blue-700">{today.substring(0, 7)}</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="bg-blue-50 p-2 rounded-lg">
-                  <span className="text-slate-500 block">مداخيل الخياطة</span>
+                <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-50">
+                  <span className="text-blue-600 block">مداخيل الخياطة</span>
                   <span className="font-black text-blue-700 font-mono text-xs">
                     {hideFinances ? '••••' : `${(stats.monthlyTailoringIncome || 0).toLocaleString()} دج`}
                   </span>
                 </div>
-                <div className="bg-blue-50 p-2 rounded-lg">
-                  <span className="text-slate-500 block">مصاريف وأقمشة الخياطة</span>
-                  <span className="font-black text-black font-mono text-xs">
+                <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-50">
+                  <span className="text-blue-600 block">مصاريف وأقمشة الخياطة</span>
+                  <span className="font-black text-blue-800 font-mono text-xs">
                     {hideFinances ? '••••' : `${(stats.monthlyTailoringExpenses || 0).toLocaleString()} دج`}
                   </span>
                 </div>
               </div>
-              <div className="flex justify-between items-center bg-blue-900 text-white p-2 rounded-lg text-xs font-bold">
+              <div className="flex justify-between items-center bg-blue-600 text-white p-2 rounded-lg text-xs font-bold shadow-xs">
                 <span>الربح الشهري من الخياطة:</span>
-                <span className="font-mono text-blue-100 font-black">
+                <span className="font-mono text-white font-black">
                   {hideFinances ? '••••' : `${(stats.monthlyTailoringProfit || 0).toLocaleString()} دج`}
                 </span>
               </div>
@@ -587,26 +608,29 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
             {/* Yearly Tailoring */}
             <div className="bg-white p-3 rounded-xl border border-blue-100 space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-700">🗓️ خياطة ومصاريف هذه السنة:</span>
+                <span className="font-bold text-blue-900 flex items-center gap-1">
+                  <CalendarRange className="w-3.5 h-3.5 text-blue-600" />
+                  <span>خياطة ومصاريف هذه السنة:</span>
+                </span>
                 <span className="font-bold text-blue-700">{today.substring(0, 4)}</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="bg-blue-50 p-2 rounded-lg">
-                  <span className="text-slate-500 block">مداخيل الخياطة السنوية</span>
+                <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-50">
+                  <span className="text-blue-600 block">مداخيل الخياطة السنوية</span>
                   <span className="font-black text-blue-700 font-mono text-xs">
                     {hideFinances ? '••••' : `${(stats.yearlyTailoringIncome || 0).toLocaleString()} دج`}
                   </span>
                 </div>
-                <div className="bg-blue-50 p-2 rounded-lg">
-                  <span className="text-slate-500 block">مصاريف الخياطة السنوية</span>
-                  <span className="font-black text-black font-mono text-xs">
+                <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-50">
+                  <span className="text-blue-600 block">مصاريف الخياطة السنوية</span>
+                  <span className="font-black text-blue-800 font-mono text-xs">
                     {hideFinances ? '••••' : `${(stats.yearlyTailoringExpenses || 0).toLocaleString()} دج`}
                   </span>
                 </div>
               </div>
-              <div className="flex justify-between items-center bg-blue-900 text-white p-2 rounded-lg text-xs font-bold">
+              <div className="flex justify-between items-center bg-blue-600 text-white p-2 rounded-lg text-xs font-bold shadow-xs">
                 <span>الربح السنوي من الخياطة:</span>
-                <span className="font-mono text-blue-100 font-black">
+                <span className="font-mono text-white font-black">
                   {hideFinances ? '••••' : `${(stats.yearlyTailoringProfit || 0).toLocaleString()} دج`}
                 </span>
               </div>

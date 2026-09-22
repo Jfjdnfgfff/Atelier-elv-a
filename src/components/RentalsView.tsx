@@ -243,13 +243,13 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
             onClick={() => setFilter('overdue')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 border border-transparent ${
               filter === 'overdue' 
-                ? 'bg-black text-white shadow-xs' 
-                : 'bg-slate-100 text-slate-700 hover:bg-black hover:text-white'
+                ? 'bg-blue-900 text-white shadow-xs' 
+                : 'bg-blue-50 text-blue-800 hover:bg-blue-100 hover:text-blue-900 border border-blue-200'
             }`}
           >
             <span>متأخرة عن الإرجاع</span>
             <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-              filter === 'overdue' ? 'bg-white/20 text-white' : 'bg-slate-900 text-white'
+              filter === 'overdue' ? 'bg-white/20 text-white' : 'bg-blue-900 text-white'
             }`}>
               {overdueRentalsList.length}
             </span>
@@ -372,12 +372,12 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
                         <span>تم الإرجاع</span>
                       </span>
                     ) : isReserved ? (
-                      <span className="bg-slate-900 text-white text-[10px] font-black px-2.5 py-1 rounded-xl shrink-0 shadow-xs flex items-center gap-1">
+                      <span className="bg-blue-800 text-white text-[10px] font-black px-2.5 py-1 rounded-xl shrink-0 shadow-xs flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         <span>مستأجرة مستقبلاً</span>
                       </span>
                     ) : isOverdue ? (
-                      <span className="bg-black text-white border border-black text-[10px] font-black px-2.5 py-1 rounded-xl shrink-0 flex items-center gap-1">
+                      <span className="bg-blue-950 text-white border border-blue-900 text-[10px] font-black px-2.5 py-1 rounded-xl shrink-0 flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3 text-white" />
                         <span>متأخر {Math.abs(daysDiffFromReturn)} يوم</span>
                       </span>
@@ -421,7 +421,7 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
 
                     <div className="flex justify-between items-center">
                       <span className="text-[11px] font-bold text-slate-500">موعد الإرجاع:</span>
-                      <span className={`font-bold font-mono ${isOverdue ? 'text-black font-black underline' : 'text-slate-800'}`}>
+                      <span className={`font-bold font-mono ${isOverdue ? 'text-blue-950 font-black underline' : 'text-slate-800'}`}>
                         {rental.expectedReturnDate}
                       </span>
                     </div>
@@ -447,10 +447,10 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
                       <span className="font-black text-blue-700 font-mono">{rental.paidAmount.toLocaleString()} دج</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-black font-bold block">
+                      <span className="text-[10px] text-blue-900 font-bold block">
                         {isReserved ? 'المتبقي عند الاستلام' : 'المتبقي'}
                       </span>
-                      <span className="font-black text-black font-mono">{(rental.remainingAmount || 0).toLocaleString()} دج</span>
+                      <span className="font-black text-blue-900 font-mono">{(rental.remainingAmount || 0).toLocaleString()} دج</span>
                     </div>
                   </div>
                 </div>
@@ -472,7 +472,7 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
                   {!isReserved && !isReturned && (
                     <button
                       onClick={() => onOpenReturnModal(rental)}
-                      className="w-full py-2.5 bg-slate-900 hover:bg-blue-600 text-white rounded-xl text-xs font-black transition-all shadow-xs flex items-center justify-center gap-1.5 active:scale-95 hover:shadow-md hover:shadow-blue-500/20"
+                      className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition-all shadow-xs flex items-center justify-center gap-1.5 active:scale-95 hover:shadow-md hover:shadow-blue-500/20"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       <span>استرجاع الفستان وتسوية الحساب</span>
@@ -602,7 +602,7 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
               <div className="flex gap-2 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
+                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
                 >
                   <Check className="w-4 h-4" />
                   <span>تأكيد التسليم وتفعيل الكراء (إتمام الصفقة)</span>

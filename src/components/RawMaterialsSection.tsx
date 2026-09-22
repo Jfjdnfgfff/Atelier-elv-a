@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { RawMaterial, Supplier } from '../types';
 import { LettersInput, NumbersInput } from './Shared';
 import { POPULAR_COLORS, getColorHex } from './InventoryView';
+import { SecurityPasswordModal } from './SecurityPasswordModal';
 import { 
   Package, 
   Scissors, 
@@ -54,6 +55,7 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<RawMaterial | null>(null);
   const [consumeModalMaterial, setConsumeModalMaterial] = useState<RawMaterial | null>(null);
   const [consumeMeters, setConsumeMeters] = useState<string>('');
@@ -145,7 +147,7 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
     setStorageLocation('ورشة الخياطة');
     setMinAlertMeters('10');
     setNotes('');
-    setShowAddModal(true);
+    setShowSecurityModal(true);
   };
 
   const handleOpenEdit = (mat: RawMaterial) => {
@@ -371,11 +373,12 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
 
             <button
               onClick={() => setShowLowStockOnly(!showLowStockOnly)}
-              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                 showLowStockOnly ? 'bg-black text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              ⚠️ الناقصة فقط ({stats.lowStockCount})
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>الناقصة فقط ({stats.lowStockCount})</span>
             </button>
           </div>
         </div>
@@ -529,6 +532,19 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
             );
           })}
         </div>
+      )}
+
+      {/* Add / Edit Modal */}
+      {showSecurityModal && (
+        <SecurityPasswordModal
+          title="كلمة المرور لإضافة قماش جديد"
+          reason="يرجى إدخال رمز المرور أو كلمة السر للترخيص بإضافة قماش أو سلعة أولية جديدة"
+          onSuccess={() => {
+            setShowSecurityModal(false);
+            setShowAddModal(true);
+          }}
+          onClose={() => setShowSecurityModal(false)}
+        />
       )}
 
       {/* ==================================================== */}

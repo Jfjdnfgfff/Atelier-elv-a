@@ -14,10 +14,7 @@ import {
   ViewType,
   DailyCaisseClosure,
   RawMaterial,
-  Seamstress,
-  ActivityLog,
-  ActivityActionType,
-  ActivityCategory
+  Seamstress
 } from './types';
 import { 
   loadFromStorage, 
@@ -30,53 +27,34 @@ import {
   DEFAULT_CAISSE_CLOSURES,
   DEFAULT_RAW_MATERIALS,
   DEFAULT_SEAMSTRESSES,
-  DEFAULT_ACTIVITY_LOGS,
   initializeStorage 
 } from './storage';
 import { 
   syncCollectionToCloud, 
-  saveCollectionToFirebase,
-  saveItemToFirebase,
-  updateItemInFirebase,
-  deleteItemFromFirebase,
   subscribeToCloudCollection, 
   FIREBASE_COLLECTIONS,
-  firebaseConfig,
-  onSyncStatusChange,
-  SyncStatus,
-  SubscribeQueryOptions
+  firebaseConfig 
 } from './firebase';
 
-// Shared Components
+// Components
+import { BarcodeScanner } from './components/BarcodeScanner';
+import { FullReport } from './components/FullReport';
 import { NavButton, Modal } from './components/Shared';
-
-// Lazy Loaded Components for high speed code-splitting and instant initial load
-const DashboardView = React.lazy(() => import('./components/DashboardView').then(m => ({ default: m.DashboardView })));
-const RentalsView = React.lazy(() => import('./components/RentalsView').then(m => ({ default: m.RentalsView })));
-const InventoryView = React.lazy(() => import('./components/InventoryView').then(m => ({ default: m.InventoryView })));
-const SalesPOSView = React.lazy(() => import('./components/SalesPOSView').then(m => ({ default: m.SalesPOSView })));
-const ExpensesView = React.lazy(() => import('./components/ExpensesView').then(m => ({ default: m.ExpensesView })));
-const CreditsView = React.lazy(() => import('./components/CreditsView').then(m => ({ default: m.CreditsView })));
-const TailoringView = React.lazy(() => import('./components/TailoringView').then(m => ({ default: m.TailoringView })));
-const CaisseView = React.lazy(() => import('./components/CaisseView').then(m => ({ default: m.CaisseView })));
-const PartnersView = React.lazy(() => import('./components/PartnersView').then(m => ({ default: m.PartnersView })));
-const LogsView = React.lazy(() => import('./components/LogsView').then(m => ({ default: m.LogsView })));
-const FullReport = React.lazy(() => import('./components/FullReport').then(m => ({ default: m.FullReport })));
-const RentalModal = React.lazy(() => import('./components/RentalModal').then(m => ({ default: m.RentalModal })));
-const ReturnRentalModal = React.lazy(() => import('./components/ReturnRentalModal').then(m => ({ default: m.ReturnRentalModal })));
-const RentalReceiptModal = React.lazy(() => import('./components/RentalReceiptModal').then(m => ({ default: m.RentalReceiptModal })));
-const TailoringModal = React.lazy(() => import('./components/TailoringModal').then(m => ({ default: m.TailoringModal })));
-const TailoringReceiptModal = React.lazy(() => import('./components/TailoringReceiptModal').then(m => ({ default: m.TailoringReceiptModal })));
-const StaffPayoutsModal = React.lazy(() => import('./components/StaffPayoutsModal').then(m => ({ default: m.StaffPayoutsModal })));
-const BarcodeScanner = React.lazy(() => import('./components/BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
-
-// Lightweight Skeleton/Spinner fallback
-const LoadingFallback: React.FC = () => (
-  <div className="flex flex-col items-center justify-center min-h-[320px] p-8 text-center" dir="rtl">
-    <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
-    <p className="text-xs font-bold text-slate-500">جاري التحميل...</p>
-  </div>
-);
+import { DashboardView } from './components/DashboardView';
+import { RentalsView } from './components/RentalsView';
+import { RentalModal } from './components/RentalModal';
+import { ReturnRentalModal } from './components/ReturnRentalModal';
+import { RentalReceiptModal } from './components/RentalReceiptModal';
+import { InventoryView } from './components/InventoryView';
+import { SalesPOSView } from './components/SalesPOSView';
+import { ExpensesView } from './components/ExpensesView';
+import { CreditsView } from './components/CreditsView';
+import { StaffPayoutsModal } from './components/StaffPayoutsModal';
+import { TailoringView } from './components/TailoringView';
+import { TailoringModal } from './components/TailoringModal';
+import { TailoringReceiptModal } from './components/TailoringReceiptModal';
+import { CaisseView } from './components/CaisseView';
+import { PartnersView } from './components/PartnersView';
 import { 
   Scale, 
   Shirt, 
@@ -97,7 +75,7 @@ import {
   Database,
   Smartphone,
   Laptop,
-  History
+  Plus
 } from 'lucide-react';
 
 export default function App() {
@@ -142,12 +120,6 @@ export default function App() {
   const [caisseClosures, setCaisseClosures] = useState<DailyCaisseClosure[]>(() => 
     loadFromStorage<DailyCaisseClosure[]>(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES)
   );
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => 
-    loadFromStorage<ActivityLog[]>(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS)
-  );
-
-  // UI view state
-  const [currentView, setCurrentView] = useState<ViewType>('dashboard');
 
   // Cloud Real-time Synchronization state
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
@@ -165,204 +137,354 @@ export default function App() {
     suppliers: false,
     seamstresses: false,
     rawMaterials: false,
-    caisseClosures: false,
-    activityLogs: false
+    caisseClosures: false
   });
 
-  // Ref to skip redundant saveToStorage during initial component mount
-  const hasMountedRef = useRef(false);
+  // Real-time Cloud Subscriptions on Mount
   useEffect(() => {
-    hasMountedRef.current = true;
-  }, []);
-
-  // View-Driven On-Demand Real-time Cloud Subscriptions
-  // Loads and monitors ONLY the collections required for the active screen
-  useEffect(() => {
-    const unsubs: (() => void)[] = [];
-
-    const sub = <T extends { id?: string }>(
-      collectionKey: string,
-      setter: React.Dispatch<React.SetStateAction<T[]>>,
-      storageKey: string,
-      refKey: string,
-      options?: SubscribeQueryOptions
-    ) => {
-      const unsub = subscribeToCloudCollection<T>(collectionKey, (items) => {
-        if (items && Array.isArray(items)) {
-          isRemoteUpdateRef.current[refKey] = true;
-          // Set exact query dataset to prevent cross-view cache and state pollution
-          setter(items);
-          setLastCloudSyncTime(new Date());
-        }
-      }, options);
-      unsubs.push(unsub);
-    };
-
-    // Determine what needs to be listened to for the currentView
-    const needsRentals = currentView === 'dashboard' || currentView === 'rentals' || currentView === 'caisse';
-    const needsSales = currentView === 'dashboard' || currentView === 'sales' || currentView === 'caisse';
-    const needsExpenses = currentView === 'dashboard' || currentView === 'expenses' || currentView === 'caisse';
-    const needsCredits = currentView === 'dashboard' || currentView === 'credits';
-    const needsStaffPayouts = currentView === 'dashboard' || currentView === 'staff' || currentView === 'caisse';
-    const needsMaintenance = currentView === 'dashboard' || currentView === 'tailoring';
-
-    const needsClothes = currentView === 'inventory' || currentView === 'sales' || currentView === 'rentals';
-    const needsRawMaterials = currentView === 'inventory' || currentView === 'partners';
-    const needsSuppliers = currentView === 'partners';
-    const needsSeamstresses = currentView === 'partners';
-    const needsStaffMembers = currentView === 'staff';
-    const needsStaffAbsences = currentView === 'staff';
-    const needsCaisse = currentView === 'caisse';
-    const needsLogs = currentView === 'logs';
-
-    const currentYearStr = `${new Date().getFullYear()}`;
-    const yearStartStr = `${currentYearStr}-01-01`;
-
-    if (needsRentals) {
-      if (currentView === 'dashboard') {
-        sub<Rental>(FIREBASE_COLLECTIONS.RENTALS, setRentals, STORAGE_KEYS.RENTALS, 'rentals', { 
-          orderBy: 'startDate', 
-          startAt: yearStartStr 
-        });
+    // 1. Subscribe to Clothes
+    const unsubClothes = subscribeToCloudCollection<ClothItem[]>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.clothes = true;
+        setClothes(items);
+        saveToStorage(STORAGE_KEYS.CLOTHES, items, false);
+        setLastCloudSyncTime(new Date());
       } else {
-        sub<Rental>(FIREBASE_COLLECTIONS.RENTALS, setRentals, STORAGE_KEYS.RENTALS, 'rentals', { limit: 200 });
+        const local = loadFromStorage<ClothItem[]>(STORAGE_KEYS.CLOTHES, []);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.CLOTHES, local);
       }
-    }
-    if (needsSales) {
-      if (currentView === 'dashboard') {
-        sub<Sale>(FIREBASE_COLLECTIONS.SALES, setSales, STORAGE_KEYS.SALES, 'sales', { 
-          orderBy: 'date', 
-          startAt: yearStartStr 
-        });
+    });
+
+    // 2. Subscribe to Rentals
+    const unsubRentals = subscribeToCloudCollection<Rental[]>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.rentals = true;
+        setRentals(items);
+        saveToStorage(STORAGE_KEYS.RENTALS, items, false);
+        setLastCloudSyncTime(new Date());
       } else {
-        sub<Sale>(FIREBASE_COLLECTIONS.SALES, setSales, STORAGE_KEYS.SALES, 'sales', { limit: 200 });
+        const local = loadFromStorage<Rental[]>(STORAGE_KEYS.RENTALS, []);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.RENTALS, local);
       }
-    }
-    if (needsExpenses) {
-      if (currentView === 'dashboard') {
-        sub<Expense>(FIREBASE_COLLECTIONS.EXPENSES, setExpenses, STORAGE_KEYS.EXPENSES, 'expenses', { 
-          orderBy: 'date', 
-          startAt: yearStartStr 
-        });
+    });
+
+    // 3. Subscribe to Sales
+    const unsubSales = subscribeToCloudCollection<Sale[]>(FIREBASE_COLLECTIONS.SALES, (items) => {
+      if (items && Array.isArray(items)) {
+        isRemoteUpdateRef.current.sales = true;
+        setSales(items);
+        saveToStorage(STORAGE_KEYS.SALES, items, false);
+        setLastCloudSyncTime(new Date());
+      }
+    });
+
+    // 4. Subscribe to Expenses
+    const unsubExpenses = subscribeToCloudCollection<Expense[]>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.expenses = true;
+        setExpenses(items);
+        saveToStorage(STORAGE_KEYS.EXPENSES, items, false);
+        setLastCloudSyncTime(new Date());
       } else {
-        sub<Expense>(FIREBASE_COLLECTIONS.EXPENSES, setExpenses, STORAGE_KEYS.EXPENSES, 'expenses', { limit: 200 });
+        const local = loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, []);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.EXPENSES, local);
       }
-    }
-    if (needsCredits) {
-      sub<Credit>(FIREBASE_COLLECTIONS.CREDITS, setCredits, STORAGE_KEYS.CREDITS, 'credits', { limit: 150 });
-    }
-    if (needsStaffPayouts) {
-      if (currentView === 'dashboard') {
-        sub<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, setStaffPayouts, STORAGE_KEYS.STAFF_PAYOUTS, 'staffPayouts', { 
-          orderBy: 'date', 
-          startAt: yearStartStr 
-        });
+    });
+
+    // 5. Subscribe to Credits
+    const unsubCredits = subscribeToCloudCollection<Credit[]>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
+      if (items && Array.isArray(items)) {
+        isRemoteUpdateRef.current.credits = true;
+        setCredits(items);
+        saveToStorage(STORAGE_KEYS.CREDITS, items, false);
+        setLastCloudSyncTime(new Date());
+      }
+    });
+
+    // 6. Subscribe to Staff Payouts
+    const unsubStaffPayouts = subscribeToCloudCollection<StaffPayout[]>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
+      if (items && Array.isArray(items)) {
+        isRemoteUpdateRef.current.staffPayouts = true;
+        setStaffPayouts(items);
+        saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, items, false);
+        setLastCloudSyncTime(new Date());
+      }
+    });
+
+    // 7. Subscribe to Staff Members
+    const unsubStaffMembers = subscribeToCloudCollection<StaffMember[]>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.staffMembers = true;
+        setStaffMembers(items);
+        saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, items, false);
+        setLastCloudSyncTime(new Date());
       } else {
-        sub<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, setStaffPayouts, STORAGE_KEYS.STAFF_PAYOUTS, 'staffPayouts', { limit: 100 });
+        const local = loadFromStorage<StaffMember[]>(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_MEMBERS, local);
       }
-    }
-    if (needsMaintenance) {
-      if (currentView === 'dashboard') {
-        sub<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, setMaintenanceOrders, STORAGE_KEYS.MAINTENANCE, 'maintenanceOrders', { 
-          orderBy: 'receivedDate', 
-          startAt: yearStartStr 
-        });
+    });
+
+    // 8. Subscribe to Staff Absences
+    const unsubStaffAbsences = subscribeToCloudCollection<StaffAbsence[]>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, (items) => {
+      if (items && Array.isArray(items)) {
+        isRemoteUpdateRef.current.staffAbsences = true;
+        setStaffAbsences(items);
+        saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, items, false);
+        setLastCloudSyncTime(new Date());
+      }
+    });
+
+    // 9. Subscribe to Maintenance Orders
+    const unsubMaintenance = subscribeToCloudCollection<MaintenanceOrder[]>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.maintenanceOrders = true;
+        setMaintenanceOrders(items);
+        saveToStorage(STORAGE_KEYS.MAINTENANCE, items, false);
+        setLastCloudSyncTime(new Date());
       } else {
-        sub<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, setMaintenanceOrders, STORAGE_KEYS.MAINTENANCE, 'maintenanceOrders', { limit: 100 });
+        const local = loadFromStorage<MaintenanceOrder[]>(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, local);
       }
-    }
-    if (needsClothes) {
-      sub<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, setClothes, STORAGE_KEYS.CLOTHES, 'clothes');
-    }
-    if (needsRawMaterials) {
-      sub<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, setRawMaterials, STORAGE_KEYS.RAW_MATERIALS, 'rawMaterials');
-    }
-    if (needsSuppliers) {
-      sub<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, setSuppliers, STORAGE_KEYS.SUPPLIERS, 'suppliers');
-    }
-    if (needsSeamstresses) {
-      sub<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, setSeamstresses, STORAGE_KEYS.SEAMSTRESSES, 'seamstresses');
-    }
-    if (needsStaffMembers) {
-      sub<StaffMember>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, setStaffMembers, STORAGE_KEYS.STAFF_MEMBERS, 'staffMembers');
-    }
-    if (needsStaffAbsences) {
-      sub<StaffAbsence>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, setStaffAbsences, STORAGE_KEYS.STAFF_ABSENCES, 'staffAbsences');
-    }
-    if (needsCaisse) {
-      sub<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, setCaisseClosures, STORAGE_KEYS.CAISSE_CLOSURES, 'caisseClosures', { limit: 30 });
-    }
-    if (needsLogs) {
-      sub<ActivityLog>(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, setActivityLogs, STORAGE_KEYS.ACTIVITY_LOGS, 'activityLogs', { limit: 120 });
-    }
+    });
+
+    // 10. Subscribe to Suppliers
+    const unsubSuppliers = subscribeToCloudCollection<Supplier[]>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.suppliers = true;
+        setSuppliers(items);
+        saveToStorage(STORAGE_KEYS.SUPPLIERS, items, false);
+        setLastCloudSyncTime(new Date());
+      } else {
+        const local = loadFromStorage<Supplier[]>(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, local);
+      }
+    });
+
+    // 11. Subscribe to Caisse Closures
+    const unsubCaisse = subscribeToCloudCollection<DailyCaisseClosure[]>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.caisseClosures = true;
+        setCaisseClosures(items);
+        saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, items, false);
+        setLastCloudSyncTime(new Date());
+      } else {
+        const local = loadFromStorage<DailyCaisseClosure[]>(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, local);
+      }
+    });
+
+    // 12. Subscribe to Seamstresses
+    const unsubSeamstresses = subscribeToCloudCollection<Seamstress[]>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.seamstresses = true;
+        setSeamstresses(items);
+        saveToStorage(STORAGE_KEYS.SEAMSTRESSES, items, false);
+        setLastCloudSyncTime(new Date());
+      } else {
+        const local = loadFromStorage<Seamstress[]>(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, local);
+      }
+    });
+
+    // 13. Subscribe to Raw Materials
+    const unsubRawMaterials = subscribeToCloudCollection<RawMaterial[]>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.rawMaterials = true;
+        setRawMaterials(items);
+        saveToStorage(STORAGE_KEYS.RAW_MATERIALS, items, false);
+        setLastCloudSyncTime(new Date());
+      } else {
+        const local = loadFromStorage<RawMaterial[]>(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, local);
+      }
+    });
 
     return () => {
-      unsubs.forEach(fn => fn());
+      unsubClothes();
+      unsubRentals();
+      unsubSales();
+      unsubExpenses();
+      unsubCredits();
+      unsubStaffPayouts();
+      unsubStaffMembers();
+      unsubStaffAbsences();
+      unsubMaintenance();
+      unsubSuppliers();
+      unsubSeamstresses();
+      unsubRawMaterials();
+      unsubCaisse();
     };
-  }, [currentView]);
+  }, []);
 
-  // Sync to Local Storage (guard against unnecessary mount-time serializations)
-  useEffect(() => { if (hasMountedRef.current) saveToStorage(STORAGE_KEYS.CLOTHES, clothes, false); }, [clothes]);
-  useEffect(() => { if (hasMountedRef.current) saveToStorage(STORAGE_KEYS.RENTALS, rentals, false); }, [rentals]);
-  useEffect(() => { if (hasMountedRef.current) saveToStorage(STORAGE_KEYS.SALES, sales, false); }, [sales]);
-  useEffect(() => { if (hasMountedRef.current) saveToStorage(STORAGE_KEYS.EXPENSES, expenses, false); }, [expenses]);
-  useEffect(() => { if (hasMountedRef.current) saveToStorage(STORAGE_KEYS.CREDITS, credits, false); }, [credits]);
-  useEffect(() => { if (hasMountedRef.current) saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, staffPayouts, false); }, [staffPayouts]);
-  useEffect(() => { if (hasMountedRef.current) saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, staffMembers, false); }, [staffMembers]);
-  useEffect(() => { if (hasMountedRef.current) saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, staffAbsences, false); }, [staffAbsences]);
-  useEffect(() => { if (hasMountedRef.current) saveToStorage(STORAGE_KEYS.MAINTENANCE, maintenanceOrders, false); }, [maintenanceOrders]);
-  useEffect(() => { if (hasMountedRef.current) saveToStorage(STORAGE_KEYS.SUPPLIERS, suppliers, false); }, [suppliers]);
-  useEffect(() => { if (hasMountedRef.current) saveToStorage(STORAGE_KEYS.SEAMSTRESSES, seamstresses, false); }, [seamstresses]);
-  useEffect(() => { if (hasMountedRef.current) saveToStorage(STORAGE_KEYS.RAW_MATERIALS, rawMaterials, false); }, [rawMaterials]);
-  useEffect(() => { if (hasMountedRef.current) saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, caisseClosures, false); }, [caisseClosures]);
-  useEffect(() => { if (hasMountedRef.current) saveToStorage(STORAGE_KEYS.ACTIVITY_LOGS, activityLogs, false); }, [activityLogs]);
+  // Sync to Local Storage & Debounced Sync to Firebase Cloud
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.CLOTHES, clothes);
+    if (isRemoteUpdateRef.current.clothes) {
+      isRemoteUpdateRef.current.clothes = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.CLOTHES, clothes);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [clothes]);
 
-  // Central Activity Logging Helper
-  const logActivity = (
-    actionType: ActivityActionType,
-    category: ActivityCategory,
-    title: string,
-    details: string,
-    amount?: number,
-    itemCodeOrId?: string
-  ) => {
-    const newLog: ActivityLog = {
-      id: generateId(),
-      timestamp: new Date().toISOString(),
-      actionType,
-      category,
-      title,
-      details,
-      amount,
-      itemCodeOrId,
-      performedBy: 'المسؤول'
-    };
-    setActivityLogs(prev => [newLog, ...prev]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, newLog);
-  };
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.RENTALS, rentals);
+    if (isRemoteUpdateRef.current.rentals) {
+      isRemoteUpdateRef.current.rentals = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.RENTALS, rentals);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [rentals]);
 
-  // Activity Log Handlers with Password Enforcement
-  const handleDeleteLog = (id: string, passwordVerified: boolean) => {
-    if (!passwordVerified) return;
-    setActivityLogs(prev => prev.filter(l => l.id !== id));
-    deleteItemFromFirebase(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, id);
-  };
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.SALES, sales);
+    if (isRemoteUpdateRef.current.sales) {
+      isRemoteUpdateRef.current.sales = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.SALES, sales);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [sales]);
 
-  const handleClearAllLogs = (passwordVerified: boolean) => {
-    if (!passwordVerified) return;
-    setActivityLogs([]);
-    syncCollectionToCloud(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, []);
-  };
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.EXPENSES, expenses);
+    if (isRemoteUpdateRef.current.expenses) {
+      isRemoteUpdateRef.current.expenses = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.EXPENSES, expenses);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [expenses]);
 
-  const handleAddManualLog = (logData: Omit<ActivityLog, 'id' | 'timestamp'>) => {
-    const newLog: ActivityLog = {
-      id: generateId(),
-      timestamp: new Date().toISOString(),
-      ...logData
-    };
-    setActivityLogs(prev => [newLog, ...prev]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, newLog);
-  };
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.CREDITS, credits);
+    if (isRemoteUpdateRef.current.credits) {
+      isRemoteUpdateRef.current.credits = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.CREDITS, credits);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [credits]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, staffPayouts);
+    if (isRemoteUpdateRef.current.staffPayouts) {
+      isRemoteUpdateRef.current.staffPayouts = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, staffPayouts);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [staffPayouts]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, staffMembers);
+    if (isRemoteUpdateRef.current.staffMembers) {
+      isRemoteUpdateRef.current.staffMembers = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_MEMBERS, staffMembers);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [staffMembers]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, staffAbsences);
+    if (isRemoteUpdateRef.current.staffAbsences) {
+      isRemoteUpdateRef.current.staffAbsences = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_ABSENCES, staffAbsences);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [staffAbsences]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.MAINTENANCE, maintenanceOrders);
+    if (isRemoteUpdateRef.current.maintenanceOrders) {
+      isRemoteUpdateRef.current.maintenanceOrders = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, maintenanceOrders);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [maintenanceOrders]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.SUPPLIERS, suppliers);
+    if (isRemoteUpdateRef.current.suppliers) {
+      isRemoteUpdateRef.current.suppliers = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, suppliers);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [suppliers]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.SEAMSTRESSES, seamstresses);
+    if (isRemoteUpdateRef.current.seamstresses) {
+      isRemoteUpdateRef.current.seamstresses = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, seamstresses);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [seamstresses]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.RAW_MATERIALS, rawMaterials);
+    if (isRemoteUpdateRef.current.rawMaterials) {
+      isRemoteUpdateRef.current.rawMaterials = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, rawMaterials);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [rawMaterials]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, caisseClosures);
+    if (isRemoteUpdateRef.current.caisseClosures) {
+      isRemoteUpdateRef.current.caisseClosures = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, caisseClosures);
+      setLastCloudSyncTime(new Date());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [caisseClosures]);
 
   // Full Manual Cloud Sync Handler
   const handleManualFullSync = async () => {
@@ -381,8 +503,7 @@ export default function App() {
         syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, suppliers),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, seamstresses),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, rawMaterials),
-        syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, caisseClosures),
-        syncCollectionToCloud(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, activityLogs)
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, caisseClosures)
       ]);
       setLastCloudSyncTime(new Date());
       showToast('تمت المزامنة وحفظ جميع التعديلات في Firebase بنجاح!');
@@ -394,6 +515,7 @@ export default function App() {
   };
 
   // UI state
+  const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [hideFinances, setHideFinances] = useState(() => localStorage.getItem('bm_hideFinances') !== 'false');
   const [toasts, setToasts] = useState<{ id: number; message: string; type: 'success' | 'error' }[]>([]);
@@ -439,44 +561,143 @@ export default function App() {
     return maintenanceOrders.filter(o => o.status !== 'delivered').length;
   }, [maintenanceOrders]);
 
+  // Global Financial Statistics
+  const stats = useMemo(() => {
+    const now = new Date();
+    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const currentYearStr = `${now.getFullYear()}`;
+
+    const isThisMonth = (dateStr?: string) => dateStr ? dateStr.startsWith(currentMonthStr) : false;
+    const isThisYear = (dateStr?: string) => dateStr ? dateStr.startsWith(currentYearStr) : false;
+
+    // --- Rentals ---
+    const totalRentalIncome = rentals.reduce((s, r) => s + (r.paidAmount || 0), 0);
+    const monthlyRentalIncome = rentals
+      .filter(r => isThisMonth(r.startDate || r.createdAt))
+      .reduce((s, r) => s + (r.paidAmount || 0), 0);
+    const yearlyRentalIncome = rentals
+      .filter(r => isThisYear(r.startDate || r.createdAt))
+      .reduce((s, r) => s + (r.paidAmount || 0), 0);
+
+    // --- Sales ---
+    const totalSalesRevenue = sales.reduce((s, sl) => s + (sl.totalAmount || 0), 0);
+    const monthlySalesRevenue = sales
+      .filter(s => isThisMonth(s.date))
+      .reduce((s, sl) => s + (sl.totalAmount || 0), 0);
+    const yearlySalesRevenue = sales
+      .filter(s => isThisYear(s.date))
+      .reduce((s, sl) => s + (sl.totalAmount || 0), 0);
+
+    const totalSalesProfit = sales.reduce((s, sl) => s + (sl.profit || 0), 0);
+    const monthlySalesProfit = sales
+      .filter(s => isThisMonth(s.date))
+      .reduce((s, sl) => s + (sl.profit || 0), 0);
+    const yearlySalesProfit = sales
+      .filter(s => isThisYear(s.date))
+      .reduce((s, sl) => s + (sl.profit || 0), 0);
+
+    // --- Tailoring & Maintenance ---
+    const totalTailoringIncome = maintenanceOrders.reduce((s, o) => s + (o.paidAmount || 0), 0);
+    const monthlyTailoringIncome = maintenanceOrders
+      .filter(o => isThisMonth(o.receivedDate || o.createdAt))
+      .reduce((s, o) => s + (o.paidAmount || 0), 0);
+    const yearlyTailoringIncome = maintenanceOrders
+      .filter(o => isThisYear(o.receivedDate || o.createdAt))
+      .reduce((s, o) => s + (o.paidAmount || 0), 0);
+    const totalTailoringCost = maintenanceOrders.reduce((s, o) => s + (o.cost || 0), 0);
+    const tailoringProfit = totalTailoringIncome - totalTailoringCost;
+
+    // --- Expenses ---
+    const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+    const monthlyExpenses = expenses
+      .filter(e => isThisMonth(e.date))
+      .reduce((s, e) => s + Number(e.amount || 0), 0);
+    const yearlyExpenses = expenses
+      .filter(e => isThisYear(e.date))
+      .reduce((s, e) => s + Number(e.amount || 0), 0);
+
+    // --- Staff Payouts ---
+    const totalStaff = staffPayouts.reduce((s, p) => s + Number(p.amount || 0), 0);
+    const monthlyStaff = staffPayouts
+      .filter(p => isThisMonth(p.date))
+      .reduce((s, p) => s + Number(p.amount || 0), 0);
+    const yearlyStaff = staffPayouts
+      .filter(p => isThisYear(p.date))
+      .reduce((s, p) => s + Number(p.amount || 0), 0);
+    
+    // --- Debts ---
+    const totalRentalDebt = rentals.reduce((s, r) => s + (r.status !== 'returned' ? (r.remainingAmount || 0) : 0), 0);
+    const totalTailoringDebt = maintenanceOrders.reduce((s, o) => s + (o.status !== 'delivered' ? (o.remainingAmount || 0) : 0), 0);
+    const totalDirectDebt = credits.reduce((s, c) => s + Number(c.amount || 0), 0);
+    const totalDebt = totalRentalDebt + totalDirectDebt + totalTailoringDebt;
+
+    // --- Net Profits ---
+    // Net profit = (Rental Income + Sales Profit + Tailoring Profit) - (Expenses + Staff)
+    const netProf = (totalRentalIncome + totalSalesProfit + totalTailoringIncome) - (totalExpenses + totalStaff + totalTailoringCost);
+    const monthlyNetProfit = (monthlyRentalIncome + monthlySalesProfit + monthlyTailoringIncome) - (monthlyExpenses + monthlyStaff);
+    const yearlyNetProfit = (yearlyRentalIncome + yearlySalesProfit + yearlyTailoringIncome) - (yearlyExpenses + yearlyStaff);
+
+    // --- Total Gross Revenues (Combined) ---
+    const totalGrossRevenue = totalRentalIncome + totalSalesRevenue + totalTailoringIncome;
+    const monthlyGrossRevenue = monthlyRentalIncome + monthlySalesRevenue + monthlyTailoringIncome;
+    const yearlyGrossRevenue = yearlyRentalIncome + yearlySalesRevenue + yearlyTailoringIncome;
+
+    return {
+      // Rental
+      totalRentalIncome,
+      monthlyRentalIncome,
+      yearlyRentalIncome,
+      // Sales
+      totalSalesRevenue,
+      monthlySalesRevenue,
+      yearlySalesRevenue,
+      totalSalesProfit,
+      monthlySalesProfit,
+      yearlySalesProfit,
+      // Tailoring
+      totalTailoringIncome,
+      monthlyTailoringIncome,
+      yearlyTailoringIncome,
+      totalTailoringCost,
+      tailoringProfit,
+      // Expenses & Staff
+      totalExpenses,
+      monthlyExpenses,
+      yearlyExpenses,
+      totalStaffPayouts: totalStaff,
+      monthlyStaffPayouts: monthlyStaff,
+      yearlyStaffPayouts: yearlyStaff,
+      // Combined Totals
+      totalGrossRevenue,
+      monthlyGrossRevenue,
+      yearlyGrossRevenue,
+      // Debts & Net Profits
+      totalDebt,
+      netProfit: netProf,
+      monthlyNetProfit,
+      yearlyNetProfit
+    };
+  }, [rentals, sales, expenses, staffPayouts, credits, maintenanceOrders]);
+
   // ==========================
   // RENTAL HANDLERS
   // ==========================
   const handleAddRental = (rentalData: any) => {
     const newRental: Rental = { ...rentalData, id: generateId() };
     
-    // Add rental to state and granular cloud sync
+    // Add rental to state
     setRentals(prev => [newRental, ...prev]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.RENTALS, newRental);
 
     // If active, increment rented count. If reserved (future booking), DO NOT deduct stock until handover/deal finalization!
     if (newRental.status === 'active') {
       setClothes(prev => prev.map(c => {
         if (c.id === rentalData.itemId) {
-          const updated = { ...c, rentedCount: (c.rentedCount || 0) + (rentalData.qty || 1) };
-          updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updated.rentedCount });
-          return updated;
+          return { ...c, rentedCount: (c.rentedCount || 0) + (rentalData.qty || 1) };
         }
         return c;
       }));
-      logActivity(
-        'deal',
-        'rentals',
-        'تسجيل كراء فوري',
-        `الزبونة: ${newRental.customerName} - الفستان: ${newRental.itemName} - السعر: ${newRental.rentPrice} دج - المدفوع: ${newRental.paidAmount} دج`,
-        newRental.paidAmount || newRental.rentPrice,
-        newRental.itemId
-      );
       showToast('تم تسجيل الكراء الفوري بنجاح');
     } else {
-      logActivity(
-        'create',
-        'rentals',
-        'حجز فستان مستقبلي',
-        `حجز للزبونة: ${newRental.customerName} - الفستان: ${newRental.itemName} - تاريخ المناسبة: ${newRental.startDate} - العربون: ${newRental.paidAmount} دج`,
-        newRental.paidAmount,
-        newRental.itemId
-      );
       showToast('تم تسجيل حجز الفستان مستقبلاً بنجاح (سيدخل في الكراء عند إتمام الصفقة وتسليمه)');
     }
 
@@ -493,7 +714,6 @@ export default function App() {
         relatedRentalId: newRental.id
       };
       setCredits(prev => [newCredit, ...prev]);
-      saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCredit);
     }
 
     setActiveModal(null);
@@ -504,29 +724,25 @@ export default function App() {
     const newRemaining = Math.max(0, rental.rentPrice - newPaid);
     const todayStr = new Date().toISOString().split('T')[0];
 
-    const rentalUpdates = {
-      status: 'active' as const,
-      paidAmount: newPaid,
-      remainingAmount: newRemaining,
-      handoverDate: todayStr,
-      notes: handoverNotes ? `${rental.notes ? rental.notes + ' | ' : ''}تسليم: ${handoverNotes}` : rental.notes
-    };
-
     // 1. Activate rental and update payments
     setRentals(prev => prev.map(r => {
       if (r.id === rental.id) {
-        return { ...r, ...rentalUpdates };
+        return {
+          ...r,
+          status: 'active',
+          paidAmount: newPaid,
+          remainingAmount: newRemaining,
+          handoverDate: todayStr,
+          notes: handoverNotes ? `${r.notes ? r.notes + ' | ' : ''}تسليم: ${handoverNotes}` : r.notes
+        };
       }
       return r;
     }));
-    updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, rental.id, rentalUpdates);
 
     // 2. DEDUCT INVENTORY: Increment rented count upon deal finalization/handover!
     setClothes(prev => prev.map(c => {
       if (c.id === rental.itemId) {
-        const updated = { ...c, rentedCount: (c.rentedCount || 0) + (rental.qty || 1) };
-        updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updated.rentedCount });
-        return updated;
+        return { ...c, rentedCount: (c.rentedCount || 0) + (rental.qty || 1) };
       }
       return c;
     }));
@@ -534,10 +750,6 @@ export default function App() {
     // 3. Update or clear credit
     setCredits(prev => {
       const filtered = prev.filter(c => c.relatedRentalId !== rental.id);
-      const existingCredit = prev.find(c => c.relatedRentalId === rental.id);
-      if (existingCredit) {
-        deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, existingCredit.id);
-      }
       if (newRemaining > 0) {
         const updatedCredit: Credit = {
           id: generateId(),
@@ -549,20 +761,10 @@ export default function App() {
           date: new Date().toISOString(),
           relatedRentalId: rental.id
         };
-        saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, updatedCredit);
         return [updatedCredit, ...filtered];
       }
       return filtered;
     });
-
-    logActivity(
-      'deal',
-      'rentals',
-      'إتمام صفقة وتسليم فستان',
-      `تسليم الفستان (${rental.itemName}) للزبونة ${rental.customerName} - تحصيل دفعة إضافية: ${collectedAmount} دج`,
-      collectedAmount,
-      rental.itemId
-    );
 
     showToast('تمت الصفقة وتسليم الفستان بنجاح! دخل الفستان في الكراء الجاري وتم خصمه من المخزن');
   };
@@ -577,9 +779,7 @@ export default function App() {
         // Transitioned to active -> increment item rentedCount
         setClothes(prev => prev.map(c => {
           if (c.id === updatedData.itemId) {
-            const updated = { ...c, rentedCount: (c.rentedCount || 0) + (updatedData.qty || 1) };
-            updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updated.rentedCount });
-            return updated;
+            return { ...c, rentedCount: (c.rentedCount || 0) + (updatedData.qty || 1) };
           }
           return c;
         }));
@@ -587,9 +787,7 @@ export default function App() {
         // Transitioned from active to reserved or returned -> decrement item rentedCount
         setClothes(prev => prev.map(c => {
           if (c.id === prevRental.itemId) {
-            const updated = { ...c, rentedCount: Math.max(0, (c.rentedCount || 0) - (prevRental.qty || 1)) };
-            updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updated.rentedCount });
-            return updated;
+            return { ...c, rentedCount: Math.max(0, (c.rentedCount || 0) - (prevRental.qty || 1)) };
           }
           return c;
         }));
@@ -597,17 +795,6 @@ export default function App() {
     }
 
     setRentals(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
-    updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, id, updatedData);
-
-    logActivity(
-      'update',
-      'rentals',
-      'تعديل بيانات كراء',
-      `تحديث بيانات الكراء للزبونة: ${updatedData.customerName || prevRental?.customerName || ''}`,
-      updatedData.paidAmount,
-      updatedData.itemId
-    );
-
     showToast('تم تحديث بيانات الكراء');
     setActiveModal(null);
   };
@@ -626,31 +813,13 @@ export default function App() {
           // Return item count to inventory only if it was active
           setClothes(prev => prev.map(c => {
             if (c.id === target.itemId) {
-              const updated = { ...c, rentedCount: Math.max(0, (c.rentedCount || 0) - (target.qty || 1)) };
-              updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updated.rentedCount });
-              return updated;
+              return { ...c, rentedCount: Math.max(0, (c.rentedCount || 0) - (target.qty || 1)) };
             }
             return c;
           }));
         }
         setRentals(prev => prev.filter(r => r.id !== id));
-        deleteItemFromFirebase(FIREBASE_COLLECTIONS.RENTALS, id);
-
-        const linkedCredit = credits.find(c => c.relatedRentalId === id);
-        if (linkedCredit) {
-          deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, linkedCredit.id);
-        }
         setCredits(prev => prev.filter(c => c.relatedRentalId !== id));
-
-        logActivity(
-          'delete',
-          'rentals',
-          target.status === 'reserved' ? 'إلغاء حجز فستان' : 'حذف عملية كراء',
-          `حذف كراء (${target.itemName}) للزبونة ${target.customerName}`,
-          target.paidAmount,
-          target.itemBarcode || target.itemId
-        );
-
         showToast(target.status === 'reserved' ? 'تم إلغاء الحجز بنجاح' : 'تم حذف عملية الكراء بنجاح');
         setConfirmDelete(null);
       }
@@ -661,51 +830,35 @@ export default function App() {
     const target = rentals.find(r => r.id === rentalId);
     if (!target) return;
 
-    const returnUpdates = {
-      status: 'returned' as const,
-      actualReturnDate: new Date().toISOString().split('T')[0],
-      conditionOnReturn: returnData.condition,
-      cautionStatus: returnData.cautionAction === 'refund' ? 'refunded' as const : 'deducted' as const,
-      penaltyAmount: returnData.penaltyAmount,
-      paidAmount: target.paidAmount + (returnData.collectedRemaining || 0),
-      remainingAmount: Math.max(0, (target.remainingAmount || 0) - (returnData.collectedRemaining || 0)),
-      notes: returnData.notes ? `${target.notes ? target.notes + ' | ' : ''}إرجاع: ${returnData.notes}` : target.notes
-    };
-
     // Update rental status
     setRentals(prev => prev.map(r => {
       if (r.id === rentalId) {
-        return { ...r, ...returnUpdates };
+        return {
+          ...r,
+          status: 'returned',
+          actualReturnDate: new Date().toISOString().split('T')[0],
+          conditionOnReturn: returnData.condition,
+          cautionStatus: returnData.cautionAction === 'refund' ? 'refunded' : 'deducted',
+          penaltyAmount: returnData.penaltyAmount,
+          paidAmount: r.paidAmount + (returnData.collectedRemaining || 0),
+          remainingAmount: Math.max(0, (r.remainingAmount || 0) - (returnData.collectedRemaining || 0)),
+          notes: returnData.notes ? `${r.notes ? r.notes + ' | ' : ''}إرجاع: ${returnData.notes}` : r.notes
+        };
       }
       return r;
     }));
-    updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, rentalId, returnUpdates);
 
     // Update inventory: decrease rentedCount, add to inCleaningCount if requested
     setClothes(prev => prev.map(c => {
       if (c.id === target.itemId) {
-        const updated = {
+        return {
           ...c,
           rentedCount: Math.max(0, (c.rentedCount || 0) - (target.qty || 1)),
           inCleaningCount: returnData.sendToCleaning ? (c.inCleaningCount || 0) + (target.qty || 1) : (c.inCleaningCount || 0)
         };
-        updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, {
-          rentedCount: updated.rentedCount,
-          inCleaningCount: updated.inCleaningCount
-        });
-        return updated;
       }
       return c;
     }));
-
-    logActivity(
-      'return',
-      'rentals',
-      'استرجاع فستان من الكراء',
-      `استرجاع (${target.itemName}) من الزبونة ${target.customerName} - حالة القطعة: ${returnData.condition === 'good' ? 'ممتازة' : 'تحتاج تنظيف أو صيانة'} - غرامة: ${returnData.penaltyAmount || 0} دج`,
-      returnData.collectedRemaining || 0,
-      target.itemBarcode || target.itemId
-    );
 
     // If penalty was deducted or caution kept as revenue/compensation
     if (returnData.penaltyAmount > 0) {
@@ -716,10 +869,6 @@ export default function App() {
 
     // Auto clear linked credit if collected
     if (returnData.collectedRemaining > 0) {
-      const linkedCredit = credits.find(c => c.relatedRentalId === rentalId);
-      if (linkedCredit) {
-        deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, linkedCredit.id);
-      }
       setCredits(prev => prev.filter(c => c.relatedRentalId !== rentalId));
     }
 
@@ -732,51 +881,20 @@ export default function App() {
   const handleAddCloth = (itemData: any) => {
     const newCloth: ClothItem = { ...itemData, id: generateId() };
     setClothes(prev => [newCloth, ...prev]);
-    
-    logActivity(
-      'create',
-      'inventory',
-      'إضافة قطعة ملابس للمخزن',
-      `إضافة: ${newCloth.name} (المقاس: ${newCloth.size || 'متعدد'} - اللون: ${newCloth.color || 'متعدد'} - الكمية: ${(newCloth.stock1 || 0) + (newCloth.stock2 || 0) || newCloth.stock || 1})`,
-      newCloth.rentPrice,
-      newCloth.barcode || newCloth.id
-    );
-
     showToast('تمت إضافة قطعة الملابس للمخزن');
   };
 
   const handleUpdateCloth = (id: string, itemData: any) => {
     setClothes(prev => prev.map(c => c.id === id ? { ...c, ...itemData } : c));
-    
-    logActivity(
-      'update',
-      'inventory',
-      'تعديل بيانات قطعة في المخزن',
-      `تعديل: ${itemData.name || 'قطعة'} (الكمية الإجمالية: ${(itemData.stock1 || 0) + (itemData.stock2 || 0) || itemData.stock || 1})`,
-      itemData.rentPrice,
-      itemData.barcode || id
-    );
-
     showToast('تم تحديث بيانات القطعة');
   };
 
   const handleDeleteCloth = (id: string) => {
-    const targetItem = clothes.find(c => c.id === id);
     setConfirmDelete({
       title: 'حذف قطعة من المخزن',
       message: 'هل أنت متأكد من حذف هذه القطعة من المخزن؟ لا يمكن التراجع عن هذا الإجراء.',
       onConfirm: () => {
         setClothes(prev => prev.filter(c => c.id !== id));
-        
-        logActivity(
-          'delete',
-          'inventory',
-          'حذف قطعة من المخزن',
-          `حذف القطعة: ${targetItem?.name || id} نهائياً من المخزن`,
-          undefined,
-          targetItem?.barcode || id
-        );
-
         showToast('تم حذف القطعة من المخزن');
         setConfirmDelete(null);
       }
@@ -830,15 +948,6 @@ export default function App() {
       setCredits(prev => [newCredit, ...prev]);
     }
 
-    logActivity(
-      'deal',
-      'sales',
-      'إتمام عملية بيع (نقطة البيع)',
-      `بيع ${newSale.items.length} قطع للزبون: ${newSale.customerName || 'زبون عام'} - الإجمالي: ${newSale.totalAmount} دج - المدفوع: ${newSale.paidAmount} دج`,
-      newSale.paidAmount || newSale.totalAmount,
-      newSale.id
-    );
-
     showToast('تم إتمام عملية البيع بنجاح');
   };
 
@@ -872,16 +981,6 @@ export default function App() {
             return c;
           }));
         });
-
-        logActivity(
-          'delete',
-          'sales',
-          'إلغاء فاتورة بيع',
-          `إلغاء فاتورة بيع بقيمة ${sale.totalAmount} دج واسترجاع القطع للمخزون`,
-          sale.totalAmount,
-          sale.id
-        );
-
         showToast('تم إلغاء البيع واسترجاع المخزون');
         setConfirmDelete(null);
       }
@@ -914,54 +1013,17 @@ export default function App() {
         paidAmount: expData.paidAmount
       };
       setCredits(prev => [newCredit, ...prev]);
-
-      logActivity(
-        'create',
-        'expenses',
-        'تسجيل مشتريات مورد (سلعة)',
-        `المورد: ${expData.supplierName} - السلعة: ${expData.goodsDescription || expData.desc} - المسدد: ${expData.paidAmount} دج - المتبقي دين: ${expData.creditAmount} دج`,
-        expData.paidAmount,
-        newExpId
-      );
-
       showToast(`تم تسجيل مشتريات المورد (المسدد: ${expData.paidAmount?.toLocaleString()} دج + متبقي دين: ${expData.creditAmount?.toLocaleString()} دج)`);
     } else if (expData.isSupplierPurchase) {
-      logActivity(
-        'create',
-        'expenses',
-        'تسجيل مشتريات مورد كاش',
-        `المورد: ${expData.supplierName} - السلعة: ${expData.goodsDescription || expData.desc} - المبلغ: ${expData.paidAmount || expData.amount} دج`,
-        expData.paidAmount || expData.amount,
-        newExpId
-      );
       showToast(`تم تسجيل خلاص المورد بنجاح (${(expData.paidAmount || expData.amount)?.toLocaleString()} دج كاش)`);
     } else {
-      logActivity(
-        'create',
-        'expenses',
-        'تسجيل مصروف محل',
-        `مصروف: ${expData.desc} - الصنف: ${expData.category || 'عام'} - المبلغ: ${expData.amount} دج`,
-        expData.amount,
-        newExpId
-      );
       showToast('تم تسجيل المصروف بنجاح');
     }
   };
 
   const handleDeleteExpense = (id: string) => {
-    const exp = expenses.find(e => e.id === id);
     setExpenses(prev => prev.filter(e => e.id !== id));
     setCredits(prev => prev.filter(c => c.relatedExpenseId !== id));
-
-    logActivity(
-      'delete',
-      'expenses',
-      'حذف سجل مصروف',
-      `حذف مصروف: ${exp?.desc || ''} بقيمة ${exp?.amount || 0} دج`,
-      exp?.amount,
-      id
-    );
-
     showToast('تم حذف سجل المصروف');
   };
 
@@ -994,15 +1056,6 @@ export default function App() {
       }).filter(c => c.amount > 0);
     });
 
-    logActivity(
-      'payment',
-      'partners',
-      'تسديد دفعة دين لمورد',
-      `تسديد مبلغ ${paidNow.toLocaleString()} دج لحساب دين سلعة لمورد`,
-      paidNow,
-      expenseId
-    );
-
     showToast(`تم خلاص وتسديد مبلغ ${paidNow.toLocaleString()} دج للمورد بنجاح`);
   };
 
@@ -1011,51 +1064,20 @@ export default function App() {
       if (prev.some(s => s.name.trim().toLowerCase() === newSup.name.trim().toLowerCase())) return prev;
       return [newSup, ...prev];
     });
-    
-    logActivity(
-      'create',
-      'partners',
-      'إضافة مورد جديد',
-      `اسم المورد: ${newSup.name} - الهاتف: ${newSup.phone || 'غير مسجل'}`,
-      undefined,
-      newSup.id
-    );
-
     showToast(`تمت إضافة المورد: ${newSup.name}`);
   };
 
   const handleUpdateSupplier = (id: string, data: Partial<Supplier>) => {
     setSuppliers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
-    
-    logActivity(
-      'update',
-      'partners',
-      'تحديث بيانات مورد',
-      `تحديث معلومات المورد: ${data.name || id}`,
-      undefined,
-      id
-    );
-
     showToast('تم تحديث بيانات المورد');
   };
 
   const handleDeleteSupplier = (id: string) => {
-    const targetSup = suppliers.find(s => s.id === id);
     setConfirmDelete({
       title: 'حذف المورد',
       message: 'هل أنت متأكد من حذف هذا المورد؟',
       onConfirm: () => {
         setSuppliers(prev => prev.filter(s => s.id !== id));
-        
-        logActivity(
-          'delete',
-          'partners',
-          'حذف مورد',
-          `حذف المورد: ${targetSup?.name || id} من النظام`,
-          undefined,
-          id
-        );
-
         showToast('تم حذف المورد بنجاح');
         setConfirmDelete(null);
       }
@@ -1067,51 +1089,20 @@ export default function App() {
   // ==========================
   const handleAddSeamstress = (seam: Seamstress) => {
     setSeamstresses(prev => [seam, ...prev]);
-    
-    logActivity(
-      'create',
-      'partners',
-      'إضافة خياطة جديدة',
-      `اسم الخياطة: ${seam.name} - الهاتف: ${seam.phone || 'غير مسجل'}`,
-      undefined,
-      seam.id
-    );
-
     showToast(`تمت إضافة الخياطة: ${seam.name}`);
   };
 
   const handleUpdateSeamstress = (id: string, data: Partial<Seamstress>) => {
     setSeamstresses(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
-    
-    logActivity(
-      'update',
-      'partners',
-      'تحديث بيانات خياطة',
-      `تحديث معلومات الخياطة: ${data.name || id}`,
-      undefined,
-      id
-    );
-
     showToast('تم تحديث بيانات الخياطة');
   };
 
   const handleDeleteSeamstress = (id: string) => {
-    const seam = seamstresses.find(s => s.id === id);
     setConfirmDelete({
       title: 'حذف الخياطة',
       message: 'هل تريد حذف هذه الخياطة من النظام؟',
       onConfirm: () => {
         setSeamstresses(prev => prev.filter(s => s.id !== id));
-        
-        logActivity(
-          'delete',
-          'partners',
-          'حذف خياطة',
-          `حذف الخياطة: ${seam?.name || id} من النظام`,
-          undefined,
-          id
-        );
-
         showToast('تم حذف الخياطة');
         setConfirmDelete(null);
       }
@@ -1120,51 +1111,20 @@ export default function App() {
 
   const handleAddRawMaterial = (mat: RawMaterial) => {
     setRawMaterials(prev => [mat, ...prev]);
-    
-    logActivity(
-      'create',
-      'inventory',
-      'إضافة قماش / سلعة أولية',
-      `إضافة: ${mat.name} - الإجمالي: ${mat.totalMeters} متر (${mat.rollCount || 0} رولو) - سعر المتر: ${mat.costPerMeter} دج`,
-      mat.totalCostValue || (mat.costPerMeter * mat.totalMeters),
-      mat.id
-    );
-
     showToast(`تمت إضافة القماش / السلعة: ${mat.name}`);
   };
 
   const handleUpdateRawMaterial = (id: string, data: Partial<RawMaterial>) => {
     setRawMaterials(prev => prev.map(m => m.id === id ? { ...m, ...data, updatedAt: new Date().toISOString() } : m));
-    
-    logActivity(
-      'update',
-      'inventory',
-      'تحديث قماش / سلعة أولية',
-      `تحديث بيانات القماش: ${data.name || id}`,
-      undefined,
-      id
-    );
-
     showToast('تم تحديث بيانات القماش');
   };
 
   const handleDeleteRawMaterial = (id: string) => {
-    const mat = rawMaterials.find(m => m.id === id);
     setConfirmDelete({
       title: 'حذف السلعة الأولية أو القماش',
       message: 'هل أنت متأكد من حذف هذا القماش من سجل المخزن؟',
       onConfirm: () => {
         setRawMaterials(prev => prev.filter(m => m.id !== id));
-        
-        logActivity(
-          'delete',
-          'inventory',
-          'حذف قماش / سلعة أولية',
-          `حذف القماش: ${mat?.name || id} من المخزن`,
-          undefined,
-          id
-        );
-
         showToast('تم حذف القماش بنجاح');
         setConfirmDelete(null);
       }
@@ -1174,16 +1134,6 @@ export default function App() {
   const handleAddCredit = (credData: any) => {
     const newCred: Credit = { ...credData, id: generateId() };
     setCredits(prev => [newCred, ...prev]);
-
-    logActivity(
-      'create',
-      'credits',
-      credData.supplierDebt ? 'تسجيل دين لمورد' : 'تسجيل دين على زبون',
-      `الطرف: ${credData.name} - البيان: ${credData.desc} - المبلغ: ${credData.amount} دج`,
-      credData.amount,
-      newCred.id
-    );
-
     showToast(credData.supplierDebt ? 'تم تسجيل دين للمورد' : 'تم تسجيل الدين على الزبون');
   };
 
@@ -1206,32 +1156,11 @@ export default function App() {
       }));
     }
     setCredits(prev => prev.filter(c => c.id !== id));
-
-    logActivity(
-      'payment',
-      'credits',
-      'تسوية وتسديد دين',
-      `تسوية دين: ${cred?.name || ''} - البيان: ${cred?.desc || ''} - المبلغ المسدد: ${cred?.amount || 0} دج`,
-      cred?.amount,
-      id
-    );
-
     showToast('تم تسديد وتصفية الدين بنجاح');
   };
 
   const handleDeleteCredit = (id: string) => {
-    const cred = credits.find(c => c.id === id);
     setCredits(prev => prev.filter(c => c.id !== id));
-
-    logActivity(
-      'delete',
-      'credits',
-      'حذف سجل دين',
-      `حذف سجل دين للطرف: ${cred?.name || ''} بقيمة ${cred?.amount || 0} دج`,
-      cred?.amount,
-      id
-    );
-
     showToast('تم حذف السجل');
   };
 
@@ -1243,36 +1172,15 @@ export default function App() {
       const filtered = prev.filter(c => c.date !== closure.date);
       return [closure, ...filtered];
     });
-
-    logActivity(
-      'closure',
-      'caisse',
-      'إقفال الصندوق اليومي',
-      `إقفال صندوق يوم ${closure.date}: الفعلي ${closure.actualAmount.toLocaleString()} دج - النظري ${closure.theoreticalAmount.toLocaleString()} دج (الفرق: ${closure.difference.toLocaleString()} دج)`,
-      closure.actualAmount,
-      closure.id
-    );
-
     showToast(`تم إقفال وحفظ صندوق يوم ${closure.date} بنجاح`);
   };
 
   const handleDeleteCaisseClosure = (id: string) => {
-    const closure = caisseClosures.find(c => c.id === id);
     setConfirmDelete({
       title: 'حذف إقفال الصندوق',
       message: 'هل أنت متأكد من حذف هذا السجل لصندوق اليومية؟',
       onConfirm: () => {
         setCaisseClosures(prev => prev.filter(c => c.id !== id));
-
-        logActivity(
-          'delete',
-          'caisse',
-          'حذف إقفال صندوق يومي',
-          `حذف إقفال الصندوق ليوم: ${closure?.date || id}`,
-          closure?.actualAmount,
-          id
-        );
-
         showToast('تم حذف سجل إقفال الصندوق');
         setConfirmDelete(null);
       }
@@ -1297,84 +1205,33 @@ export default function App() {
       }));
     }
 
-    logActivity(
-      'payment',
-      'staff',
-      'صرف راتب لعامل',
-      `صرف مبلغ ${data.amount} دج للعامل/ة: ${data.staffName} (عن شهر ${data.month || ''})`,
-      data.amount,
-      payoutId
-    );
-
     showToast('تم صرف الراتب وتطبيق خصم الغيابات بنجاح');
   };
 
   const handleDeleteStaffPayout = (id: string) => {
-    const payout = staffPayouts.find(p => p.id === id);
     setStaffPayouts(prev => prev.filter(p => p.id !== id));
     // Restore deducted status if payout is deleted
     setStaffAbsences(prev => prev.map(a => a.payoutId === id ? { ...a, isDeducted: false, payoutId: undefined } : a));
-
-    logActivity(
-      'delete',
-      'staff',
-      'حذف سجل صرف راتب',
-      `حذف راتب: ${payout?.staffName || ''} بقيمة ${payout?.amount || 0} دج`,
-      payout?.amount,
-      id
-    );
-
     showToast('تم حذف سجل الراتب');
   };
 
   const handleAddStaffMember = (data: any) => {
     const newMember: StaffMember = { ...data, id: generateId() };
     setStaffMembers(prev => [...prev, newMember]);
-
-    logActivity(
-      'create',
-      'staff',
-      'إضافة عامل جديد',
-      `اسم العامل: ${data.name} - الوظيفة: ${data.role || 'عامل'} - الراتب الأساسي: ${data.baseSalary || 0} دج`,
-      data.baseSalary,
-      newMember.id
-    );
-
     showToast(`تمت إضافة العامل/ة ${data.name}`);
   };
 
   const handleUpdateStaffMember = (id: string, data: any) => {
     setStaffMembers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
-
-    logActivity(
-      'update',
-      'staff',
-      'تحديث بيانات عامل',
-      `تحديث ملف العامل: ${data.name || id}`,
-      data.baseSalary,
-      id
-    );
-
     showToast('تم تحديث بيانات العامل');
   };
 
   const handleDeleteStaffMember = (id: string) => {
-    const member = staffMembers.find(s => s.id === id);
     setConfirmDelete({
       title: 'حذف العامل',
       message: 'هل تريد حذف هذا العامل من النظام؟',
       onConfirm: () => {
         setStaffMembers(prev => prev.filter(s => s.id !== id));
-
-        logActivity(
-          'delete',
-          'staff',
-          'حذف عامل',
-          `حذف العامل: ${member?.name || id} من النظام`,
-          undefined,
-          id
-        );
-
         showToast('تم حذف العامل');
         setConfirmDelete(null);
       }
@@ -1384,32 +1241,11 @@ export default function App() {
   const handleAddAbsence = (data: any) => {
     const newAbsence: StaffAbsence = { ...data, id: generateId() };
     setStaffAbsences(prev => [newAbsence, ...prev]);
-
-    logActivity(
-      'create',
-      'staff',
-      'تسجيل غياب وخصم',
-      `غياب: ${data.staffName} بتاريخ ${data.date} - سبب: ${data.reason || 'غياب'} - خصم: ${data.deductionAmount} دج`,
-      data.deductionAmount,
-      newAbsence.id
-    );
-
     showToast(`تم تسجيل غياب ${data.staffName} بقيمة خصم ${data.deductionAmount} دج`);
   };
 
   const handleDeleteAbsence = (id: string) => {
-    const abs = staffAbsences.find(a => a.id === id);
     setStaffAbsences(prev => prev.filter(a => a.id !== id));
-
-    logActivity(
-      'delete',
-      'staff',
-      'حذف سجل غياب',
-      `إلغاء غياب: ${abs?.staffName || ''} بتاريخ ${abs?.date || ''}`,
-      abs?.deductionAmount,
-      id
-    );
-
     showToast('تم حذف سجل الغياب');
   };
 
@@ -1455,37 +1291,17 @@ export default function App() {
       setCredits(prev => [newCredit, ...prev]);
     }
 
-    logActivity(
-      'create',
-      'tailoring',
-      'تسجيل طلب خياطة وتفصيل',
-      `طلب #${newOrder.orderNumber}: ${newOrder.itemName} للزبونة ${newOrder.customerName || 'عام'} - السعر: ${newOrder.price} دج - المدفوع: ${newOrder.paidAmount} دج`,
-      newOrder.paidAmount || newOrder.price,
-      newOrder.orderNumber
-    );
-
     showToast('تم تسجيل طلب الخياطة والصيانة بنجاح');
     setActiveModal(null);
   };
 
   const handleUpdateTailoringOrder = (id: string, data: Partial<MaintenanceOrder>) => {
     setMaintenanceOrders(prev => prev.map(o => o.id === id ? { ...o, ...data } : o));
-    
-    logActivity(
-      'update',
-      'tailoring',
-      'تحديث طلب خياطة',
-      `تعديل بيانات طلب الخياطة: ${data.itemName || id}`,
-      data.price,
-      id
-    );
-
     showToast('تم تحديث بيانات طلب الخياطة');
     setActiveModal(null);
   };
 
   const handleUpdateTailoringStatus = (id: string, newStatus: MaintenanceStatus) => {
-    const ord = maintenanceOrders.find(o => o.id === id);
     setMaintenanceOrders(prev => prev.map(o => {
       if (o.id === id) {
         return { 
@@ -1496,36 +1312,15 @@ export default function App() {
       }
       return o;
     }));
-
-    logActivity(
-      'status_change',
-      'tailoring',
-      'تحديث حالة طلب خياطة',
-      `طلب #${ord?.orderNumber || id} أصبح في حالة: ${newStatus === 'delivered' ? 'تم التسليم للزبونة' : newStatus === 'ready' ? 'جاهز ومكتمل' : 'قيد العمل'}`,
-      undefined,
-      ord?.orderNumber || id
-    );
-
     showToast('تم تحديث حالة الطلب');
   };
 
   const handleDeleteTailoringOrder = (id: string) => {
-    const ord = maintenanceOrders.find(o => o.id === id);
     setConfirmDelete({
       title: 'حذف طلب الصيانة والخياطة',
       message: 'هل أنت متأكد من حذف هذا الطلب من سجل الخياطة؟',
       onConfirm: () => {
         setMaintenanceOrders(prev => prev.filter(o => o.id !== id));
-        
-        logActivity(
-          'delete',
-          'tailoring',
-          'حذف طلب خياطة',
-          `حذف طلب #${ord?.orderNumber || id} (${ord?.itemName || ''})`,
-          ord?.price,
-          ord?.orderNumber || id
-        );
-
         showToast('تم حذف الطلب بنجاح');
         setConfirmDelete(null);
       }
@@ -1576,7 +1371,6 @@ export default function App() {
       seamstresses,
       rawMaterials,
       caisseClosures,
-      activityLogs,
       exportedAt: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
@@ -1609,7 +1403,6 @@ export default function App() {
           if (parsed.seamstresses) setSeamstresses(parsed.seamstresses);
           if (parsed.rawMaterials) setRawMaterials(parsed.rawMaterials);
           if (parsed.caisseClosures) setCaisseClosures(parsed.caisseClosures);
-          if (parsed.activityLogs) setActivityLogs(parsed.activityLogs);
           showToast('تمت استعادة البيانات بنجاح!');
           setActiveModal(null);
         } catch (err) {
@@ -1628,7 +1421,7 @@ export default function App() {
           <div 
             key={t.id} 
             className={`px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold text-white transition-all transform duration-300 ${
-              t.type === 'success' ? 'bg-blue-600' : 'bg-black'
+              t.type === 'success' ? 'bg-blue-600' : 'bg-blue-900'
             }`}
           >
             {t.message}
@@ -1642,21 +1435,21 @@ export default function App() {
           {/* Top Row: Quick Tools & Actions */}
           <div className="flex items-center justify-between gap-2">
             {/* Action Tools */}
-            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5 shrink min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <button
                 onClick={() => setIsScanning(true)}
                 title="مسح الباركود"
                 aria-label="مسح الباركود"
-                className="h-9 px-2.5 sm:px-3 rounded-xl bg-blue-50/50 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-300 border border-blue-100/70 active:scale-95 text-blue-800 flex items-center gap-1.5 transition-all text-xs font-bold group shrink-0"
+                className="h-7 sm:h-9 px-2 sm:px-3 rounded-lg sm:rounded-xl bg-blue-50/50 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-300 border border-blue-100/70 active:scale-95 text-blue-800 flex items-center gap-1 sm:gap-1.5 transition-all text-[11px] sm:text-xs font-bold group"
               >
-                <svg className="w-4 h-4 text-blue-600 group-hover:text-blue-700 shrink-0 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600 group-hover:text-blue-700 shrink-0 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <path d="M3 7V5a2 2 0 012-2h2" />
                   <path d="M17 3h2a2 2 0 012 2v2" />
                   <path d="M21 17v2a2 2 0 01-2 2h-2" />
                   <path d="M7 21H5a2 2 0 01-2-2v-2" />
                   <line x1="7" y1="12" x2="17" y2="12" />
                 </svg>
-                <span className="hidden sm:inline">مسح الباركود</span>
+                <span className="hidden sm:inline text-xs">مسح الباركود</span>
               </button>
 
               <button
@@ -1670,13 +1463,13 @@ export default function App() {
                 }}
                 title="إخفاء/إظهار المبالغ"
                 aria-label="إخفاء/إظهار المبالغ"
-                className={`h-9 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 transition-all active:scale-95 text-xs font-bold border group shrink-0 ${
+                className={`h-7 sm:h-9 px-2 sm:px-3 rounded-lg sm:rounded-xl flex items-center gap-1 sm:gap-1.5 transition-all active:scale-95 text-[11px] sm:text-xs font-bold border group ${
                   hideFinances 
-                    ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800' 
-                    : 'bg-slate-100/90 text-slate-700 border-slate-200/70 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'
+                    ? 'bg-blue-900 text-white border-blue-900 hover:bg-blue-800' 
+                    : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-900'
                 }`}
               >
-                <svg className={`w-4 h-4 shrink-0 transition-colors ${hideFinances ? 'text-white' : 'text-slate-600 group-hover:text-blue-600'}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <svg className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 transition-colors ${hideFinances ? 'text-white' : 'text-blue-600 group-hover:text-blue-800'}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   {hideFinances ? (
                     <>
                       <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
@@ -1689,64 +1482,51 @@ export default function App() {
                     </>
                   )}
                 </svg>
-                <span className="hidden sm:inline">{hideFinances ? 'إظهار المبالغ' : 'إخفاء المبالغ'}</span>
+                <span className="hidden sm:inline text-xs">{hideFinances ? 'إظهار المبالغ' : 'إخفاء المبالغ'}</span>
               </button>
 
               <button 
                 onClick={() => setActiveModal('fullReport')} 
                 title="التقرير المالي"
-                className="h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100/90 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 border border-slate-200/70 rounded-xl transition-all shadow-2xs active:scale-95 group shrink-0"
+                className="h-7 sm:h-9 px-2 sm:px-3 flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 hover:text-blue-900 hover:border-blue-300 border border-blue-200 rounded-lg sm:rounded-xl transition-all shadow-2xs active:scale-95 group"
               >
-                <svg className="w-4 h-4 text-slate-600 group-hover:text-blue-600 shrink-0 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600 group-hover:text-blue-800 shrink-0 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
                   <polyline points="14 2 14 8 20 8" />
                   <line x1="16" y1="13" x2="8" y2="13" />
                   <line x1="16" y1="17" x2="8" y2="17" />
                   <polyline points="10 9 9 9 8 9" />
                 </svg>
-                <span className="hidden sm:inline">التقرير الشامل</span>
+                <span className="hidden sm:inline text-xs">التقرير الشامل</span>
               </button>
 
               <button 
                 onClick={() => setCurrentView('caisse')} 
                 title="صندوق اليومية ومتابعة العجز (La Caisse)"
-                className={`h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold rounded-xl transition-all border active:scale-95 group shrink-0 ${
+                className={`h-7 sm:h-9 px-2 sm:px-3 flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold rounded-lg sm:rounded-xl transition-all border active:scale-95 group ${
                   currentView === 'caisse'
                     ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                     : 'text-blue-700 bg-blue-50/50 hover:bg-blue-100 hover:text-blue-800 hover:border-blue-300 border-blue-100/70'
                 }`}
               >
-                <Scale className={`w-4 h-4 shrink-0 transition-colors ${currentView === 'caisse' ? 'text-white' : 'text-blue-600 group-hover:text-blue-700'}`} />
-                <span className="hidden sm:inline">الصندوق اليومي</span>
-                <span className="sm:hidden">الصندوق</span>
-              </button>
-
-              <button 
-                onClick={() => setCurrentView('logs')} 
-                title="سجل التحديثات والتعديلات (Logs)"
-                className={`h-9 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs font-bold rounded-xl transition-all border active:scale-95 group shrink-0 ${
-                  currentView === 'logs'
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                    : 'text-slate-700 bg-slate-100/90 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 border-slate-200/70'
-                }`}
-              >
-                <History className={`w-4 h-4 shrink-0 transition-colors ${currentView === 'logs' ? 'text-white' : 'text-slate-600 group-hover:text-blue-600'}`} />
-                <span className="hidden sm:inline">السجل</span>
+                <Scale className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 transition-colors ${currentView === 'caisse' ? 'text-white' : 'text-blue-600 group-hover:text-blue-700'}`} />
+                <span className="hidden sm:inline text-xs">الصندوق اليومي</span>
+                <span className="sm:hidden text-[10px]">الصندوق</span>
               </button>
             </div>
 
             {/* Primary Add Button */}
             <button
               onClick={() => setActiveModal('addRental')}
-              className="h-9 px-3 sm:px-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs shrink-0 transition-all hover:shadow-md hover:shadow-blue-500/20"
+              className="h-7 sm:h-9 px-2.5 sm:px-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs flex items-center gap-1 sm:gap-1.5 shadow-xs shrink-0 transition-all hover:shadow-md hover:shadow-blue-500/20"
             >
-              <span className="text-sm font-bold shrink-0">+</span>
-              <span className="whitespace-nowrap">كراء جديد</span>
+              <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+              <span className="text-[11px] sm:text-xs">كراء جديد</span>
             </button>
           </div>
 
-          {/* Bottom Row of Header: All Navigation Icons in a responsive row */}
-          <nav className="flex lg:grid lg:grid-cols-11 gap-1 sm:gap-1.5 w-full pt-1.5 pb-0.5 border-t border-blue-50 overflow-x-auto no-scrollbar scroll-smooth overscroll-x-contain" aria-label="أقسام التطبيق">
+          {/* Bottom Row of Header: All Navigation Icons in a single compact row */}
+          <nav className="grid grid-cols-10 gap-0.5 sm:gap-1 w-full pt-1 border-t border-blue-50" aria-label="أقسام التطبيق">
             <NavButton 
               icon="dashboard" 
               label="الرئيسية" 
@@ -1804,12 +1584,6 @@ export default function App() {
               active={currentView === 'caisse'} 
             />
             <NavButton 
-              icon="logs" 
-              label="السجل" 
-              onClick={() => setCurrentView('logs')} 
-              active={currentView === 'logs'} 
-            />
-            <NavButton 
               icon="staff" 
               label="العمال" 
               onClick={() => setActiveModal('staffPayouts')} 
@@ -1821,174 +1595,162 @@ export default function App() {
 
       {/* Main Views Container */}
       <main className="flex-1 max-w-6xl mx-auto w-full px-3 sm:px-6 md:px-8 py-4 pb-12 overflow-y-auto">
-        <React.Suspense fallback={<LoadingFallback />}>
-          {currentView === 'dashboard' && (
-            <DashboardView 
-              rentals={rentals} 
-              maintenanceOrders={maintenanceOrders}
-              clothes={clothes}
-              caisseClosures={caisseClosures}
-              sales={sales}
-              expenses={expenses}
-              staffPayouts={staffPayouts}
-              credits={credits}
-              hideFinances={hideFinances}
-              onPrivacyToggle={() => {
-                if (hideFinances) {
-                  setActiveModal('privacyPassword');
-                } else {
-                  setHideFinances(true);
-                  localStorage.setItem('bm_hideFinances', 'true');
-                }
-              }}
-              onNavigate={(v) => setCurrentView(v)}
-              onOpenAddRental={() => setActiveModal('addRental')}
-              onOpenReturnModal={(r) => { setSelectedRental(r); setActiveModal('returnRental'); }}
-              onSendMessage={(r) => { setSelectedRental(r); setActiveModal('messageModal'); }}
-            />
-          )}
+        {currentView === 'dashboard' && (
+          <DashboardView 
+            stats={stats} 
+            rentals={rentals} 
+            maintenanceOrders={maintenanceOrders}
+            clothes={clothes}
+            caisseClosures={caisseClosures}
+            sales={sales}
+            expenses={expenses}
+            staffPayouts={staffPayouts}
+            hideFinances={hideFinances}
+            onPrivacyToggle={() => {
+              if (hideFinances) {
+                setActiveModal('privacyPassword');
+              } else {
+                setHideFinances(true);
+                localStorage.setItem('bm_hideFinances', 'true');
+              }
+            }}
+            onNavigate={(v) => setCurrentView(v)}
+            onOpenAddRental={() => setActiveModal('addRental')}
+            onOpenReturnModal={(r) => { setSelectedRental(r); setActiveModal('returnRental'); }}
+            onSendMessage={(r) => { setSelectedRental(r); setActiveModal('messageModal'); }}
+          />
+        )}
 
-          {currentView === 'rentals' && (
-            <RentalsView 
-              rentals={rentals} 
-              clothes={clothes}
-              onAddRental={(itemId) => {
-                setPreselectedRentalItemId(itemId);
-                setActiveModal('addRental');
-              }}
-              onEditRental={(r) => { setSelectedRental(r); setActiveModal('editRental'); }}
-              onDeleteRental={handleDeleteRental}
-              onActivateRental={handleActivateRental}
-              onOpenReturnModal={(r) => { setSelectedRental(r); setActiveModal('returnRental'); }}
-              onOpenReceiptModal={(r) => { setSelectedRental(r); setActiveModal('receiptModal'); }}
-              onSendMessage={(r) => { setSelectedRental(r); setActiveModal('messageModal'); }}
-              onScanBarcode={() => setIsScanning(true)}
-            />
-          )}
+        {currentView === 'rentals' && (
+          <RentalsView 
+            rentals={rentals} 
+            clothes={clothes}
+            onAddRental={(itemId) => {
+              setPreselectedRentalItemId(itemId);
+              setActiveModal('addRental');
+            }}
+            onEditRental={(r) => { setSelectedRental(r); setActiveModal('editRental'); }}
+            onDeleteRental={handleDeleteRental}
+            onActivateRental={handleActivateRental}
+            onOpenReturnModal={(r) => { setSelectedRental(r); setActiveModal('returnRental'); }}
+            onOpenReceiptModal={(r) => { setSelectedRental(r); setActiveModal('receiptModal'); }}
+            onSendMessage={(r) => { setSelectedRental(r); setActiveModal('messageModal'); }}
+            onScanBarcode={() => setIsScanning(true)}
+          />
+        )}
 
-          {currentView === 'inventory' && (
-            <InventoryView 
-              clothes={clothes}
-              rawMaterials={rawMaterials}
-              suppliers={suppliers}
-              onAddCloth={handleAddCloth}
-              onUpdateCloth={handleUpdateCloth}
-              onDeleteCloth={handleDeleteCloth}
-              onAddRawMaterial={handleAddRawMaterial}
-              onUpdateRawMaterial={handleUpdateRawMaterial}
-              onDeleteRawMaterial={handleDeleteRawMaterial}
-              onScanBarcode={() => setIsScanning(true)}
-            />
-          )}
+        {currentView === 'inventory' && (
+          <InventoryView 
+            clothes={clothes}
+            rawMaterials={rawMaterials}
+            suppliers={suppliers}
+            onAddCloth={handleAddCloth}
+            onUpdateCloth={handleUpdateCloth}
+            onDeleteCloth={handleDeleteCloth}
+            onAddRawMaterial={handleAddRawMaterial}
+            onUpdateRawMaterial={handleUpdateRawMaterial}
+            onDeleteRawMaterial={handleDeleteRawMaterial}
+            onScanBarcode={() => setIsScanning(true)}
+          />
+        )}
 
-          {currentView === 'sales' && (
-            <SalesPOSView 
-              clothes={clothes}
-              sales={sales}
-              onCompleteSale={handleCompleteSale}
-              onDeleteSale={handleDeleteSale}
-              onScanBarcode={() => setIsScanning(true)}
-              scannedCode={posScannedBarcode}
-              onClearScannedCode={() => setPosScannedBarcode(null)}
-            />
-          )}
+        {currentView === 'sales' && (
+          <SalesPOSView 
+            clothes={clothes}
+            sales={sales}
+            onCompleteSale={handleCompleteSale}
+            onDeleteSale={handleDeleteSale}
+            onScanBarcode={() => setIsScanning(true)}
+            scannedCode={posScannedBarcode}
+            onClearScannedCode={() => setPosScannedBarcode(null)}
+          />
+        )}
 
-          {currentView === 'tailoring' && (
-            <TailoringView 
-              orders={maintenanceOrders}
-              clothes={clothes}
-              onOpenAddModal={() => setActiveModal('addTailoring')}
-              onEditOrder={(order) => { setSelectedTailoringOrder(order); setActiveModal('editTailoring'); }}
-              onDeleteOrder={handleDeleteTailoringOrder}
-              onUpdateStatus={handleUpdateTailoringStatus}
-              onOpenReceiptModal={(order) => { setSelectedTailoringOrder(order); setActiveModal('tailoringReceipt'); }}
-            />
-          )}
+        {currentView === 'tailoring' && (
+          <TailoringView 
+            orders={maintenanceOrders}
+            clothes={clothes}
+            onOpenAddModal={() => setActiveModal('addTailoring')}
+            onEditOrder={(order) => { setSelectedTailoringOrder(order); setActiveModal('editTailoring'); }}
+            onDeleteOrder={handleDeleteTailoringOrder}
+            onUpdateStatus={handleUpdateTailoringStatus}
+            onOpenReceiptModal={(order) => { setSelectedTailoringOrder(order); setActiveModal('tailoringReceipt'); }}
+          />
+        )}
 
-          {currentView === 'expenses' && (
-            <ExpensesView 
-              expenses={expenses}
-              suppliers={suppliers}
-              credits={credits}
-              onAddExpense={handleAddExpense}
-              onDeleteExpense={handleDeleteExpense}
-              onSettleSupplierCredit={handleSettleSupplierCredit}
-              onAddSupplier={handleAddSupplier}
-            />
-          )}
+        {currentView === 'expenses' && (
+          <ExpensesView 
+            expenses={expenses}
+            suppliers={suppliers}
+            credits={credits}
+            onAddExpense={handleAddExpense}
+            onDeleteExpense={handleDeleteExpense}
+            onSettleSupplierCredit={handleSettleSupplierCredit}
+            onAddSupplier={handleAddSupplier}
+          />
+        )}
 
-          {currentView === 'credits' && (
-            <CreditsView 
-              credits={credits}
-              suppliers={suppliers}
-              onAddCredit={handleAddCredit}
-              onSettleCredit={handleSettleCredit}
-              onDeleteCredit={handleDeleteCredit}
-            />
-          )}
+        {currentView === 'credits' && (
+          <CreditsView 
+            credits={credits}
+            suppliers={suppliers}
+            onAddCredit={handleAddCredit}
+            onSettleCredit={handleSettleCredit}
+            onDeleteCredit={handleDeleteCredit}
+          />
+        )}
 
-          {currentView === 'caisse' && (
-            <CaisseView 
-              sales={sales}
-              rentals={rentals}
-              expenses={expenses}
-              staffPayouts={staffPayouts}
-              maintenanceOrders={maintenanceOrders}
-              caisseClosures={caisseClosures}
-              onSaveClosure={handleSaveCaisseClosure}
-              onDeleteClosure={handleDeleteCaisseClosure}
-              hideFinances={hideFinances}
-              onPrivacyToggle={() => {
-                if (hideFinances) {
-                  setActiveModal('privacyPassword');
-                } else {
-                  setHideFinances(true);
-                  localStorage.setItem('bm_hideFinances', 'true');
-                }
-              }}
-            />
-          )}
+        {currentView === 'caisse' && (
+          <CaisseView 
+            sales={sales}
+            rentals={rentals}
+            expenses={expenses}
+            staffPayouts={staffPayouts}
+            maintenanceOrders={maintenanceOrders}
+            caisseClosures={caisseClosures}
+            onSaveClosure={handleSaveCaisseClosure}
+            onDeleteClosure={handleDeleteCaisseClosure}
+            hideFinances={hideFinances}
+            onPrivacyToggle={() => {
+              if (hideFinances) {
+                setActiveModal('privacyPassword');
+              } else {
+                setHideFinances(true);
+                localStorage.setItem('bm_hideFinances', 'true');
+              }
+            }}
+          />
+        )}
 
-          {currentView === 'partners' && (
-            <PartnersView 
-              suppliers={suppliers}
-              seamstresses={seamstresses}
-              expenses={expenses}
-              maintenanceOrders={maintenanceOrders}
-              credits={credits}
-              onAddSupplier={handleAddSupplier}
-              onUpdateSupplier={handleUpdateSupplier}
-              onDeleteSupplier={handleDeleteSupplier}
-              onAddSeamstress={handleAddSeamstress}
-              onUpdateSeamstress={handleUpdateSeamstress}
-              onDeleteSeamstress={handleDeleteSeamstress}
-              onSettleSupplierCredit={handleSettleSupplierCredit}
-            />
-          )}
-
-          {currentView === 'logs' && (
-            <LogsView 
-              logs={activityLogs}
-              onDeleteLog={handleDeleteLog}
-              onClearAllLogs={handleClearAllLogs}
-              onAddManualLog={handleAddManualLog}
-              showToast={showToast}
-            />
-          )}
-        </React.Suspense>
+        {currentView === 'partners' && (
+          <PartnersView 
+            suppliers={suppliers}
+            seamstresses={seamstresses}
+            expenses={expenses}
+            maintenanceOrders={maintenanceOrders}
+            credits={credits}
+            onAddSupplier={handleAddSupplier}
+            onUpdateSupplier={handleUpdateSupplier}
+            onDeleteSupplier={handleDeleteSupplier}
+            onAddSeamstress={handleAddSeamstress}
+            onUpdateSeamstress={handleUpdateSeamstress}
+            onDeleteSeamstress={handleDeleteSeamstress}
+            onSettleSupplierCredit={handleSettleSupplierCredit}
+          />
+        )}
       </main>
 
       {/* ================= MODALS ================= */}
-      <React.Suspense fallback={null}>
-        {/* Add Tailoring Modal */}
-        {activeModal === 'addTailoring' && (
-          <TailoringModal
-            clothes={clothes}
-            staffMembers={staffMembers}
-            onSave={handleAddTailoringOrder}
-            onClose={() => setActiveModal(null)}
-          />
-        )}
+
+      {/* Add Tailoring Modal */}
+      {activeModal === 'addTailoring' && (
+        <TailoringModal
+          clothes={clothes}
+          staffMembers={staffMembers}
+          onSave={handleAddTailoringOrder}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
 
       {/* Edit Tailoring Modal */}
       {activeModal === 'editTailoring' && selectedTailoringOrder && (
@@ -2064,7 +1826,7 @@ export default function App() {
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
               <h4 className="font-black text-slate-800 text-xs mb-1">الزبون: {selectedRental.customerName}</h4>
               <p className="text-xs text-slate-600">القطعة: {selectedRental.itemName}</p>
-              <p className="text-xs text-black font-bold mt-1">تاريخ الإرجاع: {selectedRental.expectedReturnDate}</p>
+              <p className="text-xs text-blue-900 font-bold mt-1">تاريخ الإرجاع: {selectedRental.expectedReturnDate}</p>
             </div>
 
             <div className="flex gap-3">
@@ -2077,7 +1839,7 @@ export default function App() {
               </button>
               <button 
                 onClick={() => { handleSendMessage(selectedRental, 'sms'); setActiveModal(null); }} 
-                className="flex-1 py-3.5 bg-slate-900 hover:bg-black text-white rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 shadow-xs"
+                className="flex-1 py-3.5 bg-blue-900 hover:bg-blue-800 text-white rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 shadow-xs"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" strokeWidth="2"></path></svg>
                 إرسال SMS
@@ -2166,9 +1928,9 @@ export default function App() {
         <Modal title="المزامنة السحابية والمزامنة عبر الأجهزة (Firebase)" onClose={() => setActiveModal(null)} wide>
           <div className="space-y-4 py-1" dir="rtl">
             {/* Connection Status Card */}
-            <div className="p-4 bg-slate-900 text-white rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+            <div className="p-4 bg-blue-900 text-white rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-blue-800/80 text-blue-200 border border-blue-700 flex items-center justify-center shrink-0">
                   <Cloud className="w-5 h-5" />
                 </div>
                 <div>
@@ -2176,8 +1938,8 @@ export default function App() {
                     <span className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse" />
                     <h4 className="font-black text-sm text-white">الربط السحابي مع Firebase مفعل ونشط</h4>
                   </div>
-                  <p className="text-[11px] text-slate-300 mt-0.5">
-                    معرف المشروع: <span className="font-mono text-blue-300 font-bold">ateliu-14e23</span>
+                  <p className="text-[11px] text-blue-200 mt-0.5">
+                    معرف المشروع: <span className="font-mono text-white font-bold">ateliu-14e23</span>
                   </p>
                 </div>
               </div>
@@ -2273,7 +2035,7 @@ export default function App() {
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
               <h4 className="font-bold text-sm text-slate-800 mb-1">استعادة البيانات من ملف</h4>
               <p className="text-xs text-slate-500 mb-3">يمكنك رفع ملف نسخة احتياطية تم تصديره مسبقاً لاسترجاع كافة البيانات في ثوانٍ.</p>
-              <label className="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer">
+              <label className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer shadow-xs">
                 اختيار ملف النسخة الاحتياطية
                 <input type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
               </label>
@@ -2580,14 +2342,14 @@ export default function App() {
               <button
                 type="button"
                 onClick={confirmDelete.onConfirm}
-                className="flex-1 bg-black hover:bg-blue-950 active:scale-95 text-white py-3 rounded-2xl font-black text-xs sm:text-sm transition-all shadow-md shadow-blue-200 min-h-[44px]"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-3 rounded-2xl font-black text-xs sm:text-sm transition-all shadow-md shadow-blue-200 min-h-[44px]"
               >
                 تأكيد الحذف
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmDelete(null)}
-                className="flex-1 bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all min-h-[44px]"
+                className="flex-1 bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all min-h-[44px] border border-blue-200"
               >
                 إلغاء
               </button>
@@ -2595,7 +2357,6 @@ export default function App() {
           </div>
         </Modal>
       )}
-      </React.Suspense>
     </div>
   );
 }

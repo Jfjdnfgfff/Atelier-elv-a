@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { StaffPayout, StaffMember, StaffAbsence } from '../types';
 import { LettersInput, NumbersInput } from './Shared';
-import { Banknote, Calendar, Users, History, AlertCircle, Check, UserPlus, X, Plus } from 'lucide-react';
+import { StaffMemberLedgerModal } from './StaffMemberLedgerModal';
+import { Banknote, Calendar, Users, History, AlertCircle, Check, UserPlus, X, Plus, FileText, ChevronLeft, Search, Sparkles } from 'lucide-react';
 
 interface StaffPayoutsModalProps {
   staffPayouts: StaffPayout[];
@@ -31,6 +32,7 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
   hideFinances
 }) => {
   const [activeTab, setActiveTab] = useState<'payout' | 'absences' | 'staff' | 'history'>('payout');
+  const [inspectingMember, setInspectingMember] = useState<StaffMember | null>(null);
 
   // Payout Form States
   const [selectedStaffId, setSelectedStaffId] = useState<string>(staffMembers[0]?.id || '');
@@ -653,7 +655,14 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
 
           {/* Staff Members List */}
           <div className="space-y-2">
-            <h5 className="font-bold text-slate-700 text-xs">قائمة العمال المسجلين ({staffMembers.length}):</h5>
+            <div className="flex justify-between items-center">
+              <h5 className="font-bold text-slate-700 text-xs">قائمة العمال المسجلين ({staffMembers.length}):</h5>
+              <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-md flex items-center gap-1 border border-blue-100">
+                <Sparkles className="w-3 h-3 text-blue-600" />
+                <span>اضغط على أي عامل لعرض كشف المعاملات (يومي / شهري)</span>
+              </span>
+            </div>
+            
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {staffMembers.map(s => {
                 const days = s.workDaysPerMonth || 26;
@@ -662,36 +671,54 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                 const pendingCount = absences.filter(a => !a.isDeducted).reduce((sum, a) => sum + (a.daysCount || 1), 0);
 
                 return (
-                  <div key={s.id} className="p-3.5 bg-white border border-slate-200 rounded-2xl space-y-2 shadow-xs">
+                  <div 
+                    key={s.id} 
+                    onClick={() => setInspectingMember(s)}
+                    className="p-3.5 bg-white border border-slate-200 hover:border-blue-500 rounded-2xl space-y-2.5 shadow-2xs hover:shadow-md transition-all cursor-pointer group"
+                  >
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="font-bold text-slate-800 text-xs">{s.name}</div>
-                        <div className="text-[10px] text-slate-400">{s.role} {s.phone ? `• ${s.phone}` : ''}</div>
+                        <div className="font-black text-slate-900 text-xs sm:text-sm group-hover:text-blue-600 transition-colors flex items-center gap-1.5">
+                          <span>{s.name}</span>
+                          <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
+                            كشف الحساب ➔
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">{s.role} {s.phone ? `• ${s.phone}` : ''}</div>
                       </div>
                       <button
-                        onClick={() => onDeleteStaffMember(s.id)}
-                        className="text-slate-300 hover:text-black p-1"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteStaffMember(s.id);
+                        }}
+                        className="text-slate-300 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-all"
                         title="حذف العامل"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className="flex justify-between items-center text-[11px] bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <div className="grid grid-cols-3 gap-1.5 text-[11px] bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                       <div>
                         <span className="text-slate-500 block text-[9px]">الراتب الشهري</span>
-                        <span className="font-bold text-slate-800">{s.baseSalary.toLocaleString()} دج</span>
+                        <span className="font-black text-slate-800">{hideFinances ? '••••' : `${s.baseSalary.toLocaleString()} دج`}</span>
                       </div>
                       <div>
                         <span className="text-slate-500 block text-[9px]">سعر اليومية ({days} يوم)</span>
-                        <span className="font-bold text-slate-800">{daily.toLocaleString()} دج</span>
+                        <span className="font-bold text-slate-800">{hideFinances ? '••••' : `${daily.toLocaleString()} دج`}</span>
                       </div>
                       <div>
                         <span className="text-slate-500 block text-[9px]">غيابات معلقة</span>
-                        <span className="font-bold text-slate-700">
+                        <span className={`font-bold ${pendingCount > 0 ? 'text-blue-700' : 'text-slate-700'}`}>
                           {pendingCount} يوم
                         </span>
                       </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[10px] text-blue-600 font-bold">
+                      <span>عرض المعاملات والرواتب والسلفيات</span>
+                      <ChevronLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
                     </div>
                   </div>
                 );
@@ -722,36 +749,70 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
             </p>
           ) : (
             <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto pr-1 bg-white border border-slate-200 rounded-xl">
-              {staffPayouts.map(p => (
-                <div key={p.id} className="p-3 flex justify-between items-center text-xs">
-                  <div>
-                    <div className="font-bold text-slate-800">{p.name}</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
-                      {p.type} • {new Date(p.date).toLocaleDateString('ar-DZ')}
-                      {p.absencesCount ? ` • خصم ${p.absencesCount} يوم غياب` : ''}
-                      {p.notes ? ` • ${p.notes}` : ''}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-left">
-                      <div className="font-bold text-slate-900">{p.amount.toLocaleString()} دج</div>
-                      {p.absenceDeduction ? (
-                        <div className="text-[9px] text-slate-500">خصم: -{p.absenceDeduction.toLocaleString()} دج</div>
-                      ) : null}
-                    </div>
-                    <button 
-                      onClick={() => onDeletePayout(p.id)} 
-                      title="حذف السجل"
-                      className="text-slate-300 hover:text-black p-1"
+              {staffPayouts.map(p => {
+                const matchedMember = staffMembers.find(s => s.id === p.staffId || s.name.trim().toLowerCase() === p.name.trim().toLowerCase());
+
+                return (
+                  <div key={p.id} className="p-3 flex justify-between items-center text-xs hover:bg-slate-50/60 transition-colors">
+                    <div 
+                      onClick={() => {
+                        if (matchedMember) setInspectingMember(matchedMember);
+                      }}
+                      className={matchedMember ? 'cursor-pointer group' : ''}
                     >
-                      <X className="w-4 h-4" />
-                    </button>
+                      <div className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors flex items-center gap-1.5">
+                        <span>{p.name}</span>
+                        {matchedMember && (
+                          <span className="text-[9px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 border border-blue-100">
+                            <Search className="w-2.5 h-2.5" />
+                            <span>كشف الحساب</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        {p.type} • {new Date(p.date).toLocaleDateString('ar-DZ')}
+                        {p.absencesCount ? ` • خصم ${p.absencesCount} يوم غياب` : ''}
+                        {p.notes ? ` • ${p.notes}` : ''}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-left">
+                        <div className="font-bold text-slate-900">{hideFinances ? '••••' : `${p.amount.toLocaleString()} دج`}</div>
+                        {p.absenceDeduction && !hideFinances ? (
+                          <div className="text-[9px] text-slate-500">خصم: -{p.absenceDeduction.toLocaleString()} دج</div>
+                        ) : null}
+                      </div>
+                      <button 
+                        onClick={() => onDeletePayout(p.id)} 
+                        title="حذف السجل"
+                        className="text-slate-300 hover:text-red-600 p-1 rounded hover:bg-red-50"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
+      )}
+
+      {/* Staff Member Detailed Ledger & Transactions Modal */}
+      {inspectingMember && (
+        <StaffMemberLedgerModal
+          member={inspectingMember}
+          allMembers={staffMembers}
+          staffPayouts={staffPayouts}
+          staffAbsences={staffAbsences}
+          onClose={() => setInspectingMember(null)}
+          onSelectMember={(m) => setInspectingMember(m)}
+          onAddPayout={onAddPayout}
+          onDeletePayout={onDeletePayout}
+          onAddAbsence={onAddAbsence}
+          onDeleteAbsence={onDeleteAbsence}
+          hideFinances={hideFinances}
+        />
       )}
     </div>
   );

@@ -275,7 +275,9 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                     </div>
                   </>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xl">👗</div>
+                  <div className="w-full h-full flex items-center justify-center text-xl bg-blue-50 text-blue-400">
+                    <Shirt className="w-6 h-6 text-blue-400" />
+                  </div>
                 )}
               </div>
 
@@ -285,7 +287,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                     {item.name}
                   </h3>
                   {item.barcode && (
-                    <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md">
+                    <span className="text-[10px] font-mono font-bold bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-md border border-blue-100">
                       #{item.barcode}
                     </span>
                   )}
@@ -319,8 +321,8 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                 onClick={() => setSelectedColorFilter('all')}
                 className={`px-3 py-1 rounded-xl text-xs font-bold shrink-0 transition-all ${
                   selectedColorFilter === 'all'
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
                 }`}
               >
                 جميع الألوان ({variants.length})
@@ -372,7 +374,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
         <div className="flex-1 overflow-y-auto divide-y divide-slate-100 p-2 sm:p-3 space-y-1">
           {displayedVariants.length === 0 ? (
             <div className="py-12 text-center text-slate-400 space-y-2">
-              <span className="text-4xl">👗</span>
+              <Shirt className="w-12 h-12 text-blue-300 mx-auto" />
               <p className="font-bold text-sm text-slate-600">لا توجد مقاسات مسجلة لهذا اللون</p>
               <p className="text-xs text-slate-400">يمكنك إضافة مقاس جديد عبر الزر أدناه</p>
             </div>
@@ -402,7 +404,9 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                           loading="lazy"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xl">👗</div>
+                        <div className="w-full h-full flex items-center justify-center text-xl bg-blue-50 text-blue-400">
+                          <Shirt className="w-6 h-6 text-blue-400" />
+                        </div>
                       )}
                       {/* Color dot indicator in thumbnail corner */}
                       <span 

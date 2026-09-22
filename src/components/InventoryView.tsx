@@ -4,8 +4,9 @@ import { BarcodeScanner } from './BarcodeScanner';
 import { LettersInput, NumbersInput } from './Shared';
 import { RawMaterialsSection } from './RawMaterialsSection';
 import { ProductVariantsModal } from './ProductVariantsModal';
+import { SecurityPasswordModal, checkSecurityPin } from './SecurityPasswordModal';
 import { isValidImageFileType, generateSecureImageFilename, sanitizeText, sanitizeNumericAmount } from '../utils/security';
-import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign } from 'lucide-react';
+import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil } from 'lucide-react';
 
 export const STANDARD_SIZES = [
   '34', '36', '38', '40', '42', '44', '46', '48', '50', '52', '54',
@@ -98,6 +99,39 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [barcodeActionNotice, setBarcodeActionNotice] = useState<string | null>(null);
 
+  // Security Password Modal for Add Product & Stock Transfer
+  const [securityModal, setSecurityModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    reason: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const handleInitiateAddCloth = (barcode: string = '') => {
+    setSecurityModal({
+      isOpen: true,
+      title: 'كلمة المرور لإضافة منتج جديد',
+      reason: 'يرجى إدخال رمز المرور أو كلمة السر للترخيص بإضافة منتج أو فستان جديد إلى المخزن',
+      onConfirm: () => {
+        setInitialBarcodeForAdd(barcode);
+        setShowAddModal(true);
+        setSecurityModal(null);
+      }
+    });
+  };
+
+  const handleInitiateTransfer = (item: ClothItem) => {
+    setSecurityModal({
+      isOpen: true,
+      title: 'كلمة المرور للتحويل بين المخزون',
+      reason: `يرجى إدخال رمز المرور للموافقة على تحويل كميات (${item.name}) بين المخزن 1 والمخزن 2`,
+      onConfirm: () => {
+        setQuickTransferItem(item);
+        setSecurityModal(null);
+      }
+    });
+  };
+
   const categories = [
     'فساتين سهرة',
     'أزياء تقليدية وقفاطين',
@@ -169,10 +203,9 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
       setTimeout(() => setBarcodeActionNotice(null), 3500);
       setShowScannerModal(false);
     } else {
-      // Item not found -> open Add modal with barcode filled
-      setInitialBarcodeForAdd(code.trim());
-      setShowAddModal(true);
+      // Item not found -> open Add modal with password check
       setShowScannerModal(false);
+      handleInitiateAddCloth(code.trim());
     }
   };
 
@@ -339,10 +372,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
               </button>
 
               <button
-                onClick={() => {
-                  setInitialBarcodeForAdd('');
-                  setShowAddModal(true);
-                }}
+                onClick={() => handleInitiateAddCloth('')}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-900 hover:bg-black text-white px-4 py-2.5 rounded-2xl text-xs font-black transition-all shadow-xs active:scale-95"
               >
                 + قطعة جديدة
@@ -653,7 +683,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center text-blue-300 gap-1.5 p-4">
-                    <span className="text-3xl">👗</span>
+                    <Shirt className="w-8 h-8 text-blue-400" />
                     <span className="text-[10px] font-bold">بدون صورة</span>
                   </div>
                 )}
@@ -661,18 +691,20 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                 {/* Purpose Badge on Top Left */}
                 <div className="absolute top-2.5 left-2.5 flex items-center gap-1">
                   {item.purpose === 'both' && (
-                    <span className="bg-blue-900/90 backdrop-blur-xs text-white text-[10px] font-black px-2.5 py-1 rounded-xl shadow-xs">
+                    <span className="bg-blue-600/90 backdrop-blur-xs text-white text-[10px] font-black px-2.5 py-1 rounded-xl shadow-xs">
                       بيع + كراء
                     </span>
                   )}
                   {item.purpose === 'rent' && (
-                    <span className="bg-blue-700/90 backdrop-blur-xs text-white text-[10px] font-black px-2.5 py-1 rounded-xl shadow-xs">
-                      كراء 👗
+                    <span className="bg-blue-600/90 backdrop-blur-xs text-white text-[10px] font-black px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1">
+                      <Shirt className="w-3 h-3" />
+                      <span>كراء</span>
                     </span>
                   )}
                   {item.purpose === 'sell' && (
-                    <span className="bg-blue-500/90 backdrop-blur-xs text-white text-[10px] font-black px-2.5 py-1 rounded-xl shadow-xs">
-                      بيع 🏷️
+                    <span className="bg-sky-500/90 backdrop-blur-xs text-white text-[10px] font-black px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1">
+                      <Tag className="w-3 h-3" />
+                      <span>بيع</span>
                     </span>
                   )}
                 </div>
@@ -685,8 +717,8 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                 </div>
 
                 {/* Colors & Sizes Badge Prompt on Image */}
-                <div className="absolute bottom-2.5 left-2.5 bg-blue-900/90 group-hover:bg-blue-600 text-white text-[10px] font-black px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1.5 transition-all">
-                  <span>✨</span>
+                <div className="absolute bottom-2.5 left-2.5 bg-blue-600/90 group-hover:bg-blue-700 text-white text-[10px] font-black px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1.5 transition-all">
+                  <Sparkles className="w-3 h-3" />
                   <span>الألوان والمقاسات ({itemSizesList.length || 1})</span>
                 </div>
 
@@ -698,10 +730,10 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                       e.stopPropagation();
                       setPreviewImage({ url: item.imageUrl!, title: item.name });
                     }}
-                    className="absolute bottom-2.5 right-2.5 w-7 h-7 rounded-xl bg-black/60 hover:bg-black text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-xs"
+                    className="absolute bottom-2.5 right-2.5 w-7 h-7 rounded-xl bg-blue-950/70 hover:bg-blue-900 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-xs"
                     title="تكبير الصورة كاملة"
                   >
-                    🔍
+                    <Eye className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
@@ -790,14 +822,20 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                   </div>
 
                   {/* Stock 1 and Stock 2 Breakdown Badges */}
-                  <div className="pt-2 border-t border-slate-200/70 group-hover:border-blue-200/70 grid grid-cols-2 gap-2 text-[11px] transition-colors">
-                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-1.5 flex items-center justify-between">
-                      <span className="font-bold text-blue-800">🏬 مخزون 1:</span>
-                      <span className={`font-black ${s1 <= 0 ? 'text-black' : 'text-blue-950'}`}>{s1} قطعة</span>
+                  <div className="pt-2 border-t border-blue-100 group-hover:border-blue-200 grid grid-cols-2 gap-2 text-[11px] transition-colors">
+                    <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-1.5 flex items-center justify-between">
+                      <span className="font-bold text-blue-800 flex items-center gap-1">
+                        <Store className="w-3.5 h-3.5 text-blue-600" />
+                        <span>مخزون 1:</span>
+                      </span>
+                      <span className={`font-black ${s1 <= 0 ? 'text-slate-400' : 'text-blue-950'}`}>{s1} قطعة</span>
                     </div>
-                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-1.5 flex items-center justify-between">
-                      <span className="font-bold text-blue-800">📦 مخزون 2:</span>
-                      <span className={`font-black ${s2 <= 0 ? 'text-black' : 'text-blue-950'}`}>{s2} قطعة</span>
+                    <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-1.5 flex items-center justify-between">
+                      <span className="font-bold text-blue-800 flex items-center gap-1">
+                        <Warehouse className="w-3.5 h-3.5 text-blue-600" />
+                        <span>مخزون 2:</span>
+                      </span>
+                      <span className={`font-black ${s2 <= 0 ? 'text-slate-400' : 'text-blue-950'}`}>{s2} قطعة</span>
                     </div>
                   </div>
                 </div>
@@ -809,33 +847,33 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                     className="flex-1 py-2 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-800 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-95 border border-blue-200 hover:border-blue-600 shadow-2xs hover:shadow-sm"
                     title="تعديل أو زيادة كمية المخزون 1 أو 2"
                   >
-                    <span>⚡</span>
-                    <span>+ إضافة</span>
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>إضافة مخزون</span>
                   </button>
 
                   <button
-                    onClick={() => setQuickTransferItem(item)}
-                    className="py-2 px-2.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-800 border border-slate-200 hover:border-blue-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-95"
+                    onClick={() => handleInitiateTransfer(item)}
+                    className="py-2 px-2.5 bg-white hover:bg-blue-50 hover:text-blue-600 text-blue-800 border border-blue-100 hover:border-blue-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-95 shadow-2xs"
                     title="تحويل كميات بين مخزون 1 ومخزون 2"
                   >
-                    <span>⇄</span>
+                    <ArrowLeftRight className="w-3.5 h-3.5 text-blue-600" />
                     <span>تحويل</span>
                   </button>
 
                   <button
                     onClick={() => setEditingItem(item)}
-                    className="py-2 px-2.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-700 rounded-xl text-xs font-bold transition-all active:scale-95 border border-slate-200 hover:border-blue-300"
+                    className="py-2 px-2.5 bg-white hover:bg-blue-50 hover:text-blue-600 text-blue-700 rounded-xl text-xs font-bold transition-all active:scale-95 border border-blue-100 hover:border-blue-300 shadow-2xs"
                     title="تعديل بيانات وصورة القطعة"
                   >
-                    ✏️
+                    <Pencil className="w-3.5 h-3.5" />
                   </button>
 
                   <button
                     onClick={() => onDeleteCloth(item.id)}
-                    className="p-2 bg-blue-50 hover:bg-black hover:text-white text-blue-900 rounded-xl text-xs font-bold transition-all active:scale-95 border border-blue-200 hover:border-black"
+                    className="p-2 bg-white hover:bg-red-50 hover:text-red-600 text-slate-400 hover:border-red-200 rounded-xl text-xs font-bold transition-all active:scale-95 border border-slate-200 shadow-2xs"
                     title="حذف القطعة"
                   >
-                    🗑️
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -946,6 +984,16 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           title="مسح باركود لإضافة المخزون 📦"
           onScan={(code) => handleProcessBarcode(code)}
           onClose={() => setShowScannerModal(false)}
+        />
+      )}
+
+      {/* Security Password Prompt Modal */}
+      {securityModal && (
+        <SecurityPasswordModal
+          title={securityModal.title}
+          reason={securityModal.reason}
+          onSuccess={securityModal.onConfirm}
+          onClose={() => setSecurityModal(null)}
         />
       )}
         </>
@@ -1225,12 +1273,19 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
 
   const [direction, setDirection] = useState<'1_to_2' | '2_to_1'>('2_to_1'); // default: warehouse to store
   const [qty, setQty] = useState<number>(1);
+  const [transferPin, setTransferPin] = useState('');
+  const [pinError, setPinError] = useState(false);
+  const [showPin, setShowPin] = useState(false);
 
   const maxAvailable = direction === '1_to_2' ? s1 : s2;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (qty <= 0) return;
+    if (!checkSecurityPin(transferPin)) {
+      setPinError(true);
+      return;
+    }
     onTransfer(direction, Math.min(qty, maxAvailable));
   };
 
@@ -1337,6 +1392,46 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
               </span>
             </div>
           )}
+
+          {/* Password Authorization Input */}
+          <div className="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-200">
+            <label className="block text-xs font-black text-blue-950 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-blue-600" />
+                كلمة المرور لتأكيد التحويل (PIN):
+              </span>
+              <span className="text-[10px] text-blue-700 font-bold">مطلوبة للأمان</span>
+            </label>
+            <div className="relative">
+              <input
+                type={showPin ? 'text' : 'password'}
+                value={transferPin}
+                onChange={(e) => {
+                  setTransferPin(e.target.value);
+                  setPinError(false);
+                }}
+                placeholder="أدخل كلمة المرور ••••"
+                maxLength={8}
+                className={`w-full bg-white border-2 rounded-xl px-3.5 py-2.5 text-center font-black tracking-widest text-slate-900 outline-none transition-all ${
+                  pinError 
+                    ? 'border-red-500 ring-2 ring-red-500/20' 
+                    : 'border-blue-300 focus:border-blue-600'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPin(!showPin)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+              >
+                {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {pinError && (
+              <p className="text-[11px] text-red-600 font-bold mt-1 text-center">
+                ⚠️ كلمة المرور غير صحيحة، لا يمكن تنفيذ التحويل
+              </p>
+            )}
+          </div>
 
           <button
             type="submit"

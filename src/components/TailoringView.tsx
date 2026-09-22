@@ -140,7 +140,7 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
 
           <button
             onClick={onOpenAddModal}
-            className="bg-slate-900 hover:bg-slate-800 active:scale-95 text-white px-4 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all min-h-[40px] shadow-xs"
+            className="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-4 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all min-h-[40px] shadow-xs"
           >
             <Plus className="w-4 h-4" />
             <span>طلب خياطة جديد</span>
@@ -193,8 +193,8 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
               onClick={() => setFilter(f.id as any)}
               className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-bold transition-all shrink-0 ${
                 filter === f.id
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-900 border border-blue-200'
               }`}
             >
               {f.label}

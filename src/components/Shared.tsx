@@ -9,7 +9,6 @@ import {
   CreditCard,
   Scale,
   Users,
-  History,
   X,
 } from 'lucide-react';
 
@@ -26,14 +25,14 @@ export const Modal: React.FC<{
       {/* Mobile handle indicator */}
       <div className="w-12 h-1.5 bg-blue-50 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
 
-      <div className="flex justify-between items-center pb-3 sm:pb-4 mb-3 sm:mb-4 border-b border-blue-50 shrink-0 gap-2">
-        <h3 className="text-base sm:text-lg font-black text-blue-900 tracking-tight flex items-center gap-2 min-w-0 flex-1">
+      <div className="flex justify-between items-center pb-3 sm:pb-4 mb-3 sm:mb-4 border-b border-blue-50 shrink-0">
+        <h3 className="text-base sm:text-lg font-black text-blue-900 tracking-tight flex items-center gap-2">
           {title}
         </h3>
         <button 
           onClick={onClose} 
           aria-label="إغلاق"
-          className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-800 hover:border hover:border-blue-200 flex items-center justify-center transition-all active:scale-95 text-sm font-bold shrink-0"
+          className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-800 hover:border hover:border-blue-200 flex items-center justify-center transition-all active:scale-95 text-sm font-bold"
         >
           <X className="w-4 h-4" />
         </button>
@@ -46,7 +45,7 @@ export const Modal: React.FC<{
 );
 
 export const NavButton: React.FC<{
-  icon: 'dashboard' | 'rentals' | 'inventory' | 'sales' | 'expenses' | 'credits' | 'customers' | 'staff' | 'packages' | 'absence' | 'tailoring' | 'caisse' | 'logs' | 'partners';
+  icon: 'dashboard' | 'rentals' | 'inventory' | 'sales' | 'expenses' | 'credits' | 'customers' | 'staff' | 'packages' | 'absence' | 'tailoring' | 'caisse' | 'partners';
   label: string;
   onClick: () => void;
   active?: boolean;
@@ -54,30 +53,29 @@ export const NavButton: React.FC<{
   badge?: number;
 }> = ({ icon, label, onClick, active, color = 'blue', badge }) => {
   const getIcon = () => {
+    const iconClass = "w-3 h-3 sm:w-3.5 sm:h-3.5";
     switch (icon) {
       case 'dashboard':
-        return <LayoutDashboard className="w-4 h-4 shrink-0" />;
+        return <LayoutDashboard className={iconClass} />;
       case 'rentals':
-        return <Calendar className="w-4 h-4 shrink-0" />;
+        return <Calendar className={iconClass} />;
       case 'inventory':
-        return <Package className="w-4 h-4 shrink-0" />;
+        return <Package className={iconClass} />;
       case 'sales':
-        return <ShoppingBag className="w-4 h-4 shrink-0" />;
+        return <ShoppingBag className={iconClass} />;
       case 'tailoring':
-        return <Scissors className="w-4 h-4 shrink-0" />;
+        return <Scissors className={iconClass} />;
       case 'expenses':
-        return <Receipt className="w-4 h-4 shrink-0" />;
+        return <Receipt className={iconClass} />;
       case 'credits':
-        return <CreditCard className="w-4 h-4 shrink-0" />;
-      case 'logs':
-        return <History className="w-4 h-4 shrink-0" />;
+        return <CreditCard className={iconClass} />;
       case 'partners':
       case 'customers':
       case 'staff':
       case 'absence':
-        return <Users className="w-4 h-4 shrink-0" />;
+        return <Users className={iconClass} />;
       case 'caisse':
-        return <Scale className="w-4 h-4 shrink-0" />;
+        return <Scale className={iconClass} />;
       default:
         return null;
     }
@@ -86,16 +84,16 @@ export const NavButton: React.FC<{
   return (
     <button
       onClick={onClick}
-      className={`relative flex flex-col items-center justify-center gap-1 w-full py-2 px-1.5 sm:px-2 rounded-xl text-[10px] sm:text-xs font-bold transition-all min-h-[44px] min-w-[62px] sm:min-w-[72px] lg:min-w-0 group shrink-0 ${
+      className={`relative flex flex-col items-center justify-center gap-0.5 sm:gap-1 w-full py-1 sm:py-1.5 px-0.5 sm:px-1.5 rounded-lg sm:rounded-xl text-[8px] sm:text-xs font-bold transition-all min-h-[34px] sm:min-h-[42px] group ${
         active
-          ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-600/30'
-          : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50/90 hover:border-blue-200 border border-transparent active:scale-95'
+          ? 'bg-blue-600 text-white shadow-xs ring-1 sm:ring-2 ring-blue-600/30'
+          : 'text-blue-700 hover:text-blue-900 hover:bg-blue-50/90 hover:border-blue-200 border border-transparent active:scale-95'
       }`}
     >
-      <div className={`shrink-0 transition-transform group-hover:scale-110 ${active ? 'text-white' : 'group-hover:text-blue-600'}`}>{getIcon()}</div>
-      <span className="whitespace-nowrap leading-tight text-[10px] sm:text-xs tracking-tight">{label}</span>
+      <div className={`shrink-0 transition-transform group-hover:scale-105 ${active ? 'text-white' : 'text-blue-600 group-hover:text-blue-800'}`}>{getIcon()}</div>
+      <span className="truncate leading-none text-[8px] sm:text-xs tracking-tight">{label}</span>
       {badge !== undefined && badge > 0 && (
-        <span className="absolute -top-1 -left-1 min-w-[17px] h-[17px] px-1 bg-black text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-xs pointer-events-none z-10">
+        <span className="absolute -top-1 -left-1 min-w-[13px] h-[13px] sm:min-w-[18px] sm:h-[18px] px-0.5 sm:px-1 bg-blue-600 text-white text-[7px] sm:text-[9px] font-black rounded-full flex items-center justify-center border sm:border-2 border-white shadow-xs">
           {badge}
         </span>
       )}
@@ -122,24 +120,24 @@ export const StatCard: React.FC<{
         onClick ? 'cursor-pointer active:scale-[0.99]' : ''
       }`}
     >
-      <div className="flex justify-between items-start mb-2.5 w-full gap-1.5">
+      <div className="flex justify-between items-start mb-2.5 w-full">
         <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-700 group-hover:bg-blue-100 group-hover:text-blue-800 group-hover:border-blue-200 flex items-center justify-center shrink-0 text-base sm:text-lg border border-blue-100 transition-all">
           {icon}
         </div>
         {subtitle && (
-          <span className="text-[10px] sm:text-[11px] font-medium text-blue-500 bg-blue-50/50 group-hover:bg-blue-50/60 group-hover:text-blue-700 px-2 py-0.5 rounded-lg border border-blue-50 group-hover:border-blue-100 truncate max-w-[95px] sm:max-w-[130px] transition-colors shrink-0">
+          <span className="text-[10px] sm:text-[11px] font-medium text-blue-500 bg-blue-50/50 group-hover:bg-blue-50/60 group-hover:text-blue-700 px-2 py-0.5 rounded-lg border border-blue-50 group-hover:border-blue-100 truncate max-w-[130px] transition-colors">
             {subtitle}
           </span>
         )}
       </div>
-      <div className="w-full min-w-0">
-        <div className="text-[11px] sm:text-xs font-medium text-blue-500 group-hover:text-blue-900 mb-0.5 sm:mb-1 transition-colors truncate">{title}</div>
-        <div className="text-base sm:text-2xl font-black text-blue-900 tracking-tight font-mono break-all sm:break-normal flex flex-wrap items-baseline gap-1">
+      <div className="w-full">
+        <div className="text-[11px] sm:text-xs font-medium text-blue-500 group-hover:text-blue-900 mb-0.5 sm:mb-1 transition-colors">{title}</div>
+        <div className="text-lg sm:text-2xl font-black text-blue-900 tracking-tight font-mono">
           {hideValue ? (
             <span className="tracking-widest text-blue-200 font-sans">••••••</span>
           ) : (
             <>
-              <span>{typeof value === 'number' ? value.toLocaleString('fr-DZ') : value}</span>
+              {typeof value === 'number' ? value.toLocaleString('fr-DZ') : value}
               {unit && <span className="text-[10px] sm:text-xs font-medium text-blue-400 mr-1 font-sans">{unit}</span>}
             </>
           )}

@@ -1,0 +1,725 @@
+import React, { useState, useMemo } from 'react';
+import { StaffMember, StaffPayout, StaffAbsence } from '../types';
+import { 
+  User, 
+  Calendar, 
+  History, 
+  ArrowUpRight, 
+  ArrowDownLeft, 
+  FileText, 
+  Printer, 
+  Filter, 
+  CheckCircle2, 
+  AlertTriangle, 
+  TrendingUp, 
+  X, 
+  Plus, 
+  Phone, 
+  Briefcase,
+  Banknote,
+  Percent,
+  Sparkles
+} from 'lucide-react';
+
+interface StaffMemberLedgerModalProps {
+  member: StaffMember;
+  allMembers: StaffMember[];
+  staffPayouts: StaffPayout[];
+  staffAbsences: StaffAbsence[];
+  onClose: () => void;
+  onSelectMember: (m: StaffMember) => void;
+  onAddPayout: (data: Omit<StaffPayout, 'id'>, deductedAbsenceIds?: string[]) => void;
+  onDeletePayout: (id: string) => void;
+  onAddAbsence: (data: Omit<StaffAbsence, 'id'>) => void;
+  onDeleteAbsence: (id: string) => void;
+  hideFinances?: boolean;
+}
+
+export type LedgerItem = {
+  id: string;
+  sourceType: 'payout' | 'absence';
+  date: string;
+  title: string;
+  category: 'salary' | 'advance' | 'bonus' | 'sales_commission' | 'absence' | 'other';
+  amount: number; // positive for paid to staff, negative for deduction
+  details?: string;
+  notes?: string;
+  isDeducted?: boolean;
+  rawPayout?: StaffPayout;
+  rawAbsence?: StaffAbsence;
+};
+
+export const StaffMemberLedgerModal: React.FC<StaffMemberLedgerModalProps> = ({
+  member,
+  allMembers,
+  staffPayouts,
+  staffAbsences,
+  onClose,
+  onSelectMember,
+  onAddPayout,
+  onDeletePayout,
+  onAddAbsence,
+  onDeleteAbsence,
+  hideFinances
+}) => {
+  // Filters
+  const [periodFilter, setPeriodFilter] = useState<'all' | 'daily' | 'monthly'>('all');
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Quick Action Modal States inside Ledger
+  const [quickAction, setQuickAction] = useState<'payout' | 'advance' | 'bonus' | 'absence' | null>(null);
+  const [quickAmount, setQuickAmount] = useState<number | ''>('');
+  const [quickNotes, setQuickNotes] = useState('');
+  const [quickAbsenceDays, setQuickAbsenceDays] = useState<number>(1);
+  const [quickAbsenceReason, setQuickAbsenceReason] = useState('غياب غير مبرر');
+
+  // Rates for selected member
+  const daysPerMonth = member.workDaysPerMonth || 26;
+  const dailyRate = Math.round(member.baseSalary / daysPerMonth);
+
+  // Collect all transactions for this member
+  const memberPayouts = useMemo(() => {
+    return staffPayouts.filter(p => 
+      p.staffId === member.id || 
+      (p.name && p.name.trim().toLowerCase() === member.name.trim().toLowerCase())
+    );
+  }, [staffPayouts, member]);
+
+  const memberAbsences = useMemo(() => {
+    return staffAbsences.filter(a => 
+      a.staffId === member.id || 
+      (a.staffName && a.staffName.trim().toLowerCase() === member.name.trim().toLowerCase())
+    );
+  }, [staffAbsences, member]);
+
+  // Combine payouts and absences into unified chronological ledger items
+  const unifiedLedger = useMemo<LedgerItem[]>(() => {
+    const items: LedgerItem[] = [];
+
+    // 1. Add Payouts
+    memberPayouts.forEach(p => {
+      let category: LedgerItem['category'] = 'salary';
+      if (p.type.includes('تسليف') || p.type.includes('عربون')) category = 'advance';
+      else if (p.type.includes('مكافأة')) category = 'bonus';
+      else if (p.type.includes('نسبة') || p.type.includes('مبيعات')) category = 'sales_commission';
+      else if (p.type.includes('راتب')) category = 'salary';
+      else category = 'other';
+
+      const detailsList: string[] = [];
+      if (p.baseAmount && p.baseAmount !== p.amount) {
+        detailsList.push(`الأساسي: ${p.baseAmount.toLocaleString()} دج`);
+      }
+      if (p.absenceDeduction && p.absenceDeduction > 0) {
+        detailsList.push(`خصم غيابات (${p.absencesCount || 0} يوم): -${p.absenceDeduction.toLocaleString()} دج`);
+      }
+      if (p.advancesDeduction && p.advancesDeduction > 0) {
+        detailsList.push(`خصم تسبيقات سابقة: -${p.advancesDeduction.toLocaleString()} دج`);
+      }
+      if (p.bonus && p.bonus > 0) {
+        detailsList.push(`مكافأة: +${p.bonus.toLocaleString()} دج`);
+      }
+
+      items.push({
+        id: `payout-${p.id}`,
+        sourceType: 'payout',
+        date: p.date,
+        title: p.type || 'صرف راتب / دفعة مالية',
+        category,
+        amount: Number(p.amount) || 0,
+        details: detailsList.join(' | '),
+        notes: p.notes,
+        rawPayout: p
+      });
+    });
+
+    // 2. Add Absences
+    memberAbsences.forEach(a => {
+      items.push({
+        id: `absence-${a.id}`,
+        sourceType: 'absence',
+        date: a.date,
+        title: `تسجيل غياب (${a.daysCount} يوم)`,
+        category: 'absence',
+        amount: -(Number(a.deductionAmount) || 0),
+        details: a.isDeducted ? '✓ تم خصمه في الراتب' : '⏳ معلق (لم يخصم بعد)',
+        notes: a.reason,
+        isDeducted: a.isDeducted,
+        rawAbsence: a
+      });
+    });
+
+    // Sort descending by date
+    return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [memberPayouts, memberAbsences]);
+
+  // Filter ledger according to period & category & search
+  const filteredLedger = useMemo(() => {
+    return unifiedLedger.filter(item => {
+      const itemDateStr = item.date.slice(0, 10);
+      const itemMonthStr = item.date.slice(0, 7);
+
+      if (periodFilter === 'daily') {
+        if (itemDateStr !== selectedDate) return false;
+      } else if (periodFilter === 'monthly') {
+        if (itemMonthStr !== selectedMonth) return false;
+      }
+
+      if (categoryFilter !== 'all') {
+        if (item.category !== categoryFilter) return false;
+      }
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesTitle = item.title.toLowerCase().includes(q);
+        const matchesNotes = item.notes?.toLowerCase().includes(q);
+        const matchesDetails = item.details?.toLowerCase().includes(q);
+        if (!matchesTitle && !matchesNotes && !matchesDetails) return false;
+      }
+
+      return true;
+    });
+  }, [unifiedLedger, periodFilter, selectedDate, selectedMonth, categoryFilter, searchQuery]);
+
+  // Financial statistics for current filtered view
+  const periodStats = useMemo(() => {
+    let totalPaidToStaff = 0;
+    let totalSalaryPaid = 0;
+    let totalAdvancesPaid = 0;
+    let totalBonusPaid = 0;
+    let totalAbsenceDeductions = 0;
+    let totalAbsenceDays = 0;
+    let pendingAbsenceCount = 0;
+    let pendingAbsenceAmount = 0;
+
+    filteredLedger.forEach(item => {
+      if (item.sourceType === 'payout') {
+        totalPaidToStaff += item.amount;
+        if (item.category === 'salary') totalSalaryPaid += item.amount;
+        if (item.category === 'advance') totalAdvancesPaid += item.amount;
+        if (item.category === 'bonus') totalBonusPaid += item.amount;
+      } else if (item.sourceType === 'absence') {
+        totalAbsenceDeductions += Math.abs(item.amount);
+        totalAbsenceDays += item.rawAbsence?.daysCount || 1;
+        if (!item.isDeducted) {
+          pendingAbsenceCount += item.rawAbsence?.daysCount || 1;
+          pendingAbsenceAmount += Math.abs(item.amount);
+        }
+      }
+    });
+
+    return {
+      totalPaidToStaff,
+      totalSalaryPaid,
+      totalAdvancesPaid,
+      totalBonusPaid,
+      totalAbsenceDeductions,
+      totalAbsenceDays,
+      pendingAbsenceCount,
+      pendingAbsenceAmount
+    };
+  }, [filteredLedger]);
+
+  // Handle Quick Actions (Payout, Advance, Bonus, Absence)
+  const handleQuickActionSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickAction) return;
+
+    if (quickAction === 'absence') {
+      const deduction = Math.round(dailyRate * quickAbsenceDays);
+      onAddAbsence({
+        staffId: member.id,
+        staffName: member.name,
+        date: selectedDate || new Date().toISOString().split('T')[0],
+        daysCount: quickAbsenceDays,
+        reason: quickAbsenceReason,
+        deductionAmount: deduction,
+        isDeducted: false
+      });
+    } else {
+      const amount = Number(quickAmount) || 0;
+      if (amount <= 0) return;
+
+      let typeName = 'راتب شهري';
+      if (quickAction === 'advance') typeName = 'تسليف (عربون)';
+      if (quickAction === 'bonus') typeName = 'مكافأة';
+
+      onAddPayout({
+        staffId: member.id,
+        name: member.name,
+        amount,
+        baseAmount: amount,
+        type: typeName,
+        date: new Date().toISOString(),
+        notes: quickNotes.trim() || undefined
+      });
+    }
+
+    setQuickAction(null);
+    setQuickAmount('');
+    setQuickNotes('');
+    setQuickAbsenceDays(1);
+  };
+
+  // Print Statement Handler
+  const handlePrintStatement = () => {
+    window.print();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto" dir="rtl">
+      <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[94vh] animate-in fade-in zoom-in-95 duration-200">
+        
+        {/* Header with Member Info & Switcher */}
+        <div className="bg-blue-600 text-white p-4 sm:p-5 flex flex-wrap justify-between items-center gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center font-black text-xl text-white shadow-inner">
+              <User className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-lg sm:text-xl text-white tracking-tight">{member.name}</h3>
+                <span className="bg-white/20 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+                  {member.role}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-xs text-blue-100 mt-1 font-medium">
+                {member.phone && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="w-3.5 h-3.5 text-blue-200" />
+                    {member.phone}
+                  </span>
+                )}
+                <span>•</span>
+                <span>الراتب الأساسي: <strong className="text-white">{hideFinances ? '••••' : `${member.baseSalary.toLocaleString()} دج`}</strong></span>
+                <span>•</span>
+                <span>اليومية ({daysPerMonth} يوم): <strong className="text-white">{hideFinances ? '••••' : `${dailyRate.toLocaleString()} دج`}</strong></span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Member Switcher & Close */}
+          <div className="flex items-center gap-2">
+            {allMembers.length > 1 && (
+              <select
+                value={member.id}
+                onChange={(e) => {
+                  const target = allMembers.find(m => m.id === e.target.value);
+                  if (target) onSelectMember(target);
+                }}
+                className="bg-blue-700/80 hover:bg-blue-700 text-white text-xs font-bold py-2 px-3 rounded-xl border border-blue-400/40 outline-none cursor-pointer"
+              >
+                {allMembers.map(m => (
+                  <option key={m.id} value={m.id} className="text-slate-900 bg-white">
+                    {m.name} ({m.role})
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <button
+              onClick={handlePrintStatement}
+              className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+              title="طباعة كشف الحساب"
+            >
+              <Printer className="w-4 h-4" />
+              <span className="hidden sm:inline">طباعة</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Action Toolbar & Period Filter */}
+        <div className="p-4 bg-slate-50 border-b border-slate-200 space-y-3">
+          
+          {/* Period Selection Controls */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex items-center bg-white p-1 rounded-2xl border border-slate-200 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setPeriodFilter('all')}
+                className={`py-1.5 px-3.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+                  periodFilter === 'all'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>كل المعاملات</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPeriodFilter('monthly')}
+                className={`py-1.5 px-3.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+                  periodFilter === 'monthly'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>المعاملات الشهرية</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPeriodFilter('daily')}
+                className={`py-1.5 px-3.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+                  periodFilter === 'daily'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <History className="w-3.5 h-3.5" />
+                <span>المعاملات اليومية</span>
+              </button>
+            </div>
+
+            {/* Date Pickers based on selection */}
+            <div className="flex items-center gap-2">
+              {periodFilter === 'monthly' && (
+                <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <span>الشهر:</span>
+                  <input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="bg-transparent font-bold text-slate-900 outline-none cursor-pointer"
+                  />
+                </div>
+              )}
+
+              {periodFilter === 'daily' && (
+                <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <span>اليوم:</span>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="bg-transparent font-bold text-slate-900 outline-none cursor-pointer"
+                  />
+                </div>
+              )}
+
+              {/* Category Filter */}
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="bg-white border border-slate-200 text-xs font-bold text-slate-800 px-3 py-2 rounded-xl outline-none"
+              >
+                <option value="all">جميع الأنواع</option>
+                <option value="salary">الرواتب الشهرية</option>
+                <option value="advance">التسبيقات والسلفيات</option>
+                <option value="bonus">المكافآت</option>
+                <option value="absence">الغيابات والخصومات</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Quick Action Buttons for This Member */}
+          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200/60">
+            <span className="text-[11px] font-bold text-slate-500">إجراء سريع للعامل:</span>
+            
+            <button
+              onClick={() => { setQuickAction('advance'); setQuickAmount(''); }}
+              className="py-1.5 px-3 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 rounded-xl text-xs font-bold transition-all border border-blue-200 flex items-center gap-1"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ تسجيل تسليف / عربون</span>
+            </button>
+
+            <button
+              onClick={() => { setQuickAction('bonus'); setQuickAmount(''); }}
+              className="py-1.5 px-3 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 rounded-xl text-xs font-bold transition-all border border-blue-200 flex items-center gap-1"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>+ إضافة مكافأة</span>
+            </button>
+
+            <button
+              onClick={() => { setQuickAction('absence'); setQuickAbsenceDays(1); }}
+              className="py-1.5 px-3 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 rounded-xl text-xs font-bold transition-all border border-blue-200 flex items-center gap-1"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>+ تسجيل غياب</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Quick Action Form if open */}
+        {quickAction && (
+          <div className="p-4 bg-blue-50/60 border-b border-blue-200 animate-in slide-in-from-top-2 duration-150">
+            <form onSubmit={handleQuickActionSubmit} className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h4 className="font-black text-xs text-blue-900 flex items-center gap-1.5">
+                  <Banknote className="w-4 h-4 text-blue-600" />
+                  <span>
+                    {quickAction === 'advance' && 'تسجيل دفعة تسليف / عربون للعامل'}
+                    {quickAction === 'bonus' && 'إضافة مكافأة مالية للعامل'}
+                    {quickAction === 'absence' && 'تسجيل يوم غياب وحساب الخصم'}
+                  </span>
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setQuickAction(null)}
+                  className="p-1 text-slate-400 hover:text-slate-700"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {quickAction === 'absence' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-1">عدد أيام الغياب</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0.5"
+                      max="31"
+                      required
+                      value={quickAbsenceDays}
+                      onChange={(e) => setQuickAbsenceDays(Number(e.target.value) || 1)}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-1">سبب الغياب</label>
+                    <select
+                      value={quickAbsenceReason}
+                      onChange={(e) => setQuickAbsenceReason(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                    >
+                      <option value="غياب غير مبرر">غياب غير مبرر</option>
+                      <option value="ظرف عائلي / شخصي">ظرف عائلي / شخصي</option>
+                      <option value="وعكة صحية / مرض">وعكة صحية / مرض</option>
+                      <option value="عطلة مرخصة">عطلة مرخصة</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-end">
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-xs"
+                    >
+                      تأكيد وحفظ الغياب (-{Math.round(dailyRate * quickAbsenceDays).toLocaleString()} دج)
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-1">المبلغ (دج) *</label>
+                    <input
+                      type="number"
+                      min="100"
+                      required
+                      value={quickAmount}
+                      onChange={(e) => setQuickAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="5000"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-black text-slate-900 focus:outline-none focus:border-blue-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-1">ملاحظات / بيان</label>
+                    <input
+                      type="text"
+                      value={quickNotes}
+                      onChange={(e) => setQuickNotes(e.target.value)}
+                      placeholder="مثال: تسليف أسبوعي، مكافأة عيد..."
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                    />
+                  </div>
+
+                  <div className="flex items-end">
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-xs"
+                    >
+                      تأكيد وتسجيل العملية
+                    </button>
+                  </div>
+                </div>
+              )}
+            </form>
+          </div>
+        )}
+
+        {/* Financial Summary Dashboard for the Selected View */}
+        <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white border-b border-slate-100">
+          <div className="p-3 bg-blue-50 rounded-2xl border border-blue-200">
+            <span className="text-[10px] font-bold text-blue-700 block">إجمالي المقبوض (المصروف للعامل)</span>
+            <span className="text-base sm:text-lg font-black text-blue-950 mt-0.5 block">
+              {hideFinances ? '••••' : `${periodStats.totalPaidToStaff.toLocaleString()} دج`}
+            </span>
+            <span className="text-[9px] text-blue-600 font-medium">
+              {periodFilter === 'all' ? 'كامل الفترة' : periodFilter === 'monthly' ? `شهر ${selectedMonth}` : `يوم ${selectedDate}`}
+            </span>
+          </div>
+
+          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+            <span className="text-[10px] font-bold text-slate-600 block">السلفيات والتسبيقات</span>
+            <span className="text-base sm:text-lg font-black text-slate-900 mt-0.5 block">
+              {hideFinances ? '••••' : `${periodStats.totalAdvancesPaid.toLocaleString()} دج`}
+            </span>
+            <span className="text-[9px] text-slate-500 font-medium">مبالغ مسحوبة مسبقاً</span>
+          </div>
+
+          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+            <span className="text-[10px] font-bold text-slate-600 block">الغيابات والخصومات</span>
+            <span className="text-base sm:text-lg font-black text-slate-900 mt-0.5 block">
+              {periodStats.totalAbsenceDays} يوم
+            </span>
+            <span className="text-[9px] text-slate-500 font-medium">
+              {hideFinances ? '••••' : `(-${periodStats.totalAbsenceDeductions.toLocaleString()} دج)`}
+            </span>
+          </div>
+
+          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+            <span className="text-[10px] font-bold text-slate-600 block">الغيابات المعلقة للخصم</span>
+            <span className="text-base sm:text-lg font-black text-slate-900 mt-0.5 block">
+              {periodStats.pendingAbsenceCount} يوم
+            </span>
+            <span className="text-[9px] text-slate-500 font-medium">
+              {hideFinances ? '••••' : `(تخصم في الراتب: ${periodStats.pendingAbsenceAmount.toLocaleString()} دج)`}
+            </span>
+          </div>
+        </div>
+
+        {/* Transactions Table & Ledger List */}
+        <div className="p-4 flex-1 overflow-y-auto space-y-2">
+          <div className="flex justify-between items-center text-xs font-black text-slate-700 pb-1">
+            <span>سجل المعاملات والعمليات ({filteredLedger.length}):</span>
+            <span className="text-[11px] text-slate-500 font-normal">
+              مرتبة تنازلياً حسب التاريخ
+            </span>
+          </div>
+
+          {filteredLedger.length === 0 ? (
+            <div className="py-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 p-6 space-y-2">
+              <Calendar className="w-8 h-8 text-slate-400 mx-auto" />
+              <p className="text-xs font-bold text-slate-600">لا توجد أي معاملات مسجلة في هذه الفترة المحددة.</p>
+              <p className="text-[11px] text-slate-400">يمكنك تغيير فلتر الفترة (الكل، شهري، يومي) أو تسجيل دفعة/غياب سريع من الأعلى.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+              {filteredLedger.map(item => {
+                const isAbsence = item.sourceType === 'absence';
+                const isAdvance = item.category === 'advance';
+                const isBonus = item.category === 'bonus';
+
+                return (
+                  <div key={item.id} className="p-3.5 flex flex-wrap sm:flex-nowrap justify-between items-center gap-3 hover:bg-slate-50/70 transition-colors">
+                    
+                    {/* Icon & Title */}
+                    <div className="flex items-start gap-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm ${
+                        isAbsence 
+                          ? 'bg-slate-100 text-slate-700' 
+                          : isAdvance 
+                          ? 'bg-blue-50 text-blue-600'
+                          : isBonus
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'bg-blue-600 text-white'
+                      }`}>
+                        {isAbsence ? (
+                          <Calendar className="w-4 h-4" />
+                        ) : isAdvance ? (
+                          <ArrowUpRight className="w-4 h-4" />
+                        ) : (
+                          <Banknote className="w-4 h-4" />
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-slate-900">{item.title}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                            isAbsence
+                              ? item.isDeducted ? 'bg-slate-100 text-slate-600' : 'bg-blue-50 text-blue-700'
+                              : isAdvance
+                              ? 'bg-blue-100 text-blue-800'
+                              : isBonus
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-blue-50 text-blue-700'
+                          }`}>
+                            {isAbsence ? (item.isDeducted ? 'مخصوم' : 'معلق للخصم') : item.category}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                          <span>{new Date(item.date).toLocaleDateString('ar-DZ')} {item.date.includes('T') ? new Date(item.date).toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                          {item.details && <span>• {item.details}</span>}
+                          {item.notes && <span className="text-slate-700 font-medium">• ملاحظة: {item.notes}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Financial Amount & Delete */}
+                    <div className="flex items-center gap-3 mr-auto sm:mr-0">
+                      <div className="text-left">
+                        <span className={`text-sm font-black block ${
+                          isAbsence ? 'text-slate-700' : 'text-blue-900'
+                        }`}>
+                          {hideFinances ? '••••' : (
+                            isAbsence 
+                              ? `-${Math.abs(item.amount).toLocaleString()} دج` 
+                              : `+${item.amount.toLocaleString()} دج`
+                          )}
+                        </span>
+                        <span className="text-[9px] text-slate-400 block font-medium">
+                          {isAbsence ? 'خصم من الراتب' : 'مقبوض ومسدد'}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (item.sourceType === 'payout' && item.rawPayout) {
+                            onDeletePayout(item.rawPayout.id);
+                          } else if (item.sourceType === 'absence' && item.rawAbsence) {
+                            onDeleteAbsence(item.rawAbsence.id);
+                          }
+                        }}
+                        className="text-slate-300 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-all"
+                        title="حذف هذا السجل"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-xs">
+          <span className="text-slate-500 font-bold">
+            كشف حساب العامل: <strong className="text-slate-800">{member.name}</strong>
+          </span>
+          <button
+            onClick={onClose}
+            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs transition-all shadow-xs"
+          >
+            إغلاق
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+};
