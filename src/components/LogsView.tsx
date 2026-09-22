@@ -343,23 +343,23 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
   };
 
   return (
-    <div className="space-y-4 text-blue-950 font-['Tajawal']" dir="rtl">
+    <div className="space-y-4 sm:space-y-5" dir="rtl">
       
       {/* Top Header Card */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-blue-100 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shrink-0 shadow-2xs">
-            <History className="w-6 h-6" />
+          <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 flex items-center justify-center shrink-0 shadow-2xs">
+            <History className="w-5 h-5 text-slate-800" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-blue-950">سجل النشاطات والتعديلات (Journal d'audit)</h2>
-              <span className="flex items-center gap-1 text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">
-                <Lock className="w-3 h-3" />
+              <h2 className="text-base sm:text-lg font-bold text-slate-900">سجل النشاطات والتعديلات (Journal d'audit)</h2>
+              <span className="flex items-center gap-1 text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full">
+                <Lock className="w-3 h-3 text-slate-500" />
                 محمي بكلمة سر
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
+            <p className="text-xs text-slate-500 font-normal mt-0.5">
               متابعة وتوثيق كل الإضافات، التعديلات، الحجوزات، والمبيعات مع حماية الحذف برمز سري
             </p>
           </div>
@@ -369,7 +369,7 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
             onClick={() => setIsAddManualLogOpen(true)}
-            className="flex-1 sm:flex-none h-9 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all"
+            className="flex-1 sm:flex-none h-9 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors"
           >
             <PlusCircle className="w-3.5 h-3.5" />
             <span>تسجيل ملاحظة</span>
@@ -378,7 +378,7 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
           <button
             onClick={() => setIsChangePasswordModalOpen(true)}
             title="تغيير رمز المرور لحماية الحذف"
-            className="h-9 px-3 rounded-xl bg-slate-50 hover:bg-blue-50 hover:text-blue-700 border border-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+            className="h-9 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/80 text-slate-700 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
           >
             <KeyRound className="w-3.5 h-3.5 text-slate-500" />
             <span className="hidden sm:inline">كلمة السر</span>
@@ -387,7 +387,7 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
           <button
             onClick={handleExportCSV}
             title="تصدير السجل كملف CSV"
-            className="h-9 px-3 rounded-xl bg-slate-50 hover:bg-blue-50 hover:text-blue-700 border border-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+            className="h-9 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/80 text-slate-700 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
           >
             <Download className="w-3.5 h-3.5 text-slate-500" />
             <span className="hidden sm:inline">تصدير CSV</span>
@@ -396,7 +396,7 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
           <button
             onClick={handlePrint}
             title="طباعة تقرير السجل"
-            className="h-9 px-3 rounded-xl bg-slate-50 hover:bg-blue-50 hover:text-blue-700 border border-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+            className="h-9 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/80 text-slate-700 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
           >
             <Printer className="w-3.5 h-3.5 text-slate-500" />
             <span className="hidden sm:inline">طباعة</span>
@@ -409,59 +409,59 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
               setPinError('');
             }}
             title="مسح السجل بالكامل (يتطلب كلمة السر)"
-            className="h-9 px-3 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95"
+            className="h-9 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
           >
-            <Trash2 className="w-3.5 h-3.5 text-red-600" />
+            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
             <span className="hidden sm:inline">تفريغ السجل</span>
           </button>
         </div>
       </div>
 
       {/* Metric Cards Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <div className="bg-white p-3.5 rounded-2xl border border-blue-100 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-            <History className="w-5 h-5" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 border border-slate-200/60 flex items-center justify-center shrink-0">
+            <History className="w-4 h-4 text-slate-700" />
           </div>
           <div>
-            <span className="text-[11px] text-slate-500 font-bold block">إجمالي السجلات</span>
-            <span className="text-lg font-black text-blue-950">{stats.total}</span>
+            <span className="text-[11px] text-slate-500 font-medium block">إجمالي السجلات</span>
+            <span className="text-base sm:text-lg font-bold text-slate-900 font-mono">{stats.total}</span>
           </div>
         </div>
 
-        <div className="bg-white p-3.5 rounded-2xl border border-blue-100 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
-            <Clock className="w-5 h-5" />
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 border border-slate-200/60 flex items-center justify-center shrink-0">
+            <Clock className="w-4 h-4 text-slate-700" />
           </div>
           <div>
-            <span className="text-[11px] text-slate-500 font-bold block">عمليات اليوم</span>
-            <span className="text-lg font-black text-emerald-700">{stats.today}</span>
+            <span className="text-[11px] text-slate-500 font-medium block">عمليات اليوم</span>
+            <span className="text-base sm:text-lg font-bold text-slate-900 font-mono">{stats.today}</span>
           </div>
         </div>
 
-        <div className="bg-white p-3.5 rounded-2xl border border-blue-100 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-            <Edit3 className="w-5 h-5" />
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 border border-slate-200/60 flex items-center justify-center shrink-0">
+            <Edit3 className="w-4 h-4 text-slate-700" />
           </div>
           <div>
-            <span className="text-[11px] text-slate-500 font-bold block">تحديثات وإضافات</span>
-            <span className="text-lg font-black text-blue-900">{stats.updates}</span>
+            <span className="text-[11px] text-slate-500 font-medium block">تحديثات وإضافات</span>
+            <span className="text-base sm:text-lg font-bold text-slate-900 font-mono">{stats.updates}</span>
           </div>
         </div>
 
-        <div className="bg-white p-3.5 rounded-2xl border border-blue-100 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 border border-red-100 flex items-center justify-center shrink-0">
-            <Lock className="w-5 h-5" />
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 border border-slate-200/60 flex items-center justify-center shrink-0">
+            <Lock className="w-4 h-4 text-slate-700" />
           </div>
           <div>
-            <span className="text-[11px] text-slate-500 font-bold block">عمليات الحذف</span>
-            <span className="text-lg font-black text-red-600">{stats.deletes}</span>
+            <span className="text-[11px] text-slate-500 font-medium block">عمليات الحذف</span>
+            <span className="text-base sm:text-lg font-bold text-slate-900 font-mono">{stats.deletes}</span>
           </div>
         </div>
       </div>
 
       {/* Filter and Search Controls Card */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-blue-100 shadow-xs space-y-3">
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
         {/* Search Bar + Quick Category Select */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
           {/* Search Input */}
@@ -472,12 +472,12 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="ابحث في السجل (العنوان، التفاصيل، كود القطعة، الزبون...)"
-              className="w-full h-10 pr-10 pl-4 bg-slate-50/70 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 placeholder-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+              className="w-full h-9 pr-9 pl-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 outline-none focus:bg-white focus:border-slate-400 transition-colors"
             />
             {searchTerm && (
               <button 
                 onClick={() => setSearchTerm('')} 
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-medium"
               >
                 مسح
               </button>
@@ -489,7 +489,7 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
             <select
               value={selectedActionType}
               onChange={(e) => setSelectedActionType(e.target.value)}
-              className="h-10 px-3 bg-slate-50/70 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-blue-500 focus:bg-white"
+              className="h-9 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-slate-400 focus:bg-white"
             >
               <option value="all">كل أنواع العمليات</option>
               <option value="create_or_update">الإضافات والتعديلات فقط</option>
@@ -502,7 +502,7 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value as any)}
-              className="h-10 px-3 bg-slate-50/70 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-blue-500 focus:bg-white"
+              className="h-9 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-slate-400 focus:bg-white"
             >
               <option value="all">كل الفترات الزمنية</option>
               <option value="today">سجلات اليوم فقط</option>
@@ -529,14 +529,14 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id as ActivityCategory)}
-              className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap text-xs transition-all shrink-0 flex items-center gap-1.5 border ${
+              className={`px-3 py-1.5 rounded-xl font-medium whitespace-nowrap text-xs transition-colors shrink-0 flex items-center gap-1.5 border ${
                 selectedCategory === cat.id
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-blue-50 hover:text-blue-700'
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-2xs font-semibold'
+                  : 'bg-slate-50 text-slate-700 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               <span>{cat.label}</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-semibold ${
                 selectedCategory === cat.id ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
               }`}>
                 {cat.count}
@@ -548,10 +548,10 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
 
       {/* Selected Items Bulk Bar */}
       {selectedLogIds.length > 0 && (
-        <div className="bg-blue-900 text-white p-3 rounded-xl flex items-center justify-between shadow-md animate-in fade-in">
+        <div className="bg-slate-900 text-white p-3 rounded-xl flex items-center justify-between shadow-md animate-in fade-in">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-blue-300" />
-            <span className="text-xs font-bold">تم تحديد {selectedLogIds.length} سجل(ات)</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span className="text-xs font-medium">تم تحديد {selectedLogIds.length} سجل(ات)</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -560,14 +560,14 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
                 setEnteredPin('');
                 setPinError('');
               }}
-              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>حذف المحدد بكلمة السر</span>
             </button>
             <button
               onClick={() => setSelectedLogIds([])}
-              className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold"
+              className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium"
             >
               إلغاء التحديد
             </button>
@@ -576,13 +576,13 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
       )}
 
       {/* Logs Table / List */}
-      <div className="bg-white rounded-2xl border border-blue-100 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         {filteredLogs.length === 0 ? (
           <div className="py-16 px-4 text-center">
-            <div className="w-14 h-14 bg-blue-50 border border-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-blue-500">
-              <History className="w-7 h-7" />
+            <div className="w-12 h-12 bg-slate-100 border border-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-400">
+              <History className="w-6 h-6 text-slate-400" />
             </div>
-            <h3 className="text-sm font-black text-blue-950 mb-1">لا توجد سجلات مطابقة لخيارات البحث</h3>
+            <h3 className="text-sm font-bold text-slate-900 mb-1">لا توجد سجلات مطابقة لخيارات البحث</h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
               تظهر هنا جميع التعديلات والإضافات المسجلة في النظام تلقائياً وبشكل دوري.
             </p>
@@ -594,8 +594,8 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
               return (
                 <div 
                   key={log.id} 
-                  className={`p-3.5 sm:p-4 hover:bg-blue-50/40 transition-colors flex items-start justify-between gap-3 ${
-                    isSelected ? 'bg-blue-50/80' : ''
+                  className={`p-3.5 sm:p-4 hover:bg-slate-50/70 transition-colors flex items-start justify-between gap-3 ${
+                    isSelected ? 'bg-slate-50' : ''
                   }`}
                 >
                   {/* Left Column: Checkbox & Category Icon */}
@@ -610,10 +610,10 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
                           setSelectedLogIds(prev => prev.filter(id => id !== log.id));
                         }
                       }}
-                      className="mt-1 w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500"
+                      className="mt-1 w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500"
                     />
 
-                    <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200/70 flex items-center justify-center shrink-0 mt-0.5">
                       {getCategoryIcon(log.category)}
                     </div>
 
@@ -621,38 +621,38 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
                     <div className="flex-1 min-w-0 space-y-1">
                       {/* Top Row: Title, Action Badge, Category Badge */}
                       <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="font-black text-xs sm:text-sm text-slate-900 tracking-tight">
+                        <h4 className="font-bold text-xs sm:text-sm text-slate-900">
                           {log.title}
                         </h4>
                         {getActionBadge(log.actionType)}
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
                           {getCategoryLabel(log.category)}
                         </span>
                         {log.amount !== undefined && log.amount > 0 && (
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200 font-mono">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200 font-mono">
                             {log.amount.toLocaleString('ar-DZ')} دج
                           </span>
                         )}
                       </div>
 
                       {/* Detailed Description */}
-                      <p className="text-xs text-slate-600 leading-relaxed break-words font-medium">
+                      <p className="text-xs text-slate-600 leading-relaxed break-words font-normal">
                         {log.details}
                       </p>
 
                       {/* Footer Info: Timestamp, Code, User */}
-                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 pt-0.5 font-medium">
+                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 pt-0.5 font-normal">
                         <span className="flex items-center gap-1 font-mono text-slate-600">
                           <Clock className="w-3 h-3 text-slate-400" />
                           {formatLogDate(log.timestamp)}
                         </span>
                         {log.itemCodeOrId && (
-                          <span className="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-[10px] text-slate-600">
+                          <span className="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-[10px] text-slate-600 border border-slate-200/60">
                             مرجع: {log.itemCodeOrId}
                           </span>
                         )}
                         <span className="text-slate-400">
-                          بواسطة: <strong className="text-slate-700">{log.performedBy || 'المسؤول'}</strong>
+                          بواسطة: <strong className="text-slate-700 font-medium">{log.performedBy || 'المسؤول'}</strong>
                         </span>
                       </div>
                     </div>
@@ -667,9 +667,9 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
                         setPinError('');
                       }}
                       title="حذف هذا السجل (يتطلب كلمة السر)"
-                      className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-red-50 hover:text-red-700 text-slate-400 hover:border-red-200 border border-transparent flex items-center justify-center transition-all active:scale-95 group"
+                      className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-400 hover:border-rose-200 border border-transparent flex items-center justify-center transition-colors"
                     >
-                      <Trash2 className="w-3.5 h-3.5 group-hover:text-red-600" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
@@ -692,19 +692,19 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
           }}
         >
           <form onSubmit={handleVerifyPinAndExecuteDelete} className="space-y-4 text-center py-2" dir="rtl">
-            <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-200 text-red-600 flex items-center justify-center mx-auto mb-1">
-              <Lock className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto mb-1">
+              <Lock className="w-5 h-5 text-rose-600" />
             </div>
 
             <div>
-              <h4 className="text-sm font-black text-slate-900 mb-1">
+              <h4 className="text-sm font-bold text-slate-900 mb-1">
                 {pendingDeleteAction.type === 'all' 
                   ? 'تأكيد مسح كافة سجلات النشاط' 
                   : pendingDeleteAction.type === 'bulk' 
                   ? `تأكيد حذف ${selectedLogIds.length} سجل(ات) محددة` 
                   : 'تأكيد حذف هذا السجل'}
               </h4>
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="text-xs text-slate-500 font-normal">
                 السجلات محمية لحفظ تاريخ العمليات، أدخل كلمة السر لتأكيد عملية الحذف:
               </p>
             </div>
@@ -720,7 +720,7 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
                   setPinError('');
                 }}
                 placeholder="أدخل كلمة السر / PIN"
-                className="w-full border-2 border-slate-200 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 rounded-xl px-4 py-3 text-center text-xl font-black outline-none tracking-widest transition-all"
+                className="w-full border border-slate-300 focus:border-slate-800 rounded-xl px-4 py-2.5 text-center text-lg font-bold font-mono outline-none tracking-widest transition-colors bg-slate-50 focus:bg-white"
               />
               <button
                 type="button"
@@ -732,7 +732,7 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
             </div>
 
             {pinError && (
-              <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs font-bold text-red-700 flex items-center justify-center gap-1.5">
+              <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs font-medium text-rose-700 flex items-center justify-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span>{pinError}</span>
               </div>
@@ -745,7 +745,7 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
             <div className="flex gap-2 pt-2">
               <button
                 type="submit"
-                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95 flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs flex items-center justify-center gap-1.5"
               >
                 <ShieldCheck className="w-4 h-4" />
                 <span>تأكيد الحذف</span>
@@ -757,7 +757,7 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
                   setEnteredPin('');
                   setPinError('');
                 }}
-                className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition-colors"
               >
                 إلغاء
               </button>
@@ -776,48 +776,48 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
           }}
         >
           <form onSubmit={handleChangePassword} className="space-y-4 py-2" dir="rtl">
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 leading-relaxed font-medium">
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 leading-relaxed font-normal">
               كلمة السر تُستخدم لحماية حذف السجلات، إظهار المبالغ المالية المحمية، وإجراء العمليات الحساسة في التطبيق.
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">كلمة السر الحالية</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">كلمة السر الحالية</label>
               <input
                 type="password"
                 value={currentPinInput}
                 onChange={(e) => setCurrentPinInput(e.target.value)}
                 placeholder="أدخل كلمة السر الحالية (الافتراضية: 9296)"
-                className="w-full h-10 px-3 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-slate-400 bg-slate-50 focus:bg-white"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">كلمة السر الجديدة</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">كلمة السر الجديدة</label>
               <input
                 type="password"
                 value={newPinInput}
                 onChange={(e) => setNewPinInput(e.target.value)}
                 placeholder="كلمة السر الجديدة (أرقام أو حروف)"
-                className="w-full h-10 px-3 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-slate-400 bg-slate-50 focus:bg-white"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">تأكيد كلمة السر الجديدة</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">تأكيد كلمة السر الجديدة</label>
               <input
                 type="password"
                 value={confirmNewPinInput}
                 onChange={(e) => setConfirmNewPinInput(e.target.value)}
                 placeholder="أعد كتابة كلمة السر الجديدة"
-                className="w-full h-10 px-3 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-slate-400 bg-slate-50 focus:bg-white"
                 required
               />
             </div>
 
             {changePinError && (
-              <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs font-bold text-red-700">
+              <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs font-medium text-rose-700">
                 {changePinError}
               </div>
             )}
@@ -825,14 +825,14 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
             <div className="flex gap-2 pt-2">
               <button
                 type="submit"
-                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
+                className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
               >
                 حفظ كلمة السر الجديدة
               </button>
               <button
                 type="button"
                 onClick={() => setIsChangePasswordModalOpen(false)}
-                className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition-colors"
               >
                 إلغاء
               </button>
@@ -849,11 +849,11 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
         >
           <form onSubmit={handleAddManualSubmit} className="space-y-4 py-2" dir="rtl">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">القسم المستهدف</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">القسم المستهدف</label>
               <select
                 value={manualCategory}
                 onChange={(e) => setManualCategory(e.target.value as ActivityCategory)}
-                className="w-full h-10 px-3 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 bg-white"
+                className="w-full h-9 px-3 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-slate-400 bg-slate-50 focus:bg-white"
               >
                 <option value="inventory">المخزون والفساتين</option>
                 <option value="rentals">الكراء والحجوزات</option>
@@ -868,11 +868,11 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">نوع العملية</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">نوع العملية</label>
               <select
                 value={manualActionType}
                 onChange={(e) => setManualActionType(e.target.value as ActivityActionType)}
-                className="w-full h-10 px-3 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 bg-white"
+                className="w-full h-9 px-3 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-slate-400 bg-slate-50 focus:bg-white"
               >
                 <option value="update">تحديث / جرد / تعديل</option>
                 <option value="create">إضافة جديدة</option>
@@ -883,39 +883,39 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">عنوان العملية أو الملاحظة *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">عنوان العملية أو الملاحظة *</label>
               <input
                 type="text"
                 value={manualTitle}
                 onChange={(e) => setManualTitle(e.target.value)}
                 placeholder="مثال: جرد يدوي لفساتين السهرة، استلام شحنة جديدة..."
-                className="w-full h-10 px-3 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-slate-400 bg-slate-50 focus:bg-white"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">التفاصيل والشرح</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">التفاصيل والشرح</label>
               <textarea
                 value={manualDetails}
                 onChange={(e) => setManualDetails(e.target.value)}
                 placeholder="اكتب التفاصيل الكاملة للإجراء..."
                 rows={3}
-                className="w-full p-3 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500"
+                className="w-full p-3 border border-slate-200 rounded-xl text-xs font-normal outline-none focus:border-slate-400 bg-slate-50 focus:bg-white"
               />
             </div>
 
             <div className="flex gap-2 pt-2">
               <button
                 type="submit"
-                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
+                className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
               >
                 حفظ في السجل
               </button>
               <button
                 type="button"
                 onClick={() => setIsAddManualLogOpen(false)}
-                className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition-colors"
               >
                 إلغاء
               </button>

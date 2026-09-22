@@ -389,16 +389,16 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
   if (!isUnlocked) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-4" dir="rtl">
-        <div className="bg-white rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-xl border border-blue-100 text-center animate-in fade-in zoom-in-95 duration-200">
-          <div className="w-16 h-16 rounded-3xl bg-blue-50 border-2 border-blue-200 text-blue-600 mx-auto flex items-center justify-center mb-4 shadow-sm">
-            <Lock className="w-8 h-8 text-blue-600" />
+        <div className="bg-white rounded-2xl w-full max-w-sm p-6 sm:p-7 shadow-xl border border-slate-200/80 text-center animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700 mx-auto flex items-center justify-center mb-4 shadow-2xs">
+            <Lock className="w-6 h-6 text-slate-800" />
           </div>
 
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 mb-1.5">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-1.5">
             الصندوق محمي بكلمة المرور
           </h2>
-          <p className="text-xs text-slate-500 font-medium mb-6 leading-relaxed">
-            الرجاء إدخال رمز المرور أو كلمة السر الخاصة بالمسؤول للوصول إلى حسابات، إقفال، وسجل الصندوق
+          <p className="text-xs text-slate-500 font-normal mb-5 leading-relaxed">
+            الرجاء إدخال رمز المرور أو كلمة السر الخاصة بالمسؤول للوصول إلى حسابات وإقفال الصندوق
           </p>
 
           <form 
@@ -426,35 +426,35 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 }}
                 placeholder="••••"
                 maxLength={8}
-                className={`w-full bg-slate-50 border-2 rounded-2xl px-4 py-3.5 text-center text-2xl font-black tracking-widest text-slate-900 outline-none transition-all ${
+                className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-center text-xl font-bold font-mono tracking-widest text-slate-900 outline-none transition-all ${
                   pinError
-                    ? 'border-red-500 bg-red-50/30 ring-2 ring-red-500/20'
-                    : 'border-blue-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/15'
+                    ? 'border-rose-400 bg-rose-50/40 ring-2 ring-rose-500/20'
+                    : 'border-slate-200 focus:border-slate-400 focus:bg-white'
                 }`}
               />
               <button
                 type="button"
                 onClick={() => setShowPin(!showPin)}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 transition-colors"
               >
                 {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
 
             {pinError && (
-              <p className="text-xs text-red-600 font-bold animate-in fade-in">
-                ⚠️ رمز المرور غير صحيح، يرجى المحاولة مجدداً
+              <p className="text-xs text-rose-600 font-medium animate-in fade-in">
+                رمز المرور غير صحيح، يرجى المحاولة مجدداً
               </p>
             )}
 
             {/* Quick numeric touch keypad */}
-            <div className="grid grid-cols-3 gap-2 pt-1">
+            <div className="grid grid-cols-3 gap-1.5 pt-1">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(num => (
                 <button
                   key={num}
                   type="button"
                   onClick={() => handleKeypad(num)}
-                  className="py-3 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 active:bg-blue-100 border border-slate-200 rounded-2xl font-black text-lg text-slate-800 transition-all active:scale-95 shadow-2xs"
+                  className="py-2.5 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 border border-slate-200/80 rounded-xl font-bold text-base text-slate-800 transition-colors shadow-2xs"
                 >
                   {num}
                 </button>
@@ -462,32 +462,32 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
               <button
                 type="button"
                 onClick={() => handleKeypad('clear')}
-                className="py-3 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-600 rounded-2xl font-bold text-xs transition-all active:scale-95"
+                className="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-medium text-xs transition-colors"
               >
                 مسح C
               </button>
               <button
                 type="button"
                 onClick={() => handleKeypad('0')}
-                className="py-3 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 active:bg-blue-100 border border-slate-200 rounded-2xl font-black text-lg text-slate-800 transition-all active:scale-95 shadow-2xs"
+                className="py-2.5 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 border border-slate-200/80 rounded-xl font-bold text-base text-slate-800 transition-colors shadow-2xs"
               >
                 0
               </button>
               <button
                 type="button"
                 onClick={() => handleKeypad('backspace')}
-                className="py-3 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-600 rounded-2xl font-bold text-xs transition-all active:scale-95"
+                className="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-medium text-xs transition-colors"
               >
-                ⌫ حذف
+                ⌫
               </button>
             </div>
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-2xl font-black text-sm shadow-md shadow-blue-200 transition-all flex items-center justify-center gap-2 min-h-[44px]"
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs shadow-xs transition-colors flex items-center justify-center gap-2"
             >
               <Unlock className="w-4 h-4" />
-              <span>فتح قسم الصندوق 🔓</span>
+              <span>فتح قسم الصندوق</span>
             </button>
           </form>
         </div>
@@ -496,16 +496,16 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-3 sm:p-6" dir="rtl">
+    <div className="space-y-4 sm:space-y-5 p-3 sm:p-6" dir="rtl">
       {/* Top Header Card */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <span className="w-10 h-10 bg-blue-50 text-blue-900 rounded-xl flex items-center justify-center text-lg font-bold border border-blue-100">
-              <Scale className="w-5 h-5 text-blue-900" />
+            <span className="w-9 h-9 bg-slate-100 text-slate-800 rounded-xl flex items-center justify-center text-base font-bold border border-slate-200/70">
+              <Scale className="w-4 h-4 text-slate-800" />
             </span>
             <div>
-              <h2 className="text-base sm:text-xl font-bold text-blue-600">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900">
                 صندوق اليومية ومتابعة العجز (La Caisse Journalière)
               </h2>
               <p className="text-xs font-normal text-slate-500 mt-0.5">
@@ -517,19 +517,19 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
 
         {/* View Tabs & Privacy Toggle & Lock Button */}
         <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end flex-wrap">
-          <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
+          <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-medium border border-slate-200/60">
             <button
               onClick={() => setViewTab('today')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                viewTab === 'today' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1.5 rounded-lg transition-colors ${
+                viewTab === 'today' ? 'bg-white text-slate-900 font-bold shadow-2xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               صندوق اليوم ({selectedDate === today ? 'اليوم' : selectedDate})
             </button>
             <button
               onClick={() => setViewTab('history')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                viewTab === 'history' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1.5 rounded-lg transition-colors ${
+                viewTab === 'history' ? 'bg-white text-slate-900 font-bold shadow-2xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               سجل الإقفالات ({caisseClosures.length})
@@ -539,16 +539,16 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
           <button
             onClick={onPrivacyToggle}
             title="إخفاء/إظهار المبالغ"
-            className="h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all border border-slate-200/60"
+            className="h-9 px-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center gap-1.5 transition-colors border border-slate-200/80 shadow-2xs"
           >
-            {hideFinances ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            {hideFinances ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
             <span>{hideFinances ? 'إظهار' : 'إخفاء'}</span>
           </button>
 
           <button
             onClick={handleLockCaisse}
             title="قفل الصندوق بكلمة المرور"
-            className="h-9 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold flex items-center gap-1.5 transition-all border border-blue-200 shadow-2xs"
+            className="h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium flex items-center gap-1.5 transition-colors border border-slate-200"
           >
             <Lock className="w-3.5 h-3.5" />
             <span>قفل الصندوق</span>
@@ -560,17 +560,17 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       {viewTab === 'today' && (
         <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/80 flex flex-wrap items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-slate-600">اختر تاريخ الصندوق:</span>
+            <span className="text-xs font-medium text-slate-600">تاريخ الصندوق:</span>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:outline-slate-800"
+              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 font-mono focus:bg-white focus:border-slate-400 focus:outline-none"
             />
             {selectedDate !== today && (
               <button
                 onClick={() => setSelectedDate(today)}
-                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg border border-slate-200 transition-all"
+                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg border border-slate-200 transition-colors"
               >
                 العودة لليوم
               </button>
@@ -580,13 +580,13 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
           {/* Status Badge */}
           <div>
             {existingClosure ? (
-              <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-800 border border-blue-200 px-3 py-1 rounded-full text-xs font-bold">
+              <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200/80 px-3 py-1 rounded-full text-xs font-medium">
                 <span className="w-2 h-2 rounded-full bg-blue-600" />
                 تم إقفال صندوق هذا اليوم (حفظ في: {new Date(existingClosure.closedAt).toLocaleTimeString('fr-DZ', { hour: '2-digit', minute: '2-digit' })})
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-800 border border-slate-200 px-3 py-1 rounded-full text-xs font-bold">
-                <span className="w-2 h-2 rounded-full bg-slate-500" />
+              <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 border border-slate-200 px-3 py-1 rounded-full text-xs font-medium">
+                <span className="w-2 h-2 rounded-full bg-slate-400" />
                 الصندوق قيد الاحتساب (لم يتم حفظ الإقفال بعد)
               </span>
             )}
@@ -597,14 +597,14 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       {/* 4 PRIMARY KPI CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* 1. MADKHOUL TE3 LA JOURNEE (مدخول اليوم) */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden transition-all">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden transition-all">
           <div className="flex justify-between items-start">
             <span className="text-xs font-medium text-slate-500">إجمالي مدخول اليوم (المقبوضات)</span>
             <span className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-sm border border-slate-200/60">
               <Coins className="w-4 h-4 text-slate-700" />
             </span>
           </div>
-          <div className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 font-mono">
+          <div className="mt-2 text-2xl font-bold text-slate-900 font-mono">
             {hideFinances ? '••••••' : `${totalDailyInflow.toLocaleString()} دج`}
           </div>
           <div className="mt-2 text-[11px] font-medium text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
@@ -615,17 +615,17 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
         </div>
 
         {/* 2. MANQUE TE3 LA CAISSE FI NHAR (فارق وعجز اليوم) */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden transition-all">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden transition-all">
           <div className="flex justify-between items-start">
             <div>
               <span className="text-xs font-medium text-slate-700">فارق صندوق اليوم (Fi Nhar)</span>
               <div className="text-[10px] text-slate-400">المحسوب فعلياً - المتوقع نظرياً</div>
             </div>
-            <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-900 flex items-center justify-center text-sm border border-blue-100">
+            <span className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-sm border border-slate-200/60">
               {dailyDifference < 0 ? (
-                <TrendingDown className="w-4 h-4 text-blue-900" />
+                <TrendingDown className="w-4 h-4 text-rose-600" />
               ) : dailyDifference > 0 ? (
-                <TrendingUp className="w-4 h-4 text-blue-600" />
+                <TrendingUp className="w-4 h-4 text-emerald-600" />
               ) : (
                 <Check className="w-4 h-4 text-blue-600" />
               )}
@@ -633,12 +633,12 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
           </div>
           <div className="mt-2">
             {!hasEnteredActual && !existingClosure ? (
-              <div className="text-xs font-medium text-slate-400 py-1.5">
+              <div className="text-xs font-medium text-slate-400 py-1">
                 أدخل المبلغ الفعلي في الدرج لاحتساب الفارق
               </div>
             ) : (
-              <div className={`text-2xl sm:text-3xl font-black font-mono ${
-                dailyDifference < 0 ? 'text-black' : 'text-blue-900'
+              <div className={`text-2xl font-bold font-mono ${
+                dailyDifference < 0 ? 'text-rose-600' : dailyDifference > 0 ? 'text-emerald-600' : 'text-slate-900'
               }`}>
                 {hideFinances ? '••••••' : (
                   dailyDifference > 0 ? `+${dailyDifference.toLocaleString()} دج` : `${dailyDifference.toLocaleString()} دج`
@@ -646,20 +646,20 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
               </div>
             )}
           </div>
-          <div className="mt-2 text-[11px] font-medium flex items-center justify-between border-t border-blue-50 pt-2">
+          <div className="mt-2 text-[11px] font-medium flex items-center justify-between border-t border-slate-100 pt-2">
             {dailyDifference < 0 ? (
-              <span className="text-black font-bold">عجز في الصندوق (Manque)</span>
+              <span className="text-rose-600 font-semibold">عجز في الصندوق (Manque)</span>
             ) : dailyDifference > 0 ? (
-              <span className="text-blue-700 font-bold">فائض في الصندوق (Excédent)</span>
+              <span className="text-emerald-600 font-semibold">فائض في الصندوق (Excédent)</span>
             ) : (
-              <span className="text-blue-700 font-bold">الصندوق مطابق (Conforme)</span>
+              <span className="text-slate-600 font-medium">الصندوق مطابق (Conforme)</span>
             )}
-            <span className="text-slate-400">{selectedDate.substring(5)}</span>
+            <span className="text-slate-400 font-mono text-[10px]">{selectedDate.substring(5)}</span>
           </div>
         </div>
 
         {/* 3. MANQUE TE3 LA CAISSE FI CHHAR (فارق وعجز الشهر) */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden transition-all">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden transition-all">
           <div className="flex justify-between items-start">
             <div>
               <span className="text-xs font-medium text-slate-700">فارق الصندوق للشهر (Fi Chhar)</span>
@@ -669,9 +669,9 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
               <BarChart2 className="w-4 h-4 text-slate-700" />
             </span>
           </div>
-          <div className="mt-2 text-2xl sm:text-3xl font-black font-mono">
+          <div className="mt-2 text-2xl font-bold font-mono">
             {hideFinances ? '••••••' : (
-              <span className={monthStats.totalDiff < 0 ? 'text-black' : 'text-blue-900'}>
+              <span className={monthStats.totalDiff < 0 ? 'text-rose-600' : monthStats.totalDiff > 0 ? 'text-emerald-600' : 'text-slate-900'}>
                 {monthStats.totalDiff > 0 ? `+${monthStats.totalDiff.toLocaleString()} دج` : `${monthStats.totalDiff.toLocaleString()} دج`}
               </span>
             )}
@@ -680,14 +680,14 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
             <span>
               {monthStats.totalDiff < 0 ? 'عجز الشهر' : monthStats.totalDiff > 0 ? 'فائض الشهر' : 'مطابق شهرياً'}
             </span>
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[10px] text-slate-400 font-mono">
               فعلي: {hideFinances ? '••' : monthStats.totalActual.toLocaleString()}
             </span>
           </div>
         </div>
 
         {/* 4. MANQUE TE3 LA CAISSE FI L3AM (فارق وعجز السنة) */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden transition-all">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden transition-all">
           <div className="flex justify-between items-start">
             <div>
               <span className="text-xs font-medium text-slate-700">فارق الصندوق للسنة (Fi L3am)</span>
@@ -697,9 +697,9 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
               <Calendar className="w-4 h-4 text-slate-700" />
             </span>
           </div>
-          <div className="mt-2 text-2xl sm:text-3xl font-black font-mono">
+          <div className="mt-2 text-2xl font-bold font-mono">
             {hideFinances ? '••••••' : (
-              <span className={yearStats.totalDiff < 0 ? 'text-black' : 'text-blue-900'}>
+              <span className={yearStats.totalDiff < 0 ? 'text-rose-600' : yearStats.totalDiff > 0 ? 'text-emerald-600' : 'text-slate-900'}>
                 {yearStats.totalDiff > 0 ? `+${yearStats.totalDiff.toLocaleString()} دج` : `${yearStats.totalDiff.toLocaleString()} دج`}
               </span>
             )}
@@ -708,7 +708,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
             <span>
               {yearStats.totalDiff < 0 ? 'عجز السنة' : yearStats.totalDiff > 0 ? 'فائض السنة' : 'مطابق سنوياً'}
             </span>
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[10px] text-slate-400 font-mono">
               فعلي: {hideFinances ? '••' : yearStats.totalActual.toLocaleString()}
             </span>
           </div>
@@ -719,43 +719,43 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       {/* MAIN CONTENT: VIEW TAB 1 = TODAY'S CAISSE            */}
       {/* ==================================================== */}
       {viewTab === 'today' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
           {/* LEFT/RIGHT COLUMN: CASH INPUT & DENOMINATIONS (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
-            <form onSubmit={handleSaveCaisse} className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-              <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                <h3 className="font-black text-base text-slate-900 flex items-center gap-2">
+            <form onSubmit={handleSaveCaisse} className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+              <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
+                <h3 className="font-bold text-sm sm:text-base text-slate-900 flex items-center gap-2">
                   <Banknote className="w-4 h-4 text-slate-700" />
                   <span>تسجيل المبلغ الفعلي في الدرج</span>
                 </h3>
-                <span className="text-xs font-bold text-black bg-blue-50 px-2 py-0.5 rounded-lg">
-                  (nmarkilha wech kayen)
+                <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60 font-mono">
+                  (Comptage)
                 </span>
               </div>
 
               {/* Theoretical Summary Box */}
-              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-xs space-y-1.5">
-                <div className="flex justify-between text-slate-600">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-xs space-y-1.5">
+                <div className="flex justify-between text-slate-600 font-medium">
                   <span>رصيد بداية اليوم (فوند دو كيس):</span>
-                  <span className="font-mono font-bold">{openingBalance.toLocaleString()} دج</span>
+                  <span className="font-mono font-semibold text-slate-800">{openingBalance.toLocaleString()} دج</span>
                 </div>
-                <div className="flex justify-between text-blue-700">
+                <div className="flex justify-between text-slate-700">
                   <span>+ إجمالي المداخيل اليومية:</span>
-                  <span className="font-mono font-bold">+{totalDailyInflow.toLocaleString()} دج</span>
+                  <span className="font-mono font-bold text-slate-900">+{totalDailyInflow.toLocaleString()} دج</span>
                 </div>
-                <div className="flex justify-between text-blue-900">
+                <div className="flex justify-between text-slate-700">
                   <span>- إجمالي المصاريف المسددة:</span>
-                  <span className="font-mono font-bold">-{totalDailyOutflow.toLocaleString()} دج</span>
+                  <span className="font-mono font-bold text-rose-600">-{totalDailyOutflow.toLocaleString()} دج</span>
                 </div>
-                <div className="flex justify-between pt-2 border-t border-slate-200 font-black text-slate-900 text-sm">
+                <div className="flex justify-between pt-2 border-t border-slate-200/80 font-bold text-slate-900 text-xs sm:text-sm">
                   <span>المبلغ النظري المتوقع في الصندوق:</span>
-                  <span className="font-mono text-blue-700">{theoreticalAmount.toLocaleString()} دج</span>
+                  <span className="font-mono font-bold text-slate-900">{theoreticalAmount.toLocaleString()} دج</span>
                 </div>
               </div>
 
               {/* Opening Balance Field (Optional) */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   رصيد بداية اليوم الافتتاحي (Fond de caisse) - اختياري:
                 </label>
                 <div className="relative">
@@ -766,24 +766,24 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                     placeholder="0"
                     value={openingBalance || ''}
                     onChange={(e) => setOpeningBalance(Number(e.target.value) || 0)}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:outline-blue-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold font-mono text-slate-900 focus:bg-white focus:border-slate-400 focus:outline-none"
                   />
-                  <span className="absolute left-3 top-2 text-xs font-bold text-slate-400">دج</span>
+                  <span className="absolute left-3 top-2 text-xs font-medium text-slate-400">دج</span>
                 </div>
               </div>
 
               {/* PRIMARY ACTUAL CASH INPUT */}
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-black text-slate-900">
+                  <label className="text-xs font-bold text-slate-900">
                     المبلغ الفعلي الموجود حالياً في الصندوق (Compté en espèces) *:
                   </label>
                   <button
                     type="button"
                     onClick={() => setShowDenominations(!showDenominations)}
-                    className="text-xs font-medium text-slate-600 hover:text-slate-900 flex items-center gap-1"
+                    className="text-xs font-medium text-slate-600 hover:text-slate-900 flex items-center gap-1 transition-colors"
                   >
-                    <Calculator className="w-3.5 h-3.5" />
+                    <Calculator className="w-3.5 h-3.5 text-slate-500" />
                     <span>{showDenominations ? 'إخفاء العداد' : 'حساب بالفئات النقدية'}</span>
                   </button>
                 </div>
@@ -796,21 +796,21 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                     placeholder="أدخل المبلغ المحسوب في الدرج..."
                     value={actualInput}
                     onChange={(e) => setActualInput(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-300 focus:border-slate-800 rounded-xl text-base sm:text-lg font-bold font-mono text-slate-900 focus:bg-white focus:outline-hidden transition-all"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-slate-800 rounded-xl text-base font-bold font-mono text-slate-900 focus:bg-white focus:outline-none transition-colors"
                   />
-                  <span className="absolute left-4 top-3.5 text-xs font-bold text-slate-400">دج</span>
+                  <span className="absolute left-4 top-2.5 text-xs font-medium text-slate-400">دج</span>
                 </div>
                 {hasEnteredActual && (
                   <div className="mt-1 text-xs text-slate-500 font-medium">
-                    المبلغ: {actualAmount.toLocaleString()} دج
+                    المبلغ: <span className="font-mono font-bold text-slate-800">{actualAmount.toLocaleString()} دج</span>
                   </div>
                 )}
               </div>
 
               {/* Denomination Counter Drawer */}
               {showDenominations && (
-                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
-                  <div className="flex justify-between items-center text-xs font-bold text-slate-800 pb-1 border-b border-slate-200">
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2.5">
+                  <div className="flex justify-between items-center text-xs font-semibold text-slate-800 pb-1 border-b border-slate-200/80">
                     <span>عداد الفئات النقدية (دج):</span>
                     <button
                       type="button"
@@ -818,7 +818,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                         setCounts({ '2000': 0, '1000': 0, '500': 0, '200': 0, '100': 0, '50': 0, '20': 0, '10': 0, 'coins': 0 });
                         setActualInput('0');
                       }}
-                      className="text-[10px] text-blue-500 hover:text-black font-medium"
+                      className="text-[10px] text-slate-500 hover:text-slate-900 font-medium transition-colors"
                     >
                       تصفير العداد
                     </button>
@@ -833,29 +833,29 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                       { key: '100', label: '100 دج' },
                       { key: '50', label: '50 دج' },
                     ].map(item => (
-                      <div key={item.key} className="bg-white p-2 rounded-lg border border-slate-200 flex items-center justify-between">
-                        <span className="font-medium text-slate-700">{item.label}:</span>
+                      <div key={item.key} className="bg-white p-2 rounded-lg border border-slate-200/80 flex items-center justify-between">
+                        <span className="font-medium text-slate-700 text-xs">{item.label}:</span>
                         <input
                           type="number"
                           min="0"
                           value={counts[item.key] || ''}
                           placeholder="0"
                           onChange={(e) => handleCountChange(item.key, Number(e.target.value))}
-                          className="w-16 px-1.5 py-0.5 text-center font-bold bg-slate-50 border border-slate-200 rounded-md text-xs"
+                          className="w-16 px-1.5 py-0.5 text-center font-bold font-mono bg-slate-50 border border-slate-200 rounded-md text-xs focus:bg-white focus:outline-none"
                         />
                       </div>
                     ))}
                   </div>
 
-                  <div className="bg-white p-2 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
-                    <span className="font-medium text-slate-700">قطع وصرف أخرى (دج):</span>
+                  <div className="bg-white p-2 rounded-lg border border-slate-200/80 flex items-center justify-between text-xs">
+                    <span className="font-medium text-slate-700 text-xs">قطع وصرف أخرى (دج):</span>
                     <input
                       type="number"
                       min="0"
                       value={counts['coins'] || ''}
                       placeholder="0 دج"
                       onChange={(e) => handleCountChange('coins', Number(e.target.value))}
-                      className="w-24 px-2 py-0.5 text-center font-bold bg-slate-50 border border-slate-200 rounded-md text-xs"
+                      className="w-24 px-2 py-0.5 text-center font-bold font-mono bg-slate-50 border border-slate-200 rounded-md text-xs focus:bg-white focus:outline-none"
                     />
                   </div>
                 </div>
@@ -863,18 +863,18 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
 
               {/* LIVE DISCREPANCY PREVIEW BOX */}
               {hasEnteredActual && (
-                <div className="p-3.5 rounded-xl border border-slate-200 text-center bg-slate-50">
+                <div className="p-3 rounded-xl border border-slate-200 text-center bg-slate-50">
                   <div className="text-xs font-medium text-slate-600">
                     {dailyDifference < 0 ? 'عجز مسجل في الصندوق (Manque):' :
                      dailyDifference > 0 ? 'فائض مسجل في الصندوق (Excédent):' :
                      'الصندوق مطابق تماماً للحسابات:'}
                   </div>
-                  <div className={`text-2xl font-black font-mono mt-1 ${
-                    dailyDifference < 0 ? 'text-black' : 'text-blue-900'
+                  <div className={`text-xl font-bold font-mono mt-0.5 ${
+                    dailyDifference < 0 ? 'text-rose-600' : dailyDifference > 0 ? 'text-emerald-600' : 'text-slate-900'
                   }`}>
                     {dailyDifference > 0 ? `+${dailyDifference.toLocaleString()} دج` : `${dailyDifference.toLocaleString()} دج`}
                   </div>
-                  <div className="text-[11px] font-normal mt-1 text-slate-500">
+                  <div className="text-[10px] font-normal mt-0.5 text-slate-500 font-mono">
                     (الفعلي: {actualAmount.toLocaleString()} دج | المتوقع: {theoreticalAmount.toLocaleString()} دج)
                   </div>
                 </div>
@@ -882,7 +882,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
 
               {/* Notes Field */}
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   ملاحظات أو تبرير الفارق (اختياري):
                 </label>
                 <textarea
@@ -890,7 +890,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                   placeholder="مثال: عجز بسبب صرف قطعة 500 دج، سلفية مؤقتة، زبون دفع كاش لاحقاً..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-slate-800"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:border-slate-400 focus:outline-none"
                 />
               </div>
 
@@ -898,7 +898,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
               <div className="pt-2 flex flex-col gap-2">
                 <button
                   type="submit"
-                  className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white rounded-xl font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2"
+                  className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition-colors shadow-xs flex items-center justify-center gap-2"
                 >
                   <Save className="w-4 h-4" />
                   <span>{existingClosure ? 'تحديث إقفال الصندوق لليوم' : 'حفظ وإقفال صندوق اليوم (Clôturer)'}</span>
@@ -908,9 +908,9 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                   <button
                     type="button"
                     onClick={() => setSelectedClosureForReceipt(existingClosure)}
-                    className="w-full py-2 px-4 bg-slate-100 hover:bg-slate-200 active:scale-98 text-slate-700 rounded-xl font-medium text-xs transition-all flex items-center justify-center gap-1.5 border border-slate-200/70"
+                    className="w-full py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium text-xs transition-colors flex items-center justify-center gap-1.5 border border-slate-200/70"
                   >
-                    <Printer className="w-4 h-4" />
+                    <Printer className="w-4 h-4 text-slate-600" />
                     <span>معاينة وطباعة وصل إقفال هذا اليوم</span>
                   </button>
                 )}
@@ -921,67 +921,67 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
           {/* RIGHT/LEFT COLUMN: DETAILED BREAKDOWN OF TODAY'S TRANSACTIONS (7 cols) */}
           <div className="lg:col-span-7 space-y-4">
             {/* Daily Cash Breakdown Cards */}
-            <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-              <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                <h3 className="font-black text-base text-slate-900 flex items-center gap-2">
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+              <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
+                <h3 className="font-bold text-sm sm:text-base text-slate-900 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-slate-700" />
                   <span>تفاصيل حركة الصندوق ليوم ({selectedDate})</span>
                 </h3>
-                <span className="text-xs font-bold text-slate-500 font-mono">
-                  {dateSales.length + dateRentals.length + dateTailoring.length} عمليات دخل | {dateExpenses.length + dateStaffPayouts.length} عمليات خرج
+                <span className="text-xs font-medium text-slate-500 font-mono">
+                  {dateSales.length + dateRentals.length + dateTailoring.length} مقبوضات | {dateExpenses.length + dateStaffPayouts.length} مدفوعات
                 </span>
               </div>
 
               {/* Inflow Section */}
               <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs font-black text-blue-800 bg-blue-50/80 px-3 py-1.5 rounded-xl border border-blue-100">
-                  <span className="flex items-center gap-1">
-                    <ArrowDownLeft className="w-4 h-4 text-blue-700" />
+                <div className="flex justify-between items-center text-xs font-bold text-slate-800 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200/70">
+                  <span className="flex items-center gap-1.5">
+                    <ArrowDownLeft className="w-4 h-4 text-emerald-600" />
                     <span>المداخيل والمقبوضات النقدية (Entrées):</span>
                   </span>
-                  <span className="font-mono text-sm">+{totalDailyInflow.toLocaleString()} دج</span>
+                  <span className="font-mono text-xs font-bold text-slate-900">+{totalDailyInflow.toLocaleString()} دج</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
-                    <div className="text-slate-500 font-bold">مبيعات كاش:</div>
-                    <div className="font-black text-slate-900 font-mono text-sm mt-0.5">
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-xs">
+                    <div className="text-slate-500 font-medium">مبيعات كاش:</div>
+                    <div className="font-bold text-slate-900 font-mono text-sm mt-0.5">
                       {dateSalesIncome.toLocaleString()} دج
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-1">{dateSales.length} عملية بيع</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">{dateSales.length} عملية بيع</div>
                   </div>
 
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
-                    <div className="text-slate-500 font-bold">مقبوضات كراء:</div>
-                    <div className="font-black text-slate-900 font-mono text-sm mt-0.5">
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-xs">
+                    <div className="text-slate-500 font-medium">مقبوضات كراء:</div>
+                    <div className="font-bold text-slate-900 font-mono text-sm mt-0.5">
                       {dateRentalsIncome.toLocaleString()} دج
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-1">{dateRentals.length} صفقة كراء</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">{dateRentals.length} صفقة كراء</div>
                   </div>
 
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
-                    <div className="text-slate-500 font-bold">مقبوضات خياطة:</div>
-                    <div className="font-black text-slate-900 font-mono text-sm mt-0.5">
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-xs">
+                    <div className="text-slate-500 font-medium">مقبوضات خياطة:</div>
+                    <div className="font-bold text-slate-900 font-mono text-sm mt-0.5">
                       {dateTailoringIncome.toLocaleString()} دج
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-1">{dateTailoring.length} طلب خياطة</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">{dateTailoring.length} طلب خياطة</div>
                   </div>
                 </div>
 
                 {/* List of Today's Sales */}
                 {dateSales.length > 0 && (
-                  <div className="border border-slate-100 rounded-xl overflow-hidden text-xs">
-                    <div className="bg-slate-100/70 px-3 py-1 font-bold text-slate-700 text-[11px]">
+                  <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
+                    <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px]">
                       قائمة مبيعات اليوم النقدية:
                     </div>
                     <div className="divide-y divide-slate-100 max-h-36 overflow-y-auto">
                       {dateSales.map(s => (
-                        <div key={s.id} className="p-2 flex justify-between items-center hover:bg-slate-50">
+                        <div key={s.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors">
                           <div>
-                            <span className="font-bold text-slate-800">{s.customerName || 'زبون عام'}</span>
-                            <span className="text-[10px] text-slate-500 mr-2">({s.items.length} قطع)</span>
+                            <span className="font-semibold text-slate-800">{s.customerName || 'زبون عام'}</span>
+                            <span className="text-[10px] text-slate-400 mr-2">({s.items.length} قطع)</span>
                           </div>
-                          <span className="font-mono font-bold text-blue-700">
+                          <span className="font-mono font-bold text-slate-900">
                             +{(s.paidAmount !== undefined ? s.paidAmount : s.totalAmount).toLocaleString()} دج
                           </span>
                         </div>
@@ -992,18 +992,18 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
 
                 {/* List of Today's Rentals */}
                 {dateRentals.length > 0 && (
-                  <div className="border border-slate-100 rounded-xl overflow-hidden text-xs">
-                    <div className="bg-slate-100/70 px-3 py-1 font-bold text-slate-700 text-[11px]">
+                  <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
+                    <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px]">
                       قائمة كراء اليوم النقدية:
                     </div>
                     <div className="divide-y divide-slate-100 max-h-36 overflow-y-auto">
                       {dateRentals.map(r => (
-                        <div key={r.id} className="p-2 flex justify-between items-center hover:bg-slate-50">
+                        <div key={r.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors">
                           <div>
-                            <span className="font-bold text-slate-800">{r.customerName}</span>
-                            <span className="text-[10px] text-slate-500 mr-2">({r.itemName})</span>
+                            <span className="font-semibold text-slate-800">{r.customerName}</span>
+                            <span className="text-[10px] text-slate-400 mr-2">({r.itemName})</span>
                           </div>
-                          <span className="font-mono font-bold text-blue-700">
+                          <span className="font-mono font-bold text-slate-900">
                             +{(r.paidAmount || 0).toLocaleString()} دج
                           </span>
                         </div>
@@ -1015,46 +1015,46 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
 
               {/* Outflow Section */}
               <div className="space-y-2 pt-2 border-t border-slate-100">
-                <div className="flex justify-between items-center text-xs font-black text-black bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100">
-                  <span className="flex items-center gap-1">
-                    <ArrowUpRight className="w-4 h-4 text-black" />
+                <div className="flex justify-between items-center text-xs font-bold text-slate-800 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200/70">
+                  <span className="flex items-center gap-1.5">
+                    <ArrowUpRight className="w-4 h-4 text-rose-600" />
                     <span>المصاريف والخوارج النقدية (Sorties):</span>
                   </span>
-                  <span className="font-mono text-sm">-{totalDailyOutflow.toLocaleString()} دج</span>
+                  <span className="font-mono text-xs font-bold text-rose-600">-{totalDailyOutflow.toLocaleString()} دج</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div className="bg-white p-2.5 rounded-xl border border-blue-100 text-xs">
-                    <div className="text-blue-500 font-bold">مصاريف المحل اليومية:</div>
-                    <div className="font-black text-black font-mono text-sm mt-0.5">
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 text-xs">
+                    <div className="text-slate-500 font-medium">مصاريف المحل اليومية:</div>
+                    <div className="font-bold text-rose-600 font-mono text-sm mt-0.5">
                       -{dateExpensesPaid.toLocaleString()} دج
                     </div>
-                    <div className="text-[10px] text-blue-300 mt-1">{dateExpenses.length} سند صرف</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">{dateExpenses.length} سند صرف</div>
                   </div>
 
-                  <div className="bg-white p-2.5 rounded-xl border border-blue-100 text-xs">
-                    <div className="text-blue-500 font-bold">أجور وسلفيات العمال:</div>
-                    <div className="font-black text-black font-mono text-sm mt-0.5">
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 text-xs">
+                    <div className="text-slate-500 font-medium">أجور وسلفيات العمال:</div>
+                    <div className="font-bold text-rose-600 font-mono text-sm mt-0.5">
                       -{dateStaffPayoutsPaid.toLocaleString()} دج
                     </div>
-                    <div className="text-[10px] text-blue-300 mt-1">{dateStaffPayouts.length} دفعة عمال</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">{dateStaffPayouts.length} دفعة عمال</div>
                   </div>
                 </div>
 
                 {/* List of Today's Expenses */}
                 {dateExpenses.length > 0 && (
-                  <div className="border border-slate-100 rounded-xl overflow-hidden text-xs">
-                    <div className="bg-slate-100/70 px-3 py-1 font-bold text-slate-700 text-[11px]">
+                  <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
+                    <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px]">
                       تفاصيل مصاريف اليوم:
                     </div>
                     <div className="divide-y divide-slate-100 max-h-36 overflow-y-auto">
                       {dateExpenses.map(e => (
-                        <div key={e.id} className="p-2 flex justify-between items-center hover:bg-slate-50">
+                        <div key={e.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors">
                           <div>
-                            <span className="font-bold text-slate-800">{e.desc || e.category}</span>
-                            <span className="text-[10px] text-slate-500 mr-2">[{e.category}]</span>
+                            <span className="font-semibold text-slate-800">{e.desc || e.category}</span>
+                            <span className="text-[10px] text-slate-400 mr-2">[{e.category}]</span>
                           </div>
-                          <span className="font-mono font-bold text-black">
+                          <span className="font-mono font-bold text-rose-600">
                             -{Number(e.amount).toLocaleString()} دج
                           </span>
                         </div>
@@ -1065,18 +1065,18 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
 
                 {/* List of Today's Staff Payouts */}
                 {dateStaffPayouts.length > 0 && (
-                  <div className="border border-slate-100 rounded-xl overflow-hidden text-xs">
-                    <div className="bg-slate-100/70 px-3 py-1 font-bold text-slate-700 text-[11px]">
+                  <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
+                    <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px]">
                       دفعات العمال المسددة اليوم:
                     </div>
                     <div className="divide-y divide-slate-100 max-h-36 overflow-y-auto">
                       {dateStaffPayouts.map(p => (
-                        <div key={p.id} className="p-2 flex justify-between items-center hover:bg-slate-50">
+                        <div key={p.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors">
                           <div>
-                            <span className="font-bold text-slate-800">{p.name}</span>
-                            <span className="text-[10px] text-slate-500 mr-2">({p.type})</span>
+                            <span className="font-semibold text-slate-800">{p.name}</span>
+                            <span className="text-[10px] text-slate-400 mr-2">({p.type})</span>
                           </div>
-                          <span className="font-mono font-bold text-black">
+                          <span className="font-mono font-bold text-rose-600">
                             -{Number(p.amount).toLocaleString()} دج
                           </span>
                         </div>
@@ -1094,14 +1094,14 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
         /* ==================================================== */
         <div className="space-y-4">
           {/* History Filter Bar */}
-          <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-slate-700">تصفية حسب الفترة:</span>
+              <span className="text-xs font-semibold text-slate-700">تصفية حسب الفترة:</span>
               <div className="flex items-center gap-2">
                 <select
                   value={historyYear}
                   onChange={(e) => setHistoryYear(e.target.value)}
-                  className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                  className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:border-slate-400 focus:outline-none"
                 >
                   <option value="">كل السنوات</option>
                   <option value="2026">2026</option>
@@ -1112,7 +1112,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 <select
                   value={historyMonth}
                   onChange={(e) => setHistoryMonth(e.target.value)}
-                  className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                  className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:border-slate-400 focus:outline-none"
                 >
                   <option value="">كل الأشهر</option>
                   <option value="01">01 - جانفي</option>
@@ -1132,12 +1132,12 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
             </div>
 
             {/* Filtered summary pills */}
-            <div className="flex items-center gap-3 text-xs font-bold">
+            <div className="flex items-center gap-3 text-xs">
               <span className="text-slate-600">
-                عدد الإقفالات: <strong className="text-slate-900">{filteredHistory.length}</strong>
+                عدد الإقفالات: <strong className="text-slate-900 font-mono">{filteredHistory.length}</strong>
               </span>
               <span className="text-slate-600">
-                صافي الفارق: <strong className={historyTotals.totalDf < 0 ? 'text-black font-mono' : 'text-blue-700 font-mono'}>
+                صافي الفارق: <strong className={`font-mono font-bold ${historyTotals.totalDf < 0 ? 'text-rose-600' : historyTotals.totalDf > 0 ? 'text-emerald-600' : 'text-slate-900'}`}>
                   {historyTotals.totalDf > 0 ? `+${historyTotals.totalDf.toLocaleString()} دج` : `${historyTotals.totalDf.toLocaleString()} دج`}
                 </strong>
               </span>
@@ -1145,14 +1145,14 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
           </div>
 
           {/* Closures Table */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
             {filteredHistory.length === 0 ? (
               <div className="p-12 text-center text-slate-400">
-                <Inbox className="w-10 h-10 mx-auto mb-2 text-slate-400" />
-                <p className="text-sm font-bold">لا توجد إقفالات سابقة مسجلة في هذه الفترة</p>
+                <Inbox className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                <p className="text-xs font-medium text-slate-500">لا توجد إقفالات سابقة مسجلة في هذه الفترة</p>
                 <button
                   onClick={() => setViewTab('today')}
-                  className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl"
+                  className="mt-3 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-colors"
                 >
                   إقفال صندوق اليوم الآن
                 </button>
@@ -1160,17 +1160,17 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-right text-xs">
-                  <thead className="bg-slate-50 text-slate-600 font-black border-b border-slate-200">
+                  <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                     <tr>
-                      <th className="p-3.5">تاريخ الإقفال</th>
-                      <th className="p-3.5">رصيد الافتتاح</th>
-                      <th className="p-3.5">المداخيل (Entrées)</th>
-                      <th className="p-3.5">المصاريف (Sorties)</th>
-                      <th className="p-3.5">النظري المتوقع</th>
-                      <th className="p-3.5">الفعلي المحسوب</th>
-                      <th className="p-3.5">الفارق والعجز (Manque)</th>
-                      <th className="p-3.5">ملاحظات</th>
-                      <th className="p-3.5 text-center">الإجراءات</th>
+                      <th className="p-3">تاريخ الإقفال</th>
+                      <th className="p-3">رصيد الافتتاح</th>
+                      <th className="p-3">المداخيل (Entrées)</th>
+                      <th className="p-3">المصاريف (Sorties)</th>
+                      <th className="p-3">النظري المتوقع</th>
+                      <th className="p-3">الفعلي المحسوب</th>
+                      <th className="p-3">الفارق والعجز (Manque)</th>
+                      <th className="p-3">ملاحظات</th>
+                      <th className="p-3 text-center">الإجراءات</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1179,45 +1179,45 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                       const isSurp = closure.difference > 0;
                       return (
                         <tr key={closure.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="p-3.5 font-bold text-slate-900 font-mono">
+                          <td className="p-3 font-semibold text-slate-900 font-mono">
                             {closure.date}
                           </td>
-                          <td className="p-3.5 font-mono text-slate-600">
+                          <td className="p-3 font-mono text-slate-600">
                             {(closure.openingBalance || 0).toLocaleString()} دج
                           </td>
-                          <td className="p-3.5 font-mono font-bold text-blue-700">
+                          <td className="p-3 font-mono font-bold text-slate-900">
                             +{(closure.totalInflow || 0).toLocaleString()} دج
                           </td>
-                          <td className="p-3.5 font-mono font-bold text-black">
+                          <td className="p-3 font-mono font-bold text-rose-600">
                             -{(closure.totalOutflow || 0).toLocaleString()} دج
                           </td>
-                          <td className="p-3.5 font-mono font-bold text-slate-800">
+                          <td className="p-3 font-mono font-semibold text-slate-800">
                             {(closure.theoreticalAmount || 0).toLocaleString()} دج
                           </td>
-                          <td className="p-3.5 font-mono font-black text-slate-900 bg-slate-50">
+                          <td className="p-3 font-mono font-bold text-slate-900 bg-slate-50/50">
                             {(closure.actualAmount || 0).toLocaleString()} دج
                           </td>
-                          <td className="p-3.5">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-black font-mono ${
-                              isShort ? 'bg-black text-white' :
-                              isSurp ? 'bg-blue-100 text-blue-800' :
-                              'bg-blue-50 text-blue-800 border border-blue-200'
+                          <td className="p-3">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold font-mono border ${
+                              isShort ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                              isSurp ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                              'bg-slate-50 text-slate-700 border-slate-200'
                             }`}>
                               {closure.difference > 0 ? `+${closure.difference.toLocaleString()} دج` : `${closure.difference.toLocaleString()} دج`}
-                              <span className="mr-1 text-[10px]">
+                              <span className="mr-1 text-[10px] font-medium">
                                 {isShort ? '(عجز)' : isSurp ? '(فائض)' : '(مضبوط)'}
                               </span>
                             </span>
                           </td>
-                          <td className="p-3.5 text-slate-600 text-[11px] max-w-xs truncate">
+                          <td className="p-3 text-slate-500 text-[11px] max-w-xs truncate">
                             {closure.notes || '-'}
                           </td>
-                          <td className="p-3.5 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
+                          <td className="p-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
                               <button
                                 onClick={() => setSelectedClosureForReceipt(closure)}
                                 title="طباعة الوصل"
-                                className="p-1.5 bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 rounded-lg transition-colors"
+                                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors"
                               >
                                 <Printer className="w-3.5 h-3.5" />
                               </button>
@@ -1227,7 +1227,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                                   setViewTab('today');
                                 }}
                                 title="تعديل هذا اليوم"
-                                className="p-1.5 bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 rounded-lg transition-colors"
+                                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
@@ -1238,7 +1238,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                                   }
                                 }}
                                 title="حذف"
-                                className="p-1.5 bg-slate-100 hover:bg-black hover:text-white rounded-lg transition-colors border border-transparent hover:border-black"
+                                className="p-1.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 rounded-lg transition-colors"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -1259,7 +1259,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       {selectedClosureForReceipt && (
         <Modal 
           title={`وصل إقفال الصندوق - ${selectedClosureForReceipt.date}`} 
-          onClose={() => setSelectedClosureForReceipt(null)}
+          onClose={() => setSelectedClosureForReceipt(null)} 
         >
           <CaisseReceiptModal 
             closure={selectedClosureForReceipt} 

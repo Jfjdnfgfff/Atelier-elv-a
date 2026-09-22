@@ -143,7 +143,7 @@ export default function App() {
   // Real-time Cloud Subscriptions on Mount
   useEffect(() => {
     // 1. Subscribe to Clothes
-    const unsubClothes = subscribeToCloudCollection<ClothItem[]>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
+    const unsubClothes = subscribeToCloudCollection<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.clothes = true;
         setClothes(items);
@@ -156,7 +156,7 @@ export default function App() {
     });
 
     // 2. Subscribe to Rentals
-    const unsubRentals = subscribeToCloudCollection<Rental[]>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
+    const unsubRentals = subscribeToCloudCollection<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.rentals = true;
         setRentals(items);
@@ -169,7 +169,7 @@ export default function App() {
     });
 
     // 3. Subscribe to Sales
-    const unsubSales = subscribeToCloudCollection<Sale[]>(FIREBASE_COLLECTIONS.SALES, (items) => {
+    const unsubSales = subscribeToCloudCollection<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.sales = true;
         setSales(items);
@@ -179,7 +179,7 @@ export default function App() {
     });
 
     // 4. Subscribe to Expenses
-    const unsubExpenses = subscribeToCloudCollection<Expense[]>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
+    const unsubExpenses = subscribeToCloudCollection<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.expenses = true;
         setExpenses(items);
@@ -192,7 +192,7 @@ export default function App() {
     });
 
     // 5. Subscribe to Credits
-    const unsubCredits = subscribeToCloudCollection<Credit[]>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
+    const unsubCredits = subscribeToCloudCollection<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.credits = true;
         setCredits(items);
@@ -202,7 +202,7 @@ export default function App() {
     });
 
     // 6. Subscribe to Staff Payouts
-    const unsubStaffPayouts = subscribeToCloudCollection<StaffPayout[]>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
+    const unsubStaffPayouts = subscribeToCloudCollection<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.staffPayouts = true;
         setStaffPayouts(items);
@@ -212,7 +212,7 @@ export default function App() {
     });
 
     // 7. Subscribe to Staff Members
-    const unsubStaffMembers = subscribeToCloudCollection<StaffMember[]>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, (items) => {
+    const unsubStaffMembers = subscribeToCloudCollection<StaffMember>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.staffMembers = true;
         setStaffMembers(items);
@@ -225,7 +225,7 @@ export default function App() {
     });
 
     // 8. Subscribe to Staff Absences
-    const unsubStaffAbsences = subscribeToCloudCollection<StaffAbsence[]>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, (items) => {
+    const unsubStaffAbsences = subscribeToCloudCollection<StaffAbsence>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, (items) => {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.staffAbsences = true;
         setStaffAbsences(items);
@@ -235,7 +235,7 @@ export default function App() {
     });
 
     // 9. Subscribe to Maintenance Orders
-    const unsubMaintenance = subscribeToCloudCollection<MaintenanceOrder[]>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
+    const unsubMaintenance = subscribeToCloudCollection<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.maintenanceOrders = true;
         setMaintenanceOrders(items);
@@ -248,7 +248,7 @@ export default function App() {
     });
 
     // 10. Subscribe to Suppliers
-    const unsubSuppliers = subscribeToCloudCollection<Supplier[]>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
+    const unsubSuppliers = subscribeToCloudCollection<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.suppliers = true;
         setSuppliers(items);
@@ -261,7 +261,7 @@ export default function App() {
     });
 
     // 11. Subscribe to Caisse Closures
-    const unsubCaisse = subscribeToCloudCollection<DailyCaisseClosure[]>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
+    const unsubCaisse = subscribeToCloudCollection<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.caisseClosures = true;
         setCaisseClosures(items);
@@ -274,7 +274,7 @@ export default function App() {
     });
 
     // 12. Subscribe to Seamstresses
-    const unsubSeamstresses = subscribeToCloudCollection<Seamstress[]>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
+    const unsubSeamstresses = subscribeToCloudCollection<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.seamstresses = true;
         setSeamstresses(items);
@@ -287,7 +287,7 @@ export default function App() {
     });
 
     // 13. Subscribe to Raw Materials
-    const unsubRawMaterials = subscribeToCloudCollection<RawMaterial[]>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
+    const unsubRawMaterials = subscribeToCloudCollection<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.rawMaterials = true;
         setRawMaterials(items);

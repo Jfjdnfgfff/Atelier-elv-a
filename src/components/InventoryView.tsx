@@ -6,7 +6,7 @@ import { RawMaterialsSection } from './RawMaterialsSection';
 import { ProductVariantsModal } from './ProductVariantsModal';
 import { SecurityPasswordModal, checkSecurityPin } from './SecurityPasswordModal';
 import { isValidImageFileType, generateSecureImageFilename, sanitizeText, sanitizeNumericAmount } from '../utils/security';
-import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil } from 'lucide-react';
+import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap } from 'lucide-react';
 
 export const STANDARD_SIZES = [
   '34', '36', '38', '40', '42', '44', '46', '48', '50', '52', '54',
@@ -257,7 +257,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         stock2: newS2,
         stock: newS1 + newS2
       });
-      setBarcodeActionNotice(`✓ تم تحويل ${transferQty} قطع من المخزون 1 إلى المخزون 2`);
+      setBarcodeActionNotice(`تم تحويل ${transferQty} قطع من المخزون 1 إلى المخزون 2 بنجاح`);
     } else {
       const transferQty = Math.min(s2, Math.max(1, qty));
       const newS1 = s1 + transferQty;
@@ -267,7 +267,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         stock2: newS2,
         stock: newS1 + newS2
       });
-      setBarcodeActionNotice(`✓ تم تحويل ${transferQty} قطع من المخزون 2 إلى المخزون 1`);
+      setBarcodeActionNotice(`تم تحويل ${transferQty} قطع من المخزون 2 إلى المخزون 1 بنجاح`);
     }
     setTimeout(() => setBarcodeActionNotice(null), 3500);
     setQuickTransferItem(null);
@@ -321,41 +321,41 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   });
 
   return (
-    <div className="space-y-5 p-3 sm:p-6" dir="rtl">
+    <div className="space-y-4 sm:space-y-5 p-3 sm:p-6" dir="rtl">
       {/* Top Header & Tab Switcher */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-5 rounded-3xl border border-slate-100 shadow-xs">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
         <div>
-          <h2 className="text-xl font-black text-blue-600 flex items-center gap-2">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <span>مخزون المحل والسلع (Stock & Tissus)</span>
           </h2>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
+          <p className="text-xs text-slate-500 font-normal mt-0.5">
             متابعة دقيقة للفساتين الجاهزة (المخزن 1 و 2) والسلع الأولية والأقمشة بالرولو مع احتساب رأس المال وثمن البيع.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {/* Main Tab Switcher */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-2xl text-xs font-bold w-full sm:w-auto">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-semibold w-full sm:w-auto">
             <button
               onClick={() => setInventoryTab('clothes')}
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl transition-all ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all ${
                 inventoryTab === 'clothes'
-                  ? 'bg-blue-600 text-white shadow-xs font-black'
+                  ? 'bg-slate-900 text-white shadow-xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Shirt className="w-4 h-4" />
+              <Shirt className="w-3.5 h-3.5" />
               <span>فساتين وملابس جاهزة ({clothes.length})</span>
             </button>
             <button
               onClick={() => setInventoryTab('raw_materials')}
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl transition-all ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all ${
                 inventoryTab === 'raw_materials'
-                  ? 'bg-blue-600 text-white shadow-xs font-black'
+                  ? 'bg-slate-900 text-white shadow-xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Scissors className="w-4 h-4" />
+              <Scissors className="w-3.5 h-3.5" />
               <span>سلع أولية وأقمشة بالرولو ({rawMaterials.length})</span>
             </button>
           </div>
@@ -364,16 +364,16 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 onClick={() => setShowScannerModal(true)}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2.5 rounded-2xl text-xs font-black transition-all shadow-xs active:scale-95"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border border-slate-200 shadow-2xs active:scale-95"
                 title="مسح باركود لإضافة أو تحويل كمية المخزن"
               >
-                <span>📷</span>
+                <Camera className="w-4 h-4 text-slate-600" />
                 <span>إضافة بالباركود</span>
               </button>
 
               <button
                 onClick={() => handleInitiateAddCloth('')}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-900 hover:bg-black text-white px-4 py-2.5 rounded-2xl text-xs font-black transition-all shadow-xs active:scale-95"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
               >
                 + قطعة جديدة
               </button>
@@ -384,40 +384,40 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
 
       {/* Global Financial Valuation Cards: ثمن القيمة، ثمن البيع، والسلع الأولية */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-slate-700">💰 مجموع السلعة بثمن القيمة (التكلفة)</span>
-            <span className="text-lg">🏷️</span>
+            <span className="text-xs font-medium text-slate-500">مجموع السلعة بالتكلفة</span>
+            <Tag className="w-4 h-4 text-slate-400" />
           </div>
-          <p className="text-2xl font-black text-slate-900 font-mono">{totalCostReadyClothes.toLocaleString()} <span className="text-xs font-bold text-slate-500">دج</span></p>
-          <span className="text-[11px] text-slate-500 font-medium">رأس مال شراء الملابس الجاهزة</span>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{totalCostReadyClothes.toLocaleString()} <span className="text-xs font-medium text-slate-400">دج</span></p>
+          <span className="text-[11px] text-slate-500 font-normal">رأس مال شراء الملابس الجاهزة</span>
         </div>
 
-        <div className="bg-white p-4 rounded-3xl border border-blue-100 shadow-xs">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-blue-900">💎 مجموع السلعة بثمن البيع</span>
-            <span className="text-lg">🛍️</span>
+            <span className="text-xs font-medium text-slate-500">مجموع السلعة بثمن البيع</span>
+            <ShoppingBag className="w-4 h-4 text-slate-400" />
           </div>
-          <p className="text-2xl font-black text-blue-900 font-mono">{totalSellReadyClothes.toLocaleString()} <span className="text-xs font-bold text-blue-800">دج</span></p>
-          <span className="text-[11px] text-blue-700 font-medium">الأرباح المتوقعة: +{expectedProfitReadyClothes.toLocaleString()} دج</span>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{totalSellReadyClothes.toLocaleString()} <span className="text-xs font-medium text-slate-400">دج</span></p>
+          <span className="text-[11px] text-emerald-700 font-medium">الأرباح المتوقعة: +{expectedProfitReadyClothes.toLocaleString()} دج</span>
         </div>
 
-        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-blue-600">🧵 مجموع السلع الأولية والأقمشة</span>
-            <span className="text-lg">✨</span>
+            <span className="text-xs font-medium text-slate-500">الأقمشة والسلع الأولية</span>
+            <Scissors className="w-4 h-4 text-slate-400" />
           </div>
-          <p className="text-2xl font-black text-blue-700 font-mono">{totalRawMaterialsCost.toLocaleString()} <span className="text-xs font-bold text-blue-600">دج</span></p>
-          <span className="text-[11px] text-slate-500 font-medium">{totalRawRolls} رولو ({totalRawMeters} متر أقمشة)</span>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{totalRawMaterialsCost.toLocaleString()} <span className="text-xs font-medium text-slate-400">دج</span></p>
+          <span className="text-[11px] text-slate-500 font-normal">{totalRawRolls} رولو ({totalRawMeters} متر أقمشة)</span>
         </div>
 
-        <div className="bg-white p-4 rounded-3xl border border-blue-100 shadow-xs">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-blue-900">👑 إجمالي رأس مال المحل المندمج</span>
-            <span className="text-lg">🏛️</span>
+            <span className="text-xs font-medium text-slate-500">إجمالي رأس مال المحل المندمج</span>
+            <Landmark className="w-4 h-4 text-slate-400" />
           </div>
-          <p className="text-2xl font-black text-blue-900 font-mono">{grandTotalStoreCapital.toLocaleString()} <span className="text-xs font-bold text-blue-900">دج</span></p>
-          <span className="text-[11px] text-slate-500 font-medium">ملابس جاهزة + أقمشة وسلع أولية</span>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{grandTotalStoreCapital.toLocaleString()} <span className="text-xs font-medium text-slate-400">دج</span></p>
+          <span className="text-[11px] text-slate-500 font-normal">ملابس جاهزة + أقمشة وسلع أولية</span>
         </div>
       </div>
 
@@ -434,105 +434,120 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         <>
           {/* Stock 1 & Stock 2 Location Quantities */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-blue-600">🏬 المخزون 1 (صالة العرض)</span>
-                <span className="text-lg">🏪</span>
+                <span className="text-xs font-medium text-slate-600 flex items-center gap-1.5">
+                  <Store className="w-3.5 h-3.5 text-slate-500" />
+                  المخزون 1 (صالة العرض)
+                </span>
+                <Store className="w-4 h-4 text-slate-400" />
               </div>
-              <p className="text-2xl font-black text-slate-900">{totalStock1.toLocaleString()} <span className="text-xs font-bold text-slate-700">قطعة</span></p>
-              <span className="text-[11px] text-slate-600 font-medium">مخزن المحل المعروض للزبائن</span>
+              <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{totalStock1.toLocaleString()} <span className="text-xs font-normal text-slate-500">قطعة</span></p>
+              <span className="text-[11px] text-slate-500 font-normal">مخزن المحل المعروض للزبائن</span>
             </div>
 
-            <div className="bg-white p-4 rounded-3xl border border-blue-100 shadow-xs">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-blue-900">📦 المخزون 2 (المستودع)</span>
-                <span className="text-lg">🏭</span>
+                <span className="text-xs font-medium text-slate-600 flex items-center gap-1.5">
+                  <Warehouse className="w-3.5 h-3.5 text-slate-500" />
+                  المخزون 2 (المستودع)
+                </span>
+                <Warehouse className="w-4 h-4 text-slate-400" />
               </div>
-              <p className="text-2xl font-black text-slate-900">{totalStock2.toLocaleString()} <span className="text-xs font-bold text-slate-700">قطعة</span></p>
-              <span className="text-[11px] text-slate-600 font-medium">المستودع والتخزين الاحتياطي</span>
+              <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{totalStock2.toLocaleString()} <span className="text-xs font-normal text-slate-500">قطعة</span></p>
+              <span className="text-[11px] text-slate-500 font-normal">المستودع والتخزين الاحتياطي</span>
             </div>
 
-            <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs col-span-2 sm:col-span-1">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs col-span-2 sm:col-span-1">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-slate-700">📊 إجمالي القطع في المخزنين</span>
-                <span className="text-lg">👗</span>
+                <span className="text-xs font-medium text-slate-600 flex items-center gap-1.5">
+                  <Package className="w-3.5 h-3.5 text-slate-500" />
+                  إجمالي القطع في المخزنين
+                </span>
+                <Package className="w-4 h-4 text-slate-400" />
               </div>
-              <p className="text-2xl font-black text-slate-900">{grandTotalStock.toLocaleString()} <span className="text-xs font-bold text-slate-700">قطعة</span></p>
-              <span className="text-[11px] text-slate-600 font-medium">مجموع المخزن 1 + المخزن 2</span>
+              <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{grandTotalStock.toLocaleString()} <span className="text-xs font-normal text-slate-500">قطعة</span></p>
+              <span className="text-[11px] text-slate-500 font-normal">مجموع المخزن 1 + المخزن 2</span>
             </div>
           </div>
 
       {/* Notice Pill */}
       {barcodeActionNotice && (
-        <div className="bg-blue-600 text-white text-xs font-black p-3 rounded-2xl text-center shadow-lg animate-bounce">
+        <div className="bg-slate-900 text-white text-xs font-bold p-3 rounded-xl text-center shadow-xs">
           {barcodeActionNotice}
         </div>
       )}
 
       {/* Filters and Search */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-xs space-y-3">
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-3">
         <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
-          <div className="flex gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+          <div className="flex gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 hide-scrollbar">
             {/* Purpose Filters */}
             <button
               onClick={() => setFilterPurpose('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                filterPurpose === 'all' ? 'bg-blue-900 text-white' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+              className={`px-3 py-1.5 rounded-xl text-xs transition-all shrink-0 font-medium ${
+                filterPurpose === 'all' ? 'bg-slate-900 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               الكل ({clothes.length})
             </button>
             <button
               onClick={() => setFilterPurpose('rent')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                filterPurpose === 'rent' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+              className={`px-3 py-1.5 rounded-xl text-xs transition-all shrink-0 font-medium flex items-center gap-1.5 ${
+                filterPurpose === 'rent' ? 'bg-slate-900 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              👗 كراء ({clothes.filter(c => c.purpose === 'rent' || c.purpose === 'both').length})
+              <Shirt className="w-3.5 h-3.5 text-slate-400" />
+              <span>كراء ({clothes.filter(c => c.purpose === 'rent' || c.purpose === 'both').length})</span>
             </button>
             <button
               onClick={() => setFilterPurpose('sell')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                filterPurpose === 'sell' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+              className={`px-3 py-1.5 rounded-xl text-xs transition-all shrink-0 font-medium flex items-center gap-1.5 ${
+                filterPurpose === 'sell' ? 'bg-slate-900 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              🏷️ بيع ({clothes.filter(c => c.purpose === 'sell' || c.purpose === 'both').length})
+              <Tag className="w-3.5 h-3.5 text-slate-400" />
+              <span>بيع ({clothes.filter(c => c.purpose === 'sell' || c.purpose === 'both').length})</span>
             </button>
 
-            <span className="w-px h-6 bg-blue-100 self-center mx-1 shrink-0" />
+            <span className="w-px h-5 bg-slate-200 self-center mx-1 shrink-0" />
 
             {/* Stock Location Filters */}
             <button
               onClick={() => setFilterStockLoc('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                filterStockLoc === 'all' ? 'bg-blue-900 text-white shadow-xs' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+              className={`px-3 py-1.5 rounded-xl text-xs transition-all shrink-0 font-medium flex items-center gap-1.5 ${
+                filterStockLoc === 'all' ? 'bg-slate-900 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              🏢 المخزنين معاً
+              <Building2 className="w-3.5 h-3.5 text-slate-400" />
+              <span>المخزنين معاً</span>
             </button>
             <button
               onClick={() => setFilterStockLoc('stock1')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                filterStockLoc === 'stock1' ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+              className={`px-3 py-1.5 rounded-xl text-xs transition-all shrink-0 font-medium flex items-center gap-1.5 ${
+                filterStockLoc === 'stock1' ? 'bg-slate-900 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              🏬 مخزون 1 فقط
+              <Store className="w-3.5 h-3.5 text-slate-400" />
+              <span>مخزون 1 فقط</span>
             </button>
             <button
               onClick={() => setFilterStockLoc('stock2')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                filterStockLoc === 'stock2' ? 'bg-blue-400 text-white shadow-xs' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+              className={`px-3 py-1.5 rounded-xl text-xs transition-all shrink-0 font-medium flex items-center gap-1.5 ${
+                filterStockLoc === 'stock2' ? 'bg-slate-900 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              📦 مخزون 2 فقط
+              <Warehouse className="w-3.5 h-3.5 text-slate-400" />
+              <span>مخزون 2 فقط</span>
             </button>
             <button
               onClick={() => setFilterStockLoc('low')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                filterStockLoc === 'low' ? 'bg-black text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              className={`px-3 py-1.5 rounded-xl text-xs transition-all shrink-0 font-medium flex items-center gap-1.5 ${
+                filterStockLoc === 'low' ? 'bg-rose-700 text-white font-bold shadow-xs' : 'bg-rose-50 text-rose-700 border border-rose-200/60 hover:bg-rose-100'
               }`}
             >
-              ⚠️ نواقص المخزون
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+              <span>نواقص المخزون</span>
             </button>
           </div>
 
@@ -542,20 +557,20 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="بحث بالاسم، الباركود، المقاس، اللون..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-9 pl-4 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-9 pl-4 py-2 text-xs font-normal text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:bg-white"
             />
-            <svg className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
         </div>
 
         {/* Categories Bar */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs hide-scrollbar">
           <button
             onClick={() => setFilterCategory('all')}
-            className={`px-2.5 py-1 rounded-lg font-bold shrink-0 transition-colors ${
-              filterCategory === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+            className={`px-2.5 py-1 rounded-lg font-medium shrink-0 transition-colors ${
+              filterCategory === 'all' ? 'bg-slate-900 text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
             جميع التصنيفات
@@ -564,8 +579,8 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
             <button
               key={cat}
               onClick={() => setFilterCategory(cat)}
-              className={`px-2.5 py-1 rounded-lg font-bold shrink-0 transition-colors ${
-                filterCategory === cat ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+              className={`px-2.5 py-1 rounded-lg font-medium shrink-0 transition-colors ${
+                filterCategory === cat ? 'bg-slate-900 text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               {cat}
@@ -576,16 +591,16 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         {/* Sizes and Colors Filter Rows */}
         <div className="pt-2 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
           {/* Size Filter */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-            <span className="text-[11px] font-bold text-blue-500 shrink-0 flex items-center gap-1">
-              <Ruler className="w-3.5 h-3.5 text-blue-600" />
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 hide-scrollbar">
+            <span className="text-[11px] font-medium text-slate-500 shrink-0 flex items-center gap-1">
+              <Ruler className="w-3.5 h-3.5 text-slate-400" />
               <span>المقاس (لطاي):</span>
             </span>
             <button
               type="button"
               onClick={() => setFilterSize('all')}
-              className={`px-2 py-0.5 rounded-lg text-[11px] font-bold shrink-0 transition-all ${
-                filterSize === 'all' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+              className={`px-2 py-0.5 rounded-lg text-[11px] font-medium shrink-0 transition-all ${
+                filterSize === 'all' ? 'bg-slate-900 text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               الكل
@@ -595,10 +610,10 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                 key={sz}
                 type="button"
                 onClick={() => setFilterSize(filterSize === sz ? 'all' : sz)}
-                className={`px-2 py-0.5 rounded-lg text-[11px] font-bold shrink-0 transition-all border ${
+                className={`px-2 py-0.5 rounded-lg text-[11px] font-medium shrink-0 transition-all border ${
                   filterSize === sz
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                    : 'bg-white text-blue-700 border-blue-100 hover:bg-blue-50'
+                    ? 'bg-slate-900 text-white border-slate-900 font-bold shadow-2xs'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                 }`}
               >
                 {sz}
@@ -607,16 +622,16 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           </div>
 
           {/* Color Filter */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-            <span className="text-[11px] font-bold text-blue-500 shrink-0 flex items-center gap-1">
-              <Palette className="w-3.5 h-3.5 text-blue-600" />
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 hide-scrollbar">
+            <span className="text-[11px] font-medium text-slate-500 shrink-0 flex items-center gap-1">
+              <Palette className="w-3.5 h-3.5 text-slate-400" />
               <span>اللون:</span>
             </span>
             <button
               type="button"
               onClick={() => setFilterColor('all')}
-              className={`px-2 py-0.5 rounded-lg text-[11px] font-bold shrink-0 transition-all ${
-                filterColor === 'all' ? 'bg-blue-950 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+              className={`px-2 py-0.5 rounded-lg text-[11px] font-medium shrink-0 transition-all ${
+                filterColor === 'all' ? 'bg-slate-900 text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               الكل
@@ -629,9 +644,9 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                   key={col}
                   type="button"
                   onClick={() => setFilterColor(filterColor === col ? 'all' : col)}
-                  className={`px-2 py-0.5 rounded-lg text-[11px] font-bold shrink-0 transition-all border flex items-center gap-1 ${
+                  className={`px-2 py-0.5 rounded-lg text-[11px] font-medium shrink-0 transition-all border flex items-center gap-1 ${
                     isSelected
-                      ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                      ? 'bg-slate-900 text-white border-slate-900 font-bold shadow-2xs'
                       : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                   }`}
                 >
@@ -663,46 +678,46 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           return (
             <div
               key={item.id}
-              className="bg-white rounded-3xl overflow-hidden border border-blue-100 hover:border-blue-400 shadow-xs hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-200 flex flex-col justify-between group hover:-translate-y-0.5"
+              className="bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all duration-200 flex flex-col justify-between group"
             >
               {/* Product Image Box - Opens Colors & Sizes (Déclinaisons) Modal */}
               <div 
                 onClick={() => setVariantsModalItem(item)}
-                className="relative aspect-4/3 sm:aspect-16/10 bg-blue-50 overflow-hidden cursor-pointer flex items-center justify-center group"
+                className="relative aspect-4/3 sm:aspect-16/10 bg-slate-50 overflow-hidden cursor-pointer flex items-center justify-center group"
                 title="اضغط لعرض الألوان والمقاسات (Déclinaisons)"
               >
                 {item.imageUrl ? (
                   <img
                     src={item.imageUrl}
                     alt={item.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
                     loading="lazy"
                     onError={(e) => {
                       (e.target as HTMLElement).style.display = 'none';
                     }}
                   />
                 ) : (
-                  <div className="flex flex-col items-center justify-center text-blue-300 gap-1.5 p-4">
-                    <Shirt className="w-8 h-8 text-blue-400" />
-                    <span className="text-[10px] font-bold">بدون صورة</span>
+                  <div className="flex flex-col items-center justify-center text-slate-400 gap-1.5 p-4">
+                    <Shirt className="w-8 h-8 text-slate-300" />
+                    <span className="text-[10px] font-medium">بدون صورة</span>
                   </div>
                 )}
 
                 {/* Purpose Badge on Top Left */}
                 <div className="absolute top-2.5 left-2.5 flex items-center gap-1">
                   {item.purpose === 'both' && (
-                    <span className="bg-blue-600/90 backdrop-blur-xs text-white text-[10px] font-black px-2.5 py-1 rounded-xl shadow-xs">
+                    <span className="bg-slate-900/85 backdrop-blur-xs text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-lg shadow-2xs">
                       بيع + كراء
                     </span>
                   )}
                   {item.purpose === 'rent' && (
-                    <span className="bg-blue-600/90 backdrop-blur-xs text-white text-[10px] font-black px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1">
+                    <span className="bg-slate-900/85 backdrop-blur-xs text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-lg shadow-2xs flex items-center gap-1">
                       <Shirt className="w-3 h-3" />
                       <span>كراء</span>
                     </span>
                   )}
                   {item.purpose === 'sell' && (
-                    <span className="bg-sky-500/90 backdrop-blur-xs text-white text-[10px] font-black px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1">
+                    <span className="bg-slate-900/85 backdrop-blur-xs text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-lg shadow-2xs flex items-center gap-1">
                       <Tag className="w-3 h-3" />
                       <span>بيع</span>
                     </span>
@@ -711,13 +726,13 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
 
                 {/* Category Badge on Top Right */}
                 <div className="absolute top-2.5 right-2.5">
-                  <span className="bg-blue-900/80 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-1 rounded-xl">
+                  <span className="bg-slate-900/70 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded-lg">
                     {item.category}
                   </span>
                 </div>
 
                 {/* Colors & Sizes Badge Prompt on Image */}
-                <div className="absolute bottom-2.5 left-2.5 bg-blue-600/90 group-hover:bg-blue-700 text-white text-[10px] font-black px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1.5 transition-all">
+                <div className="absolute bottom-2.5 left-2.5 bg-slate-900/85 hover:bg-slate-900 text-white text-[10px] font-medium px-2 py-0.5 rounded-lg shadow-2xs flex items-center gap-1 transition-all">
                   <Sparkles className="w-3 h-3" />
                   <span>الألوان والمقاسات ({itemSizesList.length || 1})</span>
                 </div>
@@ -730,7 +745,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                       e.stopPropagation();
                       setPreviewImage({ url: item.imageUrl!, title: item.name });
                     }}
-                    className="absolute bottom-2.5 right-2.5 w-7 h-7 rounded-xl bg-blue-950/70 hover:bg-blue-900 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-xs"
+                    className="absolute bottom-2.5 right-2.5 w-7 h-7 rounded-lg bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-2xs"
                     title="تكبير الصورة كاملة"
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -741,9 +756,9 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
               <div className="p-4 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-start gap-2">
-                    <h3 className="font-black text-slate-900 group-hover:text-blue-950 text-base leading-tight line-clamp-2 transition-colors">{item.name}</h3>
+                    <h3 className="font-bold text-slate-900 text-base leading-tight line-clamp-2">{item.name}</h3>
                     {item.barcode && (
-                      <span className="text-[10px] text-slate-500 font-mono font-bold bg-slate-100 group-hover:bg-blue-50 group-hover:text-blue-700 px-1.5 py-0.5 rounded-md shrink-0 transition-colors border border-transparent group-hover:border-blue-200">
+                      <span className="text-[10px] text-slate-500 font-mono font-medium bg-slate-100 px-1.5 py-0.5 rounded-md shrink-0 border border-slate-200/60">
                         #{item.barcode}
                       </span>
                     )}
@@ -756,35 +771,35 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                     title="انقر لعرض تفاصيل المقاسات والألوان (لطاي)"
                   >
                     <div className="flex items-center gap-1 flex-wrap">
-                      <span className="text-[10px] font-bold text-slate-500 flex items-center gap-0.5">
-                        <Ruler className="w-3 h-3 text-blue-600" />
+                      <span className="text-[10px] font-medium text-slate-500 flex items-center gap-0.5">
+                        <Ruler className="w-3 h-3 text-slate-400" />
                         <span>لطاي:</span>
                       </span>
                       {itemSizesList.length > 0 ? (
                         itemSizesList.map(sz => (
                           <span
                             key={sz}
-                            className="bg-blue-50 text-blue-800 border border-blue-200 px-1.5 py-0.5 rounded-md text-[10px] font-black"
+                            className="bg-slate-100 text-slate-800 border border-slate-200 px-1.5 py-0.5 rounded-md text-[10px] font-semibold"
                           >
                             {sz}
                           </span>
                         ))
                       ) : (
-                        <span className="text-[10px] text-slate-600 font-bold">{item.size || '38'}</span>
+                        <span className="text-[10px] text-slate-600 font-medium">{item.size || '38'}</span>
                       )}
                     </div>
 
                     {/* Available Colors Badges with Dots */}
                     <div className="flex items-center gap-1 flex-wrap">
-                      <span className="text-[10px] font-bold text-slate-500 flex items-center gap-0.5">
-                        <Palette className="w-3 h-3 text-blue-900" />
+                      <span className="text-[10px] font-medium text-slate-500 flex items-center gap-0.5">
+                        <Palette className="w-3 h-3 text-slate-400" />
                         <span>الألوان:</span>
                       </span>
                       {itemColorsList.length > 0 ? (
                         itemColorsList.map(col => (
                           <span
                             key={col}
-                            className="bg-slate-50 text-slate-800 border border-slate-200 px-1.5 py-0.5 rounded-md text-[10px] font-bold inline-flex items-center gap-1"
+                            className="bg-slate-50 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded-md text-[10px] font-medium inline-flex items-center gap-1"
                           >
                             <span
                               className="w-2 h-2 rounded-full border border-slate-300"
@@ -794,48 +809,48 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                           </span>
                         ))
                       ) : (
-                        <span className="text-[10px] text-slate-600 font-bold">{item.color || 'أسود'}</span>
+                        <span className="text-[10px] text-slate-600 font-medium">{item.color || 'أسود'}</span>
                       )}
                     </div>
                   </div>
                 </div>
 
                 {/* Pricing & Stock Card Breakdown */}
-                <div className="bg-slate-50 group-hover:bg-blue-50/40 rounded-2xl p-3 border border-slate-100 group-hover:border-blue-100 space-y-2 text-xs transition-colors">
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-2 text-xs">
                   {/* Prices */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] text-slate-400 font-bold block">
+                      <span className="text-[10px] text-slate-500 font-medium block">
                         {item.purpose === 'sell' ? 'سعر البيع' : 'سعر الكراء'}
                       </span>
-                      <span className="text-slate-900 font-black text-sm">
+                      <span className="text-slate-900 font-bold text-sm font-mono">
                         {(item.purpose === 'sell' ? item.sellPrice : item.rentPrice).toLocaleString()} دج
                       </span>
                     </div>
 
                     <div className="text-left">
-                      <span className="text-[10px] text-slate-400 font-bold block">المتوفر الإجمالي</span>
-                      <span className={`font-black text-sm ${availableStock <= 0 ? 'text-black' : 'text-blue-700'}`}>
+                      <span className="text-[10px] text-slate-500 font-medium block">المتوفر الإجمالي</span>
+                      <span className={`font-bold text-sm font-mono ${availableStock <= 0 ? 'text-rose-600' : 'text-slate-900'}`}>
                         {availableStock} / {totalStock} قطعة
                       </span>
                     </div>
                   </div>
 
                   {/* Stock 1 and Stock 2 Breakdown Badges */}
-                  <div className="pt-2 border-t border-blue-100 group-hover:border-blue-200 grid grid-cols-2 gap-2 text-[11px] transition-colors">
-                    <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-1.5 flex items-center justify-between">
-                      <span className="font-bold text-blue-800 flex items-center gap-1">
-                        <Store className="w-3.5 h-3.5 text-blue-600" />
+                  <div className="pt-2 border-t border-slate-200/80 grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="bg-white border border-slate-200/80 rounded-lg p-1.5 flex items-center justify-between">
+                      <span className="font-medium text-slate-600 flex items-center gap-1">
+                        <Store className="w-3.5 h-3.5 text-slate-500" />
                         <span>مخزون 1:</span>
                       </span>
-                      <span className={`font-black ${s1 <= 0 ? 'text-slate-400' : 'text-blue-950'}`}>{s1} قطعة</span>
+                      <span className={`font-bold font-mono ${s1 <= 0 ? 'text-slate-400' : 'text-slate-900'}`}>{s1} قطعة</span>
                     </div>
-                    <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-1.5 flex items-center justify-between">
-                      <span className="font-bold text-blue-800 flex items-center gap-1">
-                        <Warehouse className="w-3.5 h-3.5 text-blue-600" />
+                    <div className="bg-white border border-slate-200/80 rounded-lg p-1.5 flex items-center justify-between">
+                      <span className="font-medium text-slate-600 flex items-center gap-1">
+                        <Warehouse className="w-3.5 h-3.5 text-slate-500" />
                         <span>مخزون 2:</span>
                       </span>
-                      <span className={`font-black ${s2 <= 0 ? 'text-slate-400' : 'text-blue-950'}`}>{s2} قطعة</span>
+                      <span className={`font-bold font-mono ${s2 <= 0 ? 'text-slate-400' : 'text-slate-900'}`}>{s2} قطعة</span>
                     </div>
                   </div>
                 </div>
@@ -844,7 +859,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                 <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-1.5">
                   <button
                     onClick={() => setStockModalItem(item)}
-                    className="flex-1 py-2 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-800 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-95 border border-blue-200 hover:border-blue-600 shadow-2xs hover:shadow-sm"
+                    className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 active:scale-95 shadow-2xs"
                     title="تعديل أو زيادة كمية المخزون 1 أو 2"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -853,19 +868,19 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
 
                   <button
                     onClick={() => handleInitiateTransfer(item)}
-                    className="py-2 px-2.5 bg-white hover:bg-blue-50 hover:text-blue-600 text-blue-800 border border-blue-100 hover:border-blue-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-95 shadow-2xs"
+                    className="py-1.5 px-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1 active:scale-95 shadow-2xs"
                     title="تحويل كميات بين مخزون 1 ومخزون 2"
                   >
-                    <ArrowLeftRight className="w-3.5 h-3.5 text-blue-600" />
+                    <ArrowLeftRight className="w-3.5 h-3.5 text-slate-500" />
                     <span>تحويل</span>
                   </button>
 
                   <button
                     onClick={() => setEditingItem(item)}
-                    className="py-2 px-2.5 bg-white hover:bg-blue-50 hover:text-blue-600 text-blue-700 rounded-xl text-xs font-bold transition-all active:scale-95 border border-blue-100 hover:border-blue-300 shadow-2xs"
+                    className="py-1.5 px-2 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-xl text-xs font-medium transition-all active:scale-95 shadow-2xs"
                     title="تعديل بيانات وصورة القطعة"
                   >
-                    <Pencil className="w-3.5 h-3.5" />
+                    <Pencil className="w-3.5 h-3.5 text-slate-500" />
                   </button>
 
                   <button
@@ -896,9 +911,9 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
               <span className="font-bold text-xs">{previewImage.title}</span>
               <button 
                 onClick={() => setPreviewImage(null)} 
-                className="w-7 h-7 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs"
+                className="w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-colors"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
             <div className="max-h-[75vh] overflow-hidden flex items-center justify-center bg-black">
@@ -963,7 +978,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
               ...(updatedVariants ? { variants: updatedVariants } : {})
             });
             setStockModalItem(null);
-            setBarcodeActionNotice(`✓ تم تحديث مخزون ${stockModalItem.name} بنجاح!`);
+            setBarcodeActionNotice(`تم تحديث مخزون ${stockModalItem.name} بنجاح!`);
             setTimeout(() => setBarcodeActionNotice(null), 3500);
           }}
         />
@@ -981,7 +996,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
       {/* Embedded Barcode Scanner Camera for Adding Stock */}
       {showScannerModal && (
         <BarcodeScanner
-          title="مسح باركود لإضافة المخزون 📦"
+          title="مسح باركود لإضافة المخزون"
           onScan={(code) => handleProcessBarcode(code)}
           onClose={() => setShowScannerModal(false)}
         />
@@ -1074,19 +1089,19 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
       <div className="bg-white rounded-3xl w-full max-w-md max-w-full p-5 sm:p-6 shadow-2xl border border-slate-100 overflow-x-hidden animate-in fade-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center pb-3 mb-4 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <span className="w-9 h-9 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg font-bold">
-              📦
+            <span className="w-9 h-9 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center border border-slate-200">
+              <Package className="w-5 h-5 text-slate-700" />
             </span>
             <div>
-              <h3 className="font-black text-blue-600 text-sm sm:text-base">تحديث وإضافة المخزون (Stock 1 & 2)</h3>
+              <h3 className="font-bold text-slate-900 text-sm sm:text-base">تحديث وإضافة المخزون (Stock 1 & 2)</h3>
               <p className="text-[10px] text-slate-500 font-mono">كود: #{item.barcode}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs"
+            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -1095,8 +1110,8 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
           {item.imageUrl ? (
             <img src={item.imageUrl} alt={item.name} className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0" />
           ) : (
-            <div className="w-14 h-14 rounded-xl bg-slate-200 text-slate-500 flex items-center justify-center text-2xl shrink-0">
-              👗
+            <div className="w-14 h-14 rounded-xl bg-slate-200 text-slate-400 flex items-center justify-center shrink-0">
+              <Shirt className="w-6 h-6 text-slate-400" />
             </div>
           )}
           <div className="flex-1">
@@ -1126,7 +1141,7 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
                 onChange={(e) => setSelectedVariantId(e.target.value)}
                 className="w-full bg-white border border-blue-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none"
               >
-                <option value="all">📦 تعديل المخزون العام للقطعة</option>
+                <option value="all">تعديل المخزون العام للقطعة</option>
                 {currentVariants.map(v => (
                   <option key={v.id} value={v.id}>
                     اللون: {v.color} • المقاس: {v.size} (متوفر: {v.stock} قطعة)
@@ -1336,7 +1351,11 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
               >
-                <span>من المخزون 2 (المستودع) ➔ إلى المخزون 1 (المحل)</span>
+                <span className="flex items-center gap-1.5">
+                  <span>من المخزون 2 (المستودع)</span>
+                  <ArrowLeftRight className="w-3.5 h-3.5" />
+                  <span>إلى المخزون 1 (المحل)</span>
+                </span>
                 <span className="text-[11px] opacity-80">(المتاح: {s2})</span>
               </button>
 
@@ -1349,7 +1368,11 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
               >
-                <span>من المخزون 1 (المحل) ➔ إلى المخزون 2 (المستودع)</span>
+                <span className="flex items-center gap-1.5">
+                  <span>من المخزون 1 (المحل)</span>
+                  <ArrowLeftRight className="w-3.5 h-3.5" />
+                  <span>إلى المخزون 2 (المستودع)</span>
+                </span>
                 <span className="text-[11px] opacity-80">(المتاح: {s1})</span>
               </button>
             </div>
@@ -1427,8 +1450,9 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
               </button>
             </div>
             {pinError && (
-              <p className="text-[11px] text-red-600 font-bold mt-1 text-center">
-                ⚠️ كلمة المرور غير صحيحة، لا يمكن تنفيذ التحويل
+              <p className="text-[11px] text-red-600 font-bold mt-1 text-center flex items-center justify-center gap-1">
+                <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                <span>كلمة المرور غير صحيحة، لا يمكن تنفيذ التحويل</span>
               </p>
             )}
           </div>
@@ -1436,9 +1460,10 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
           <button
             type="submit"
             disabled={maxAvailable <= 0}
-            className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:bg-slate-300 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md shadow-blue-200 transition-all min-h-[44px]"
+            className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:bg-slate-300 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md shadow-blue-200 transition-all min-h-[44px] flex items-center justify-center gap-2"
           >
-            تنفيذ عملية التحويل ⇄
+            <ArrowLeftRight className="w-4 h-4" />
+            <span>تنفيذ عملية التحويل</span>
           </button>
         </form>
       </div>
@@ -1704,7 +1729,7 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
     if (!file) return;
 
     if (!isValidImageFileType(file.type, file.name)) {
-      alert('⚠️ ملف غير مسموح به! يرجى رفع صورة فقط (JPG, PNG, WEBP).');
+      alert('ملف غير مسموح به! يرجى رفع صورة فقط (JPG, PNG, WEBP).');
       if (e.target) e.target.value = '';
       return;
     }
@@ -1975,7 +2000,8 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                         : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'
                     }`}
                   >
-                    {sz} {isSelected && '✓'}
+                    <span>{sz}</span>
+                    {isSelected && <Check className="w-3 h-3 inline mr-1" />}
                   </button>
                 );
               })}
@@ -2086,11 +2112,11 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
               <div className="flex items-center gap-2 self-start sm:self-auto bg-white px-3 py-1.5 rounded-2xl border border-blue-200 shadow-xs">
                 <span className="text-[11px] font-bold text-slate-500">المجموع:</span>
                 <span className="text-xs font-black text-blue-900 flex items-center gap-1.5">
-                  <span className="text-blue-700">🏬 {totalStock1}</span>
+                  <span className="text-blue-700 flex items-center gap-1"><Store className="w-3.5 h-3.5 text-blue-600" /> {totalStock1}</span>
                   <span>+</span>
-                  <span className="text-blue-950">📦 {totalStock2}</span>
+                  <span className="text-blue-950 flex items-center gap-1"><Warehouse className="w-3.5 h-3.5 text-slate-500" /> {totalStock2}</span>
                   <span>=</span>
-                  <span className="bg-blue-600 text-white px-2 py-0.5 rounded-lg">{totalCalculatedStock} قطعة</span>
+                  <span className="bg-blue-600 text-white px-2 py-0.5 rounded-lg font-mono">{totalCalculatedStock} قطعة</span>
                 </span>
               </div>
             </div>
@@ -2103,8 +2129,8 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                   onClick={() => setShowBulkFillBar(!showBulkFillBar)}
                   className="bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-colors"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                  <span>⚡ تعبئة كمية موحدة للجميع ({variants.length} تشكيلة)</span>
+                  <Zap className="w-3.5 h-3.5 text-blue-600" />
+                  <span>تعبئة كمية موحدة للجميع ({variants.length} تشكيلة)</span>
                 </button>
               </div>
 
@@ -2156,7 +2182,10 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div className="flex items-center gap-2 bg-blue-950/60 p-1.5 rounded-xl border border-blue-700/50">
-                    <span className="text-[11px] text-blue-200 font-bold shrink-0">🏬 المحل:</span>
+                    <span className="text-[11px] text-blue-200 font-bold shrink-0 flex items-center gap-1">
+                      <Store className="w-3 h-3 text-blue-300" />
+                      المحل:
+                    </span>
                     <input
                       type="number"
                       min="0"
@@ -2166,7 +2195,10 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                     />
                   </div>
                   <div className="flex items-center gap-2 bg-blue-950/60 p-1.5 rounded-xl border border-blue-700/50">
-                    <span className="text-[11px] text-blue-200 font-bold shrink-0">📦 المستودع:</span>
+                    <span className="text-[11px] text-blue-200 font-bold shrink-0 flex items-center gap-1">
+                      <Warehouse className="w-3 h-3 text-blue-300" />
+                      المستودع:
+                    </span>
                     <input
                       type="number"
                       min="0"
@@ -2214,8 +2246,14 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
 
                         {/* Quick stock badge for this color */}
                         <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-bold text-slate-600">
-                            مجموع اللون: <strong className="text-blue-700">{colorTotal}</strong> قطعة (🏬 {colorStock1} | 📦 {colorStock2})
+                          <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                            <span>مجموع اللون:</span>
+                            <strong className="text-blue-700 font-mono">{colorTotal}</strong>
+                            <span>قطعة</span>
+                            <span className="text-slate-400">|</span>
+                            <span className="flex items-center gap-0.5 text-blue-800"><Store className="w-3 h-3 text-blue-600" /> {colorStock1}</span>
+                            <span className="text-slate-400">•</span>
+                            <span className="flex items-center gap-0.5 text-slate-700"><Warehouse className="w-3 h-3 text-slate-500" /> {colorStock2}</span>
                           </span>
                           <button
                             type="button"
@@ -2226,10 +2264,11 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                               if (s2 === null) return;
                               handleApplyBulkToColor(col, Math.max(0, Number(s1) || 0), Math.max(0, Number(s2) || 0));
                             }}
-                            className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-md transition-colors"
+                            className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-md transition-colors flex items-center gap-1"
                             title="تطبيق كمية سريعة على جميع مقاسات هذا اللون"
                           >
-                            ⚡ تعبئة سريعة
+                            <Zap className="w-3 h-3 text-blue-600" />
+                            <span>تعبئة سريعة</span>
                           </button>
                         </div>
                       </div>
@@ -2262,7 +2301,10 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                               <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap justify-end">
                                 {/* Stock 1 (Store) */}
                                 <div className="flex items-center gap-1 bg-blue-50/60 border border-blue-200/80 px-2 py-1 rounded-xl">
-                                  <span className="text-[10px] font-bold text-blue-900 shrink-0">🏬 المحل:</span>
+                                  <span className="text-[10px] font-bold text-blue-900 shrink-0 flex items-center gap-1">
+                                    <Store className="w-3 h-3 text-blue-600" />
+                                    المحل:
+                                  </span>
                                   <button
                                     type="button"
                                     onClick={() => handleUpdateVariantStock(v.id, 'stock1', vS1 - 1)}
@@ -2288,7 +2330,10 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
 
                                 {/* Stock 2 (Warehouse) */}
                                 <div className="flex items-center gap-1 bg-slate-100 border border-slate-200 px-2 py-1 rounded-xl">
-                                  <span className="text-[10px] font-bold text-slate-700 shrink-0">📦 المستودع:</span>
+                                  <span className="text-[10px] font-bold text-slate-700 shrink-0 flex items-center gap-1">
+                                    <Warehouse className="w-3 h-3 text-slate-500" />
+                                    المستودع:
+                                  </span>
                                   <button
                                     type="button"
                                     onClick={() => handleUpdateVariantStock(v.id, 'stock2', vS2 - 1)}

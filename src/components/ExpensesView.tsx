@@ -282,17 +282,17 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
 
         {/* 4 Financial Stat Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-          <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl">
-            <span className="text-[11px] text-slate-600 font-bold block mb-0.5">مشتريات الموردين (المسدد كاش):</span>
+          <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl">
+            <span className="text-[11px] text-slate-500 font-normal block mb-0.5">مشتريات الموردين (كاش):</span>
             <span className="text-base sm:text-lg font-bold text-slate-900 font-mono">
               {totalPaidSupplier.toLocaleString()} دج
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">({supplierExpenses.length} فاتورة شراء)</span>
           </div>
 
-          <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl">
-            <span className="text-[11px] text-slate-600 font-bold block mb-0.5">كريدي وديون الموردين المتبقية:</span>
-            <span className="text-base sm:text-lg font-bold text-black font-mono">
+          <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl">
+            <span className="text-[11px] text-slate-500 font-normal block mb-0.5">ديون الموردين المتبقية:</span>
+            <span className="text-base sm:text-lg font-bold text-rose-600 font-mono">
               {totalSupplierDebts.toLocaleString()} دج
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">
@@ -300,17 +300,17 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             </span>
           </div>
 
-          <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl">
-            <span className="text-[11px] text-slate-600 font-bold block mb-0.5">مصاريف المحل والتشغيل:</span>
+          <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl">
+            <span className="text-[11px] text-slate-500 font-normal block mb-0.5">مصاريف المحل والتشغيل:</span>
             <span className="text-base sm:text-lg font-bold text-slate-900 font-mono">
               {totalPaidGeneral.toLocaleString()} دج
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">({generalExpensesList.length} بنود مصاريف)</span>
           </div>
 
-          <div className="bg-slate-900 text-white p-3.5 rounded-2xl">
-            <span className="text-[11px] text-slate-300 font-bold block mb-0.5">المجموع الكلي المدفوع كاش:</span>
-            <span className="text-base sm:text-lg font-bold text-blue-400 font-mono">
+          <div className="bg-slate-900 text-white p-3.5 rounded-2xl shadow-xs">
+            <span className="text-[11px] text-slate-300 font-normal block mb-0.5">المجموع الكلي المدفوع:</span>
+            <span className="text-base sm:text-lg font-bold text-white font-mono">
               {totalCashOut.toLocaleString()} دج
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">إجمالي السيولة الخارجة من الصندوق</span>
@@ -321,7 +321,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
       {/* Main Interactive Add Form */}
       {activeFormTab === 'supplier' ? (
         /* Form 1: Supplier Purchase & Payout (خلاص وشراء السلعة من المورد) */
-        <form onSubmit={handleSupplierSubmit} className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+        <form onSubmit={handleSupplierSubmit} className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
           <div className="flex justify-between items-center pb-2 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <span className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-sm">
@@ -332,7 +332,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                 <p className="text-[11px] text-slate-500">سجل ماذا شريت على المورد، المبلغ المدفوع، والمتبقي كريدي.</p>
               </div>
             </div>
-            <span className="text-[10px] bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-xl font-bold">
+            <span className="text-[10px] bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-lg font-medium">
               سلعة وفواتير موردين
             </span>
           </div>
@@ -340,14 +340,14 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Supplier Selection */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 اسم المورد *
               </label>
               <div className="space-y-1.5">
                 <select
                   value={selectedSupplierName}
                   onChange={(e) => handleSupplierSelect(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 bg-white focus:outline-none focus:border-slate-800"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 bg-white focus:outline-none focus:border-slate-400"
                 >
                   <option value="">-- اختر من قائمة الموردين أو اكتب جديد --</option>
                   {suppliers.map(s => (
@@ -364,7 +364,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                     value={customSupplierName}
                     onChange={setCustomSupplierName}
                     placeholder="اكتب اسم المورد (أحرف فقط)..."
-                    className="w-full border border-slate-300 bg-slate-50 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-800"
+                    className="w-full border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-400 focus:bg-white"
                   />
                 )}
               </div>
@@ -372,7 +372,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
 
             {/* Supplier Phone */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 هاتف المورد (أرقام فقط)
               </label>
               <NumbersInput
@@ -380,29 +380,29 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                 value={supplierPhone}
                 onChange={setSupplierPhone}
                 placeholder="05 / 06 / 07..."
-                className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium focus:outline-none focus:border-slate-400"
               />
             </div>
 
             {/* Date & Invoice Number */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">تاريخ المعاملة</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">تاريخ المعاملة</label>
                 <input
                   type="date"
                   value={supplierDate}
                   onChange={(e) => setSupplierDate(e.target.value)}
-                  className="w-[145px] sm:w-[155px] border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-slate-800"
+                  className="w-full border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-slate-400"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">رقم الفاتورة/الوصل</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">رقم الفاتورة/الوصل</label>
                 <input
                   type="text"
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value)}
                   placeholder="مثال: #INV-402"
-                  className="w-full border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
+                  className="w-full border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-medium focus:outline-none focus:border-slate-400"
                 />
               </div>
             </div>
@@ -411,10 +411,10 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
           {/* Goods Description (ماذا شريت عليه) */}
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-xs font-bold text-slate-800">
+              <label className="block text-xs font-medium text-slate-800">
                 ماذا شريت عليه (تفاصيل السلعة المشتراة) *
               </label>
-              <span className="text-[10px] text-slate-400 font-medium">يمكنك النقر على الاقتراحات السريعة أدناه</span>
+              <span className="text-[10px] text-slate-400 font-normal">يمكنك النقر على الاقتراحات السريعة أدناه</span>
             </div>
             <textarea
               required
@@ -422,7 +422,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
               value={goodsDescription}
               onChange={(e) => setGoodsDescription(e.target.value)}
               placeholder="مثال: 5 فساتين سهرة تركية موديل 2026 + 3 قفاطين ملكية مطرزة باليد + 10 حقائب سهرة..."
-              className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold focus:outline-none focus:border-slate-800"
+              className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal focus:outline-none focus:border-slate-400"
             />
             {/* Quick Chips */}
             <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -431,7 +431,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                   key={item}
                   type="button"
                   onClick={() => handleQuickGoodsAdd(item)}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all"
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all"
                 >
                   + {item}
                 </button>
@@ -440,10 +440,10 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
           </div>
 
           {/* Financial Calculation Box: Total vs Paid vs Credit */}
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-            <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
+          <div className="bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 space-y-3">
+            <div className="text-xs font-medium text-slate-800 flex items-center justify-between">
               <span>الحساب المالي للسلعة (الخلاص والكريدي):</span>
-              <span className="text-[11px] text-slate-600 font-bold">
+              <span className="text-[11px] text-slate-600 font-medium">
                 {calculatedCredit > 0 ? `متبقي كريدي: ${calculatedCredit.toLocaleString()} دج` : 'خالص بالكامل كاش'}
               </span>
             </div>
@@ -543,7 +543,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
         </form>
       ) : (
         /* Form 2: General Boutique Expenses (مصاريف عامة وتشغيلية) */
-        <form onSubmit={handleGeneralSubmit} className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+        <form onSubmit={handleGeneralSubmit} className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
           <div className="flex justify-between items-center pb-2 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <span className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-sm">
@@ -551,28 +551,28 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
               </span>
               <div>
                 <h3 className="font-bold text-slate-900 text-sm">تسجيل مصروف عام للمحل</h3>
-                <p className="text-[11px] text-slate-500">مصاريف التنظيف الجاف (Pressing)، الكراء، الفواتير، التغليف، والصيانة.</p>
+                <p className="text-[11px] text-slate-500 font-normal">مصاريف التنظيف الجاف (Pressing)، الكراء، الفواتير، التغليف، والصيانة.</p>
               </div>
             </div>
-            <span className="text-[10px] bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-xl font-bold">
+            <span className="text-[10px] bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-lg font-medium">
               مصاريف عامة
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-600 mb-1">بيان المصروف * (حروف فقط)</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">بيان المصروف * (حروف فقط)</label>
               <LettersInput
                 required
                 value={generalDesc}
                 onChange={setGeneralDesc}
                 placeholder="مثال: تنظيف جاف لفساتين سهرة بعد الكراء..."
-                className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:border-slate-800"
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-normal focus:outline-none focus:border-slate-400"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">المبلغ (دج) *</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">المبلغ (دج) *</label>
               <input
                 type="number"
                 required
@@ -580,16 +580,16 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                 value={generalAmount}
                 onChange={(e) => setGeneralAmount(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="0"
-                className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-800"
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-400"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">التصنيف</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">التصنيف</label>
               <select
                 value={generalCategory}
                 onChange={(e) => setGeneralCategory(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none focus:border-slate-800"
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-slate-400"
               >
                 {generalCategories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -598,7 +598,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
 
           <button
             type="submit"
-            className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-[0.98] flex items-center justify-center gap-1.5"
+            className="w-full py-2.5 sm:py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs active:scale-[0.98] flex items-center justify-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
             <span>إضافة المصروف العام للمحل</span>
@@ -607,27 +607,27 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
       )}
 
       {/* Expenses History & Supplier Log */}
-      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-4">
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
-            <h3 className="font-bold text-slate-900 text-base">سجل المصاريف ومشتريات الموردين</h3>
-            <p className="text-xs text-slate-400">تتبع كافة المدفوعات، تفاصيل السلع المشتراة، والكريدي المتبقي.</p>
+            <h3 className="font-bold text-slate-900 text-sm sm:text-base">سجل المصاريف ومشتريات الموردين</h3>
+            <p className="text-xs text-slate-500 font-normal">تتبع كافة المدفوعات، تفاصيل السلع المشتراة، والكريدي المتبقي.</p>
           </div>
 
           {/* Filter Pills */}
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               onClick={() => setFilterTab('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                filterTab === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                filterTab === 'all' ? 'bg-slate-900 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               الكل ({expenses.length})
             </button>
             <button
               onClick={() => setFilterTab('suppliers')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                filterTab === 'suppliers' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                filterTab === 'suppliers' ? 'bg-slate-900 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               <Building2 className="w-3.5 h-3.5" />
@@ -635,8 +635,8 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             </button>
             <button
               onClick={() => setFilterTab('has_credit')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                filterTab === 'has_credit' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                filterTab === 'has_credit' ? 'bg-slate-900 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               <Clock className="w-3.5 h-3.5" />
@@ -644,8 +644,8 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             </button>
             <button
               onClick={() => setFilterTab('general')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                filterTab === 'general' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                filterTab === 'general' ? 'bg-slate-900 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               <Receipt className="w-3.5 h-3.5" />
@@ -661,14 +661,14 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="بحث باسم المورد، السلعة المشتراة، رقم الفاتورة، أو بيان المصروف..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:border-slate-800"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-slate-400"
           />
         </div>
 
         {filteredExpenses.length === 0 ? (
           <div className="text-center py-10 text-slate-400">
             <Receipt className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-            <p className="text-xs font-bold">لا توجد أي مصاريف أو فواتير مطابقة للبحث.</p>
+            <p className="text-xs font-medium">لا توجد أي مصاريف أو فواتير مطابقة للبحث.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -680,39 +680,39 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
               return (
                 <div
                   key={exp.id}
-                  className="p-4 rounded-2xl border border-slate-200 bg-white transition-all hover:shadow-xs"
+                  className="p-4 rounded-2xl border border-slate-200/80 bg-white transition-all hover:border-slate-300"
                 >
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     {/* Main Details */}
                     <div className="space-y-1.5 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         {isSupplier ? (
-                          <span className="bg-slate-100 text-slate-800 border border-slate-200 text-[10px] font-bold px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+                          <span className="bg-slate-100 text-slate-800 border border-slate-200/70 text-[10px] font-medium px-2 py-0.5 rounded-md flex items-center gap-1">
                             <Building2 className="w-3 h-3 text-slate-500" />
                             <span>مورد:</span>
-                            <span>{exp.supplierName || 'مورد'}</span>
+                            <span className="font-bold">{exp.supplierName || 'مورد'}</span>
                           </span>
                         ) : (
-                          <span className="bg-slate-100 text-slate-800 border border-slate-200 text-[10px] font-bold px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+                          <span className="bg-slate-100 text-slate-800 border border-slate-200/70 text-[10px] font-medium px-2 py-0.5 rounded-md flex items-center gap-1">
                             <Receipt className="w-3 h-3 text-slate-500" />
-                            <span>{exp.category}</span>
+                            <span className="font-bold">{exp.category}</span>
                           </span>
                         )}
 
                         {exp.supplierPhone && (
-                          <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
+                          <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-mono flex items-center gap-1">
                             <Phone className="w-3 h-3 text-slate-400" />
                             <span>{exp.supplierPhone}</span>
                           </span>
                         )}
 
                         {exp.invoiceNumber && (
-                          <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono font-bold">
+                          <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono font-medium">
                             وصل #{exp.invoiceNumber}
                           </span>
                         )}
 
-                        <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                        <span className="text-[10px] text-slate-400 font-normal flex items-center gap-1">
                           <Calendar className="w-3 h-3 text-slate-400" />
                           <span>{new Date(exp.date).toLocaleDateString('ar-DZ')}</span>
                         </span>
@@ -733,7 +733,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                           )}
                         </div>
                       ) : (
-                        <div className="text-xs font-bold text-slate-800 mt-1">
+                        <div className="text-xs font-medium text-slate-800 mt-1">
                           {exp.desc}
                         </div>
                       )}
@@ -742,10 +742,10 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                     {/* Financial Summary & Actions */}
                     <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
                       {isSupplier ? (
-                        <div className="flex items-center gap-3 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
+                        <div className="flex items-center gap-3 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/80">
                           {exp.totalInvoiceAmount && (
                             <div className="text-center">
-                              <span className="text-[9px] text-slate-400 font-bold block">إجمالي السلعة</span>
+                              <span className="text-[9px] text-slate-400 font-normal block">إجمالي السلعة</span>
                               <span className="text-xs font-bold text-slate-800 font-mono">
                                 {exp.totalInvoiceAmount.toLocaleString()} دج
                               </span>
@@ -753,16 +753,16 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                           )}
 
                           <div className="text-center border-r border-slate-200 pr-3">
-                            <span className="text-[9px] text-slate-600 font-bold block">المسدد كاش</span>
+                            <span className="text-[9px] text-slate-500 font-normal block">المسدد كاش</span>
                             <span className="text-xs font-bold text-slate-900 font-mono">
                               {paidVal.toLocaleString()} دج
                             </span>
                           </div>
 
                           <div className="text-center border-r border-slate-200 pr-3">
-                            <span className="text-[9px] text-slate-600 font-bold block">الكريدي المتبقي</span>
+                            <span className="text-[9px] text-slate-500 font-normal block">الكريدي المتبقي</span>
                             <span className={`text-xs font-bold font-mono ${
-                              (exp.creditAmount || 0) > 0 ? 'text-black font-bold underline' : 'text-slate-400'
+                              (exp.creditAmount || 0) > 0 ? 'text-rose-600' : 'text-slate-400'
                             }`}>
                               {(exp.creditAmount || 0).toLocaleString()} دج
                             </span>
@@ -781,7 +781,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                         {isSupplier && hasCredit && (
                           <button
                             onClick={() => handleOpenSettle(exp)}
-                            className="bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-xl transition-all shadow-xs flex items-center gap-1 active:scale-95"
+                            className="bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all shadow-xs flex items-center gap-1 active:scale-95"
                             title="تسديد الكريدي المتبقي للمورد"
                           >
                             <DollarSign className="w-3.5 h-3.5" />
@@ -792,7 +792,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                         {isSupplier && (
                           <button
                             onClick={() => setVoucherExpense(exp)}
-                            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
                             title="عرض وطباعة وصل الشراء"
                           >
                             <FileText className="w-4 h-4" />
@@ -801,7 +801,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
 
                         <button
                           onClick={() => onDeleteExpense(exp.id)}
-                          className="p-2 rounded-xl bg-slate-50 hover:bg-black text-slate-400 hover:text-white transition-colors"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                           title="حذف السجل"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -818,60 +818,60 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
 
       {/* Settle Supplier Debt Modal */}
       {settleModalExpense && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn" dir="rtl">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50" dir="rtl">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 max-w-md w-full shadow-xl border border-slate-200/80 space-y-4">
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <DollarSign className="w-4 h-4 text-slate-700" />
                   <span>تسديد كريدي المورد</span>
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 font-normal mt-0.5">
                   تسجيل دفعة نقدية جديدة للمورد لتخفيض أو تصفية الدين المتبقي.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSettleModalExpense(null)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100"
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl space-y-2 text-xs">
+            <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-xl space-y-2 text-xs">
               <div className="flex justify-between items-center">
-                <span className="text-slate-500 font-bold">المورد:</span>
+                <span className="text-slate-500 font-normal">المورد:</span>
                 <span className="font-bold text-slate-900">{settleModalExpense.supplierName}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500 font-bold">السلعة المشتراة:</span>
-                <span className="font-bold text-slate-800 line-clamp-1">{settleModalExpense.goodsDescription || settleModalExpense.desc}</span>
+                <span className="text-slate-500 font-normal">السلعة المشتراة:</span>
+                <span className="font-medium text-slate-800 line-clamp-1">{settleModalExpense.goodsDescription || settleModalExpense.desc}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500 font-bold">إجمالي الفاتورة:</span>
+                <span className="text-slate-500 font-normal">إجمالي الفاتورة:</span>
                 <span className="font-bold text-slate-900 font-mono">{settleModalExpense.totalInvoiceAmount?.toLocaleString()} دج</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500 font-bold">المدفوع سابقاً:</span>
+                <span className="text-slate-500 font-normal">المدفوع سابقاً:</span>
                 <span className="font-bold text-slate-900 font-mono">{(settleModalExpense.paidAmount || settleModalExpense.amount).toLocaleString()} دج</span>
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-slate-200">
-                <span className="text-slate-700 font-bold">الكريدي المتبقي حالياً:</span>
-                <span className="font-bold text-black font-mono text-sm underline">{(settleModalExpense.creditAmount || 0).toLocaleString()} دج</span>
+                <span className="text-slate-700 font-medium">الكريدي المتبقي حالياً:</span>
+                <span className="font-bold text-rose-600 font-mono text-sm">{(settleModalExpense.creditAmount || 0).toLocaleString()} دج</span>
               </div>
             </div>
 
             <form onSubmit={handleConfirmSettle} className="space-y-3">
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="block text-xs font-bold text-slate-700">
+                  <label className="block text-xs font-medium text-slate-700">
                     المبلغ المسدد الآن (دج) *
                   </label>
                   <button
                     type="button"
                     onClick={() => setSettleAmount(settleModalExpense.creditAmount || 0)}
-                    className="text-[10px] text-slate-600 hover:text-slate-900 font-bold underline"
+                    className="text-[10px] text-slate-600 hover:text-slate-900 font-medium underline"
                   >
                     تسديد كامل الكريدي
                   </button>
@@ -884,14 +884,14 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                   value={settleAmount}
                   onChange={(e) => setSettleAmount(e.target.value === '' ? '' : Number(e.target.value))}
                   placeholder="0"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-800"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-400 focus:bg-white"
                 />
               </div>
 
               <div className="flex gap-2 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
                 >
                   <Check className="w-4 h-4" />
                   <span>تأكيد خلاص المبلغ للمورد</span>
@@ -899,7 +899,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                 <button
                   type="button"
                   onClick={() => setSettleModalExpense(null)}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-xl transition-all"
                 >
                   إلغاء
                 </button>
@@ -911,9 +911,9 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
 
       {/* Supplier Purchase Voucher Print Modal */}
       {voucherExpense && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn" dir="rtl">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex justify-between items-center border-b pb-3">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50" dir="rtl">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-xl border border-slate-200/80 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <FileText className="w-5 h-5 text-slate-700" />
@@ -923,46 +923,46 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
               </div>
               <button
                 onClick={() => setVoucherExpense(null)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100"
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-2xl space-y-3 text-xs border border-slate-200">
+            <div className="bg-slate-50 p-4 rounded-xl space-y-3 text-xs border border-slate-200/80">
               <div className="flex justify-between">
-                <span className="text-slate-500 font-bold">اسم المورد:</span>
+                <span className="text-slate-500 font-normal">اسم المورد:</span>
                 <span className="font-bold text-slate-900">{voucherExpense.supplierName}</span>
               </div>
               {voucherExpense.supplierPhone && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500 font-bold">هاتف المورد:</span>
-                  <span className="font-bold text-slate-700">{voucherExpense.supplierPhone}</span>
+                  <span className="text-slate-500 font-normal">هاتف المورد:</span>
+                  <span className="font-mono text-slate-700">{voucherExpense.supplierPhone}</span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-slate-500 font-bold">تاريخ الشراء:</span>
-                <span className="font-mono font-bold text-slate-700">{new Date(voucherExpense.date).toLocaleDateString('ar-DZ')}</span>
+                <span className="text-slate-500 font-normal">تاريخ الشراء:</span>
+                <span className="font-mono font-medium text-slate-700">{new Date(voucherExpense.date).toLocaleDateString('ar-DZ')}</span>
               </div>
-              <div className="border-t pt-2">
-                <span className="text-slate-500 font-bold block mb-1">السلعة المشتراة:</span>
-                <p className="bg-white p-2.5 rounded-xl border border-slate-200 font-bold text-slate-800">
+              <div className="border-t border-slate-200/80 pt-2">
+                <span className="text-slate-500 font-normal block mb-1">السلعة المشتراة:</span>
+                <p className="bg-white p-2.5 rounded-lg border border-slate-200 font-medium text-slate-800">
                   {voucherExpense.goodsDescription || voucherExpense.desc}
                 </p>
               </div>
 
-              <div className="border-t pt-2 space-y-1.5">
+              <div className="border-t border-slate-200/80 pt-2 space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="text-slate-600 font-bold">إجمالي قيمة السلعة:</span>
+                  <span className="text-slate-600 font-normal">إجمالي قيمة السلعة:</span>
                   <span className="font-bold font-mono">{voucherExpense.totalInvoiceAmount?.toLocaleString()} دج</span>
                 </div>
                 <div className="flex justify-between text-slate-900">
-                  <span className="font-bold">المبلغ المسدد كاش:</span>
+                  <span className="font-normal">المبلغ المسدد كاش:</span>
                   <span className="font-bold font-mono">{(voucherExpense.paidAmount || voucherExpense.amount).toLocaleString()} دج</span>
                 </div>
                 <div className="flex justify-between text-slate-900">
-                  <span className="font-bold">المتبقي كريدي للمورد:</span>
-                  <span className="font-bold text-black font-mono">{(voucherExpense.creditAmount || 0).toLocaleString()} دج</span>
+                  <span className="font-normal">المتبقي كريدي للمورد:</span>
+                  <span className="font-bold text-rose-600 font-mono">{(voucherExpense.creditAmount || 0).toLocaleString()} دج</span>
                 </div>
               </div>
             </div>
@@ -970,14 +970,14 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             <div className="flex gap-2">
               <button
                 onClick={() => window.print()}
-                className="flex-1 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5"
+                className="flex-1 py-2 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 shadow-xs"
               >
                 <Printer className="w-4 h-4" />
                 <span>طباعة الوصل</span>
               </button>
               <button
                 onClick={() => setVoucherExpense(null)}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium text-xs"
               >
                 إغلاق
               </button>

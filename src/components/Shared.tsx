@@ -18,26 +18,34 @@ export const Modal: React.FC<{
   children: React.ReactNode;
   wide?: boolean;
 }> = ({ title, onClose, children, wide }) => (
-  <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-blue-950/60 backdrop-blur-sm overflow-y-auto overflow-x-hidden touch-pan-y overscroll-x-none" dir="rtl">
+  <div 
+    className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-y-auto overflow-x-hidden touch-pan-y overscroll-x-none" 
+    dir="rtl"
+  >
     <div 
-      className={`bg-white rounded-t-3xl sm:rounded-3xl w-full ${wide ? 'max-w-4xl' : 'max-w-xl'} max-w-full p-4 sm:p-7 shadow-2xl border border-blue-50 max-h-[90vh] sm:max-h-[92vh] flex flex-col my-0 sm:my-auto overflow-x-hidden animate-in fade-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200 safe-bottom`}
+      className={`bg-white rounded-t-2xl sm:rounded-2xl w-full ${
+        wide ? 'max-w-4xl' : 'max-w-xl'
+      } max-w-full p-4 sm:p-6 shadow-xl border border-slate-200 max-h-[90vh] sm:max-h-[92vh] flex flex-col my-0 sm:my-auto overflow-x-hidden animate-in fade-in slide-in-from-bottom-3 sm:zoom-in-95 duration-150 safe-bottom`}
     >
       {/* Mobile handle indicator */}
-      <div className="w-12 h-1.5 bg-blue-50 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
+      <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-2.5 sm:hidden shrink-0" />
 
-      <div className="flex justify-between items-center pb-3 sm:pb-4 mb-3 sm:mb-4 border-b border-blue-50 shrink-0">
-        <h3 className="text-base sm:text-lg font-black text-blue-900 tracking-tight flex items-center gap-2">
+      {/* Header */}
+      <div className="flex justify-between items-center pb-3 mb-3 border-b border-slate-100 shrink-0">
+        <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
           {title}
         </h3>
         <button 
           onClick={onClose} 
-          aria-label="إغلاق"
-          className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-800 hover:border hover:border-blue-200 flex items-center justify-center transition-all active:scale-95 text-sm font-bold"
+          aria-label="إغلاق النافذة"
+          className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all active:scale-95"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
-      <div className="overflow-y-auto overflow-x-hidden flex-1 pr-1 pl-1 custom-scrollbar pb-2 touch-pan-y overscroll-x-none">
+
+      {/* Body */}
+      <div className="overflow-y-auto overflow-x-hidden flex-1 px-0.5 custom-scrollbar pb-1 touch-pan-y overscroll-x-none">
         {children}
       </div>
     </div>
@@ -51,9 +59,9 @@ export const NavButton: React.FC<{
   active?: boolean;
   color?: string;
   badge?: number;
-}> = ({ icon, label, onClick, active, color = 'blue', badge }) => {
+}> = ({ icon, label, onClick, active, badge }) => {
   const getIcon = () => {
-    const iconClass = "w-3.5 h-3.5 sm:w-4 sm:h-4";
+    const iconClass = "w-4 h-4";
     switch (icon) {
       case 'dashboard':
         return <LayoutDashboard className={iconClass} />;
@@ -84,16 +92,18 @@ export const NavButton: React.FC<{
   return (
     <button
       onClick={onClick}
-      className={`relative flex flex-col items-center justify-center gap-1 shrink-0 py-1.5 sm:py-2 px-2.5 sm:px-3.5 rounded-xl text-[9.5px] sm:text-xs font-bold transition-all min-w-[62px] sm:min-w-[72px] group ${
+      className={`relative flex flex-col items-center justify-center gap-1 shrink-0 py-2 px-3 sm:px-3.5 rounded-xl text-xs font-semibold transition-all min-w-[64px] sm:min-w-[72px] min-h-[44px] group ${
         active
-          ? 'bg-blue-600 text-white shadow-xs ring-1 sm:ring-2 ring-blue-600/30 scale-[1.02]'
-          : 'text-blue-700 hover:text-blue-900 hover:bg-blue-50/90 hover:border-blue-200 border border-transparent active:scale-95'
+          ? 'bg-slate-900 text-white shadow-xs'
+          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 active:scale-95'
       }`}
     >
-      <div className={`shrink-0 transition-transform group-hover:scale-105 ${active ? 'text-white' : 'text-blue-600 group-hover:text-blue-800'}`}>{getIcon()}</div>
-      <span className="whitespace-nowrap leading-none text-[9.5px] sm:text-xs tracking-tight">{label}</span>
+      <div className={`shrink-0 transition-transform group-hover:scale-105 ${active ? 'text-white' : 'text-slate-500 group-hover:text-slate-800'}`}>
+        {getIcon()}
+      </div>
+      <span className="whitespace-nowrap leading-none text-[11px] sm:text-xs tracking-tight">{label}</span>
       {badge !== undefined && badge > 0 && (
-        <span className="absolute -top-1 -left-1 min-w-[15px] h-[15px] sm:min-w-[18px] sm:h-[18px] px-1 bg-blue-600 text-white text-[8px] sm:text-[9px] font-black rounded-full flex items-center justify-center border sm:border-2 border-white shadow-xs">
+        <span className="absolute -top-1 -left-1 min-w-[17px] h-[17px] px-1 bg-rose-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-xs">
           {badge}
         </span>
       )}
@@ -110,35 +120,35 @@ export const StatCard: React.FC<{
   subtitle?: string;
   hideValue?: boolean;
   onClick?: () => void;
-}> = ({ title, value, unit = 'دج', iconBg, icon, subtitle, hideValue, onClick }) => {
+}> = ({ title, value, unit = 'دج', icon, subtitle, hideValue, onClick }) => {
   const Component = onClick ? 'button' : 'div';
 
   return (
     <Component
       onClick={onClick}
-      className={`group bg-white p-3.5 sm:p-5 rounded-2xl border border-blue-100 shadow-xs transition-all duration-200 flex flex-col justify-between text-right w-full hover:border-blue-400 hover:shadow-md hover:shadow-blue-500/10 hover:-translate-y-0.5 ${
+      className={`group bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs transition-all duration-150 flex flex-col justify-between text-right w-full hover:border-slate-300 hover:shadow-xs ${
         onClick ? 'cursor-pointer active:scale-[0.99]' : ''
       }`}
     >
-      <div className="flex justify-between items-start mb-2.5 w-full">
-        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-700 group-hover:bg-blue-100 group-hover:text-blue-800 group-hover:border-blue-200 flex items-center justify-center shrink-0 text-base sm:text-lg border border-blue-100 transition-all">
+      <div className="flex justify-between items-start mb-3 w-full">
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 text-slate-700 group-hover:bg-slate-200/80 group-hover:text-slate-900 flex items-center justify-center shrink-0 border border-slate-200/60 transition-colors">
           {icon}
         </div>
         {subtitle && (
-          <span className="text-[10px] sm:text-[11px] font-medium text-blue-500 bg-blue-50/50 group-hover:bg-blue-50/60 group-hover:text-blue-700 px-2 py-0.5 rounded-lg border border-blue-50 group-hover:border-blue-100 truncate max-w-[130px] transition-colors">
+          <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md truncate max-w-[130px]">
             {subtitle}
           </span>
         )}
       </div>
       <div className="w-full">
-        <div className="text-[11px] sm:text-xs font-medium text-blue-500 group-hover:text-blue-900 mb-0.5 sm:mb-1 transition-colors">{title}</div>
-        <div className="text-lg sm:text-2xl font-black text-blue-900 tracking-tight font-mono">
+        <div className="text-xs font-medium text-slate-500 mb-1">{title}</div>
+        <div className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight font-mono">
           {hideValue ? (
-            <span className="tracking-widest text-blue-200 font-sans">••••••</span>
+            <span className="tracking-widest text-slate-300 font-sans text-base">••••••</span>
           ) : (
             <>
               {typeof value === 'number' ? value.toLocaleString('fr-DZ') : value}
-              {unit && <span className="text-[10px] sm:text-xs font-medium text-blue-400 mr-1 font-sans">{unit}</span>}
+              {unit && <span className="text-xs font-medium text-slate-400 mr-1 font-sans">{unit}</span>}
             </>
           )}
         </div>

@@ -656,9 +656,9 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
           {/* Staff Members List */}
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <h5 className="font-bold text-slate-700 text-xs">قائمة العمال المسجلين ({staffMembers.length}):</h5>
-              <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-md flex items-center gap-1 border border-blue-100">
-                <Sparkles className="w-3 h-3 text-blue-600" />
+              <h5 className="font-bold text-slate-800 text-xs">قائمة العمال المسجلين ({staffMembers.length}):</h5>
+              <span className="text-[10px] text-slate-600 font-medium bg-slate-100 px-2 py-0.5 rounded-md flex items-center gap-1 border border-slate-200/80">
+                <Sparkles className="w-3 h-3 text-slate-500" />
                 <span>اضغط على أي عامل لعرض كشف المعاملات (يومي / شهري)</span>
               </span>
             </div>
@@ -674,13 +674,13 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                   <div 
                     key={s.id} 
                     onClick={() => setInspectingMember(s)}
-                    className="p-3.5 bg-white border border-slate-200 hover:border-blue-500 rounded-2xl space-y-2.5 shadow-2xs hover:shadow-md transition-all cursor-pointer group"
+                    className="p-3.5 bg-white border border-slate-200/80 hover:border-slate-400 rounded-2xl space-y-2.5 shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
                   >
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="font-black text-slate-900 text-xs sm:text-sm group-hover:text-blue-600 transition-colors flex items-center gap-1.5">
+                        <div className="font-bold text-slate-900 text-xs sm:text-sm group-hover:text-slate-950 transition-colors flex items-center gap-1.5">
                           <span>{s.name}</span>
-                          <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
+                          <span className="text-[10px] font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60">
                             كشف الحساب ➔
                           </span>
                         </div>
@@ -692,31 +692,31 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                           e.stopPropagation();
                           onDeleteStaffMember(s.id);
                         }}
-                        className="text-slate-300 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-all"
+                        className="text-slate-300 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors"
                         title="حذف العامل"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-1.5 text-[11px] bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <div className="grid grid-cols-3 gap-1.5 text-[11px] bg-slate-50 p-2.5 rounded-xl border border-slate-100 font-mono">
                       <div>
-                        <span className="text-slate-500 block text-[9px]">الراتب الشهري</span>
-                        <span className="font-black text-slate-800">{hideFinances ? '••••' : `${s.baseSalary.toLocaleString()} دج`}</span>
+                        <span className="text-slate-500 block text-[9px] font-sans">الراتب الشهري</span>
+                        <span className="font-bold text-slate-800">{hideFinances ? '••••' : `${s.baseSalary.toLocaleString()} دج`}</span>
                       </div>
                       <div>
-                        <span className="text-slate-500 block text-[9px]">سعر اليومية ({days} يوم)</span>
-                        <span className="font-bold text-slate-800">{hideFinances ? '••••' : `${daily.toLocaleString()} دج`}</span>
+                        <span className="text-slate-500 block text-[9px] font-sans">سعر اليومية ({days} يوم)</span>
+                        <span className="font-semibold text-slate-800">{hideFinances ? '••••' : `${daily.toLocaleString()} دج`}</span>
                       </div>
                       <div>
-                        <span className="text-slate-500 block text-[9px]">غيابات معلقة</span>
-                        <span className={`font-bold ${pendingCount > 0 ? 'text-blue-700' : 'text-slate-700'}`}>
+                        <span className="text-slate-500 block text-[9px] font-sans">غيابات معلقة</span>
+                        <span className={`font-semibold ${pendingCount > 0 ? 'text-amber-700' : 'text-slate-700'}`}>
                           {pendingCount} يوم
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[10px] text-blue-600 font-bold">
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[10px] text-slate-600 font-medium">
                       <span>عرض المعاملات والرواتب والسلفيات</span>
                       <ChevronLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
                     </div>

@@ -18,9 +18,9 @@
     min-height: 100dvh;
     display: flex;
     flex-direction: column;
-    font-family: 'Tajawal', sans-serif;
-    background-color: #ffffff;
-    color: #000000;
+    font-family: 'Plus Jakarta Sans', 'Tajawal', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
     overflow-x: hidden !important;
     overflow-y: auto;
     max-width: 100vw;
@@ -30,24 +30,45 @@
     touch-action: pan-y;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    @apply text-blue-900 font-black tracking-tight;
+  /* Crisp Modern Numeric Font for all prices, quantities, codes, and metrics */
+  .font-mono,
+  .tabular-nums {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    font-variant-numeric: tabular-nums lining-nums;
+    letter-spacing: -0.01em;
   }
 
-  /* Global scrollbar styling - Blue/Black */
+  input[type="number"] {
+    font-family: 'Plus Jakarta Sans', 'Tajawal', sans-serif !important;
+    font-feature-settings: "tnum" 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-slate-900 font-bold tracking-tight;
+  }
+
+  /* Refined selection color */
+  ::selection {
+    background-color: #0f172a;
+    color: #ffffff;
+  }
+
+  /* Global scrollbar styling - Refined Slate */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #ffffff;
+    background: #f1f5f9;
   }
   ::-webkit-scrollbar-thumb {
-    background: #1e3a8a;
-    border-radius: 10px;
+    background: #cbd5e1;
+    border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #000000;
+    background: #94a3b8;
   }
 }
 
@@ -57,11 +78,26 @@
   .hide-scrollbar::-webkit-scrollbar { display: none; }
   .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 8px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #2563eb;
+  }
+
   .modal-overlay {
     position: fixed; inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     display: none; align-items: center; justify-content: center;
     z-index: 50; padding: 1rem;
     opacity: 0; transition: opacity 0.2s ease;
@@ -75,13 +111,13 @@
   .modal-content {
     background: white; border-radius: 1.5rem; width: 100%; max-width: 28rem;
     padding: 1.5rem;
-    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
     max-height: 92dvh; overflow-y: auto;
     overflow-x: hidden !important;
     transform: scale(0.95); transition: transform 0.2s ease;
     margin: auto;
     overscroll-behavior-x: none !important;
-    border: 1px solid #1e3a8a;
+    border: 1px solid #e2e8f0;
   }
   .modal-overlay.active .modal-content { transform: scale(1); }
 
@@ -94,10 +130,10 @@
 
   /* Compact date inputs */
   input[type="date"] {
-    max-width: 148px;
+    max-width: 160px;
     width: 100%;
     min-height: 38px;
-    @apply border-blue-900 rounded-xl px-2;
+    @apply border-slate-300 rounded-xl px-2.5 text-xs font-bold text-slate-800 bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 outline-none;
   }
 }
 
