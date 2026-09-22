@@ -38,7 +38,6 @@ import {
   FIREBASE_COLLECTIONS,
   firebaseConfig 
 } from './firebase';
-import { useDashboardStats } from './hooks/dashboardStatsHook';
 
 // Components
 import { NavButton, Modal } from './components/Shared';
@@ -418,11 +417,11 @@ export default function App() {
     onConfirm: () => void;
   } | null>(null);
 
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
-  };
+  }, []);
 
   // Overdue count calculation (Only active handed-over rentals can be overdue; future reserved bookings do not count)
   const overdueCount = useMemo(() => {
@@ -444,9 +443,6 @@ export default function App() {
   const activeMaintenanceCount = useMemo(() => {
     return maintenanceOrders.filter(o => o.status !== 'delivered').length;
   }, [maintenanceOrders]);
-
-  // Global Financial Statistics (Optimized Single-Pass Memoized Hook)
-  const stats = useDashboardStats(rentals, sales, expenses, credits, staffPayouts, maintenanceOrders);
 
   // Memoized clothes barcode and ID index for O(1) instantaneous scanning lookups
   const clothesBarcodeIndex = useMemo(() => {
@@ -1595,7 +1591,6 @@ export default function App() {
       <main className="flex-1 max-w-6xl mx-auto w-full px-3 sm:px-6 md:px-8 py-4 pb-12 overflow-y-auto">
         {currentView === 'dashboard' && (
           <DashboardView 
-            stats={stats} 
             rentals={rentals} 
             maintenanceOrders={maintenanceOrders}
             clothes={clothes}
