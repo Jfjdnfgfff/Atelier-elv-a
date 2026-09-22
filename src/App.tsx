@@ -14,7 +14,8 @@ import {
   ViewType,
   DailyCaisseClosure,
   RawMaterial,
-  Seamstress
+  Seamstress,
+  ActivityLog
 } from './types';
 import { 
   loadFromStorage, 
@@ -30,6 +31,7 @@ import {
   DEFAULT_CAISSE_CLOSURES,
   DEFAULT_RAW_MATERIALS,
   DEFAULT_SEAMSTRESSES,
+  DEFAULT_ACTIVITY_LOGS,
   initializeStorage,
   getCachedCollection
 } from './storage';
@@ -108,10 +110,19 @@ export default function App() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [seamstresses, setSeamstresses] = useState<Seamstress[]>([]);
   const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
+  const [toasts, setToasts] = useState<{ id: number; message: string; type: 'success' | 'error' }[]>([]);
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+  }, []);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => {
+    return loadFromStorage<ActivityLog[]>(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS);
+  });
 
   // Track loaded collections & active singleton listeners to prevent duplicate subscriptions
   const loadedCollectionsRef = useRef<Set<string>>(new Set([
-    'clothes', 'staffMembers', 'staffAbsences', 'caisseClosures'
+    'clothes', 'staffMembers', 'staffAbsences', 'caisseClosures', 'activityLogs'
   ]));
   const activeSubscriptionsRef = useRef<Map<string, () => void>>(new Map());
 
@@ -202,13 +213,59 @@ export default function App() {
       }
     });
 
+    // Activity Logs
+    const unsubLogs = SubscriptionManager.subscribe<ActivityLog>(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.activityLogs = true;
+        setActivityLogs(prev => areArraysEqual(prev, items) ? prev : items);
+        markCloudSyncActive();
+      } else {
+        const local = loadFromStorage<ActivityLog[]>(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, local);
+      }
+    });
+
     return () => {
       unsubClothes();
       unsubStaffMembers();
       unsubStaffAbsences();
       unsubCaisse();
+      unsubLogs();
     };
   }, [markCloudSyncActive]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.ACTIVITY_LOGS, activityLogs);
+  }, [activityLogs]);
+
+  const addActivityLog = useCallback((log: Omit<ActivityLog, 'id' | 'timestamp'>) => {
+    const newLog: ActivityLog = {
+      ...log,
+      id: generateId(),
+      timestamp: new Date().toISOString(),
+      performedBy: log.performedBy || 'إدارة البوتيك'
+    };
+    setActivityLogs(prev => [newLog, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, newLog);
+  }, []);
+
+  const handleDeleteLog = useCallback((id: string, passwordVerified: boolean) => {
+    if (!passwordVerified) return;
+    setActivityLogs(prev => prev.filter(l => l.id !== id));
+    deleteItemFromFirebase(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, id);
+    showToast('تم حذف السجل بنجاح');
+  }, [showToast]);
+
+  const handleClearAllLogs = useCallback((passwordVerified: boolean) => {
+    if (!passwordVerified) return;
+    activityLogs.forEach(l => deleteItemFromFirebase(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, l.id));
+    setActivityLogs([]);
+    showToast('تم مسح جميع سجلات العمليات بنجاح');
+  }, [activityLogs, showToast]);
+
+  const handleAddManualLog = useCallback((log: Omit<ActivityLog, 'id' | 'timestamp'>) => {
+    addActivityLog(log);
+  }, [addActivityLog]);
 
   // First usable UI instrumentation & cleanup
   useEffect(() => {
@@ -602,7 +659,6 @@ export default function App() {
 
   // UI state
   const [hideFinances, setHideFinances] = useState(() => localStorage.getItem('bm_hideFinances') !== 'false');
-  const [toasts, setToasts] = useState<{ id: number; message: string; type: 'success' | 'error' }[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [posScannedBarcode, setPosScannedBarcode] = useState<string | null>(null);
 
@@ -617,12 +673,6 @@ export default function App() {
     message: string;
     onConfirm: () => void;
   } | null>(null);
-
-  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
-  }, []);
 
   // Overdue count calculation (Only active handed-over rentals can be overdue; future reserved bookings do not count)
   const overdueCount = useMemo(() => {
@@ -745,6 +795,14 @@ export default function App() {
     setRentals(prev => [newRental, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.RENTALS, newRental);
 
+    addActivityLog({
+      actionType: newRental.status === 'active' ? 'deal' : 'create',
+      category: 'rentals',
+      title: newRental.status === 'active' ? 'تسجيل كراء فستان جديد' : 'تسجيل حجز فستان مستقبلي',
+      details: `كراء القطعة: ${newRental.itemName} (مقاس ${newRental.itemSize}) للزبونة ${newRental.customerName} بمبلغ ${newRental.rentPrice} دج`,
+      amount: newRental.rentPrice
+    });
+
     // If active, increment rented count. If reserved (future booking), DO NOT deduct stock until handover/deal finalization!
     if (newRental.status === 'active') {
       setClothes(prev => prev.map(c => {
@@ -840,10 +898,24 @@ export default function App() {
       return filtered;
     });
 
+    addActivityLog({
+      actionType: 'deal',
+      category: 'rentals',
+      title: 'تسليم وتفعيل حجز فستان',
+      details: `تسليم الفستان ${rental.itemName} للزبونة ${rental.customerName} وتفعيل عقد الكراء`,
+      amount: rental.rentPrice
+    });
+
     showToast('تمت الصفقة وتسليم الفستان بنجاح! دخل الفستان في الكراء الجاري وتم خصمه من المخزن');
   }, []);
 
   const handleUpdateRental = useCallback((id: string, updatedData: any) => {
+    addActivityLog({
+      actionType: 'update',
+      category: 'rentals',
+      title: 'تعديل بيانات كراء فستان',
+      details: `تحديث بيانات الكراء للقطعة أو الحجز`
+    });
     setRentals(prev => {
       const prevRental = prev.find(r => r.id === id);
       if (prevRental) {
@@ -904,6 +976,13 @@ export default function App() {
           }
           setRentals(prev => prev.filter(r => r.id !== id));
           deleteItemFromFirebase(FIREBASE_COLLECTIONS.RENTALS, id);
+
+          addActivityLog({
+            actionType: 'delete',
+            category: 'rentals',
+            title: target.status === 'reserved' ? 'إلغاء حجز فستان' : 'حذف عملية كراء فستان',
+            details: `حذف كراء أو حجز القطعة ${target.itemName} للزبونة ${target.customerName}`
+          });
           setCredits(prev => {
             prev.filter(c => c.relatedRentalId === id).forEach(c => {
               deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
@@ -975,6 +1054,13 @@ export default function App() {
       return currentRentals.map(r => r.id === rentalId ? { ...r, ...returnUpdates } : r);
     });
 
+    addActivityLog({
+      actionType: 'return',
+      category: 'rentals',
+      title: 'استرجاع فستان من الكراء',
+      details: `استرجاع الفستان للزبونة وتسوية الحساب`,
+    });
+
     setActiveModal(null);
   }, []);
 
@@ -985,12 +1071,31 @@ export default function App() {
     const newCloth: ClothItem = { ...itemData, id: generateId() };
     setClothes(prev => [newCloth, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.CLOTHES, newCloth);
+
+    addActivityLog({
+      actionType: 'create',
+      category: 'inventory',
+      title: 'إضافة قطعة ملابس جديدة للمخزن',
+      details: `إضافة فستان/قطعة: ${itemData.name} (مقاس ${itemData.size} - لون ${itemData.color})`,
+      amount: itemData.sellPrice || itemData.rentPrice,
+      itemCodeOrId: itemData.barcode
+    });
+
     showToast('تمت إضافة قطعة الملابس للمخزن');
   }, []);
 
   const handleUpdateCloth = useCallback((id: string, itemData: any) => {
     setClothes(prev => prev.map(c => c.id === id ? { ...c, ...itemData } : c));
     updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, id, itemData);
+
+    addActivityLog({
+      actionType: 'update',
+      category: 'inventory',
+      title: 'تعديل قطعة ملابس في المخزن',
+      details: `تحديث بيانات ومخزون القطعة`,
+      itemCodeOrId: id
+    });
+
     showToast('تم تحديث بيانات القطعة');
   }, []);
 
@@ -1001,6 +1106,15 @@ export default function App() {
       onConfirm: () => {
         setClothes(prev => prev.filter(c => c.id !== id));
         deleteItemFromFirebase(FIREBASE_COLLECTIONS.CLOTHES, id);
+
+        addActivityLog({
+          actionType: 'delete',
+          category: 'inventory',
+          title: 'حذف قطعة من المخزن',
+          details: `حذف نهائي لقطعة ملابس من المخزن`,
+          itemCodeOrId: id
+        });
+
         showToast('تم حذف القطعة من المخزن');
         setConfirmDelete(null);
       }
@@ -1014,6 +1128,14 @@ export default function App() {
     const newSale: Sale = { ...saleData, id: generateId() };
     setSales(prev => [newSale, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.SALES, newSale);
+
+    addActivityLog({
+      actionType: 'create',
+      category: 'sales',
+      title: 'تسجيل عملية بيع ملابس',
+      details: `بيع مباشر للزبون ${saleData.customerName || 'عام'} بقيمة ${saleData.totalAmount} دج`,
+      amount: saleData.totalAmount
+    });
 
     // Decrease inventory stock accurately from stock1 or stock2
     saleData.items.forEach((item: any) => {
@@ -1072,6 +1194,14 @@ export default function App() {
       onConfirm: () => {
         setSales(prev => prev.filter(s => s.id !== sale.id));
         deleteItemFromFirebase(FIREBASE_COLLECTIONS.SALES, sale.id);
+
+        addActivityLog({
+          actionType: 'delete',
+          category: 'sales',
+          title: 'إلغاء عملية بيع',
+          details: `إلغاء فاتورة بيع للزبون ${sale.customerName || 'عام'} واسترجاع القطع للمخزن`,
+          amount: sale.totalAmount
+        });
         sale.items.forEach(item => {
           setClothes(prev => prev.map(c => {
             if (c.id === item.itemId) {
@@ -1117,6 +1247,14 @@ export default function App() {
     setExpenses(prev => [newExp, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.EXPENSES, newExp);
 
+    addActivityLog({
+      actionType: 'create',
+      category: 'expenses',
+      title: expData.isSupplierPurchase ? 'تسجيل مشتريات وموردين' : 'تسجيل مصروف جديد',
+      details: `${expData.category}: ${expData.desc || expData.goodsDescription} (${expData.amount} دج)`,
+      amount: expData.amount
+    });
+
     // If this is a supplier purchase with credit/debt remaining, auto-create a credit record
     if (expData.isSupplierPurchase && expData.creditAmount > 0) {
       const newCredit: Credit = {
@@ -1153,6 +1291,14 @@ export default function App() {
       });
       return prev.filter(c => c.relatedExpenseId !== id);
     });
+
+    addActivityLog({
+      actionType: 'delete',
+      category: 'expenses',
+      title: 'حذف مصروف أو مشتريات',
+      details: `حذف قيد مصروف أو مشتريات من السجل`
+    });
+
     showToast('تم حذف سجل المصروف');
   }, []);
 
@@ -1196,6 +1342,14 @@ export default function App() {
       }).filter(c => c.amount > 0);
     });
 
+    addActivityLog({
+      actionType: 'payment',
+      category: 'expenses',
+      title: 'خلاص وتسديد دين مورد',
+      details: `تسديد مبلغ ${paidNow.toLocaleString()} دج للمورد`,
+      amount: paidNow
+    });
+
     showToast(`تم خلاص وتسديد مبلغ ${paidNow.toLocaleString()} دج للمورد بنجاح`);
   }, []);
 
@@ -1205,12 +1359,28 @@ export default function App() {
       saveItemToFirebase(FIREBASE_COLLECTIONS.SUPPLIERS, newSup);
       return [newSup, ...prev];
     });
+
+    addActivityLog({
+      actionType: 'create',
+      category: 'partners',
+      title: 'إضافة مورد جديد',
+      details: `إضافة المورد: ${newSup.name}`
+    });
+
     showToast(`تمت إضافة المورد: ${newSup.name}`);
   }, []);
 
   const handleUpdateSupplier = useCallback((id: string, data: Partial<Supplier>) => {
     setSuppliers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
     updateItemInFirebase(FIREBASE_COLLECTIONS.SUPPLIERS, id, data);
+
+    addActivityLog({
+      actionType: 'update',
+      category: 'partners',
+      title: 'تعديل بيانات مورد',
+      details: `تحديث بيانات المورد`
+    });
+
     showToast('تم تحديث بيانات المورد');
   }, []);
 
@@ -1225,6 +1395,14 @@ export default function App() {
           return next;
         });
         deleteItemFromFirebase(FIREBASE_COLLECTIONS.SUPPLIERS, id);
+
+        addActivityLog({
+          actionType: 'delete',
+          category: 'partners',
+          title: 'حذف مورد',
+          details: `حذف مورد من قائمة الشركاء`
+        });
+
         showToast('تم حذف المورد بنجاح');
         setConfirmDelete(null);
       }
@@ -1237,12 +1415,28 @@ export default function App() {
   const handleAddSeamstress = useCallback((seam: Seamstress) => {
     setSeamstresses(prev => [seam, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.SEAMSTRESSES, seam);
+
+    addActivityLog({
+      actionType: 'create',
+      category: 'partners',
+      title: 'إضافة خياطة جديدة',
+      details: `إضافة الخياطة: ${seam.name}`
+    });
+
     showToast(`تمت إضافة الخياطة: ${seam.name}`);
   }, []);
 
   const handleUpdateSeamstress = useCallback((id: string, data: Partial<Seamstress>) => {
     setSeamstresses(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
     updateItemInFirebase(FIREBASE_COLLECTIONS.SEAMSTRESSES, id, data);
+
+    addActivityLog({
+      actionType: 'update',
+      category: 'partners',
+      title: 'تعديل بيانات خياطة',
+      details: `تحديث بيانات الخياطة`
+    });
+
     showToast('تم تحديث بيانات الخياطة');
   }, []);
 
@@ -1257,6 +1451,14 @@ export default function App() {
           return next;
         });
         deleteItemFromFirebase(FIREBASE_COLLECTIONS.SEAMSTRESSES, id);
+
+        addActivityLog({
+          actionType: 'delete',
+          category: 'partners',
+          title: 'حذف خياطة',
+          details: `حذف خياطة من القائمة`
+        });
+
         showToast('تم حذف الخياطة');
         setConfirmDelete(null);
       }
@@ -1266,12 +1468,29 @@ export default function App() {
   const handleAddRawMaterial = useCallback((mat: RawMaterial) => {
     setRawMaterials(prev => [mat, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, mat);
+
+    addActivityLog({
+      actionType: 'create',
+      category: 'inventory',
+      title: 'إضافة رولو قماش أو سلعة أولية',
+      details: `إضافة القماش: ${mat.name} (${mat.fabricType})`,
+      amount: mat.totalCostValue
+    });
+
     showToast(`تمت إضافة القماش / السلعة: ${mat.name}`);
   }, []);
 
   const handleUpdateRawMaterial = useCallback((id: string, data: Partial<RawMaterial>) => {
     setRawMaterials(prev => prev.map(m => m.id === id ? { ...m, ...data, updatedAt: new Date().toISOString() } : m));
     updateItemInFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, id, { ...data, updatedAt: new Date().toISOString() });
+
+    addActivityLog({
+      actionType: 'update',
+      category: 'inventory',
+      title: 'تعديل رولو قماش',
+      details: `تحديث بيانات القماش`
+    });
+
     showToast('تم تحديث بيانات القماش');
   }, []);
 
@@ -1282,6 +1501,14 @@ export default function App() {
       onConfirm: () => {
         setRawMaterials(prev => prev.filter(m => m.id !== id));
         deleteItemFromFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, id);
+
+        addActivityLog({
+          actionType: 'delete',
+          category: 'inventory',
+          title: 'حذف قماش أولي',
+          details: `حذف سلعة من مخزن الأقمشة`
+        });
+
         showToast('تم حذف القماش بنجاح');
         setConfirmDelete(null);
       }
@@ -1292,6 +1519,15 @@ export default function App() {
     const newCred: Credit = { ...credData, id: generateId() };
     setCredits(prev => [newCred, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCred);
+
+    addActivityLog({
+      actionType: 'create',
+      category: 'credits',
+      title: 'تسجيل دين / كريدي جديد',
+      details: `تسجيل دين للزبون ${credData.name}: ${credData.desc} بقيمة ${credData.amount} دج`,
+      amount: credData.amount
+    });
+
     showToast(credData.supplierDebt ? 'تم تسجيل دين للمورد' : 'تم تسجيل الدين على الزبون');
   }, []);
 
@@ -1323,12 +1559,28 @@ export default function App() {
       deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, id);
       return currentCredits.filter(c => c.id !== id);
     });
+
+    addActivityLog({
+      actionType: 'payment',
+      category: 'credits',
+      title: 'تسديد وتصفية دين',
+      details: `تسديد الدين بالكامل وإبراء ذمة الزبون أو المورد`
+    });
+
     showToast('تم تسديد وتصفية الدين بنجاح');
   }, []);
 
   const handleDeleteCredit = useCallback((id: string) => {
     setCredits(prev => prev.filter(c => c.id !== id));
     deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, id);
+
+    addActivityLog({
+      actionType: 'delete',
+      category: 'credits',
+      title: 'حذف قيد دين',
+      details: `حذف سجل دين من النظام`
+    });
+
     showToast('تم حذف السجل');
   }, []);
 
@@ -1341,6 +1593,15 @@ export default function App() {
       return [closure, ...filtered];
     });
     saveItemToFirebase(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, closure);
+
+    addActivityLog({
+      actionType: 'closure',
+      category: 'caisse',
+      title: 'إقفال الصندوق اليومي',
+      details: `إقفال صندوق يوم ${closure.date}. الحالة: ${closure.status} (الفارق: ${closure.difference} دج)`,
+      amount: closure.actualAmount
+    });
+
     showToast(`تم إقفال وحفظ صندوق يوم ${closure.date} بنجاح`);
   }, []);
 
@@ -1351,6 +1612,14 @@ export default function App() {
       onConfirm: () => {
         setCaisseClosures(prev => prev.filter(c => c.id !== id));
         deleteItemFromFirebase(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, id);
+
+        addActivityLog({
+          actionType: 'delete',
+          category: 'caisse',
+          title: 'حذف إقفال صندوق',
+          details: `حذف سجل إقفال الصندوق اليومي`
+        });
+
         showToast('تم حذف سجل إقفال الصندوق');
         setConfirmDelete(null);
       }
@@ -1378,6 +1647,14 @@ export default function App() {
       }));
     }
 
+    addActivityLog({
+      actionType: 'payment',
+      category: 'staff',
+      title: 'صرف راتب أو دفعة لعامل',
+      details: `صرف مبلغ ${data.amount} دج للعامل ${data.name}`,
+      amount: data.amount
+    });
+
     showToast('تم صرف الراتب وتطبيق خصم الغيابات بنجاح');
   }, []);
 
@@ -1392,6 +1669,14 @@ export default function App() {
       }
       return a;
     }));
+
+    addActivityLog({
+      actionType: 'delete',
+      category: 'staff',
+      title: 'حذف سجل راتب',
+      details: `حذف دفعة أو راتب عامل`
+    });
+
     showToast('تم حذف سجل الراتب');
   }, []);
 
@@ -1399,12 +1684,29 @@ export default function App() {
     const newMember: StaffMember = { ...data, id: generateId() };
     setStaffMembers(prev => [...prev, newMember]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.STAFF_MEMBERS, newMember);
+
+    addActivityLog({
+      actionType: 'create',
+      category: 'staff',
+      title: 'إضافة موظف جديد',
+      details: `إضافة العامل: ${data.name}`,
+      amount: data.baseSalary
+    });
+
     showToast(`تمت إضافة العامل/ة ${data.name}`);
   }, []);
 
   const handleUpdateStaffMember = useCallback((id: string, data: any) => {
     setStaffMembers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
     updateItemInFirebase(FIREBASE_COLLECTIONS.STAFF_MEMBERS, id, data);
+
+    addActivityLog({
+      actionType: 'update',
+      category: 'staff',
+      title: 'تعديل بيانات موظف',
+      details: `تحديث بيانات الموظف`
+    });
+
     showToast('تم تحديث بيانات العامل');
   }, []);
 
@@ -1415,6 +1717,14 @@ export default function App() {
       onConfirm: () => {
         setStaffMembers(prev => prev.filter(s => s.id !== id));
         deleteItemFromFirebase(FIREBASE_COLLECTIONS.STAFF_MEMBERS, id);
+
+        addActivityLog({
+          actionType: 'delete',
+          category: 'staff',
+          title: 'حذف موظف',
+          details: `حذف عامل من الطاقم`
+        });
+
         showToast('تم حذف العامل');
         setConfirmDelete(null);
       }
@@ -1425,12 +1735,29 @@ export default function App() {
     const newAbsence: StaffAbsence = { ...data, id: generateId() };
     setStaffAbsences(prev => [newAbsence, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.STAFF_ABSENCES, newAbsence);
+
+    addActivityLog({
+      actionType: 'create',
+      category: 'staff',
+      title: 'تسجيل غياب أو خصم موظف',
+      details: `تسجيل غياب ${data.staffName} بقيمة خصم ${data.deductionAmount} دج`,
+      amount: data.deductionAmount
+    });
+
     showToast(`تم تسجيل غياب ${data.staffName} بقيمة خصم ${data.deductionAmount} دج`);
   }, []);
 
   const handleDeleteAbsence = useCallback((id: string) => {
     setStaffAbsences(prev => prev.filter(a => a.id !== id));
     deleteItemFromFirebase(FIREBASE_COLLECTIONS.STAFF_ABSENCES, id);
+
+    addActivityLog({
+      actionType: 'delete',
+      category: 'staff',
+      title: 'حذف سجل غياب',
+      details: `حذف سجل غياب موظف`
+    });
+
     showToast('تم حذف سجل الغياب');
   }, []);
 
@@ -1478,6 +1805,14 @@ export default function App() {
       saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCredit);
     }
 
+    addActivityLog({
+      actionType: 'create',
+      category: 'tailoring',
+      title: 'تسجيل طلب خياطة وصيانة',
+      details: `طلب ${newOrder.serviceType} للقطعة ${newOrder.itemName} للزبون ${newOrder.customerName || 'داخلي'}`,
+      amount: newOrder.price
+    });
+
     showToast('تم تسجيل طلب الخياطة والصيانة بنجاح');
     setActiveModal(null);
   }, []);
@@ -1485,6 +1820,14 @@ export default function App() {
   const handleUpdateTailoringOrder = useCallback((id: string, data: Partial<MaintenanceOrder>) => {
     setMaintenanceOrders(prev => prev.map(o => o.id === id ? { ...o, ...data } : o));
     updateItemInFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, id, data);
+
+    addActivityLog({
+      actionType: 'update',
+      category: 'tailoring',
+      title: 'تعديل طلب خياطة',
+      details: `تعديل تفاصيل أمر الخياطة والصيانة`
+    });
+
     showToast('تم تحديث بيانات طلب الخياطة');
     setActiveModal(null);
   }, []);
@@ -1504,6 +1847,14 @@ export default function App() {
       return o;
     }));
     updateItemInFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, id, updates);
+
+    addActivityLog({
+      actionType: 'update',
+      category: 'tailoring',
+      title: 'تغيير حالة طلب خياطة',
+      details: `تحديث حالة طلب الخياطة والصيانة إلى: ${newStatus}`
+    });
+
     showToast('تم تحديث حالة الطلب');
   }, []);
 
@@ -1514,6 +1865,14 @@ export default function App() {
       onConfirm: () => {
         setMaintenanceOrders(prev => prev.filter(o => o.id !== id));
         deleteItemFromFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, id);
+
+        addActivityLog({
+          actionType: 'delete',
+          category: 'tailoring',
+          title: 'حذف طلب خياطة',
+          details: `حذف أمر خياطة أو صيانة من السجل`
+        });
+
         showToast('تم حذف الطلب بنجاح');
         setConfirmDelete(null);
       }
@@ -1646,10 +2005,14 @@ export default function App() {
         suppliers={suppliers}
         seamstresses={seamstresses}
         rawMaterials={rawMaterials}
+        activityLogs={activityLogs}
         posScannedBarcode={posScannedBarcode}
         onOpenAddRental={handleOpenAddRental}
         onOpenReturnModal={handleOpenReturnModal}
         onSendMessage={handleOpenMessageModal}
+        onDeleteLog={handleDeleteLog}
+        onClearAllLogs={handleClearAllLogs}
+        onAddManualLog={handleAddManualLog}
         onAddRentalWithItem={handleOpenAddRentalWithItem}
         onEditRentalModal={handleOpenEditRentalModal}
         onDeleteRental={handleDeleteRental}
