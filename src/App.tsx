@@ -484,6 +484,32 @@ export default function App() {
   const goPartners = useCallback(() => navigateTo('partners'), [navigateTo]);
   const goCaisse = useCallback(() => navigateTo('caisse'), [navigateTo]);
 
+  const openAddRentalModal = useCallback(() => {
+    setPreselectedRentalItemId(undefined);
+    setActiveModal('addRental');
+  }, []);
+
+  const openFullReportModal = useCallback(() => {
+    setActiveModal('fullReport');
+  }, []);
+
+  const openStaffPayoutsModal = useCallback(() => {
+    setActiveModal('staffPayouts');
+  }, []);
+
+  const openBarcodeScan = useCallback(() => {
+    setIsScanning(true);
+  }, []);
+
+  const toggleFinances = useCallback(() => {
+    if (hideFinances) {
+      setActiveModal('privacyPassword');
+    } else {
+      setHideFinances(true);
+      localStorage.setItem('bm_hideFinances', 'true');
+    }
+  }, [hideFinances]);
+
   // ==========================
   // RENTAL HANDLERS
   // ==========================
@@ -1363,7 +1389,7 @@ export default function App() {
             {/* Action Tools */}
             <div className="flex items-center gap-1.5 sm:gap-2">
               <button
-                onClick={() => setIsScanning(true)}
+                onClick={openBarcodeScan}
                 title="مسح الباركود"
                 aria-label="مسح الباركود"
                 className="h-7 sm:h-9 px-2 sm:px-3 rounded-lg sm:rounded-xl bg-blue-50/50 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-300 border border-blue-100/70 active:scale-95 text-blue-800 flex items-center gap-1 sm:gap-1.5 transition-all text-[11px] sm:text-xs font-bold group"
@@ -1379,14 +1405,7 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => {
-                  if (hideFinances) {
-                    setActiveModal('privacyPassword');
-                  } else {
-                    setHideFinances(true);
-                    localStorage.setItem('bm_hideFinances', 'true');
-                  }
-                }}
+                onClick={toggleFinances}
                 title="إخفاء/إظهار المبالغ"
                 aria-label="إخفاء/إظهار المبالغ"
                 className={`h-7 sm:h-9 px-2 sm:px-3 rounded-lg sm:rounded-xl flex items-center gap-1 sm:gap-1.5 transition-all active:scale-95 text-[11px] sm:text-xs font-bold border group ${
@@ -1412,7 +1431,7 @@ export default function App() {
               </button>
 
               <button 
-                onClick={() => setActiveModal('fullReport')} 
+                onClick={openFullReportModal} 
                 title="التقرير المالي"
                 className="h-7 sm:h-9 px-2 sm:px-3 flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 hover:text-blue-900 hover:border-blue-300 border border-blue-200 rounded-lg sm:rounded-xl transition-all shadow-2xs active:scale-95 group"
               >
@@ -1443,7 +1462,7 @@ export default function App() {
 
             {/* Primary Add Button */}
             <button
-              onClick={() => setActiveModal('addRental')}
+              onClick={openAddRentalModal}
               className="h-7 sm:h-9 px-2.5 sm:px-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs flex items-center gap-1 sm:gap-1.5 shadow-xs shrink-0 transition-all hover:shadow-md hover:shadow-blue-500/20"
             >
               <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
@@ -1512,7 +1531,7 @@ export default function App() {
             <NavButton 
               icon="staff" 
               label="العمال" 
-              onClick={() => setActiveModal('staffPayouts')} 
+              onClick={openStaffPayoutsModal} 
               badge={pendingAbsencesCount}
             />
           </nav>

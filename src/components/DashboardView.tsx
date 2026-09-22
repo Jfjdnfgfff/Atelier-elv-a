@@ -25,7 +25,7 @@ import { StatCard } from './Shared';
 import { useDashboardStats } from '../hooks/dashboardStatsHook';
 
 interface DashboardViewProps {
-  stats?: ReturnType<typeof useDashboardStats>;
+  stats: ReturnType<typeof useDashboardStats>;
   rentals: Rental[];
   maintenanceOrders?: MaintenanceOrder[];
   clothes: ClothItem[];
@@ -43,7 +43,7 @@ interface DashboardViewProps {
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
-  stats: passedStats,
+  stats,
   rentals,
   maintenanceOrders = [],
   clothes,
@@ -61,17 +61,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
 }) => {
   const [financePeriod, setFinancePeriod] = useState<'monthly' | 'yearly' | 'all'>('monthly');
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
-  
-  // Use passed stats if available from App, avoiding computing twice
-  const fallbackStats = useDashboardStats(
-    passedStats ? [] : rentals,
-    passedStats ? [] : sales,
-    passedStats ? [] : expenses,
-    passedStats ? [] : credits,
-    passedStats ? [] : staffPayouts,
-    passedStats ? [] : maintenanceOrders
-  );
-  const stats = passedStats || fallbackStats;
 
   const calculateDaysDiff = (expectedDate: string) => {
     const exp = new Date(expectedDate);

@@ -122,9 +122,11 @@ function evictStaleQueryCaches(): void {
 function pruneCanonicalStoreIfNeeded(colKey: string, store: Map<string, any>): void {
   if (store.size > MAX_CANONICAL_ITEMS_PER_COLLECTION && HEAVY_COLLECTIONS.has(colKey)) {
     const excess = store.size - MAX_CANONICAL_ITEMS_PER_COLLECTION;
-    const keys = Array.from(store.keys());
-    for (let i = 0; i < excess; i++) {
-      store.delete(keys[i]);
+    let deleted = 0;
+    for (const key of store.keys()) {
+      if (deleted >= excess) break;
+      store.delete(key);
+      deleted++;
     }
     // Refresh memory cache array
     memoryCache.set(colKey, Array.from(store.values()));
@@ -139,11 +141,15 @@ export function invalidateMemoryCache(key?: string): void {
     memoryCache.delete(key);
     cacheTimestamps.delete(key);
     canonicalStoreCache.delete(key);
-    for (const qKey of Array.from(queryMemoryCache.keys())) {
+    const keysToDelete: string[] = [];
+    for (const qKey of queryMemoryCache.keys()) {
       if (qKey === key || qKey.startsWith(`${key}|`)) {
-        queryMemoryCache.delete(qKey);
-        queryCacheTimestamps.delete(qKey);
+        keysToDelete.push(qKey);
       }
+    }
+    for (let i = 0; i < keysToDelete.length; i++) {
+      queryMemoryCache.delete(keysToDelete[i]);
+      queryCacheTimestamps.delete(keysToDelete[i]);
     }
   } else {
     memoryCache.clear();

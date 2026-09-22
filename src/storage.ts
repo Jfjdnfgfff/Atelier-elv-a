@@ -495,8 +495,54 @@ export const DEFAULT_CAISSE_CLOSURES: DailyCaisseClosure[] = [
 
 // In-memory cache for fast, synchronous lookups without reading localStorage repeatedly
 const memoryStore = new Map<string, any>();
-const storageFlushDebouncers = new Map<string, any>();
 const lastWrittenRef = new Map<string, any>();
+const dirtyKeys = new Set<string>();
+let idleFlushScheduled = false;
+
+// Non-blocking idle flush for localStorage disk I/O
+function scheduleIdleStorageFlush() {
+  if (idleFlushScheduled) return;
+  idleFlushScheduled = true;
+
+  const performFlush = () => {
+    idleFlushScheduled = false;
+    if (dirtyKeys.size === 0) return;
+
+    const keysToFlush = Array.from(dirtyKeys);
+    dirtyKeys.clear();
+
+    for (let i = 0; i < keysToFlush.length; i++) {
+      const key = keysToFlush[i];
+      const dataToPersist = memoryStore.get(key);
+      if (dataToPersist === undefined) continue;
+
+      try {
+        // Keep localStorage within safe limits (latest 300 items for large array collections)
+        const storagePayload = Array.isArray(dataToPersist) && dataToPersist.length > 300
+          ? dataToPersist.slice(0, 300)
+          : dataToPersist;
+        localStorage.setItem(key, JSON.stringify(storagePayload));
+      } catch (e: any) {
+        if (e?.name === 'QuotaExceededError' || e?.code === 22) {
+          console.warn(`[localStorage quota exceeded for ${key}], trimming offline snapshot`);
+          try {
+            if (Array.isArray(dataToPersist)) {
+              localStorage.setItem(key, JSON.stringify(dataToPersist.slice(0, 50)));
+            }
+          } catch (_) {}
+        } else {
+          console.error(`Error saving key ${key} to storage:`, e);
+        }
+      }
+    }
+  };
+
+  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    (window as any).requestIdleCallback(performFlush, { timeout: 400 });
+  } else {
+    setTimeout(performFlush, 200);
+  }
+}
 
 export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
   if (memoryStore.has(key)) {
@@ -520,59 +566,18 @@ export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
 };
 
 export const saveToStorage = <T>(key: string, data: T, syncFirebase: boolean = false): void => {
-  // If the exact same object/array reference is passed and not forcing cloud sync, avoid redundant serialization
+  // If the exact same object/array reference is passed and not forcing cloud sync, avoid redundant work
   if (lastWrittenRef.get(key) === data && !syncFirebase) {
     return;
   }
   lastWrittenRef.set(key, data);
 
-  // If saving an array of items with IDs (e.g. sales, rentals, expenses), merge with existing stored items to preserve local offline history
-  let dataToPersist: any = data;
-  if (Array.isArray(data) && data.length > 0 && (data[0] as any)?.id) {
-    const existing = memoryStore.get(key);
-    if (Array.isArray(existing) && existing.length > 0) {
-      const map = new Map<string, any>();
-      for (const item of existing) {
-        if (item && item.id) map.set(item.id, item);
-      }
-      for (const item of data) {
-        if (item && item.id) map.set(item.id, item);
-      }
-      dataToPersist = Array.from(map.values());
-    }
-  }
+  // Update in-memory cache instantly with 0ms latency
+  memoryStore.set(key, data);
+  dirtyKeys.add(key);
 
-  // Update in-memory cache instantly
-  memoryStore.set(key, dataToPersist);
-
-  // Debounce disk/localStorage I/O to avoid freezing UI thread on frequent updates
-  if (storageFlushDebouncers.has(key)) {
-    clearTimeout(storageFlushDebouncers.get(key));
-  }
-
-  const timer = setTimeout(() => {
-    try {
-      // Keep localStorage within safe limits (latest 300 items for array collections)
-      const storagePayload = Array.isArray(dataToPersist) && dataToPersist.length > 300
-        ? dataToPersist.slice(0, 300)
-        : dataToPersist;
-      localStorage.setItem(key, JSON.stringify(storagePayload));
-    } catch (e: any) {
-      if (e?.name === 'QuotaExceededError' || e?.code === 22) {
-        console.warn(`[localStorage quota exceeded for ${key}], trimming offline snapshot`);
-        try {
-          if (Array.isArray(dataToPersist)) {
-            localStorage.setItem(key, JSON.stringify(dataToPersist.slice(0, 50)));
-          }
-        } catch (_) {}
-      } else {
-        console.error(`Error saving key ${key} to storage:`, e);
-      }
-    }
-    storageFlushDebouncers.delete(key);
-  }, 150);
-
-  storageFlushDebouncers.set(key, timer);
+  // Schedule disk flush in background without blocking the UI thread
+  scheduleIdleStorageFlush();
 
   if (syncFirebase && Array.isArray(data)) {
     saveToFirebase(key, data).catch((err) => {
