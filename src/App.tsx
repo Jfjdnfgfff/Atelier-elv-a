@@ -214,9 +214,10 @@ export default function App() {
   }, [markCloudSyncActive]);
 
   // 2. Lazy / On-Demand Subscriptions (Rentals)
+  const needsRentals = ['dashboard', 'rentals', 'caisse'].includes(currentView) ||
+    ['fullReport', 'addRental', 'editRental', 'returnRental', 'receiptModal', 'messageModal'].includes(activeModal || '');
+
   useEffect(() => {
-    const needsRentals = ['dashboard', 'rentals', 'caisse'].includes(currentView) ||
-      ['fullReport', 'addRental', 'editRental', 'returnRental', 'receiptModal', 'messageModal'].includes(activeModal || '');
     if (!needsRentals) return;
 
     const unsub = SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
@@ -230,12 +231,13 @@ export default function App() {
       }
     });
     return unsub;
-  }, [currentView, activeModal, markCloudSyncActive]);
+  }, [needsRentals, markCloudSyncActive]);
 
   // 3. Lazy / On-Demand Subscriptions (Maintenance Orders)
+  const needsMaintenance = ['dashboard', 'inventory', 'tailoring'].includes(currentView) ||
+    ['fullReport', 'addTailoring', 'editTailoring', 'tailoringReceipt', 'tailoringModal'].includes(activeModal || '');
+
   useEffect(() => {
-    const needsMaintenance = ['dashboard', 'inventory', 'tailoring'].includes(currentView) ||
-      ['fullReport', 'addTailoring', 'editTailoring', 'tailoringReceipt', 'tailoringModal'].includes(activeModal || '');
     if (!needsMaintenance) return;
 
     const unsub = SubscriptionManager.subscribe<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
@@ -249,11 +251,12 @@ export default function App() {
       }
     });
     return unsub;
-  }, [currentView, activeModal, markCloudSyncActive]);
+  }, [needsMaintenance, markCloudSyncActive]);
 
   // 4. Lazy / On-Demand Subscriptions (Sales)
+  const needsSales = ['dashboard', 'sales', 'caisse'].includes(currentView) || activeModal === 'fullReport';
+
   useEffect(() => {
-    const needsSales = ['dashboard', 'sales', 'caisse'].includes(currentView) || activeModal === 'fullReport';
     if (!needsSales) return;
 
     const unsub = SubscriptionManager.subscribe<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
@@ -264,11 +267,12 @@ export default function App() {
       }
     });
     return unsub;
-  }, [currentView, activeModal, markCloudSyncActive]);
+  }, [needsSales, markCloudSyncActive]);
 
   // 5. Lazy / On-Demand Subscriptions (Expenses)
+  const needsExpenses = ['dashboard', 'expenses', 'caisse'].includes(currentView) || activeModal === 'fullReport';
+
   useEffect(() => {
-    const needsExpenses = ['dashboard', 'expenses', 'caisse'].includes(currentView) || activeModal === 'fullReport';
     if (!needsExpenses) return;
 
     const unsub = SubscriptionManager.subscribe<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
@@ -282,11 +286,12 @@ export default function App() {
       }
     });
     return unsub;
-  }, [currentView, activeModal, markCloudSyncActive]);
+  }, [needsExpenses, markCloudSyncActive]);
 
   // 6. Lazy / On-Demand Subscriptions (Credits)
+  const needsCredits = ['dashboard', 'credits', 'caisse', 'expenses', 'partners'].includes(currentView) || activeModal === 'fullReport';
+
   useEffect(() => {
-    const needsCredits = ['dashboard', 'credits', 'caisse'].includes(currentView) || activeModal === 'fullReport';
     if (!needsCredits) return;
 
     const unsub = SubscriptionManager.subscribe<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
@@ -297,11 +302,12 @@ export default function App() {
       }
     });
     return unsub;
-  }, [currentView, activeModal, markCloudSyncActive]);
+  }, [needsCredits, markCloudSyncActive]);
 
   // 7. Lazy / On-Demand Subscriptions (Staff Payouts)
+  const needsStaffPayouts = ['dashboard', 'caisse'].includes(currentView) || ['staffPayouts', 'fullReport'].includes(activeModal || '');
+
   useEffect(() => {
-    const needsStaffPayouts = currentView === 'dashboard' || ['staffPayouts', 'fullReport'].includes(activeModal || '');
     if (!needsStaffPayouts) return;
 
     const unsub = SubscriptionManager.subscribe<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
@@ -312,11 +318,12 @@ export default function App() {
       }
     });
     return unsub;
-  }, [currentView, activeModal, markCloudSyncActive]);
+  }, [needsStaffPayouts, markCloudSyncActive]);
 
   // 8. Lazy / On-Demand Subscriptions (Suppliers)
+  const needsSuppliers = ['inventory', 'expenses', 'credits', 'partners'].includes(currentView) || ['supplierModal', 'fullReport'].includes(activeModal || '');
+
   useEffect(() => {
-    const needsSuppliers = currentView === 'partners' || activeModal === 'supplierModal';
     if (!needsSuppliers) return;
 
     const unsub = SubscriptionManager.subscribe<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
@@ -330,12 +337,13 @@ export default function App() {
       }
     });
     return unsub;
-  }, [currentView, activeModal, markCloudSyncActive]);
+  }, [needsSuppliers, markCloudSyncActive]);
 
   // 9. Lazy / On-Demand Subscriptions (Seamstresses)
+  const needsSeamstresses = ['partners', 'tailoring'].includes(currentView) ||
+    ['addTailoring', 'editTailoring', 'seamstressModal', 'tailoringModal'].includes(activeModal || '');
+
   useEffect(() => {
-    const needsSeamstresses = ['partners', 'tailoring'].includes(currentView) ||
-      ['addTailoring', 'editTailoring', 'seamstressModal', 'tailoringModal'].includes(activeModal || '');
     if (!needsSeamstresses) return;
 
     const unsub = SubscriptionManager.subscribe<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
@@ -349,12 +357,13 @@ export default function App() {
       }
     });
     return unsub;
-  }, [currentView, activeModal, markCloudSyncActive]);
+  }, [needsSeamstresses, markCloudSyncActive]);
 
   // 10. Lazy / On-Demand Subscriptions (Raw Materials)
+  const needsRawMaterials = ['inventory', 'partners', 'tailoring'].includes(currentView) ||
+    ['addTailoring', 'editTailoring', 'rawMaterialModal', 'tailoringModal'].includes(activeModal || '');
+
   useEffect(() => {
-    const needsRawMaterials = ['partners', 'tailoring'].includes(currentView) ||
-      ['addTailoring', 'editTailoring', 'rawMaterialModal', 'tailoringModal'].includes(activeModal || '');
     if (!needsRawMaterials) return;
 
     const unsub = SubscriptionManager.subscribe<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
@@ -368,7 +377,7 @@ export default function App() {
       }
     });
     return unsub;
-  }, [currentView, activeModal, markCloudSyncActive]);
+  }, [needsRawMaterials, markCloudSyncActive]);
 
   // Local Storage Persistence
   useEffect(() => {
@@ -510,42 +519,6 @@ export default function App() {
     }
     return map;
   }, [clothes]);
-
-  // Preload lazy view chunks on idle after mount to guarantee 0ms instant tab navigation
-  useEffect(() => {
-    const preloadViews = [
-      () => import('./components/RentalsView'),
-      () => import('./components/InventoryView'),
-      () => import('./components/SalesPOSView'),
-      () => import('./components/ExpensesView'),
-      () => import('./components/CreditsView'),
-      () => import('./components/TailoringView'),
-      () => import('./components/CaisseView'),
-      () => import('./components/PartnersView'),
-      () => import('./components/RentalModal'),
-      () => import('./components/ReturnRentalModal'),
-      () => import('./components/RentalReceiptModal'),
-      () => import('./components/TailoringModal'),
-      () => import('./components/TailoringReceiptModal'),
-      () => import('./components/StaffPayoutsModal'),
-      () => import('./components/FullReport'),
-      () => import('./components/BarcodeScanner')
-    ];
-
-    const run = () => {
-      preloadViews.forEach(fn => {
-        try { fn(); } catch (e) {}
-      });
-    };
-
-    if (typeof window !== 'undefined') {
-      if ('requestIdleCallback' in window) {
-        (window as any).requestIdleCallback(run);
-      } else {
-        setTimeout(run, 50);
-      }
-    }
-  }, []);
 
   // Synchronous instant navigation transitions
   const navigateTo = useCallback((view: ViewType) => {
@@ -1675,12 +1648,7 @@ export default function App() {
 
       {/* Main Views Container */}
       <main className="flex-1 max-w-6xl mx-auto w-full px-3 sm:px-6 md:px-8 py-4 pb-12 overflow-y-auto">
-        <React.Suspense fallback={
-          <div className="flex flex-col items-center justify-center min-h-[250px] text-slate-400 font-semibold text-xs gap-2 py-12">
-            <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin" />
-            <span>جاري تحميل القسم...</span>
-          </div>
-        }>
+        <React.Suspense fallback={null}>
           {currentView === 'dashboard' && (
             <DashboardView 
               rentals={rentals} 
