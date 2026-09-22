@@ -53,7 +53,7 @@ export const NavButton: React.FC<{
   badge?: number;
 }> = ({ icon, label, onClick, active, color = 'blue', badge }) => {
   const getIcon = () => {
-    const iconClass = "w-3 h-3 sm:w-3.5 sm:h-3.5";
+    const iconClass = "w-3.5 h-3.5 sm:w-4 sm:h-4";
     switch (icon) {
       case 'dashboard':
         return <LayoutDashboard className={iconClass} />;
@@ -84,16 +84,16 @@ export const NavButton: React.FC<{
   return (
     <button
       onClick={onClick}
-      className={`relative flex flex-col items-center justify-center gap-0.5 sm:gap-1 w-full py-1 sm:py-1.5 px-0.5 sm:px-1.5 rounded-lg sm:rounded-xl text-[8px] sm:text-xs font-bold transition-all min-h-[34px] sm:min-h-[42px] group ${
+      className={`relative flex flex-col items-center justify-center gap-1 shrink-0 py-1.5 sm:py-2 px-2.5 sm:px-3.5 rounded-xl text-[9.5px] sm:text-xs font-bold transition-all min-w-[62px] sm:min-w-[72px] group ${
         active
-          ? 'bg-blue-600 text-white shadow-xs ring-1 sm:ring-2 ring-blue-600/30'
+          ? 'bg-blue-600 text-white shadow-xs ring-1 sm:ring-2 ring-blue-600/30 scale-[1.02]'
           : 'text-blue-700 hover:text-blue-900 hover:bg-blue-50/90 hover:border-blue-200 border border-transparent active:scale-95'
       }`}
     >
       <div className={`shrink-0 transition-transform group-hover:scale-105 ${active ? 'text-white' : 'text-blue-600 group-hover:text-blue-800'}`}>{getIcon()}</div>
-      <span className="truncate leading-none text-[8px] sm:text-xs tracking-tight">{label}</span>
+      <span className="whitespace-nowrap leading-none text-[9.5px] sm:text-xs tracking-tight">{label}</span>
       {badge !== undefined && badge > 0 && (
-        <span className="absolute -top-1 -left-1 min-w-[13px] h-[13px] sm:min-w-[18px] sm:h-[18px] px-0.5 sm:px-1 bg-blue-600 text-white text-[7px] sm:text-[9px] font-black rounded-full flex items-center justify-center border sm:border-2 border-white shadow-xs">
+        <span className="absolute -top-1 -left-1 min-w-[15px] h-[15px] sm:min-w-[18px] sm:h-[18px] px-1 bg-blue-600 text-white text-[8px] sm:text-[9px] font-black rounded-full flex items-center justify-center border sm:border-2 border-white shadow-xs">
           {badge}
         </span>
       )}

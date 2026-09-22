@@ -1525,8 +1525,8 @@ export default function App() {
             </button>
           </div>
 
-          {/* Bottom Row of Header: All Navigation Icons in a single compact row */}
-          <nav className="grid grid-cols-10 gap-0.5 sm:gap-1 w-full pt-1 border-t border-blue-50" aria-label="أقسام التطبيق">
+          {/* Bottom Row of Header: All Navigation Icons scrollable horizontally */}
+          <nav className="flex items-center gap-1.5 sm:gap-2.5 w-full pt-1.5 pb-0.5 border-t border-blue-50 overflow-x-auto touch-pan-x overscroll-x-contain hide-scrollbar scroll-smooth" aria-label="أقسام التطبيق">
             <NavButton 
               icon="dashboard" 
               label="الرئيسية" 
