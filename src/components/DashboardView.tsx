@@ -157,25 +157,28 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6" dir="rtl">
       {/* Top Welcome & Controls Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-blue-50/70 via-white to-indigo-50/70 p-4 sm:p-5 rounded-2xl border border-blue-100 shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
+            <span className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+              <TrendingUp className="w-4 h-4" />
+            </span>
             <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
               لوحة التحكم والمداخيل الرئيسية
             </h2>
           </div>
-          <p className="text-xs text-slate-500 font-normal mt-0.5">
+          <p className="text-xs text-slate-600 font-normal mt-1 mr-10">
             متابعة شاملة لمداخيل الكراء، الخياطة الشهرية والسنوية، مبيعات الملابس، وصافي الأرباح.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {/* Period Selector Toggle */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium">
+          <div className="flex items-center bg-slate-100/90 p-1 rounded-xl text-xs font-medium border border-slate-200/60">
             <button
               onClick={() => setFinancePeriod('monthly')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
-                financePeriod === 'monthly' ? 'bg-slate-900 text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                financePeriod === 'monthly' ? 'bg-blue-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:text-blue-700'
               }`}
             >
               هذا الشهر
@@ -183,7 +186,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
             <button
               onClick={() => setFinancePeriod('yearly')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
-                financePeriod === 'yearly' ? 'bg-slate-900 text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                financePeriod === 'yearly' ? 'bg-blue-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:text-blue-700'
               }`}
             >
               هذه السنة
@@ -191,7 +194,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
             <button
               onClick={() => setFinancePeriod('all')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
-                financePeriod === 'all' ? 'bg-slate-900 text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                financePeriod === 'all' ? 'bg-blue-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:text-blue-700'
               }`}
             >
               الإجمالي
@@ -200,10 +203,10 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
 
           <button
             onClick={onPrivacyToggle}
-            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all min-h-[36px] active:scale-95 ${
+            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all min-h-[36px] active:scale-95 border ${
               hideFinances 
-                ? 'bg-slate-900 text-white shadow-xs' 
-                : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-2xs'
+                ? 'bg-slate-900 text-white border-slate-900 shadow-xs' 
+                : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200 shadow-2xs hover:text-blue-700'
             }`}
             title={hideFinances ? 'إظهار الأرقام' : 'إخفاء الأرقام'}
           >
@@ -213,7 +216,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
 
           <button
             onClick={onOpenAddRental}
-            className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs min-h-[36px] active:scale-95"
+            className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-md hover:shadow-blue-500/20 min-h-[36px] active:scale-95"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>كراء جديد</span>
@@ -300,7 +303,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           subtitle={financePeriod === 'monthly' ? 'هذا الشهر' : financePeriod === 'yearly' ? 'هذه السنة' : 'الإجمالي'}
           hideValue={hideFinances}
           onClick={() => onNavigate('rentals')}
-          icon={<Sparkles className="w-4 h-4 text-slate-700" />}
+          iconBg="bg-sky-100 text-sky-700"
+          icon={<Sparkles className="w-4 h-4 text-sky-700" />}
         />
 
         {/* 2. مداخيل الخياطة الشهرية */}
@@ -310,7 +314,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           subtitle="هذا الشهر"
           hideValue={hideFinances}
           onClick={() => onNavigate('tailoring')}
-          icon={<Scissors className="w-4 h-4 text-slate-700" />}
+          iconBg="bg-purple-100 text-purple-700"
+          icon={<Scissors className="w-4 h-4 text-purple-700" />}
         />
 
         {/* 3. مداخيل الخياطة السنوية */}
@@ -320,7 +325,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           subtitle="هذه السنة"
           hideValue={hideFinances}
           onClick={() => onNavigate('tailoring')}
-          icon={<Scissors className="w-4 h-4 text-slate-700" />}
+          iconBg="bg-purple-100 text-purple-700"
+          icon={<Scissors className="w-4 h-4 text-purple-700" />}
         />
 
         {/* 4. مداخيل مبيعات الملابس */}
@@ -330,7 +336,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           subtitle={financePeriod === 'monthly' ? 'هذا الشهر' : financePeriod === 'yearly' ? 'هذه السنة' : 'الإجمالي'}
           hideValue={hideFinances}
           onClick={() => onNavigate('sales')}
-          icon={<ShoppingBag className="w-4 h-4 text-slate-700" />}
+          iconBg="bg-emerald-100 text-emerald-700"
+          icon={<ShoppingBag className="w-4 h-4 text-emerald-700" />}
         />
 
         {/* 5. المصاريف والغسيل */}
@@ -340,7 +347,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           subtitle={financePeriod === 'monthly' ? 'هذا الشهر' : financePeriod === 'yearly' ? 'هذه السنة' : 'الإجمالي'}
           hideValue={hideFinances}
           onClick={() => onNavigate('expenses')}
-          icon={<Receipt className="w-4 h-4 text-slate-700" />}
+          iconBg="bg-rose-100 text-rose-700"
+          icon={<Receipt className="w-4 h-4 text-rose-700" />}
         />
 
         {/* 6. الديون والكريدي المتبقي */}
@@ -350,7 +358,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           subtitle="متبقي على الزبائن"
           hideValue={hideFinances}
           onClick={() => onNavigate('credits')}
-          icon={<CreditCard className="w-4 h-4 text-slate-700" />}
+          iconBg="bg-amber-100 text-amber-700"
+          icon={<CreditCard className="w-4 h-4 text-amber-700" />}
         />
 
         {/* 7. رواتب ومستحقات العمال */}
@@ -360,7 +369,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           subtitle={financePeriod === 'monthly' ? 'هذا الشهر' : financePeriod === 'yearly' ? 'هذه السنة' : 'الإجمالي'}
           hideValue={hideFinances}
           onClick={() => onNavigate('customers')}
-          icon={<Users className="w-4 h-4 text-slate-700" />}
+          iconBg="bg-violet-100 text-violet-700"
+          icon={<Users className="w-4 h-4 text-violet-700" />}
         />
 
         {/* 8. صافي الأرباح الكلية */}
@@ -370,7 +380,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           subtitle="بعد كل التكاليف"
           hideValue={hideFinances}
           onClick={() => onNavigate('dashboard')}
-          icon={<TrendingUp className="w-4 h-4 text-slate-700" />}
+          iconBg="bg-blue-100 text-blue-700"
+          icon={<TrendingUp className="w-4 h-4 text-blue-700" />}
         />
       </div>
 

@@ -271,20 +271,25 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
   return (
     <div className="space-y-4 pb-8" dir="rtl">
       {/* Top Banner */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
+      <div className="bg-gradient-to-r from-teal-50/70 via-white to-cyan-50/70 p-4 sm:p-5 rounded-2xl border border-teal-100 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-              <span>شركاء العمل: تتبع الموردين والخياطات</span>
-            </h2>
-            <p className="text-xs text-slate-500 font-normal mt-0.5">
+            <div className="flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-xs">
+                <Building2 className="w-4 h-4" />
+              </span>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                <span>شركاء العمل: تتبع الموردين والخياطات</span>
+              </h2>
+            </div>
+            <p className="text-xs text-slate-600 font-normal mt-1 mr-10">
               متابعة متطابقة وشاملة لحسابات الموردين (فواتير، دفعات، ديون متبقية) والخياطات (طلبيات، إنجاز، ومستحقات).
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             {/* Toggle Tabs */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium w-full sm:w-auto">
+            <div className="flex items-center bg-slate-100/90 p-1 rounded-xl text-xs font-semibold w-full sm:w-auto border border-slate-200/60">
               <button
                 onClick={() => {
                   setActiveTab('suppliers');
@@ -292,8 +297,8 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                 }}
                 className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all ${
                   activeTab === 'suppliers'
-                    ? 'bg-white text-slate-900 shadow-xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-teal-600 text-white shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-teal-700'
                 }`}
               >
                 <Building2 className="w-3.5 h-3.5" />
@@ -306,8 +311,8 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                 }}
                 className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all ${
                   activeTab === 'seamstresses'
-                    ? 'bg-white text-slate-900 shadow-xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-teal-600 text-white shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-teal-700'
                 }`}
               >
                 <Scissors className="w-3.5 h-3.5" />
@@ -325,7 +330,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                   setSupNotes('');
                   setShowAddSupplierModal(true);
                 }}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-md hover:shadow-teal-500/20 active:scale-95"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>إضافة مورد جديد</span>
@@ -340,7 +345,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                   setSeamNotes('');
                   setShowAddSeamstressModal(true);
                 }}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-md hover:shadow-teal-500/20 active:scale-95"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>إضافة خياطة جديدة</span>

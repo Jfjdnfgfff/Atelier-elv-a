@@ -515,25 +515,30 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   return (
     <div className="space-y-4 sm:space-y-5 p-3 sm:p-6" dir="rtl">
       {/* Top Header & Tab Switcher */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-indigo-50/70 via-white to-purple-50/70 p-4 sm:p-5 rounded-2xl border border-indigo-100 shadow-2xs">
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <span>مخزون المحل والسلع (Stock & Tissus)</span>
-          </h2>
-          <p className="text-xs text-slate-500 font-normal mt-0.5">
+          <div className="flex items-center gap-2">
+            <span className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+              <Package className="w-4 h-4" />
+            </span>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              <span>مخزون المحل والسلع (Stock & Tissus)</span>
+            </h2>
+          </div>
+          <p className="text-xs text-slate-600 font-normal mt-1 mr-10">
             متابعة دقيقة للفساتين الجاهزة (المخزن 1 و 2) والسلع الأولية والأقمشة بالرولو مع احتساب رأس المال وثمن البيع.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {/* Main Tab Switcher */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-semibold w-full sm:w-auto">
+          <div className="flex items-center bg-slate-100/90 p-1 rounded-xl text-xs font-semibold w-full sm:w-auto border border-slate-200/60">
             <button
               onClick={() => setInventoryTab('clothes')}
               className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all ${
                 inventoryTab === 'clothes'
-                  ? 'bg-slate-900 text-white shadow-xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-indigo-700'
               }`}
             >
               <Shirt className="w-3.5 h-3.5" />
@@ -543,8 +548,8 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
               onClick={() => setInventoryTab('raw_materials')}
               className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all ${
                 inventoryTab === 'raw_materials'
-                  ? 'bg-slate-900 text-white shadow-xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-indigo-700'
               }`}
             >
               <Scissors className="w-3.5 h-3.5" />
@@ -556,16 +561,16 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 onClick={() => setShowScannerModal(true)}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border border-slate-200 shadow-2xs active:scale-95"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white hover:bg-indigo-50 text-indigo-800 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border border-indigo-200 shadow-2xs active:scale-95"
                 title="مسح باركود لإضافة أو تحويل كمية المخزن"
               >
-                <Camera className="w-4 h-4 text-slate-600" />
+                <Camera className="w-4 h-4 text-indigo-600" />
                 <span>إضافة بالباركود</span>
               </button>
 
               <button
                 onClick={() => handleInitiateAddCloth('')}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-md hover:shadow-indigo-500/20 active:scale-95"
               >
                 + قطعة جديدة
               </button>

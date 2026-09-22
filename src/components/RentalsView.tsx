@@ -161,24 +161,27 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
   return (
     <div className="space-y-4 sm:space-y-5 p-3 sm:p-6" dir="rtl">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-sky-50/70 via-white to-blue-50/70 p-4 sm:p-5 rounded-2xl border border-sky-100 shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
+            <span className="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center shadow-xs">
+              <Calendar className="w-4 h-4" />
+            </span>
             <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
               <span>سجل كراء وحجز الفساتين</span>
             </h2>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md font-semibold border border-slate-200/60">
+              <span className="text-xs bg-sky-100/80 text-sky-800 px-2.5 py-0.5 rounded-md font-bold border border-sky-200">
                 {activeRentalsList.length + overdueRentalsList.length} كراء جاري
               </span>
               {reservedRentals.length > 0 && (
-                <span className="text-xs bg-sky-50 text-sky-700 px-2.5 py-0.5 rounded-md font-semibold border border-sky-100">
+                <span className="text-xs bg-amber-50 text-amber-800 px-2.5 py-0.5 rounded-md font-bold border border-amber-200">
                   {reservedRentals.length} حجز مستقبلي
                 </span>
               )}
             </div>
           </div>
-          <p className="text-xs text-slate-500 font-normal mt-0.5">
+          <p className="text-xs text-slate-600 font-normal mt-1 mr-10">
             إدارة الكراء الفوري، الفساتين المستأجرة مستقبلاً (الحجوزات)، ومتابعة التسليم وتصفية الحسابات.
           </p>
         </div>
@@ -187,10 +190,10 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
           {onScanBarcode && (
             <button
               onClick={onScanBarcode}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 border border-slate-200 shadow-2xs"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white hover:bg-sky-50 text-sky-800 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 border border-sky-200 shadow-2xs"
               title="مسح باركود الفستان لبدء كراء جديد"
             >
-              <svg className="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M7 12h10" />
               </svg>
               <span>كراء بالباركود</span>
@@ -199,7 +202,7 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
 
           <button
             onClick={() => onAddRental()}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-md hover:shadow-sky-500/20 active:scale-95"
           >
             + تسجيل كراء / حجز
           </button>
@@ -214,8 +217,8 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
             onClick={() => setFilter('all')}
             className={`px-3 py-1.5 rounded-xl text-xs transition-all shrink-0 font-medium ${
               filter === 'all' 
-                ? 'bg-slate-900 text-white shadow-xs font-bold' 
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+                ? 'bg-sky-600 text-white shadow-xs font-bold' 
+                : 'bg-slate-100 text-slate-600 hover:bg-sky-50 hover:text-sky-700'
             }`}
           >
             الكل ({rentals.length})
@@ -225,13 +228,13 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
             onClick={() => setFilter('reserved')}
             className={`px-3 py-1.5 rounded-xl text-xs transition-all shrink-0 flex items-center gap-1.5 font-medium ${
               filter === 'reserved' 
-                ? 'bg-slate-900 text-white shadow-xs font-bold' 
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+                ? 'bg-amber-600 text-white shadow-xs font-bold' 
+                : 'bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-700'
             }`}
           >
             <span>مستأجرة مستقبلاً</span>
             <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
-              filter === 'reserved' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+              filter === 'reserved' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
             }`}>
               {reservedRentals.length}
             </span>
@@ -241,8 +244,8 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
             onClick={() => setFilter('active')}
             className={`px-3 py-1.5 rounded-xl text-xs transition-all shrink-0 flex items-center gap-1.5 font-medium ${
               filter === 'active' 
-                ? 'bg-slate-900 text-white shadow-xs font-bold' 
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+                ? 'bg-emerald-600 text-white shadow-xs font-bold' 
+                : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
             }`}
           >
             <span>جارية عند الزبون</span>

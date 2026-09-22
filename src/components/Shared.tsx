@@ -89,21 +89,67 @@ export const NavButton: React.FC<{
     }
   };
 
+  // Dedicated section color themes (when active & inactive hover)
+  const getThemeClasses = () => {
+    switch (icon) {
+      case 'dashboard':
+        return active 
+          ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
+          : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/70';
+      case 'rentals':
+        return active 
+          ? 'bg-sky-600 text-white shadow-md shadow-sky-500/20' 
+          : 'text-slate-600 hover:text-sky-700 hover:bg-sky-50/70';
+      case 'inventory':
+        return active 
+          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' 
+          : 'text-slate-600 hover:text-indigo-700 hover:bg-indigo-50/70';
+      case 'sales':
+        return active 
+          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20' 
+          : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/70';
+      case 'tailoring':
+        return active 
+          ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' 
+          : 'text-slate-600 hover:text-purple-700 hover:bg-purple-50/70';
+      case 'expenses':
+        return active 
+          ? 'bg-rose-600 text-white shadow-md shadow-rose-500/20' 
+          : 'text-slate-600 hover:text-rose-700 hover:bg-rose-50/70';
+      case 'credits':
+        return active 
+          ? 'bg-amber-600 text-white shadow-md shadow-amber-500/20' 
+          : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/70';
+      case 'partners':
+        return active 
+          ? 'bg-teal-600 text-white shadow-md shadow-teal-500/20' 
+          : 'text-slate-600 hover:text-teal-700 hover:bg-teal-50/70';
+      case 'caisse':
+        return active 
+          ? 'bg-cyan-600 text-white shadow-md shadow-cyan-500/20' 
+          : 'text-slate-600 hover:text-cyan-700 hover:bg-cyan-50/70';
+      case 'staff':
+        return active 
+          ? 'bg-violet-600 text-white shadow-md shadow-violet-500/20' 
+          : 'text-slate-600 hover:text-violet-700 hover:bg-violet-50/70';
+      default:
+        return active 
+          ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
+          : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/70';
+    }
+  };
+
   return (
     <button
       onClick={onClick}
-      className={`relative flex flex-col items-center justify-center gap-1 shrink-0 py-2 px-3 sm:px-3.5 rounded-xl text-xs font-semibold transition-all min-w-[64px] sm:min-w-[72px] min-h-[44px] group ${
-        active
-          ? 'bg-slate-900 text-white shadow-xs'
-          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 active:scale-95'
-      }`}
+      className={`relative flex flex-col items-center justify-center gap-1 shrink-0 py-2 px-3 sm:px-3.5 rounded-xl text-xs font-semibold transition-all min-w-[64px] sm:min-w-[72px] min-h-[44px] group active:scale-95 ${getThemeClasses()}`}
     >
-      <div className={`shrink-0 transition-transform group-hover:scale-105 ${active ? 'text-white' : 'text-slate-500 group-hover:text-slate-800'}`}>
+      <div className={`shrink-0 transition-transform group-hover:scale-110 ${active ? 'text-white' : ''}`}>
         {getIcon()}
       </div>
       <span className="whitespace-nowrap leading-none text-[11px] sm:text-xs tracking-tight">{label}</span>
       {badge !== undefined && badge > 0 && (
-        <span className="absolute -top-1 -left-1 min-w-[17px] h-[17px] px-1 bg-rose-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+        <span className="absolute -top-1 -left-1 min-w-[17px] h-[17px] px-1 bg-rose-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-xs animate-pulse">
           {badge}
         </span>
       )}
@@ -120,7 +166,7 @@ export const StatCard: React.FC<{
   subtitle?: string;
   hideValue?: boolean;
   onClick?: () => void;
-}> = ({ title, value, unit = 'دج', icon, subtitle, hideValue, onClick }) => {
+}> = ({ title, value, unit = 'دج', iconBg, icon, subtitle, hideValue, onClick }) => {
   const Component = onClick ? 'button' : 'div';
 
   return (
@@ -131,7 +177,11 @@ export const StatCard: React.FC<{
       }`}
     >
       <div className="flex justify-between items-start mb-3 w-full">
-        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 text-slate-700 group-hover:bg-slate-200/80 group-hover:text-slate-900 flex items-center justify-center shrink-0 border border-slate-200/60 transition-colors">
+        <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 border transition-all ${
+          iconBg 
+            ? `${iconBg} border-transparent group-hover:scale-105` 
+            : 'bg-slate-100 text-slate-700 group-hover:bg-slate-200/80 group-hover:text-slate-900 border-slate-200/60'
+        }`}>
           {icon}
         </div>
         {subtitle && (
@@ -141,7 +191,7 @@ export const StatCard: React.FC<{
         )}
       </div>
       <div className="w-full">
-        <div className="text-xs font-medium text-slate-500 mb-1">{title}</div>
+        <div className="text-xs font-semibold text-slate-600 mb-1">{title}</div>
         <div className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight font-mono">
           {hideValue ? (
             <span className="tracking-widest text-slate-300 font-sans text-base">••••••</span>

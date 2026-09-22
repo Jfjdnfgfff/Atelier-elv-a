@@ -124,11 +124,16 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
   return (
     <div className="space-y-4 pb-8" dir="rtl">
       {/* Top Banner & Stats */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
+      <div className="bg-gradient-to-r from-amber-50/70 via-white to-orange-50/70 p-4 sm:p-5 rounded-2xl border border-amber-100 shadow-2xs space-y-4">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">سجل الديون والكريدي الشامل</h2>
-            <p className="text-xs text-slate-500 font-normal mt-0.5">
+            <div className="flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-xs">
+                <Scale className="w-4 h-4" />
+              </span>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">سجل الديون والكريدي الشامل</h2>
+            </div>
+            <p className="text-xs text-slate-600 font-normal mt-1 mr-10">
               متابعة ديون الزبائن (أموال لنا في الخارج) وديون الموردين (التزامات شراء السلعة).
             </p>
           </div>
@@ -136,52 +141,52 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
 
         {/* 3 Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-          <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-xl">
+          <div className="bg-white/90 border border-amber-100 p-3.5 rounded-xl shadow-2xs">
             <div className="flex justify-between items-center mb-1">
-              <span className="text-xs text-slate-700 font-medium flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-slate-500" />
+              <span className="text-xs text-amber-900 font-bold flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-amber-600" />
                 <span>ديون على الزبائن (لنا):</span>
               </span>
-              <span className="text-[10px] bg-slate-200/80 text-slate-700 px-2 py-0.5 rounded-md font-medium">
+              <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md font-bold">
                 {customerDebts.length} زبائن
               </span>
             </div>
             <span className="text-lg sm:text-xl font-bold text-slate-900 font-mono">
               {totalCustomerDebt.toLocaleString()} دج
             </span>
-            <span className="text-[10px] text-slate-400 block mt-0.5">مبالغ كراء وبيع بانتظار التحصيل</span>
+            <span className="text-[10px] text-slate-500 block mt-0.5">مبالغ كراء وبيع بانتظار التحصيل</span>
           </div>
 
-          <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-xl">
+          <div className="bg-white/90 border border-rose-100 p-3.5 rounded-xl shadow-2xs">
             <div className="flex justify-between items-center mb-1">
-              <span className="text-xs text-slate-700 font-medium flex items-center gap-1.5">
-                <Building2 className="w-4 h-4 text-slate-500" />
+              <span className="text-xs text-rose-900 font-bold flex items-center gap-1.5">
+                <Building2 className="w-4 h-4 text-rose-600" />
                 <span>ديون للموردين (علينا):</span>
               </span>
-              <span className="text-[10px] bg-slate-200/80 text-slate-700 px-2 py-0.5 rounded-md font-medium">
+              <span className="text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded-md font-bold">
                 {supplierDebts.length} موردين
               </span>
             </div>
             <span className="text-lg sm:text-xl font-bold text-rose-600 font-mono">
               {totalSupplierDebt.toLocaleString()} دج
             </span>
-            <span className="text-[10px] text-slate-400 block mt-0.5">متبقي كريدي شراء سلع وفواتير</span>
+            <span className="text-[10px] text-slate-500 block mt-0.5">متبقي كريدي شراء سلع وفواتير</span>
           </div>
 
-          <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-xl">
+          <div className="bg-white/90 border border-slate-200/80 p-3.5 rounded-xl shadow-2xs">
             <div className="flex justify-between items-center mb-1">
-              <span className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
-                <Scale className="w-4 h-4 text-slate-500" />
+              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Scale className="w-4 h-4 text-slate-600" />
                 <span>صافي الميزان الائتماني:</span>
               </span>
               <span className="text-[10px] font-normal text-slate-500">(لنا - علينا)</span>
             </div>
             <span className={`text-lg sm:text-xl font-bold font-mono ${
-              netDebtBalance >= 0 ? 'text-slate-900' : 'text-rose-600'
+              netDebtBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'
             }`}>
               {netDebtBalance >= 0 ? `+${netDebtBalance.toLocaleString()}` : netDebtBalance.toLocaleString()} دج
             </span>
-            <span className="text-[10px] text-slate-400 block mt-0.5">
+            <span className="text-[10px] text-slate-500 block mt-0.5">
               {netDebtBalance >= 0 ? 'رصيد إيجابي لصالح البوتيك' : 'التزامات الموردين تتجاوز ديون الزبائن'}
             </span>
           </div>
@@ -193,12 +198,12 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div className="flex items-center gap-2">
             <h3 className="font-bold text-slate-900 text-sm">تسجيل دين / كريدي جديد</h3>
-            <div className="flex bg-slate-100 p-1 rounded-xl">
+            <div className="flex bg-slate-100/90 p-1 rounded-xl border border-slate-200/60">
               <button
                 type="button"
                 onClick={() => { setDebtCategory('customer'); setType('دين كراء فستان'); }}
-                className={`px-3 py-1 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 ${
-                  debtCategory === 'customer' ? 'bg-white text-slate-900 font-bold shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                  debtCategory === 'customer' ? 'bg-amber-600 text-white font-bold shadow-xs' : 'text-slate-600 hover:text-amber-800'
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
@@ -207,8 +212,8 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
               <button
                 type="button"
                 onClick={() => { setDebtCategory('supplier'); setType('دين للمورد (كريدي سلعة)'); }}
-                className={`px-3 py-1 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 ${
-                  debtCategory === 'supplier' ? 'bg-white text-slate-900 font-bold shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                  debtCategory === 'supplier' ? 'bg-rose-600 text-white font-bold shadow-xs' : 'text-slate-600 hover:text-rose-800'
                 }`}
               >
                 <Building2 className="w-3.5 h-3.5" />
@@ -221,9 +226,9 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
             <button
               type="button"
               onClick={() => setShowScanner(true)}
-              className="bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200 active:scale-95 px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5"
+              className="bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100 active:scale-95 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
             >
-              <CreditCard className="w-3.5 h-3.5" />
+              <CreditCard className="w-3.5 h-3.5 text-amber-700" />
               <span>مسح بطاقة الهوية / الباركود</span>
             </button>
           )}
@@ -315,7 +320,11 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
 
         <button
           type="submit"
-          className="w-full py-2.5 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs active:scale-[0.98] bg-slate-900 hover:bg-slate-800 flex items-center justify-center gap-1.5"
+          className={`w-full py-2.5 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs active:scale-[0.98] flex items-center justify-center gap-1.5 ${
+            debtCategory === 'customer' 
+              ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/20' 
+              : 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/20'
+          }`}
         >
           <Plus className="w-4 h-4" />
           <span>{debtCategory === 'supplier' ? 'تسجيل دين للمورد' : 'تسجيل دين على الزبون'}</span>
@@ -338,19 +347,19 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <h3 className="font-bold text-slate-900 text-sm sm:text-base">قائمة الديون المسجلة</h3>
           
-          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+          <div className="flex gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/60">
             <button
               onClick={() => setFilterTab('all')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                filterTab === 'all' ? 'bg-white text-slate-900 font-bold shadow-xs' : 'text-slate-500 hover:text-slate-800'
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                filterTab === 'all' ? 'bg-amber-600 text-white font-bold shadow-xs' : 'text-slate-600 hover:text-amber-800'
               }`}
             >
               الكل ({credits.length})
             </button>
             <button
               onClick={() => setFilterTab('customers')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 ${
-                filterTab === 'customers' ? 'bg-white text-slate-900 font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                filterTab === 'customers' ? 'bg-amber-600 text-white font-bold shadow-xs' : 'text-slate-600 hover:text-amber-800'
               }`}
             >
               <Users className="w-3.5 h-3.5" />
@@ -358,8 +367,8 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
             </button>
             <button
               onClick={() => setFilterTab('suppliers')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 ${
-                filterTab === 'suppliers' ? 'bg-white text-slate-900 font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                filterTab === 'suppliers' ? 'bg-rose-600 text-white font-bold shadow-xs' : 'text-slate-600 hover:text-rose-800'
               }`}
             >
               <Building2 className="w-3.5 h-3.5" />
