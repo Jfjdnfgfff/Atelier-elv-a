@@ -2182,7 +2182,7 @@ export default function App() {
                     <h4 className="font-black text-sm text-white">الربط السحابي مع Firebase مفعل ونشط</h4>
                   </div>
                   <p className="text-[11px] text-blue-200 mt-0.5">
-                    معرف المشروع: <span className="font-mono text-white font-bold">ateliu-14e23</span>
+                    معرف المشروع: <span className="font-mono text-white font-bold">{firebaseConfig.projectId}</span>
                   </p>
                 </div>
               </div>

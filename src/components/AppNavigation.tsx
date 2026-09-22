@@ -19,6 +19,7 @@ import { NavButton } from './Shared';
 import { ViewRenderer } from './ViewRenderer';
 import { Scale, Plus } from 'lucide-react';
 import { perfMonitor } from '../utils/performanceMonitor';
+import { onSyncStatusChange, SyncStatus } from '../firebase';
 
 export interface AppNavigationProps {
   onInitNav?: (navFn: (view: ViewType) => void, getViewFn: () => ViewType) => void;
@@ -166,6 +167,20 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
   const currentViewRef = React.useRef(currentView);
   currentViewRef.current = currentView;
 
+  // Real-time Database Synchronization Status
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('connected');
+  const [lastSynced, setLastSynced] = useState<Date | undefined>();
+  const [syncError, setSyncError] = useState<string | undefined>();
+
+  React.useEffect(() => {
+    const unsubscribeStatus = onSyncStatusChange((status, lastSyncedTime, errorMsg) => {
+      setSyncStatus(status);
+      setLastSynced(lastSyncedTime);
+      setSyncError(errorMsg);
+    });
+    return unsubscribeStatus;
+  }, []);
+
   // Local navigation state only - does NOT trigger App.tsx re-renders
   const navigateTo = useCallback((view: ViewType) => {
     perfMonitor.startNavigation(currentViewRef.current, view);
@@ -277,14 +292,50 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
               </button>
             </div>
 
-            {/* Primary Add Button */}
-            <button
-              onClick={openAddRentalModal}
-              className="h-7 sm:h-9 px-2.5 sm:px-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs flex items-center gap-1 sm:gap-1.5 shadow-xs shrink-0 transition-all hover:shadow-md hover:shadow-blue-500/20"
-            >
-              <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-              <span className="text-[11px] sm:text-xs">كراء جديد</span>
-            </button>
+            {/* Sync status & Primary Add Button */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {/* Live Firebase Sync Status Pill */}
+              <div 
+                title={syncError ? `تفاصيل الخطأ: ${syncError}` : lastSynced ? `آخر مزامنة ناجحة: ${lastSynced.toLocaleTimeString('ar-EG')}` : "حالة الاتصال السحابي مع Firebase"}
+                className={`h-7 sm:h-9 px-2 sm:px-3 rounded-lg sm:rounded-xl flex items-center gap-1.5 border transition-all text-[11px] sm:text-xs font-bold select-none ${
+                  syncStatus === 'connected' 
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                    : syncStatus === 'syncing'
+                    ? 'bg-blue-50 border-blue-200 text-blue-800'
+                    : syncStatus === 'offline'
+                    ? 'bg-slate-50 border-slate-200 text-slate-700'
+                    : 'bg-rose-50 border-rose-200 text-rose-800 animate-pulse'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
+                  syncStatus === 'connected' 
+                    ? 'bg-emerald-500' 
+                    : syncStatus === 'syncing'
+                    ? 'bg-blue-500 animate-pulse'
+                    : syncStatus === 'offline'
+                    ? 'bg-slate-400'
+                    : 'bg-rose-500'
+                }`} />
+                <span className="hidden md:inline">
+                  {syncStatus === 'connected' ? 'متصل سحابياً' : 
+                   syncStatus === 'syncing' ? 'جاري الحفظ...' : 
+                   syncStatus === 'offline' ? 'وضع أوفلاين' : 'خطأ في الحفظ'}
+                </span>
+                <span className="md:hidden text-[10px]">
+                  {syncStatus === 'connected' ? 'متصل' : 
+                   syncStatus === 'syncing' ? 'مزامنة' : 
+                   syncStatus === 'offline' ? 'أوفلاين' : 'خطأ'}
+                </span>
+              </div>
+
+              <button
+                onClick={openAddRentalModal}
+                className="h-7 sm:h-9 px-2.5 sm:px-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs flex items-center gap-1 sm:gap-1.5 shadow-xs shrink-0 transition-all hover:shadow-md hover:shadow-blue-500/20"
+              >
+                <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                <span className="text-[11px] sm:text-xs">كراء جديد</span>
+              </button>
+            </div>
           </div>
 
           {/* Bottom Row of Header: All Navigation Icons scrollable horizontally */}

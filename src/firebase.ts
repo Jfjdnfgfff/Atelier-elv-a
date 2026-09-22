@@ -1,13 +1,19 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
-  getDatabase, 
-  ref, 
-  set, 
-  update, 
-  remove, 
-  onValue, 
-  get 
-} from 'firebase/database';
+  getFirestore, 
+  doc, 
+  setDoc, 
+  updateDoc, 
+  deleteDoc, 
+  collection, 
+  onSnapshot, 
+  getDocs, 
+  query, 
+  orderBy, 
+  limit, 
+  writeBatch,
+  enableIndexedDbPersistence
+} from 'firebase/firestore';
 import appletConfig from '../firebase-applet-config.json';
 
 export const firebaseConfig = {
@@ -23,14 +29,21 @@ export const firebaseConfig = {
 // Initialize Firebase App singleton
 export const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize Realtime Database with robust fallbacks
-// Since development serves from europe-west1, the default RTDB region is europe-west1
-const defaultRtdbUrl = `https://${firebaseConfig.projectId}-default-rtdb.europe-west1.firebasedatabase.app`;
-const backupRtdbUrl = `https://${firebaseConfig.projectId}-default-rtdb.firebaseio.com`;
+// Initialize Firestore database with the explicit dynamic Database ID
+export const db = getFirestore(firebaseApp, "ai-studio-1d2efddc-d317-4fc3-9988-e73b30b2b41d");
 
-const chosenRtdbUrl = (appletConfig as any).databaseURL || defaultRtdbUrl;
-
-export const rtdb = getDatabase(firebaseApp, chosenRtdbUrl);
+// Attempt to enable offline persistence for seamless offline-first experience
+try {
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn('[Firestore Persistence]: Multiple tabs open, persistence disabled.');
+    } else if (err.code === 'unimplemented') {
+      console.warn('[Firestore Persistence]: Browser does not support persistence.');
+    }
+  });
+} catch (e) {
+  // Ignore in environments where window is not defined or locked down in iframe
+}
 
 export type SyncStatus = 'connected' | 'syncing' | 'offline' | 'error';
 
@@ -64,8 +77,22 @@ function updateStatus(status: SyncStatus, error?: string) {
   
   if (statusDebounceTimer) clearTimeout(statusDebounceTimer);
   statusDebounceTimer = setTimeout(() => {
-    statusListeners.forEach((l) => l(currentStatus, lastSyncedTime, lastErrorMessage));
+    statusListeners.forEach((l) => {
+      try {
+        l(currentStatus, lastSyncedTime, lastErrorMessage);
+      } catch (e) {
+        // Ignore
+      }
+    });
   }, 100);
+}
+
+// Map long legacy RTDB path keys to short clean Firestore collection paths
+export function getFirestoreCollectionName(key: string): string {
+  if (key.startsWith('boutique_')) {
+    return key.replace('boutique_', '');
+  }
+  return key;
 }
 
 // In-memory cache for all collections for zero-latency UI and deduplication
@@ -234,7 +261,11 @@ function setMemoryCacheEntry(key: string, val: any[]): void {
 
 function sanitizeForFirebase(data: any): any {
   if (data === undefined) return null;
-  return JSON.parse(JSON.stringify(data));
+  // Deep clone and clean undefined values
+  return JSON.parse(JSON.stringify(data, (_, value) => {
+    if (value === undefined) return null;
+    return value;
+  }));
 }
 
 export function normalizeSnapshotData<T extends { id?: string }>(val: any): T[] {
@@ -247,6 +278,9 @@ export function getLocalCachedData<T>(key: string): T[] {
   return (memoryCache.get(key) || []) as T[];
 }
 
+// ----------------- CRUD IMPLEMENTATION -----------------
+
+// Robust Item-level save with status transition and exact promise completion
 export async function saveItemToFirebase<T extends { id: string }>(
   collectionKey: string,
   item: T
@@ -257,6 +291,7 @@ export async function saveItemToFirebase<T extends { id: string }>(
   pendingItemWrites.set(writeKey, Date.now());
   pendingItemWrites.set(collectionKey, Date.now());
 
+  // Optmistic caching for lag-free visual update
   let colStore = canonicalStoreCache.get(collectionKey);
   if (!colStore) {
     colStore = new Map<string, any>();
@@ -287,19 +322,22 @@ export async function saveItemToFirebase<T extends { id: string }>(
 
   try {
     const cleanItem = sanitizeForFirebase(item);
-    const dbRef = ref(rtdb, `${collectionKey}/${item.id}`);
-    await set(dbRef, cleanItem);
+    const colName = getFirestoreCollectionName(collectionKey);
+    
+    // Explicitly write at item-level ONLY
+    await setDoc(doc(db, colName, item.id), cleanItem);
     
     cacheTimestamps.set(collectionKey, Date.now());
     updateStatus('connected');
     return true;
   } catch (err: any) {
-    console.warn(`[RTDB save error on ${writeKey}]:`, err?.message || err);
+    console.error(`[Firestore save error on ${writeKey}]:`, err?.message || err);
     updateStatus('error', err?.message || 'تعذر حفظ العنصر في السحابة');
-    return false;
+    throw err; // Propagate the true error for validation
   }
 }
 
+// Robust Item-level update
 export async function updateItemInFirebase<T extends { id?: string } = any>(
   collectionKey: string,
   itemId: string,
@@ -337,19 +375,22 @@ export async function updateItemInFirebase<T extends { id?: string } = any>(
 
   try {
     const cleanUpdates = sanitizeForFirebase(updates);
-    const dbRef = ref(rtdb, `${collectionKey}/${itemId}`);
-    await update(dbRef, cleanUpdates);
+    const colName = getFirestoreCollectionName(collectionKey);
+    
+    // Explicit item-level update ONLY
+    await updateDoc(doc(db, colName, itemId), cleanUpdates);
     
     cacheTimestamps.set(collectionKey, Date.now());
     updateStatus('connected');
     return true;
   } catch (err: any) {
-    console.warn(`[RTDB update error on ${writeKey}]:`, err?.message || err);
+    console.error(`[Firestore update error on ${writeKey}]:`, err?.message || err);
     updateStatus('error', err?.message || 'تعذر تحديث العنصر في السحابة');
-    return false;
+    throw err; // Propagate the true error for validation
   }
 }
 
+// Item-level delete of the exact document only
 export async function deleteItemFromFirebase(
   collectionKey: string,
   itemId: string
@@ -370,19 +411,22 @@ export async function deleteItemFromFirebase(
   updateStatus('syncing');
 
   try {
-    const dbRef = ref(rtdb, `${collectionKey}/${itemId}`);
-    await remove(dbRef);
+    const colName = getFirestoreCollectionName(collectionKey);
+    
+    // Explicit single-document deletion ONLY
+    await deleteDoc(doc(db, colName, itemId));
     
     cacheTimestamps.set(collectionKey, Date.now());
     updateStatus('connected');
     return true;
   } catch (err: any) {
-    console.warn(`[RTDB delete error on ${writeKey}]:`, err?.message || err);
+    console.error(`[Firestore delete error on ${writeKey}]:`, err?.message || err);
     updateStatus('error', err?.message || 'تعذر حذف العنصر من السحابة');
-    return false;
+    throw err;
   }
 }
 
+// Bulk collection save - utilized only for migrations, manual backup, or complete restorations
 export async function saveCollectionToFirebase<T extends { id?: string }>(
   key: string,
   data: T[]
@@ -393,21 +437,24 @@ export async function saveCollectionToFirebase<T extends { id?: string }>(
   pendingItemWrites.set(key, Date.now());
 
   try {
-    const rtdbObject: Record<string, any> = {};
+    const colName = getFirestoreCollectionName(key);
+    
+    // Use Firestore bulk batch writes to be extremely efficient and safe
+    const batch = writeBatch(db);
     data.forEach((item, index) => {
       const id = item.id || `rec_${index}`;
-      rtdbObject[id] = item;
+      const cleanItem = sanitizeForFirebase(item);
+      const docRef = doc(db, colName, id);
+      batch.set(docRef, cleanItem);
     });
-
-    const cleanData = sanitizeForFirebase(rtdbObject);
-    const dbRef = ref(rtdb, key);
-    await set(dbRef, cleanData);
+    
+    await batch.commit();
 
     setMemoryCacheEntry(key, data);
     updateStatus('connected');
     return true;
   } catch (err: any) {
-    console.warn(`[RTDB save collection error on ${key}]:`, err?.message || err);
+    console.error(`[Firestore save collection error on ${key}]:`, err?.message || err);
     updateStatus('error', err?.message || 'تعذر حفظ البيانات في السحابة');
     return false;
   }
@@ -441,6 +488,8 @@ export function buildQueryRegistryKey(key: string, options?: SubscribeQueryOptio
   return parts.join('|');
 }
 
+// ----------------- SUBSCRIPTION AND LISTENERS -----------------
+
 export function subscribeToFirebaseKey<T extends { id?: string }>(
   key: string,
   onDataReceived: (data: T[]) => void,
@@ -448,6 +497,7 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
 ): () => void {
   const registryKey = buildQueryRegistryKey(key, options);
 
+  // Return cached values immediately for instant UI render
   if (queryMemoryCache.has(registryKey)) {
     const cachedQueryData = queryMemoryCache.get(registryKey) as T[];
     if (cachedQueryData) {
@@ -495,7 +545,7 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
               current.unsub();
               activeListenersRegistry.delete(registryKey);
             }
-          }, 30000);
+          }, 30000); // 30 second grace period
         }
       }
     };
@@ -504,46 +554,35 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
   const callbacks = new Set<(data: any[]) => void>();
   callbacks.add(onDataReceived);
 
-  let unsubRTDB: (() => void) = () => {};
+  let unsubFirestore: (() => void) = () => {};
 
   try {
-    const isHeavy = HEAVY_COLLECTIONS.has(key);
-    const limitCount = options?.limit || (isHeavy && !options?.startAt ? 120 : undefined);
+    const colName = getFirestoreCollectionName(key);
+    const colRef = collection(db, colName);
     
-    const dbRef = ref(rtdb, key);
+    const isHeavy = HEAVY_COLLECTIONS.has(key);
+    const limitCount = options?.limit || (isHeavy && !options?.startAt ? 150 : undefined);
+    const orderField = options?.orderBy || COLLECTION_DATE_FIELDS[key];
 
-    unsubRTDB = onValue(dbRef, (snapshot) => {
+    // Build optimized Firestore Query
+    let dbQuery: any = colRef;
+    if (orderField && limitCount) {
+      dbQuery = query(colRef, orderBy(orderField, 'desc'), limit(limitCount));
+    } else if (orderField) {
+      dbQuery = query(colRef, orderBy(orderField, 'desc'));
+    } else if (limitCount) {
+      dbQuery = query(colRef, limit(limitCount));
+    }
+
+    unsubFirestore = onSnapshot(dbQuery, (snapshot: any) => {
       const lastWrite = pendingItemWrites.get(key) || 0;
+      // Do not replace fresh local inputs with lagging snapshot triggers to avoid cursor jumps
       if (Date.now() - lastWrite > 800) {
-        const val = snapshot.val();
-        let rawList: T[] = [];
-        if (val) {
-          if (Array.isArray(val)) {
-            rawList = val.filter(Boolean) as T[];
-          } else if (typeof val === 'object') {
-            rawList = Object.entries(val).map(([id, itemData]: [string, any]) => {
-              return { id, ...itemData } as T;
-            });
-          }
-        }
+        const rawList: T[] = [];
+        snapshot.forEach((docSnap: any) => {
+          rawList.push({ id: docSnap.id, ...docSnap.data() } as T);
+        });
 
-        const orderField = options?.orderBy || COLLECTION_DATE_FIELDS[key];
-        if (orderField) {
-          rawList.sort((a: any, b: any) => {
-            const valA = a[orderField];
-            const valB = b[orderField];
-            if (valA === undefined) return 1;
-            if (valB === undefined) return -1;
-            return valA > valB ? -1 : valA < valB ? 1 : 0;
-          });
-        }
-
-        if (options?.limit) {
-          rawList = rawList.slice(0, options.limit);
-        } else if (limitCount) {
-          rawList = rawList.slice(0, limitCount);
-        }
-        
         let colStore = canonicalStoreCache.get(key);
         if (!colStore) {
           colStore = new Map<string, any>();
@@ -636,16 +675,17 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
         }
         updateStatus('connected');
       }
-    },
-    (err: any) => {
-      console.warn(`[RTDB listener error for ${key}]:`, err.message);
+    }, (err: any) => {
+      console.error(`[Firestore listener error for ${key}]:`, err.message);
+      updateStatus('error', err.message);
     });
-  } catch (e) {
-    console.warn(`[RTDB subscribe failed for ${key}]:`, e);
+  } catch (e: any) {
+    console.error(`[Firestore subscribe failed for ${key}]:`, e);
+    updateStatus('error', e.message);
   }
 
   const newEntry: ListenerRegistryEntry = {
-    unsub: unsubRTDB,
+    unsub: unsubFirestore,
     callbacks
   };
   activeListenersRegistry.set(registryKey, newEntry);
@@ -679,30 +719,20 @@ export async function getCachedOrFetchData<T extends { id?: string }>(
   }
 
   try {
-    const dbRef = ref(rtdb, key);
-    const snap = await get(dbRef);
-    const val = snap.val();
-    let rawList: T[] = [];
-    if (val) {
-      if (Array.isArray(val)) {
-        rawList = val.filter(Boolean) as T[];
-      } else if (typeof val === 'object') {
-        rawList = Object.entries(val).map(([id, itemData]: [string, any]) => {
-          return { id, ...itemData } as T;
-        });
-      }
+    const colName = getFirestoreCollectionName(key);
+    const colRef = collection(db, colName);
+    const dateField = COLLECTION_DATE_FIELDS[key];
+    
+    let q = query(colRef);
+    if (dateField) {
+      q = query(colRef, orderBy(dateField, 'desc'));
     }
 
-    const dateField = COLLECTION_DATE_FIELDS[key];
-    if (dateField) {
-      rawList.sort((a: any, b: any) => {
-        const valA = a[dateField];
-        const valB = b[dateField];
-        if (valA === undefined) return 1;
-        if (valB === undefined) return -1;
-        return valA > valB ? -1 : valA < valB ? 1 : 0;
-      });
-    }
+    const snap = await getDocs(q);
+    const rawList: T[] = [];
+    snap.forEach((d) => {
+      rawList.push({ id: d.id, ...d.data() } as T);
+    });
 
     let colStore = canonicalStoreCache.get(key);
     if (!colStore) {
@@ -727,7 +757,7 @@ export async function getCachedOrFetchData<T extends { id?: string }>(
     setMemoryCacheEntry(key, normalized);
     return normalized;
   } catch (e) {
-    console.warn(`[RTDB fetch failed for ${key}]:`, e);
+    console.warn(`[Firestore fetch failed for ${key}]:`, e);
   }
   return (memoryCache.get(key) || []) as T[];
 }
@@ -737,32 +767,20 @@ export async function fetchHistoricalCollection<T extends { id?: string }>(
   limitCount: number = 500
 ): Promise<T[]> {
   try {
-    const dbRef = ref(rtdb, key);
-    const snap = await get(dbRef);
-    const val = snap.val();
-    let rawList: T[] = [];
-    if (val) {
-      if (Array.isArray(val)) {
-        rawList = val.filter(Boolean) as T[];
-      } else if (typeof val === 'object') {
-        rawList = Object.entries(val).map(([id, itemData]: [string, any]) => {
-          return { id, ...itemData } as T;
-        });
-      }
-    }
-
+    const colName = getFirestoreCollectionName(key);
+    const colRef = collection(db, colName);
     const dateField = COLLECTION_DATE_FIELDS[key];
+    
+    let q = query(colRef, limit(limitCount));
     if (dateField) {
-      rawList.sort((a: any, b: any) => {
-        const valA = a[dateField];
-        const valB = b[dateField];
-        if (valA === undefined) return 1;
-        if (valB === undefined) return -1;
-        return valA > valB ? -1 : valA < valB ? 1 : 0;
-      });
+      q = query(colRef, orderBy(dateField, 'desc'), limit(limitCount));
     }
 
-    rawList = rawList.slice(0, limitCount);
+    const snap = await getDocs(q);
+    const rawList: T[] = [];
+    snap.forEach((d) => {
+      rawList.push({ id: d.id, ...d.data() } as T);
+    });
 
     const queryKey = buildQueryRegistryKey(key, { orderBy: dateField, limit: limitCount });
 
@@ -790,7 +808,7 @@ export async function fetchHistoricalCollection<T extends { id?: string }>(
     setMemoryCacheEntry(key, normalized);
     return normalized;
   } catch (e) {
-    console.warn(`[RTDB historical fetch failed for ${key}]:`, e);
+    console.warn(`[Firestore historical fetch failed for ${key}]:`, e);
   }
   return (memoryCache.get(key) || []) as T[];
 }
@@ -865,13 +883,47 @@ export async function clearAllFirebaseData(): Promise<void> {
     const keys = Object.values(FIREBASE_COLLECTIONS);
     
     for (const k of keys) {
-      const dbRef = ref(rtdb, k);
-      await remove(dbRef);
+      const colName = getFirestoreCollectionName(k);
+      const colRef = collection(db, colName);
+      const snap = await getDocs(colRef);
+      const batch = writeBatch(db);
+      snap.forEach((d) => {
+        batch.delete(doc(db, colName, d.id));
+      });
+      await batch.commit();
     }
     localStorage.clear();
     invalidateMemoryCache();
-    console.log('[RTDB & Storage] All Realtime Database paths & local data wiped successfully.');
+    console.log('[Firestore] All database collections and local data wiped successfully.');
   } catch (e) {
-    console.error('Error clearing RTDB data:', e);
+    console.error('Error clearing Firestore data:', e);
   }
 }
+
+// ----------------- CONNECTION VERIFICATION -----------------
+
+// Verify connection on startup to print database URL and read/write confirmation
+export async function testConnectionOnStartup(): Promise<boolean> {
+  console.log("=== Testing Firestore Connection ===");
+  console.log("Database ID: ai-studio-1d2efddc-d317-4fc3-9988-e73b30b2b41d");
+  try {
+    const colName = getFirestoreCollectionName(FIREBASE_COLLECTIONS.STORE_CONFIG);
+    const testDocRef = doc(db, colName, "connection_test");
+    
+    await setDoc(testDocRef, {
+      lastTestTimestamp: new Date().toISOString(),
+      agent: "ai-studio-agent-v2",
+      status: "connected_successfully"
+    });
+    console.log("  [SUCCESS] Firestore connection check: Write OK!");
+    updateStatus('connected');
+    return true;
+  } catch (err: any) {
+    console.error("  [FAILED] Firestore connection check:", err.message || err);
+    updateStatus('error', err.message);
+    return false;
+  }
+}
+
+// Run connection check instantly
+testConnectionOnStartup().catch(console.error);
