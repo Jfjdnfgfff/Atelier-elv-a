@@ -1,4 +1,5 @@
 import React, { memo } from 'react';
+import { perfMonitor } from '../utils/performanceMonitor';
 import {
   ViewType,
   Rental,
@@ -156,6 +157,8 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   onUpdateSeamstress,
   onDeleteSeamstress,
 }) => {
+  perfMonitor.recordViewRender(currentView);
+
   return (
     <React.Suspense fallback={<div className="p-8 text-center text-slate-500 font-bold">جاري تحميل القسم...</div>}>
       {currentView === 'dashboard' && (

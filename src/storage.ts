@@ -16,6 +16,7 @@ import {
   ActivityLog
 } from './types';
 import { saveToFirebase } from './firebase';
+import { perfMonitor } from './utils/performanceMonitor';
 
 export const STORAGE_KEYS = {
   CLOTHES: 'boutique_clothes',
@@ -511,6 +512,43 @@ export interface CollectionCacheResult<T> {
   timestamp: number;
 }
 
+export interface StorageEnvelope<T> {
+  data: T;
+  timestamp: number;
+  version: number;
+  updatedAt?: string;
+}
+
+/**
+ * Parses and unpacks cache envelope uniformly.
+ * Backward compatible: automatically handles legacy raw arrays and converts them without losing records.
+ */
+export function parseStorageEnvelope<T>(raw: string | null, defaultValue: T): StorageEnvelope<T> {
+  if (!raw) {
+    return { data: defaultValue, timestamp: Date.now(), version: 1 };
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'data' in parsed) {
+      return {
+        data: parsed.data as T,
+        timestamp: typeof parsed.timestamp === 'number' ? parsed.timestamp : Date.now(),
+        version: typeof parsed.version === 'number' ? parsed.version : 1,
+        updatedAt: parsed.updatedAt
+      };
+    }
+    // Legacy format: raw array or object saved directly in localStorage
+    return {
+      data: parsed as T,
+      timestamp: Date.now(),
+      version: 1
+    };
+  } catch (e) {
+    console.error(`Failed to parse storage content:`, e);
+    return { data: defaultValue, timestamp: Date.now(), version: 1 };
+  }
+}
+
 const cacheMetaStore = new Map<string, CacheMeta>();
 export const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes TTL
 
@@ -518,6 +556,10 @@ export const isCacheFresh = (key: string, ttlMs: number = DEFAULT_CACHE_TTL_MS):
   const meta = cacheMetaStore.get(key);
   if (!meta) return false;
   return (Date.now() - meta.timestamp) < ttlMs;
+};
+
+export const getCollectionCacheMeta = (key: string): CacheMeta => {
+  return cacheMetaStore.get(key) || { timestamp: Date.now(), version: 1 };
 };
 
 /**
@@ -582,29 +624,26 @@ if (typeof window !== 'undefined') {
 }
 
 export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
+  perfMonitor.recordStorageRead(key);
   if (memoryStore.has(key)) {
     return memoryStore.get(key) as T;
   }
   try {
-    const item = localStorage.getItem(key);
-    if (!item) {
+    const raw = localStorage.getItem(key);
+    if (!raw) {
       memoryStore.set(key, defaultValue);
       cacheMetaStore.set(key, { timestamp: Date.now(), version: 1 });
       return defaultValue;
     }
-    const parsed = JSON.parse(item);
-    let dataToReturn: any = parsed;
-    let timestamp = Date.now();
-
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Array.isArray(parsed.data)) {
-      dataToReturn = parsed.data;
-      timestamp = parsed.timestamp || Date.now();
-    }
-
-    memoryStore.set(key, dataToReturn);
-    cacheMetaStore.set(key, { timestamp, version: 1 });
-    lastWrittenRef.set(key, dataToReturn);
-    return dataToReturn as T;
+    const env = parseStorageEnvelope<T>(raw, defaultValue);
+    memoryStore.set(key, env.data);
+    cacheMetaStore.set(key, { 
+      timestamp: env.timestamp, 
+      version: env.version, 
+      updatedAt: env.updatedAt 
+    });
+    lastWrittenRef.set(key, env.data);
+    return env.data;
   } catch (e) {
     console.error(`Error loading key ${key} from storage:`, e);
     memoryStore.set(key, defaultValue);
@@ -622,12 +661,13 @@ export const getCachedCollection = <T>(key: string, defaultValue: T[] = []): Col
 };
 
 export const saveToStorage = <T>(key: string, data: T, syncFirebase: boolean = false): void => {
+  perfMonitor.recordStorageWrite(key);
   // If the exact same object/array reference is passed and not forcing cloud sync, avoid redundant work
   if (lastWrittenRef.get(key) === data && !syncFirebase) {
     return;
   }
   lastWrittenRef.set(key, data);
-  cacheMetaStore.set(key, { timestamp: Date.now(), version: 1 });
+  cacheMetaStore.set(key, { timestamp: Date.now(), version: 1, updatedAt: new Date().toISOString() });
 
   // Update in-memory cache instantly with 0ms latency
   memoryStore.set(key, data);
@@ -647,13 +687,25 @@ export const generateId = (): string => {
   return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7);
 };
 
+/**
+ * Initializes ONLY Core Data collections at startup:
+ * - CLOTHES
+ * - STAFF_MEMBERS
+ * - STAFF_ABSENCES
+ * - CAISSE_CLOSURES
+ *
+ * Lazy collections (sales, rentals, expenses, credits, etc.) are loaded on-demand
+ * when their respective section or modal is opened, preserving RAM and startup speed.
+ */
 export const initializeStorage = () => {
-  if (!localStorage.getItem(STORAGE_KEYS.CLOTHES)) {
+  const rawClothes = localStorage.getItem(STORAGE_KEYS.CLOTHES);
+  if (!rawClothes) {
     saveToStorage(STORAGE_KEYS.CLOTHES, DEFAULT_CLOTHES);
   } else {
-    // Backfill images and normalize stock1/stock2 for items
+    // Backfill images and normalize stock1/stock2 for items using safe envelope parser
     try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.CLOTHES) || '[]');
+      const env = parseStorageEnvelope<ClothItem[]>(rawClothes, DEFAULT_CLOTHES);
+      const stored = Array.isArray(env.data) ? env.data : DEFAULT_CLOTHES;
       let updated = false;
       const patched = stored.map((item: ClothItem) => {
         let currentItem = { ...item };
@@ -679,49 +731,17 @@ export const initializeStorage = () => {
         saveToStorage(STORAGE_KEYS.CLOTHES, patched);
       }
     } catch (e) {
-      console.error(e);
+      console.error('Error normalizing stored clothes:', e);
     }
   }
-  if (!localStorage.getItem(STORAGE_KEYS.RENTALS)) {
-    saveToStorage(STORAGE_KEYS.RENTALS, DEFAULT_RENTALS);
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.SALES)) {
-    saveToStorage(STORAGE_KEYS.SALES, []);
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.EXPENSES)) {
-    saveToStorage(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES);
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.CREDITS)) {
-    saveToStorage(STORAGE_KEYS.CREDITS, []);
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.STAFF_PAYOUTS)) {
-    saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, []);
-  }
+
   if (!localStorage.getItem(STORAGE_KEYS.STAFF_MEMBERS)) {
     saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF);
   }
   if (!localStorage.getItem(STORAGE_KEYS.STAFF_ABSENCES)) {
     saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, []);
   }
-  if (!localStorage.getItem(STORAGE_KEYS.CUSTOMERS)) {
-    saveToStorage(STORAGE_KEYS.CUSTOMERS, []);
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.SUPPLIERS)) {
-    saveToStorage(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS);
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.SEAMSTRESSES)) {
-    saveToStorage(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES);
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.RAW_MATERIALS)) {
-    saveToStorage(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS);
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.MAINTENANCE)) {
-    saveToStorage(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE);
-  }
   if (!localStorage.getItem(STORAGE_KEYS.CAISSE_CLOSURES)) {
     saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES);
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.ACTIVITY_LOGS)) {
-    saveToStorage(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS);
   }
 };

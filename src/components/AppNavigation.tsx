@@ -17,10 +17,11 @@ import {
 import { NavButton } from './Shared';
 import { ViewRenderer } from './ViewRenderer';
 import { Scale, Plus } from 'lucide-react';
+import { perfMonitor } from '../utils/performanceMonitor';
 
 export interface AppNavigationProps {
   onInitNav?: (navFn: (view: ViewType) => void, getViewFn: () => ViewType) => void;
-  onViewChange?: (view: ViewType) => void;
+  onEnsureCollection?: (view: ViewType) => void;
 
   // Counts for badges
   overdueCount: number;
@@ -147,19 +148,28 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
   onUpdateSeamstress,
   onDeleteSeamstress,
   onInitNav,
-  onViewChange,
+  onEnsureCollection,
 }) => {
+  perfMonitor.recordAppNavRender();
+
   // Navigation State isolated entirely from App.tsx
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const currentViewRef = React.useRef(currentView);
   currentViewRef.current = currentView;
 
+  // Local navigation state only - does NOT trigger App.tsx re-renders
   const navigateTo = useCallback((view: ViewType) => {
+    perfMonitor.startNavigation(currentViewRef.current, view);
     setCurrentView(view);
-    if (onViewChange) {
-      onViewChange(view);
+  }, []);
+
+  // Ensure collection for active section is loaded on-demand
+  React.useEffect(() => {
+    perfMonitor.endNavigation(currentView);
+    if (onEnsureCollection) {
+      onEnsureCollection(currentView);
     }
-  }, [onViewChange]);
+  }, [currentView, onEnsureCollection]);
 
   React.useEffect(() => {
     if (onInitNav) {
