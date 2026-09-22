@@ -41,25 +41,17 @@ import {
 } from './firebase';
 
 // Components
-import { NavButton, Modal } from './components/Shared';
-import { ViewRenderer } from './components/ViewRenderer';
+import { Modal } from './components/Shared';
+import AppNavigation from './components/AppNavigation';
 
 const BarcodeScanner = React.lazy(() => import('./components/BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
 const FullReport = React.lazy(() => import('./components/FullReport').then(m => ({ default: m.FullReport })));
-const RentalsView = React.lazy(() => import('./components/RentalsView').then(m => ({ default: m.RentalsView })));
 const RentalModal = React.lazy(() => import('./components/RentalModal').then(m => ({ default: m.RentalModal })));
 const ReturnRentalModal = React.lazy(() => import('./components/ReturnRentalModal').then(m => ({ default: m.ReturnRentalModal })));
 const RentalReceiptModal = React.lazy(() => import('./components/RentalReceiptModal').then(m => ({ default: m.RentalReceiptModal })));
-const InventoryView = React.lazy(() => import('./components/InventoryView').then(m => ({ default: m.InventoryView })));
-const SalesPOSView = React.lazy(() => import('./components/SalesPOSView').then(m => ({ default: m.SalesPOSView })));
-const ExpensesView = React.lazy(() => import('./components/ExpensesView').then(m => ({ default: m.ExpensesView })));
-const CreditsView = React.lazy(() => import('./components/CreditsView').then(m => ({ default: m.CreditsView })));
 const StaffPayoutsModal = React.lazy(() => import('./components/StaffPayoutsModal').then(m => ({ default: m.StaffPayoutsModal })));
-const TailoringView = React.lazy(() => import('./components/TailoringView').then(m => ({ default: m.TailoringView })));
 const TailoringModal = React.lazy(() => import('./components/TailoringModal').then(m => ({ default: m.TailoringModal })));
 const TailoringReceiptModal = React.lazy(() => import('./components/TailoringReceiptModal').then(m => ({ default: m.TailoringReceiptModal })));
-const CaisseView = React.lazy(() => import('./components/CaisseView').then(m => ({ default: m.CaisseView })));
-const PartnersView = React.lazy(() => import('./components/PartnersView').then(m => ({ default: m.PartnersView })));
 import { 
   Scale, 
   Shirt, 
@@ -127,8 +119,16 @@ export default function App() {
   );
 
   // UI state
-  const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [activeModal, setActiveModal] = useState<string | null>(null);
+
+  // Navigation callback refs to communicate with AppNavigation without triggering App re-renders
+  const navRef = useRef<(view: ViewType) => void>(() => {});
+  const getCurrentViewRef = useRef<() => ViewType>(() => 'dashboard');
+
+  const handleInitNav = useCallback((navFn: (view: ViewType) => void, getViewFn: () => ViewType) => {
+    navRef.current = navFn;
+    getCurrentViewRef.current = getViewFn;
+  }, []);
 
   // Cloud Real-time Synchronization state
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
@@ -213,13 +213,8 @@ export default function App() {
     };
   }, [markCloudSyncActive]);
 
-  // 2. Lazy / On-Demand Subscriptions (Rentals)
-  const needsRentals = ['dashboard', 'rentals', 'caisse'].includes(currentView) ||
-    ['fullReport', 'addRental', 'editRental', 'returnRental', 'receiptModal', 'messageModal'].includes(activeModal || '');
-
+  // 2. Real-time Subscriptions (Rentals)
   useEffect(() => {
-    if (!needsRentals) return;
-
     const unsub = SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.rentals = true;
@@ -231,15 +226,10 @@ export default function App() {
       }
     });
     return unsub;
-  }, [needsRentals, markCloudSyncActive]);
+  }, [markCloudSyncActive]);
 
-  // 3. Lazy / On-Demand Subscriptions (Maintenance Orders)
-  const needsMaintenance = ['dashboard', 'inventory', 'tailoring'].includes(currentView) ||
-    ['fullReport', 'addTailoring', 'editTailoring', 'tailoringReceipt', 'tailoringModal'].includes(activeModal || '');
-
+  // 3. Real-time Subscriptions (Maintenance Orders)
   useEffect(() => {
-    if (!needsMaintenance) return;
-
     const unsub = SubscriptionManager.subscribe<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.maintenanceOrders = true;
@@ -251,14 +241,10 @@ export default function App() {
       }
     });
     return unsub;
-  }, [needsMaintenance, markCloudSyncActive]);
+  }, [markCloudSyncActive]);
 
-  // 4. Lazy / On-Demand Subscriptions (Sales)
-  const needsSales = ['dashboard', 'sales', 'caisse'].includes(currentView) || activeModal === 'fullReport';
-
+  // 4. Real-time Subscriptions (Sales)
   useEffect(() => {
-    if (!needsSales) return;
-
     const unsub = SubscriptionManager.subscribe<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.sales = true;
@@ -267,14 +253,10 @@ export default function App() {
       }
     });
     return unsub;
-  }, [needsSales, markCloudSyncActive]);
+  }, [markCloudSyncActive]);
 
-  // 5. Lazy / On-Demand Subscriptions (Expenses)
-  const needsExpenses = ['dashboard', 'expenses', 'caisse'].includes(currentView) || activeModal === 'fullReport';
-
+  // 5. Real-time Subscriptions (Expenses)
   useEffect(() => {
-    if (!needsExpenses) return;
-
     const unsub = SubscriptionManager.subscribe<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.expenses = true;
@@ -286,14 +268,10 @@ export default function App() {
       }
     });
     return unsub;
-  }, [needsExpenses, markCloudSyncActive]);
+  }, [markCloudSyncActive]);
 
-  // 6. Lazy / On-Demand Subscriptions (Credits)
-  const needsCredits = ['dashboard', 'credits', 'caisse', 'expenses', 'partners'].includes(currentView) || activeModal === 'fullReport';
-
+  // 6. Real-time Subscriptions (Credits)
   useEffect(() => {
-    if (!needsCredits) return;
-
     const unsub = SubscriptionManager.subscribe<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.credits = true;
@@ -302,14 +280,10 @@ export default function App() {
       }
     });
     return unsub;
-  }, [needsCredits, markCloudSyncActive]);
+  }, [markCloudSyncActive]);
 
-  // 7. Lazy / On-Demand Subscriptions (Staff Payouts)
-  const needsStaffPayouts = ['dashboard', 'caisse'].includes(currentView) || ['staffPayouts', 'fullReport'].includes(activeModal || '');
-
+  // 7. Real-time Subscriptions (Staff Payouts)
   useEffect(() => {
-    if (!needsStaffPayouts) return;
-
     const unsub = SubscriptionManager.subscribe<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.staffPayouts = true;
@@ -318,14 +292,10 @@ export default function App() {
       }
     });
     return unsub;
-  }, [needsStaffPayouts, markCloudSyncActive]);
+  }, [markCloudSyncActive]);
 
-  // 8. Lazy / On-Demand Subscriptions (Suppliers)
-  const needsSuppliers = ['inventory', 'expenses', 'credits', 'partners'].includes(currentView) || ['supplierModal', 'fullReport'].includes(activeModal || '');
-
+  // 8. Real-time Subscriptions (Suppliers)
   useEffect(() => {
-    if (!needsSuppliers) return;
-
     const unsub = SubscriptionManager.subscribe<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.suppliers = true;
@@ -337,15 +307,10 @@ export default function App() {
       }
     });
     return unsub;
-  }, [needsSuppliers, markCloudSyncActive]);
+  }, [markCloudSyncActive]);
 
-  // 9. Lazy / On-Demand Subscriptions (Seamstresses)
-  const needsSeamstresses = ['partners', 'tailoring'].includes(currentView) ||
-    ['addTailoring', 'editTailoring', 'seamstressModal', 'tailoringModal'].includes(activeModal || '');
-
+  // 9. Real-time Subscriptions (Seamstresses)
   useEffect(() => {
-    if (!needsSeamstresses) return;
-
     const unsub = SubscriptionManager.subscribe<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.seamstresses = true;
@@ -357,15 +322,10 @@ export default function App() {
       }
     });
     return unsub;
-  }, [needsSeamstresses, markCloudSyncActive]);
+  }, [markCloudSyncActive]);
 
-  // 10. Lazy / On-Demand Subscriptions (Raw Materials)
-  const needsRawMaterials = ['inventory', 'partners', 'tailoring'].includes(currentView) ||
-    ['addTailoring', 'editTailoring', 'rawMaterialModal', 'tailoringModal'].includes(activeModal || '');
-
+  // 10. Real-time Subscriptions (Raw Materials)
   useEffect(() => {
-    if (!needsRawMaterials) return;
-
     const unsub = SubscriptionManager.subscribe<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.rawMaterials = true;
@@ -377,7 +337,7 @@ export default function App() {
       }
     });
     return unsub;
-  }, [needsRawMaterials, markCloudSyncActive]);
+  }, [markCloudSyncActive]);
 
   // Local Storage Persistence
   useEffect(() => {
@@ -519,21 +479,6 @@ export default function App() {
     }
     return map;
   }, [clothes]);
-
-  // Non-blocking instant navigation
-  const navigateTo = useCallback((view: ViewType) => {
-    setCurrentView(view);
-  }, []);
-
-  const goDashboard = useCallback(() => navigateTo('dashboard'), [navigateTo]);
-  const goRentals = useCallback(() => navigateTo('rentals'), [navigateTo]);
-  const goInventory = useCallback(() => navigateTo('inventory'), [navigateTo]);
-  const goSales = useCallback(() => navigateTo('sales'), [navigateTo]);
-  const goTailoring = useCallback(() => navigateTo('tailoring'), [navigateTo]);
-  const goExpenses = useCallback(() => navigateTo('expenses'), [navigateTo]);
-  const goCredits = useCallback(() => navigateTo('credits'), [navigateTo]);
-  const goPartners = useCallback(() => navigateTo('partners'), [navigateTo]);
-  const goCaisse = useCallback(() => navigateTo('caisse'), [navigateTo]);
 
   const openAddRentalModal = useCallback(() => {
     setPreselectedRentalItemId(undefined);
@@ -1489,221 +1434,67 @@ export default function App() {
         ))}
       </div>
 
-      {/* Main Top Header */}
-      <header className="bg-white border-b border-blue-100 px-3 sm:px-6 py-2.5 z-20 sticky top-0 shadow-xs safe-top">
-        <div className="max-w-6xl mx-auto flex flex-col gap-2">
-          {/* Top Row: Quick Tools & Actions */}
-          <div className="flex items-center justify-between gap-2">
-            {/* Action Tools */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <button
-                onClick={openBarcodeScan}
-                title="مسح الباركود"
-                aria-label="مسح الباركود"
-                className="h-7 sm:h-9 px-2 sm:px-3 rounded-lg sm:rounded-xl bg-blue-50/50 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-300 border border-blue-100/70 active:scale-95 text-blue-800 flex items-center gap-1 sm:gap-1.5 transition-all text-[11px] sm:text-xs font-bold group"
-              >
-                <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600 group-hover:text-blue-700 shrink-0 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <path d="M3 7V5a2 2 0 012-2h2" />
-                  <path d="M17 3h2a2 2 0 012 2v2" />
-                  <path d="M21 17v2a2 2 0 01-2 2h-2" />
-                  <path d="M7 21H5a2 2 0 01-2-2v-2" />
-                  <line x1="7" y1="12" x2="17" y2="12" />
-                </svg>
-                <span className="hidden sm:inline text-xs">مسح الباركود</span>
-              </button>
-
-              <button
-                onClick={toggleFinances}
-                title="إخفاء/إظهار المبالغ"
-                aria-label="إخفاء/إظهار المبالغ"
-                className={`h-7 sm:h-9 px-2 sm:px-3 rounded-lg sm:rounded-xl flex items-center gap-1 sm:gap-1.5 transition-all active:scale-95 text-[11px] sm:text-xs font-bold border group ${
-                  hideFinances 
-                    ? 'bg-blue-900 text-white border-blue-900 hover:bg-blue-800' 
-                    : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-900'
-                }`}
-              >
-                <svg className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 transition-colors ${hideFinances ? 'text-white' : 'text-blue-600 group-hover:text-blue-800'}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  {hideFinances ? (
-                    <>
-                      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
-                      <line x1="1" y1="1" x2="23" y2="23" />
-                    </>
-                  ) : (
-                    <>
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </>
-                  )}
-                </svg>
-                <span className="hidden sm:inline text-xs">{hideFinances ? 'إظهار المبالغ' : 'إخفاء المبالغ'}</span>
-              </button>
-
-              <button 
-                onClick={openFullReportModal} 
-                title="التقرير المالي"
-                className="h-7 sm:h-9 px-2 sm:px-3 flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 hover:text-blue-900 hover:border-blue-300 border border-blue-200 rounded-lg sm:rounded-xl transition-all shadow-2xs active:scale-95 group"
-              >
-                <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600 group-hover:text-blue-800 shrink-0 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <line x1="16" y1="13" x2="8" y2="13" />
-                  <line x1="16" y1="17" x2="8" y2="17" />
-                  <polyline points="10 9 9 9 8 9" />
-                </svg>
-                <span className="hidden sm:inline text-xs">التقرير الشامل</span>
-              </button>
-
-              <button 
-                onClick={goCaisse} 
-                title="صندوق اليومية ومتابعة العجز (La Caisse)"
-                className={`h-7 sm:h-9 px-2 sm:px-3 flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold rounded-lg sm:rounded-xl transition-all border active:scale-95 group ${
-                  currentView === 'caisse'
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                    : 'text-blue-700 bg-blue-50/50 hover:bg-blue-100 hover:text-blue-800 hover:border-blue-300 border-blue-100/70'
-                }`}
-              >
-                <Scale className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 transition-colors ${currentView === 'caisse' ? 'text-white' : 'text-blue-600 group-hover:text-blue-700'}`} />
-                <span className="hidden sm:inline text-xs">الصندوق اليومي</span>
-                <span className="sm:hidden text-[10px]">الصندوق</span>
-              </button>
-            </div>
-
-            {/* Primary Add Button */}
-            <button
-              onClick={openAddRentalModal}
-              className="h-7 sm:h-9 px-2.5 sm:px-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs flex items-center gap-1 sm:gap-1.5 shadow-xs shrink-0 transition-all hover:shadow-md hover:shadow-blue-500/20"
-            >
-              <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-              <span className="text-[11px] sm:text-xs">كراء جديد</span>
-            </button>
-          </div>
-
-          {/* Bottom Row of Header: All Navigation Icons scrollable horizontally */}
-          <nav className="flex items-center gap-1.5 sm:gap-2.5 w-full pt-1.5 pb-0.5 border-t border-blue-50 overflow-x-auto touch-pan-x overscroll-x-contain hide-scrollbar scroll-smooth" aria-label="أقسام التطبيق">
-            <NavButton 
-              icon="dashboard" 
-              label="الرئيسية" 
-              onClick={goDashboard} 
-              active={currentView === 'dashboard'} 
-            />
-            <NavButton 
-              icon="rentals" 
-              label="الكراء" 
-              onClick={goRentals} 
-              active={currentView === 'rentals'} 
-              badge={overdueCount}
-            />
-            <NavButton 
-              icon="inventory" 
-              label="المخزون" 
-              onClick={goInventory} 
-              active={currentView === 'inventory'} 
-            />
-            <NavButton 
-              icon="sales" 
-              label="المبيعات" 
-              onClick={goSales} 
-              active={currentView === 'sales'} 
-            />
-            <NavButton 
-              icon="tailoring" 
-              label="الخياطة" 
-              onClick={goTailoring} 
-              active={currentView === 'tailoring'} 
-              badge={activeMaintenanceCount}
-            />
-            <NavButton 
-              icon="expenses" 
-              label="المصاريف" 
-              onClick={goExpenses} 
-              active={currentView === 'expenses'} 
-            />
-            <NavButton 
-              icon="credits" 
-              label="الكريدي" 
-              onClick={goCredits} 
-              active={currentView === 'credits'} 
-            />
-            <NavButton 
-              icon="partners" 
-              label="الموردين والخياطات" 
-              onClick={goPartners} 
-              active={currentView === 'partners'} 
-            />
-            <NavButton 
-              icon="caisse" 
-              label="الصندوق" 
-              onClick={goCaisse} 
-              active={currentView === 'caisse'} 
-            />
-            <NavButton 
-              icon="staff" 
-              label="العمال" 
-              onClick={openStaffPayoutsModal} 
-              badge={pendingAbsencesCount}
-            />
-          </nav>
-        </div>
-      </header>
-
-      {/* Main Views Container */}
-      <main className="flex-1 max-w-6xl mx-auto w-full px-3 sm:px-6 md:px-8 py-4 pb-12 overflow-y-auto">
-        <ViewRenderer
-          currentView={currentView}
-          rentals={rentals}
-          clothes={clothes}
-          sales={sales}
-          expenses={expenses}
-          credits={credits}
-          staffPayouts={staffPayouts}
-          maintenanceOrders={maintenanceOrders}
-          caisseClosures={caisseClosures}
-          suppliers={suppliers}
-          seamstresses={seamstresses}
-          rawMaterials={rawMaterials}
-          hideFinances={hideFinances}
-          posScannedBarcode={posScannedBarcode}
-          onPrivacyToggle={toggleFinances}
-          onNavigate={navigateTo}
-          onOpenAddRental={handleOpenAddRental}
-          onOpenReturnModal={handleOpenReturnModal}
-          onSendMessage={handleOpenMessageModal}
-          onAddRentalWithItem={handleOpenAddRentalWithItem}
-          onEditRentalModal={handleOpenEditRentalModal}
-          onDeleteRental={handleDeleteRental}
-          onActivateRental={handleActivateRental}
-          onOpenReceiptModal={handleOpenReceiptModal}
-          onScanBarcode={openBarcodeScan}
-          onAddCloth={handleAddCloth}
-          onUpdateCloth={handleUpdateCloth}
-          onDeleteCloth={handleDeleteCloth}
-          onAddRawMaterial={handleAddRawMaterial}
-          onUpdateRawMaterial={handleUpdateRawMaterial}
-          onDeleteRawMaterial={handleDeleteRawMaterial}
-          onCompleteSale={handleCompleteSale}
-          onDeleteSale={handleDeleteSale}
-          onClearPosScannedBarcode={handleClearPosScannedBarcode}
-          onOpenAddTailoringModal={handleOpenAddTailoringModal}
-          onEditTailoringModal={handleOpenEditTailoringModal}
-          onDeleteTailoringOrder={handleDeleteTailoringOrder}
-          onUpdateTailoringStatus={handleUpdateTailoringStatus}
-          onOpenTailoringReceiptModal={handleOpenTailoringReceiptModal}
-          onAddExpense={handleAddExpense}
-          onDeleteExpense={handleDeleteExpense}
-          onSettleSupplierCredit={handleSettleSupplierCredit}
-          onAddSupplier={handleAddSupplier}
-          onUpdateSupplier={handleUpdateSupplier}
-          onDeleteSupplier={handleDeleteSupplier}
-          onAddCredit={handleAddCredit}
-          onSettleCredit={handleSettleCredit}
-          onDeleteCredit={handleDeleteCredit}
-          onSaveCaisseClosure={handleSaveCaisseClosure}
-          onDeleteCaisseClosure={handleDeleteCaisseClosure}
-          onAddSeamstress={handleAddSeamstress}
-          onUpdateSeamstress={handleUpdateSeamstress}
-          onDeleteSeamstress={handleDeleteSeamstress}
-        />
-      </main>
+      {/* Main Navigation & View Container */}
+      <AppNavigation
+        onInitNav={handleInitNav}
+        overdueCount={overdueCount}
+        activeMaintenanceCount={activeMaintenanceCount}
+        pendingAbsencesCount={pendingAbsencesCount}
+        openBarcodeScan={openBarcodeScan}
+        hideFinances={hideFinances}
+        toggleFinances={toggleFinances}
+        openFullReportModal={openFullReportModal}
+        openAddRentalModal={openAddRentalModal}
+        openStaffPayoutsModal={openStaffPayoutsModal}
+        rentals={rentals}
+        clothes={clothes}
+        sales={sales}
+        expenses={expenses}
+        credits={credits}
+        staffPayouts={staffPayouts}
+        maintenanceOrders={maintenanceOrders}
+        caisseClosures={caisseClosures}
+        suppliers={suppliers}
+        seamstresses={seamstresses}
+        rawMaterials={rawMaterials}
+        posScannedBarcode={posScannedBarcode}
+        onOpenAddRental={handleOpenAddRental}
+        onOpenReturnModal={handleOpenReturnModal}
+        onSendMessage={handleOpenMessageModal}
+        onAddRentalWithItem={handleOpenAddRentalWithItem}
+        onEditRentalModal={handleOpenEditRentalModal}
+        onDeleteRental={handleDeleteRental}
+        onActivateRental={handleActivateRental}
+        onOpenReceiptModal={handleOpenReceiptModal}
+        onAddCloth={handleAddCloth}
+        onUpdateCloth={handleUpdateCloth}
+        onDeleteCloth={handleDeleteCloth}
+        onAddRawMaterial={handleAddRawMaterial}
+        onUpdateRawMaterial={handleUpdateRawMaterial}
+        onDeleteRawMaterial={handleDeleteRawMaterial}
+        onCompleteSale={handleCompleteSale}
+        onDeleteSale={handleDeleteSale}
+        onClearPosScannedBarcode={handleClearPosScannedBarcode}
+        onOpenAddTailoringModal={handleOpenAddTailoringModal}
+        onEditTailoringModal={handleOpenEditTailoringModal}
+        onDeleteTailoringOrder={handleDeleteTailoringOrder}
+        onUpdateTailoringStatus={handleUpdateTailoringStatus}
+        onOpenTailoringReceiptModal={handleOpenTailoringReceiptModal}
+        onAddExpense={handleAddExpense}
+        onDeleteExpense={handleDeleteExpense}
+        onSettleSupplierCredit={handleSettleSupplierCredit}
+        onAddSupplier={handleAddSupplier}
+        onUpdateSupplier={handleUpdateSupplier}
+        onDeleteSupplier={handleDeleteSupplier}
+        onAddCredit={handleAddCredit}
+        onSettleCredit={handleSettleCredit}
+        onDeleteCredit={handleDeleteCredit}
+        onSaveCaisseClosure={handleSaveCaisseClosure}
+        onDeleteCaisseClosure={handleDeleteCaisseClosure}
+        onAddSeamstress={handleAddSeamstress}
+        onUpdateSeamstress={handleUpdateSeamstress}
+        onDeleteSeamstress={handleDeleteSeamstress}
+      />
 
       {/* ================= MODALS ================= */}
 
@@ -2035,9 +1826,9 @@ export default function App() {
             if (item) {
               showToast(`تم التعرف على: ${item.name} (${item.size})`);
 
-              if (currentView === 'sales') {
+              if (getCurrentViewRef.current() === 'sales') {
                 setPosScannedBarcode(cleanCode);
-              } else if (currentView === 'rentals') {
+              } else if (getCurrentViewRef.current() === 'rentals') {
                 setPreselectedRentalItemId(item.id);
                 setActiveModal('addRental');
               } else {
@@ -2101,7 +1892,7 @@ export default function App() {
                     const item = scannedItemAction;
                     setScannedItemAction(null);
                     setPreselectedRentalItemId(item.id);
-                    setCurrentView('rentals');
+                    navRef.current('rentals');
                     setActiveModal('addRental');
                   }}
                   className="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl text-center transition-all flex flex-col items-center justify-between gap-2 active:scale-95 group"
@@ -2120,7 +1911,7 @@ export default function App() {
                   onClick={() => {
                     const item = scannedItemAction;
                     setScannedItemAction(null);
-                    setCurrentView('sales');
+                    navRef.current('sales');
                     handleCompleteSale({
                       customerName: 'زبون عام',
                       items: [{
@@ -2156,7 +1947,7 @@ export default function App() {
               <button
                 onClick={() => {
                   setScannedItemAction(null);
-                  setCurrentView('inventory');
+                  navRef.current('inventory');
                 }}
                 className="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl text-center transition-all flex flex-col items-center justify-between gap-2 active:scale-95 group"
               >
@@ -2195,7 +1986,7 @@ export default function App() {
               <button
                 onClick={() => {
                   setUnknownScannedCode(null);
-                  setCurrentView('inventory');
+                  navRef.current('inventory');
                 }}
                 className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition-all shadow-xs active:scale-95"
               >
@@ -2217,7 +2008,7 @@ export default function App() {
         <Modal title="المزيد من الأقسام والخدمات" onClose={() => setActiveModal(null)}>
           <div className="grid grid-cols-2 gap-3 py-2">
             <button
-              onClick={() => { setCurrentView('expenses'); setActiveModal(null); }}
+              onClick={() => { navRef.current('expenses'); setActiveModal(null); }}
               className="p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-200 text-right transition-all flex flex-col justify-between active:scale-95"
             >
               <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-800 flex items-center justify-center mb-2">
@@ -2230,7 +2021,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => { setCurrentView('credits'); setActiveModal(null); }}
+              onClick={() => { navRef.current('credits'); setActiveModal(null); }}
               className="p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-200 text-right transition-all flex flex-col justify-between active:scale-95"
             >
               <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-800 flex items-center justify-center mb-2">

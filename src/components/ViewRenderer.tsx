@@ -14,17 +14,19 @@ import {
   RawMaterial,
   MaintenanceStatus,
 } from '../types';
-import { DashboardView } from './DashboardView';
-import { RentalsView } from './RentalsView';
-import { InventoryView } from './InventoryView';
-import { SalesPOSView } from './SalesPOSView';
-import { TailoringView } from './TailoringView';
-import { ExpensesView } from './ExpensesView';
-import { CreditsView } from './CreditsView';
-import { CaisseView } from './CaisseView';
-import { PartnersView } from './PartnersView';
 
-interface ViewRendererProps {
+// Lazy-loaded Views for optimal code splitting & bundle performance
+const DashboardView = React.lazy(() => import('./DashboardView').then(m => ({ default: m.DashboardView })));
+const RentalsView = React.lazy(() => import('./RentalsView').then(m => ({ default: m.RentalsView })));
+const InventoryView = React.lazy(() => import('./InventoryView').then(m => ({ default: m.InventoryView })));
+const SalesPOSView = React.lazy(() => import('./SalesPOSView').then(m => ({ default: m.SalesPOSView })));
+const TailoringView = React.lazy(() => import('./TailoringView').then(m => ({ default: m.TailoringView })));
+const ExpensesView = React.lazy(() => import('./ExpensesView').then(m => ({ default: m.ExpensesView })));
+const CreditsView = React.lazy(() => import('./CreditsView').then(m => ({ default: m.CreditsView })));
+const CaisseView = React.lazy(() => import('./CaisseView').then(m => ({ default: m.CaisseView })));
+const PartnersView = React.lazy(() => import('./PartnersView').then(m => ({ default: m.PartnersView })));
+
+export interface ViewRendererProps {
   currentView: ViewType;
   // Shared state
   rentals: Rental[];
@@ -155,7 +157,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   onDeleteSeamstress,
 }) => {
   return (
-    <React.Suspense fallback={null}>
+    <React.Suspense fallback={<div className="p-8 text-center text-slate-500 font-bold">جاري تحميل القسم...</div>}>
       {currentView === 'dashboard' && (
         <DashboardView
           rentals={rentals}
