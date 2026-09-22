@@ -120,9 +120,9 @@ function isShallowEqual(a: any, b: any): boolean {
   if (a.id !== undefined && b.id !== undefined && a.id !== b.id) return false;
 
   // Fast timestamp/updatedAt check if present
-  if (a.updatedAt && b.updatedAt && a.updatedAt === b.updatedAt) return true;
-  if (a.updated_at && b.updated_at && a.updated_at === b.updated_at) return true;
-  if (a.timestamp && b.timestamp && a.timestamp === b.timestamp) return true;
+  if (a.updatedAt && b.updatedAt && a.updatedAt !== b.updatedAt) return false;
+  if (a.updated_at && b.updated_at && a.updated_at !== b.updated_at) return false;
+  if (a.timestamp && b.timestamp && a.timestamp !== b.timestamp) return false;
 
   const keysA = Object.keys(a);
   const keysB = Object.keys(b);
@@ -132,15 +132,15 @@ function isShallowEqual(a: any, b: any): boolean {
     const k = keysA[i];
     const valA = a[k];
     const valB = b[k];
+
     if (valA === valB) continue;
 
+    // Shallow check for top-level arrays (e.g. items) without deep recursion
     if (Array.isArray(valA) && Array.isArray(valB)) {
       if (valA.length !== valB.length) return false;
       for (let j = 0; j < valA.length; j++) {
-        if (valA[j] !== valB[j] && !isShallowEqual(valA[j], valB[j])) return false;
+        if (valA[j] !== valB[j]) return false;
       }
-    } else if (valA && valB && typeof valA === 'object' && typeof valB === 'object') {
-      if (!isShallowEqual(valA, valB)) return false;
     } else {
       return false;
     }
@@ -148,17 +148,78 @@ function isShallowEqual(a: any, b: any): boolean {
   return true;
 }
 
-/**
- * Fast O(1) pointer-first index search with allocation-free linear fallback
- */
-function findIndexById<T extends { id?: string }>(arr: T[], id: string, refObj?: any): number {
+// O(1) Index Maps: collectionKey -> Map<itemId, arrayIndex> & qKey -> Map<itemId, arrayIndex>
+const collectionIndexMaps = new Map<string, Map<string, number>>();
+const queryIndexMaps = new Map<string, Map<string, number>>();
+
+function rebuildCollectionIndexMap(colKey: string, arr: any[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (let i = 0; i < arr.length; i++) {
+    const item = arr[i];
+    if (item && item.id) {
+      map.set(item.id, i);
+    }
+  }
+  collectionIndexMaps.set(colKey, map);
+  return map;
+}
+
+function rebuildQueryIndexMap(qKey: string, qList: any[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (let i = 0; i < qList.length; i++) {
+    const item = qList[i];
+    if (item && item.id) {
+      map.set(item.id, i);
+    }
+  }
+  queryIndexMaps.set(qKey, map);
+  return map;
+}
+
+function getCollectionItemIndexO1(colKey: string, arr: any[], itemId: string, refObj?: any): number {
   if (refObj) {
     const pIdx = arr.indexOf(refObj);
     if (pIdx !== -1) return pIdx;
   }
+  let indexMap = collectionIndexMaps.get(colKey);
+  if (!indexMap) {
+    indexMap = rebuildCollectionIndexMap(colKey, arr);
+  }
+  const cachedIdx = indexMap.get(itemId);
+  if (cachedIdx !== undefined && cachedIdx < arr.length) {
+    const candidate = arr[cachedIdx];
+    if (candidate && candidate.id === itemId) return cachedIdx;
+  }
+  // Fast fallback & auto-repair index map
   for (let i = 0; i < arr.length; i++) {
-    const item = arr[i];
-    if (item && item.id === id) return i;
+    if (arr[i] && arr[i].id === itemId) {
+      indexMap.set(itemId, i);
+      return i;
+    }
+  }
+  return -1;
+}
+
+function getQueryItemIndexO1(qKey: string, qList: any[], itemId: string, refObj?: any): number {
+  if (refObj) {
+    const pIdx = qList.indexOf(refObj);
+    if (pIdx !== -1) return pIdx;
+  }
+  let indexMap = queryIndexMaps.get(qKey);
+  if (!indexMap) {
+    indexMap = rebuildQueryIndexMap(qKey, qList);
+  }
+  const cachedIdx = indexMap.get(itemId);
+  if (cachedIdx !== undefined && cachedIdx < qList.length) {
+    const candidate = qList[cachedIdx];
+    if (candidate && candidate.id === itemId) return cachedIdx;
+  }
+  // Fast fallback & auto-repair index map
+  for (let i = 0; i < qList.length; i++) {
+    if (qList[i] && qList[i].id === itemId) {
+      indexMap.set(itemId, i);
+      return i;
+    }
   }
   return -1;
 }
@@ -201,9 +262,16 @@ function unregisterQueryCacheKey(colKey: string, regKey: string): void {
   }
 }
 
+function setMemoryCacheEntry(colKey: string, val: any[]): void {
+  memoryCache.set(colKey, val);
+  cacheTimestamps.set(colKey, Date.now());
+  rebuildCollectionIndexMap(colKey, val);
+}
+
 function deleteQueryCacheEntry(qKey: string): void {
   queryMemoryCache.delete(qKey);
   queryCacheTimestamps.delete(qKey);
+  queryIndexMaps.delete(qKey);
   const colKey = qKey.split('|')[0];
   unregisterQueryCacheKey(colKey, qKey);
 }
@@ -211,6 +279,7 @@ function deleteQueryCacheEntry(qKey: string): void {
 function setQueryCacheEntry(qKey: string, val: any[]): void {
   queryMemoryCache.set(qKey, val);
   queryCacheTimestamps.set(qKey, Date.now());
+  rebuildQueryIndexMap(qKey, val);
   const colKey = qKey.split('|')[0];
   registerQueryCacheKey(colKey, qKey);
 }
@@ -386,25 +455,21 @@ export async function saveItemToFirebase<T extends { id: string }>(
   
   let currentArr = memoryCache.get(collectionKey);
   if (!currentArr) {
-    currentArr = [itemToStore];
-    memoryCache.set(collectionKey, currentArr);
+    setMemoryCacheEntry(collectionKey, [itemToStore]);
   } else if (!hadItem) {
-    // Brand new item: prepend in O(1) without array search
-    memoryCache.set(collectionKey, [itemToStore, ...currentArr]);
+    setMemoryCacheEntry(collectionKey, [itemToStore, ...currentArr]);
   } else {
-    // Existing item: find index via reference pointer first with allocation-free fallback
-    let idx = findIndexById(currentArr, item.id, prevItem);
+    let idx = getCollectionItemIndexO1(collectionKey, currentArr, item.id, prevItem);
     if (idx >= 0) {
       if (currentArr[idx] !== itemToStore) {
         const nextArr = [...currentArr];
         nextArr[idx] = itemToStore;
-        memoryCache.set(collectionKey, nextArr);
+        setMemoryCacheEntry(collectionKey, nextArr);
       }
     } else {
-      memoryCache.set(collectionKey, [itemToStore, ...currentArr]);
+      setMemoryCacheEntry(collectionKey, [itemToStore, ...currentArr]);
     }
   }
-  cacheTimestamps.set(collectionKey, Date.now());
   evictStaleQueryCaches();
   
   const targetQueryKeys = collectionQueryIndex.get(collectionKey);
@@ -415,24 +480,23 @@ export async function saveItemToFirebase<T extends { id: string }>(
       let matches = itemMatchesQueryKey(qKey, collectionKey, itemToStore);
       if (matches) {
         if (!hadItem) {
-          // Brand new item: unshift in O(1) without array search
-          qList.unshift(itemToStore);
+          const nextList = [itemToStore, ...qList];
           const lim = getQueryLimitFromKey(qKey);
-          if (lim !== null && qList.length > lim) {
-            qList.splice(lim);
-          }
+          if (lim !== null && nextList.length > lim) nextList.splice(lim);
+          setQueryCacheEntry(qKey, nextList);
         } else {
-          let idx = findIndexById(qList, item.id, prevItem);
+          let idx = getQueryItemIndexO1(qKey, qList, item.id, prevItem);
           if (idx >= 0) {
             if (qList[idx] !== itemToStore) {
-              qList[idx] = itemToStore;
+              const nextList = [...qList];
+              nextList[idx] = itemToStore;
+              setQueryCacheEntry(qKey, nextList);
             }
           } else {
-            qList.unshift(itemToStore);
+            const nextList = [itemToStore, ...qList];
             const lim = getQueryLimitFromKey(qKey);
-            if (lim !== null && qList.length > lim) {
-              qList.splice(lim);
-            }
+            if (lim !== null && nextList.length > lim) nextList.splice(lim);
+            setQueryCacheEntry(qKey, nextList);
           }
         }
       }
@@ -461,15 +525,22 @@ export async function saveItemToFirebase<T extends { id: string }>(
       colStore.set(item.id, prevItem);
       let currentArr = memoryCache.get(collectionKey);
       if (currentArr) {
-        let idx = findIndexById(currentArr, item.id, itemToStore);
-        if (idx >= 0) currentArr[idx] = prevItem;
+        let idx = getCollectionItemIndexO1(collectionKey, currentArr, item.id, itemToStore);
+        if (idx >= 0) {
+          const nextArr = [...currentArr];
+          nextArr[idx] = prevItem;
+          setMemoryCacheEntry(collectionKey, nextArr);
+        }
       }
     } else {
       colStore.delete(item.id);
       let currentArr = memoryCache.get(collectionKey);
       if (currentArr) {
-        let idx = findIndexById(currentArr, item.id, itemToStore);
-        if (idx >= 0) currentArr.splice(idx, 1);
+        let idx = getCollectionItemIndexO1(collectionKey, currentArr, item.id, itemToStore);
+        if (idx >= 0) {
+          const nextArr = currentArr.filter((_, i) => i !== idx);
+          setMemoryCacheEntry(collectionKey, nextArr);
+        }
       }
     }
     const rollbackQueryKeys = collectionQueryIndex.get(collectionKey);
@@ -477,12 +548,15 @@ export async function saveItemToFirebase<T extends { id: string }>(
       for (const qKey of rollbackQueryKeys) {
         const qList = queryMemoryCache.get(qKey);
         if (!qList) continue;
-        let idx = findIndexById(qList, item.id, itemToStore);
+        let idx = getQueryItemIndexO1(qKey, qList, item.id, itemToStore);
         if (idx >= 0) {
           if (hadItem) {
-            qList[idx] = prevItem;
+            const nextList = [...qList];
+            nextList[idx] = prevItem;
+            setQueryCacheEntry(qKey, nextList);
           } else {
-            qList.splice(idx, 1);
+            const nextList = qList.filter((_, i) => i !== idx);
+            setQueryCacheEntry(qKey, nextList);
           }
         }
       }
@@ -523,23 +597,26 @@ export async function updateItemInFirebase<T extends { id?: string } = any>(
       
       let currentArr = memoryCache.get(collectionKey);
       if (currentArr) {
-        let idx = findIndexById(currentArr, itemId, prevItem);
+        let idx = getCollectionItemIndexO1(collectionKey, currentArr, itemId, prevItem);
         if (idx >= 0) {
           const nextArr = [...currentArr];
           nextArr[idx] = itemToStore;
-          memoryCache.set(collectionKey, nextArr);
+          setMemoryCacheEntry(collectionKey, nextArr);
         }
       }
-      cacheTimestamps.set(collectionKey, Date.now());
 
       const targetQueryKeys = collectionQueryIndex.get(collectionKey);
       if (targetQueryKeys) {
         for (const qKey of targetQueryKeys) {
           const qList = queryMemoryCache.get(qKey);
           if (!qList) continue;
-          let idx = findIndexById(qList, itemId, prevItem);
+          let idx = getQueryItemIndexO1(qKey, qList, itemId, prevItem);
           if (idx >= 0) {
-            qList[idx] = itemToStore;
+            if (qList[idx] !== itemToStore) {
+              const nextList = [...qList];
+              nextList[idx] = itemToStore;
+              setQueryCacheEntry(qKey, nextList);
+            }
           }
         }
       }
@@ -569,17 +646,23 @@ export async function updateItemInFirebase<T extends { id?: string } = any>(
       colStore.set(itemId, prevItem);
       let currentArr = memoryCache.get(collectionKey);
       if (currentArr) {
-        let idx = findIndexById(currentArr, itemId, prevItem);
-        if (idx >= 0) currentArr[idx] = prevItem;
+        let idx = getCollectionItemIndexO1(collectionKey, currentArr, itemId, prevItem);
+        if (idx >= 0) {
+          const nextArr = [...currentArr];
+          nextArr[idx] = prevItem;
+          setMemoryCacheEntry(collectionKey, nextArr);
+        }
       }
       const rollbackQueryKeys = collectionQueryIndex.get(collectionKey);
       if (rollbackQueryKeys) {
         for (const qKey of rollbackQueryKeys) {
           const qList = queryMemoryCache.get(qKey);
           if (!qList) continue;
-          let idx = findIndexById(qList, itemId, prevItem);
+          let idx = getQueryItemIndexO1(qKey, qList, itemId, prevItem);
           if (idx >= 0) {
-            qList[idx] = prevItem;
+            const nextList = [...qList];
+            nextList[idx] = prevItem;
+            setQueryCacheEntry(qKey, nextList);
           }
         }
       }
@@ -617,22 +700,22 @@ export async function deleteItemFromFirebase(
   colStore.delete(itemId);
   let currentArr = memoryCache.get(collectionKey);
   if (currentArr) {
-    let idx = findIndexById(currentArr, itemId, prevItem);
+    let idx = getCollectionItemIndexO1(collectionKey, currentArr, itemId, prevItem);
     if (idx >= 0) {
       const nextArr = currentArr.filter((_, i) => i !== idx);
-      memoryCache.set(collectionKey, nextArr);
+      setMemoryCacheEntry(collectionKey, nextArr);
     }
   }
-  cacheTimestamps.set(collectionKey, Date.now());
 
   const targetQueryKeys = collectionQueryIndex.get(collectionKey);
   if (targetQueryKeys) {
     for (const qKey of targetQueryKeys) {
       const qList = queryMemoryCache.get(qKey);
       if (!qList) continue;
-      let idx = findIndexById(qList, itemId, prevItem);
+      let idx = getQueryItemIndexO1(qKey, qList, itemId, prevItem);
       if (idx >= 0) {
-        qList.splice(idx, 1);
+        const nextList = qList.filter((_, i) => i !== idx);
+        setQueryCacheEntry(qKey, nextList);
       }
     }
   }
@@ -658,14 +741,16 @@ export async function deleteItemFromFirebase(
       colStore.set(itemId, prevItem);
       let currentArr = memoryCache.get(collectionKey);
       if (currentArr) {
-        if (!currentArr.some(x => x.id === itemId)) currentArr.unshift(prevItem);
+        if (!currentArr.some(x => x.id === itemId)) {
+          setMemoryCacheEntry(collectionKey, [prevItem, ...currentArr]);
+        }
       }
       const rollbackQueryKeys = collectionQueryIndex.get(collectionKey);
       if (rollbackQueryKeys) {
         for (const qKey of rollbackQueryKeys) {
           const qList = queryMemoryCache.get(qKey);
           if (qList && !qList.some(x => x.id === itemId)) {
-            qList.unshift(prevItem);
+            setQueryCacheEntry(qKey, [prevItem, ...qList]);
           }
         }
       }
@@ -705,7 +790,7 @@ export async function saveCollectionToFirebase<T extends { id?: string }>(
     });
 
     // Update memory cache
-    memoryCache.set(key, data);
+    setMemoryCacheEntry(key, data);
 
     updateStatus('connected');
     return true;
@@ -876,11 +961,11 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
             setQueryCacheEntry(registryKey, normalized);
 
             if (!options) {
-              memoryCache.set(key, normalized);
+              setMemoryCacheEntry(key, normalized);
             } else {
               let currentArr = memoryCache.get(key);
               if (!currentArr) {
-                memoryCache.set(key, normalized);
+                setMemoryCacheEntry(key, normalized);
               } else {
                 const idIndexMap = new Map<string, number>();
                 for (let j = 0; j < currentArr.length; j++) {
@@ -917,7 +1002,7 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
                 }
 
                 if (updated && nextArr) {
-                  memoryCache.set(key, nextArr);
+                  setMemoryCacheEntry(key, nextArr);
                 }
               }
             }
@@ -965,7 +1050,7 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
                     }
                   }
                   setQueryCacheEntry(registryKey, normalized);
-                  memoryCache.set(key, normalized);
+                  setMemoryCacheEntry(key, normalized);
                   cacheTimestamps.set(key, Date.now());
                   const currentEntry = activeListenersRegistry.get(registryKey);
                   if (currentEntry) {
@@ -1055,8 +1140,7 @@ export async function getCachedOrFetchData<T extends { id?: string }>(
           normalized[i] = item;
         }
       }
-      memoryCache.set(key, normalized);
-      cacheTimestamps.set(key, Date.now());
+      setMemoryCacheEntry(key, normalized);
       return normalized;
     }
     if (!checkedLegacyCollections.has(key)) {
@@ -1065,8 +1149,7 @@ export async function getCachedOrFetchData<T extends { id?: string }>(
       const legacySnap = await get(legacyRef);
       if (legacySnap.exists()) {
         const normalized = normalizeSnapshotData<T>(legacySnap.val());
-        memoryCache.set(key, normalized);
-        cacheTimestamps.set(key, Date.now());
+        setMemoryCacheEntry(key, normalized);
         return normalized;
       }
     }
@@ -1116,8 +1199,7 @@ export async function fetchHistoricalCollection<T extends { id?: string }>(
         }
       }
       setQueryCacheEntry(queryKey, normalized);
-      memoryCache.set(key, normalized);
-      cacheTimestamps.set(key, Date.now());
+      setMemoryCacheEntry(key, normalized);
       return normalized;
     }
     if (!checkedLegacyCollections.has(key)) {
@@ -1129,8 +1211,7 @@ export async function fetchHistoricalCollection<T extends { id?: string }>(
       const legacySnap = await get(legacyQ);
       if (legacySnap.exists()) {
         const normalized = normalizeSnapshotData<T>(legacySnap.val());
-        memoryCache.set(key, normalized);
-        cacheTimestamps.set(key, Date.now());
+        setMemoryCacheEntry(key, normalized);
         return normalized;
       }
     }
