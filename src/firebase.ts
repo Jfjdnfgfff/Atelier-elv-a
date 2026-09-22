@@ -547,55 +547,14 @@ export async function saveItemToFirebase<T extends { id: string }>(
     return true;
   } catch (err: any) {
     console.warn(`[Firebase RTDB item save error on ${writeKey}]:`, err?.message || err);
-    // Rollback optimistic update
-    if (hadItem) {
-      colStore.set(item.id, prevItem);
-      let currentArr = memoryCache.get(collectionKey);
-      if (currentArr) {
-        let idx = getCollectionItemIndexO1(collectionKey, currentArr, item.id, itemToStore);
-        if (idx >= 0) {
-          const nextArr = [...currentArr];
-          nextArr[idx] = prevItem;
-          setMemoryCacheEntry(collectionKey, nextArr);
-        }
-      }
-    } else {
-      colStore.delete(item.id);
-      let currentArr = memoryCache.get(collectionKey);
-      if (currentArr) {
-        let idx = getCollectionItemIndexO1(collectionKey, currentArr, item.id, itemToStore);
-        if (idx >= 0) {
-          const nextArr = currentArr.filter((_, i) => i !== idx);
-          setMemoryCacheEntry(collectionKey, nextArr);
-        }
-      }
-    }
-    const rollbackQueryKeys = collectionQueryIndex.get(collectionKey);
-    if (rollbackQueryKeys) {
-      for (const qKey of rollbackQueryKeys) {
-        const qList = queryMemoryCache.get(qKey);
-        if (!qList) continue;
-        let idx = getQueryItemIndexO1(qKey, qList, item.id, itemToStore);
-        if (idx >= 0) {
-          if (hadItem) {
-            const nextList = [...qList];
-            nextList[idx] = prevItem;
-            setQueryCacheEntry(qKey, nextList);
-          } else {
-            const nextList = qList.filter((_, i) => i !== idx);
-            setQueryCacheEntry(qKey, nextList);
-          }
-        }
-      }
-    }
-    updateStatus('error', err?.message || 'تعذر حفظ العنصر في السحابة');
+    updateStatus('error', err?.message || 'تعذر حفظ العنصر في السحابة (محفوظ محلياً)');
     return false;
   }
 }
 
 /**
  * Updates specific fields on an existing record by ID in Firebase.
- * Immediately merges updates into memory cache with automatic rollback on network failure.
+ * Immediately merges updates into memory cache.
  */
 export async function updateItemInFirebase<T extends { id?: string } = any>(
   collectionKey: string,
@@ -668,32 +627,6 @@ export async function updateItemInFirebase<T extends { id?: string } = any>(
     return true;
   } catch (err: any) {
     console.warn(`[Firebase RTDB item update error on ${writeKey}]:`, err?.message || err);
-    // Rollback
-    if (hadItem && prevItem) {
-      colStore.set(itemId, prevItem);
-      let currentArr = memoryCache.get(collectionKey);
-      if (currentArr) {
-        let idx = getCollectionItemIndexO1(collectionKey, currentArr, itemId, prevItem);
-        if (idx >= 0) {
-          const nextArr = [...currentArr];
-          nextArr[idx] = prevItem;
-          setMemoryCacheEntry(collectionKey, nextArr);
-        }
-      }
-      const rollbackQueryKeys = collectionQueryIndex.get(collectionKey);
-      if (rollbackQueryKeys) {
-        for (const qKey of rollbackQueryKeys) {
-          const qList = queryMemoryCache.get(qKey);
-          if (!qList) continue;
-          let idx = getQueryItemIndexO1(qKey, qList, itemId, prevItem);
-          if (idx >= 0) {
-            const nextList = [...qList];
-            nextList[idx] = prevItem;
-            setQueryCacheEntry(qKey, nextList);
-          }
-        }
-      }
-    }
     updateStatus('error', err?.message || 'تعذر تحديث العنصر في السحابة');
     return false;
   }
@@ -701,7 +634,7 @@ export async function updateItemInFirebase<T extends { id?: string } = any>(
 
 /**
  * Deletes a single item by ID from Firebase.
- * Immediately removes from memory cache with automatic rollback on network failure.
+ * Immediately removes from memory cache.
  */
 export async function deleteItemFromFirebase(
   collectionKey: string,
@@ -767,25 +700,6 @@ export async function deleteItemFromFirebase(
     return true;
   } catch (err: any) {
     console.warn(`[Firebase RTDB item delete error on ${writeKey}]:`, err?.message || err);
-    // Rollback
-    if (hadItem && prevItem) {
-      colStore.set(itemId, prevItem);
-      let currentArr = memoryCache.get(collectionKey);
-      if (currentArr) {
-        if (!currentArr.some(x => x.id === itemId)) {
-          setMemoryCacheEntry(collectionKey, [prevItem, ...currentArr]);
-        }
-      }
-      const rollbackQueryKeys = collectionQueryIndex.get(collectionKey);
-      if (rollbackQueryKeys) {
-        for (const qKey of rollbackQueryKeys) {
-          const qList = queryMemoryCache.get(qKey);
-          if (qList && !qList.some(x => x.id === itemId)) {
-            setQueryCacheEntry(qKey, [prevItem, ...qList]);
-          }
-        }
-      }
-    }
     updateStatus('error', err?.message || 'تعذر حذف العنصر من السحابة');
     return false;
   }

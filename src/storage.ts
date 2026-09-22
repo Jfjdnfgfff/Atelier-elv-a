@@ -666,6 +666,11 @@ export const saveToStorage = <T>(key: string, data: T, syncFirebase: boolean = f
   if (lastWrittenRef.get(key) === data && !syncFirebase) {
     return;
   }
+  console.log(`[Storage Write] Saving collection / key: "${key}"`, { 
+    itemCount: Array.isArray(data) ? data.length : 'non-array',
+    timestamp: new Date().toISOString(),
+    sampleIds: Array.isArray(data) ? data.slice(0, 3).map((item: any) => item?.id || 'no-id') : []
+  });
   lastWrittenRef.set(key, data);
   cacheMetaStore.set(key, { timestamp: Date.now(), version: 1, updatedAt: new Date().toISOString() });
 
