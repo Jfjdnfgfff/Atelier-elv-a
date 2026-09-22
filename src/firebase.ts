@@ -445,14 +445,16 @@ export async function saveItemToFirebase<T extends { id: string }>(
       colStore.set(item.id, prevItem);
       let currentArr = memoryCache.get(collectionKey);
       if (currentArr) {
-        const idx = currentArr.findIndex(x => x.id === item.id);
+        let idx = itemToStore ? currentArr.indexOf(itemToStore) : -1;
+        if (idx === -1) idx = currentArr.findIndex(x => x.id === item.id);
         if (idx >= 0) currentArr[idx] = prevItem;
       }
     } else {
       colStore.delete(item.id);
       let currentArr = memoryCache.get(collectionKey);
       if (currentArr) {
-        const idx = currentArr.findIndex(x => x.id === item.id);
+        let idx = itemToStore ? currentArr.indexOf(itemToStore) : -1;
+        if (idx === -1) idx = currentArr.findIndex(x => x.id === item.id);
         if (idx >= 0) currentArr.splice(idx, 1);
       }
     }
@@ -461,7 +463,8 @@ export async function saveItemToFirebase<T extends { id: string }>(
       for (const qKey of rollbackQueryKeys) {
         const qList = queryMemoryCache.get(qKey);
         if (!qList) continue;
-        const idx = qList.findIndex(x => x.id === item.id);
+        let idx = itemToStore ? qList.indexOf(itemToStore) : -1;
+        if (idx === -1) idx = qList.findIndex(x => x.id === item.id);
         if (idx >= 0) {
           if (hadItem) {
             qList[idx] = prevItem;
@@ -555,7 +558,8 @@ export async function updateItemInFirebase<T extends { id?: string } = any>(
       colStore.set(itemId, prevItem);
       let currentArr = memoryCache.get(collectionKey);
       if (currentArr) {
-        const idx = currentArr.findIndex(x => x.id === itemId);
+        let idx = currentArr.indexOf(prevItem);
+        if (idx === -1) idx = currentArr.findIndex(x => x.id === itemId);
         if (idx >= 0) currentArr[idx] = prevItem;
       }
       const rollbackQueryKeys = collectionQueryIndex.get(collectionKey);
@@ -563,7 +567,8 @@ export async function updateItemInFirebase<T extends { id?: string } = any>(
         for (const qKey of rollbackQueryKeys) {
           const qList = queryMemoryCache.get(qKey);
           if (!qList) continue;
-          const idx = qList.findIndex(x => x.id === itemId);
+          let idx = qList.indexOf(prevItem);
+          if (idx === -1) idx = qList.findIndex(x => x.id === itemId);
           if (idx >= 0) {
             qList[idx] = prevItem;
           }
@@ -648,9 +653,11 @@ export async function deleteItemFromFirebase(
       if (currentArr) {
         if (!currentArr.some(x => x.id === itemId)) currentArr.unshift(prevItem);
       }
-      for (const [qKey, qList] of queryMemoryCache.entries()) {
-        if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
-          if (!qList.some(x => x.id === itemId)) {
+      const rollbackQueryKeys = collectionQueryIndex.get(collectionKey);
+      if (rollbackQueryKeys) {
+        for (const qKey of rollbackQueryKeys) {
+          const qList = queryMemoryCache.get(qKey);
+          if (qList && !qList.some(x => x.id === itemId)) {
             qList.unshift(prevItem);
           }
         }
@@ -951,7 +958,7 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
                     }
                   }
                   setQueryCacheEntry(registryKey, normalized);
-                  memoryCache.set(key, Array.from(colStore.values()));
+                  memoryCache.set(key, normalized);
                   cacheTimestamps.set(key, Date.now());
                   const currentEntry = activeListenersRegistry.get(registryKey);
                   if (currentEntry) {
