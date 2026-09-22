@@ -552,9 +552,22 @@ export const saveToStorage = <T>(key: string, data: T, syncFirebase: boolean = f
 
   const timer = setTimeout(() => {
     try {
-      localStorage.setItem(key, JSON.stringify(dataToPersist));
-    } catch (e) {
-      console.error(`Error saving key ${key} to storage:`, e);
+      // Keep localStorage within safe limits (latest 300 items for array collections)
+      const storagePayload = Array.isArray(dataToPersist) && dataToPersist.length > 300
+        ? dataToPersist.slice(0, 300)
+        : dataToPersist;
+      localStorage.setItem(key, JSON.stringify(storagePayload));
+    } catch (e: any) {
+      if (e?.name === 'QuotaExceededError' || e?.code === 22) {
+        console.warn(`[localStorage quota exceeded for ${key}], trimming offline snapshot`);
+        try {
+          if (Array.isArray(dataToPersist)) {
+            localStorage.setItem(key, JSON.stringify(dataToPersist.slice(0, 50)));
+          }
+        } catch (_) {}
+      } else {
+        console.error(`Error saving key ${key} to storage:`, e);
+      }
     }
     storageFlushDebouncers.delete(key);
   }, 150);

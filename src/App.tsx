@@ -321,174 +321,57 @@ export default function App() {
     };
   }, []);
 
-  // Sync to Local Storage & Debounced Sync to Firebase Cloud
+  // Local Storage Persistence
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.CLOTHES, clothes);
-    if (isRemoteUpdateRef.current.clothes) {
-      isRemoteUpdateRef.current.clothes = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.CLOTHES, clothes);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
   }, [clothes]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.RENTALS, rentals);
-    if (isRemoteUpdateRef.current.rentals) {
-      isRemoteUpdateRef.current.rentals = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.RENTALS, rentals);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
   }, [rentals]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.SALES, sales);
-    if (isRemoteUpdateRef.current.sales) {
-      isRemoteUpdateRef.current.sales = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.SALES, sales);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
   }, [sales]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.EXPENSES, expenses);
-    if (isRemoteUpdateRef.current.expenses) {
-      isRemoteUpdateRef.current.expenses = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.EXPENSES, expenses);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
   }, [expenses]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.CREDITS, credits);
-    if (isRemoteUpdateRef.current.credits) {
-      isRemoteUpdateRef.current.credits = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.CREDITS, credits);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
   }, [credits]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, staffPayouts);
-    if (isRemoteUpdateRef.current.staffPayouts) {
-      isRemoteUpdateRef.current.staffPayouts = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, staffPayouts);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
   }, [staffPayouts]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, staffMembers);
-    if (isRemoteUpdateRef.current.staffMembers) {
-      isRemoteUpdateRef.current.staffMembers = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_MEMBERS, staffMembers);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
   }, [staffMembers]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, staffAbsences);
-    if (isRemoteUpdateRef.current.staffAbsences) {
-      isRemoteUpdateRef.current.staffAbsences = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_ABSENCES, staffAbsences);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
   }, [staffAbsences]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.MAINTENANCE, maintenanceOrders);
-    if (isRemoteUpdateRef.current.maintenanceOrders) {
-      isRemoteUpdateRef.current.maintenanceOrders = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, maintenanceOrders);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
   }, [maintenanceOrders]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.SUPPLIERS, suppliers);
-    if (isRemoteUpdateRef.current.suppliers) {
-      isRemoteUpdateRef.current.suppliers = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, suppliers);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
   }, [suppliers]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.SEAMSTRESSES, seamstresses);
-    if (isRemoteUpdateRef.current.seamstresses) {
-      isRemoteUpdateRef.current.seamstresses = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, seamstresses);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
   }, [seamstresses]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.RAW_MATERIALS, rawMaterials);
-    if (isRemoteUpdateRef.current.rawMaterials) {
-      isRemoteUpdateRef.current.rawMaterials = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, rawMaterials);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
   }, [rawMaterials]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, caisseClosures);
-    if (isRemoteUpdateRef.current.caisseClosures) {
-      isRemoteUpdateRef.current.caisseClosures = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, caisseClosures);
-      setLastCloudSyncTime(new Date());
-    }, 500);
-    return () => clearTimeout(timer);
   }, [caisseClosures]);
 
   // Full Manual Cloud Sync Handler
@@ -577,12 +460,15 @@ export default function App() {
     
     // Add rental to state
     setRentals(prev => [newRental, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.RENTALS, newRental);
 
     // If active, increment rented count. If reserved (future booking), DO NOT deduct stock until handover/deal finalization!
     if (newRental.status === 'active') {
       setClothes(prev => prev.map(c => {
         if (c.id === rentalData.itemId) {
-          return { ...c, rentedCount: (c.rentedCount || 0) + (rentalData.qty || 1) };
+          const updatedCount = (c.rentedCount || 0) + (rentalData.qty || 1);
+          updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
+          return { ...c, rentedCount: updatedCount };
         }
         return c;
       }));
@@ -604,6 +490,7 @@ export default function App() {
         relatedRentalId: newRental.id
       };
       setCredits(prev => [newCredit, ...prev]);
+      saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCredit);
     }
 
     setActiveModal(null);
@@ -613,6 +500,7 @@ export default function App() {
     const newPaid = (rental.paidAmount || 0) + (collectedAmount || 0);
     const newRemaining = Math.max(0, rental.rentPrice - newPaid);
     const todayStr = new Date().toISOString().split('T')[0];
+    const notesStr = handoverNotes ? `${rental.notes ? rental.notes + ' | ' : ''}تسليم: ${handoverNotes}` : rental.notes;
 
     // 1. Activate rental and update payments
     setRentals(prev => prev.map(r => {
@@ -623,16 +511,25 @@ export default function App() {
           paidAmount: newPaid,
           remainingAmount: newRemaining,
           handoverDate: todayStr,
-          notes: handoverNotes ? `${r.notes ? r.notes + ' | ' : ''}تسليم: ${handoverNotes}` : r.notes
+          notes: notesStr
         };
       }
       return r;
     }));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, rental.id, {
+      status: 'active',
+      paidAmount: newPaid,
+      remainingAmount: newRemaining,
+      handoverDate: todayStr,
+      notes: notesStr
+    });
 
     // 2. DEDUCT INVENTORY: Increment rented count upon deal finalization/handover!
     setClothes(prev => prev.map(c => {
       if (c.id === rental.itemId) {
-        return { ...c, rentedCount: (c.rentedCount || 0) + (rental.qty || 1) };
+        const updatedCount = (c.rentedCount || 0) + (rental.qty || 1);
+        updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
+        return { ...c, rentedCount: updatedCount };
       }
       return c;
     }));
@@ -640,6 +537,9 @@ export default function App() {
     // 3. Update or clear credit
     setCredits(prev => {
       const filtered = prev.filter(c => c.relatedRentalId !== rental.id);
+      prev.filter(c => c.relatedRentalId === rental.id).forEach(c => {
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
+      });
       if (newRemaining > 0) {
         const updatedCredit: Credit = {
           id: generateId(),
@@ -651,6 +551,7 @@ export default function App() {
           date: new Date().toISOString(),
           relatedRentalId: rental.id
         };
+        saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, updatedCredit);
         return [updatedCredit, ...filtered];
       }
       return filtered;
@@ -669,7 +570,9 @@ export default function App() {
         // Transitioned to active -> increment item rentedCount
         setClothes(prev => prev.map(c => {
           if (c.id === updatedData.itemId) {
-            return { ...c, rentedCount: (c.rentedCount || 0) + (updatedData.qty || 1) };
+            const updatedCount = (c.rentedCount || 0) + (updatedData.qty || 1);
+            updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
+            return { ...c, rentedCount: updatedCount };
           }
           return c;
         }));
@@ -677,7 +580,9 @@ export default function App() {
         // Transitioned from active to reserved or returned -> decrement item rentedCount
         setClothes(prev => prev.map(c => {
           if (c.id === prevRental.itemId) {
-            return { ...c, rentedCount: Math.max(0, (c.rentedCount || 0) - (prevRental.qty || 1)) };
+            const updatedCount = Math.max(0, (c.rentedCount || 0) - (prevRental.qty || 1));
+            updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
+            return { ...c, rentedCount: updatedCount };
           }
           return c;
         }));
@@ -685,6 +590,7 @@ export default function App() {
     }
 
     setRentals(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, id, updatedData);
     showToast('تم تحديث بيانات الكراء');
     setActiveModal(null);
   };
@@ -703,12 +609,18 @@ export default function App() {
           // Return item count to inventory only if it was active
           setClothes(prev => prev.map(c => {
             if (c.id === target.itemId) {
-              return { ...c, rentedCount: Math.max(0, (c.rentedCount || 0) - (target.qty || 1)) };
+              const updatedCount = Math.max(0, (c.rentedCount || 0) - (target.qty || 1));
+              updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
+              return { ...c, rentedCount: updatedCount };
             }
             return c;
           }));
         }
         setRentals(prev => prev.filter(r => r.id !== id));
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.RENTALS, id);
+        credits.filter(c => c.relatedRentalId === id).forEach(c => {
+          deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
+        });
         setCredits(prev => prev.filter(c => c.relatedRentalId !== id));
         showToast(target.status === 'reserved' ? 'تم إلغاء الحجز بنجاح' : 'تم حذف عملية الكراء بنجاح');
         setConfirmDelete(null);
@@ -720,31 +632,42 @@ export default function App() {
     const target = rentals.find(r => r.id === rentalId);
     if (!target) return;
 
+    const returnUpdates = {
+      status: 'returned',
+      actualReturnDate: new Date().toISOString().split('T')[0],
+      conditionOnReturn: returnData.condition,
+      cautionStatus: returnData.cautionAction === 'refund' ? 'refunded' : 'deducted',
+      penaltyAmount: returnData.penaltyAmount,
+      paidAmount: target.paidAmount + (returnData.collectedRemaining || 0),
+      remainingAmount: Math.max(0, (target.remainingAmount || 0) - (returnData.collectedRemaining || 0)),
+      notes: returnData.notes ? `${target.notes ? target.notes + ' | ' : ''}إرجاع: ${returnData.notes}` : target.notes
+    };
+
     // Update rental status
     setRentals(prev => prev.map(r => {
       if (r.id === rentalId) {
         return {
           ...r,
-          status: 'returned',
-          actualReturnDate: new Date().toISOString().split('T')[0],
-          conditionOnReturn: returnData.condition,
-          cautionStatus: returnData.cautionAction === 'refund' ? 'refunded' : 'deducted',
-          penaltyAmount: returnData.penaltyAmount,
-          paidAmount: r.paidAmount + (returnData.collectedRemaining || 0),
-          remainingAmount: Math.max(0, (r.remainingAmount || 0) - (returnData.collectedRemaining || 0)),
-          notes: returnData.notes ? `${r.notes ? r.notes + ' | ' : ''}إرجاع: ${returnData.notes}` : r.notes
+          ...returnUpdates
         };
       }
       return r;
     }));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, rentalId, returnUpdates);
 
     // Update inventory: decrease rentedCount, add to inCleaningCount if requested
     setClothes(prev => prev.map(c => {
       if (c.id === target.itemId) {
+        const newRented = Math.max(0, (c.rentedCount || 0) - (target.qty || 1));
+        const newCleaning = returnData.sendToCleaning ? (c.inCleaningCount || 0) + (target.qty || 1) : (c.inCleaningCount || 0);
+        updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, {
+          rentedCount: newRented,
+          inCleaningCount: newCleaning
+        });
         return {
           ...c,
-          rentedCount: Math.max(0, (c.rentedCount || 0) - (target.qty || 1)),
-          inCleaningCount: returnData.sendToCleaning ? (c.inCleaningCount || 0) + (target.qty || 1) : (c.inCleaningCount || 0)
+          rentedCount: newRented,
+          inCleaningCount: newCleaning
         };
       }
       return c;
@@ -759,6 +682,9 @@ export default function App() {
 
     // Auto clear linked credit if collected
     if (returnData.collectedRemaining > 0) {
+      credits.filter(c => c.relatedRentalId === rentalId).forEach(c => {
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
+      });
       setCredits(prev => prev.filter(c => c.relatedRentalId !== rentalId));
     }
 
@@ -771,11 +697,13 @@ export default function App() {
   const handleAddCloth = (itemData: any) => {
     const newCloth: ClothItem = { ...itemData, id: generateId() };
     setClothes(prev => [newCloth, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.CLOTHES, newCloth);
     showToast('تمت إضافة قطعة الملابس للمخزن');
   };
 
   const handleUpdateCloth = (id: string, itemData: any) => {
     setClothes(prev => prev.map(c => c.id === id ? { ...c, ...itemData } : c));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, id, itemData);
     showToast('تم تحديث بيانات القطعة');
   };
 
@@ -785,6 +713,7 @@ export default function App() {
       message: 'هل أنت متأكد من حذف هذه القطعة من المخزن؟ لا يمكن التراجع عن هذا الإجراء.',
       onConfirm: () => {
         setClothes(prev => prev.filter(c => c.id !== id));
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.CLOTHES, id);
         showToast('تم حذف القطعة من المخزن');
         setConfirmDelete(null);
       }
@@ -797,6 +726,7 @@ export default function App() {
   const handleCompleteSale = (saleData: any) => {
     const newSale: Sale = { ...saleData, id: generateId() };
     setSales(prev => [newSale, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.SALES, newSale);
 
     // Decrease inventory stock accurately from stock1 or stock2
     saleData.items.forEach((item: any) => {
@@ -813,12 +743,18 @@ export default function App() {
             newS1 = Math.max(0, s1 - item.qty);
           }
 
-          return { 
+          const updatedCloth = { 
             ...c, 
             stock1: newS1,
             stock2: newS2,
             stock: newS1 + newS2 
           };
+          updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, {
+            stock1: newS1,
+            stock2: newS2,
+            stock: newS1 + newS2
+          });
+          return updatedCloth;
         }
         return c;
       }));
@@ -836,6 +772,7 @@ export default function App() {
         date: new Date().toISOString()
       };
       setCredits(prev => [newCredit, ...prev]);
+      saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCredit);
     }
 
     showToast('تم إتمام عملية البيع بنجاح');
@@ -847,6 +784,7 @@ export default function App() {
       message: 'هل تريد إلغاء عملية البيع واسترجاع القطع للمخزن؟',
       onConfirm: () => {
         setSales(prev => prev.filter(s => s.id !== sale.id));
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.SALES, sale.id);
         sale.items.forEach(item => {
           setClothes(prev => prev.map(c => {
             if (c.id === item.itemId) {
@@ -861,12 +799,18 @@ export default function App() {
                 newS1 = s1 + item.qty;
               }
 
-              return { 
+              const updatedCloth = { 
                 ...c, 
                 stock1: newS1,
                 stock2: newS2,
                 stock: newS1 + newS2 
               };
+              updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, {
+                stock1: newS1,
+                stock2: newS2,
+                stock: newS1 + newS2
+              });
+              return updatedCloth;
             }
             return c;
           }));
@@ -884,6 +828,7 @@ export default function App() {
     const newExpId = generateId();
     const newExp: Expense = { ...expData, id: newExpId };
     setExpenses(prev => [newExp, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.EXPENSES, newExp);
 
     // If this is a supplier purchase with credit/debt remaining, auto-create a credit record
     if (expData.isSupplierPurchase && expData.creditAmount > 0) {
@@ -903,6 +848,7 @@ export default function App() {
         paidAmount: expData.paidAmount
       };
       setCredits(prev => [newCredit, ...prev]);
+      saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCredit);
       showToast(`تم تسجيل مشتريات المورد (المسدد: ${expData.paidAmount?.toLocaleString()} دج + متبقي دين: ${expData.creditAmount?.toLocaleString()} دج)`);
     } else if (expData.isSupplierPurchase) {
       showToast(`تم تسجيل خلاص المورد بنجاح (${(expData.paidAmount || expData.amount)?.toLocaleString()} دج كاش)`);
@@ -913,6 +859,10 @@ export default function App() {
 
   const handleDeleteExpense = (id: string) => {
     setExpenses(prev => prev.filter(e => e.id !== id));
+    deleteItemFromFirebase(FIREBASE_COLLECTIONS.EXPENSES, id);
+    credits.filter(c => c.relatedExpenseId === id).forEach(c => {
+      deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
+    });
     setCredits(prev => prev.filter(c => c.relatedExpenseId !== id));
     showToast('تم حذف سجل المصروف');
   };
@@ -925,12 +875,18 @@ export default function App() {
         const currentCredit = exp.creditAmount || 0;
         const newPaid = currentPaid + paidNow;
         const newCredit = Math.max(0, currentCredit - paidNow);
-        return {
+        const updatedExp = {
           ...exp,
           paidAmount: newPaid,
           amount: newPaid,
           creditAmount: newCredit
         };
+        updateItemInFirebase(FIREBASE_COLLECTIONS.EXPENSES, expenseId, {
+          paidAmount: newPaid,
+          amount: newPaid,
+          creditAmount: newCredit
+        });
+        return updatedExp;
       }
       return exp;
     }));
@@ -940,6 +896,11 @@ export default function App() {
       return prev.map(c => {
         if (c.relatedExpenseId === expenseId) {
           const newAmount = Math.max(0, c.amount - paidNow);
+          if (newAmount === 0) {
+            deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
+          } else {
+            updateItemInFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id, { amount: newAmount });
+          }
           return { ...c, amount: newAmount };
         }
         return c;
@@ -952,6 +913,7 @@ export default function App() {
   const handleAddSupplier = (newSup: Supplier) => {
     setSuppliers(prev => {
       if (prev.some(s => s.name.trim().toLowerCase() === newSup.name.trim().toLowerCase())) return prev;
+      saveItemToFirebase(FIREBASE_COLLECTIONS.SUPPLIERS, newSup);
       return [newSup, ...prev];
     });
     showToast(`تمت إضافة المورد: ${newSup.name}`);
@@ -959,6 +921,7 @@ export default function App() {
 
   const handleUpdateSupplier = (id: string, data: Partial<Supplier>) => {
     setSuppliers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.SUPPLIERS, id, data);
     showToast('تم تحديث بيانات المورد');
   };
 
@@ -968,6 +931,7 @@ export default function App() {
       message: 'هل أنت متأكد من حذف هذا المورد؟',
       onConfirm: () => {
         setSuppliers(prev => prev.filter(s => s.id !== id));
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.SUPPLIERS, id);
         showToast('تم حذف المورد بنجاح');
         setConfirmDelete(null);
       }
@@ -979,11 +943,13 @@ export default function App() {
   // ==========================
   const handleAddSeamstress = (seam: Seamstress) => {
     setSeamstresses(prev => [seam, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.SEAMSTRESSES, seam);
     showToast(`تمت إضافة الخياطة: ${seam.name}`);
   };
 
   const handleUpdateSeamstress = (id: string, data: Partial<Seamstress>) => {
     setSeamstresses(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.SEAMSTRESSES, id, data);
     showToast('تم تحديث بيانات الخياطة');
   };
 
@@ -993,6 +959,7 @@ export default function App() {
       message: 'هل تريد حذف هذه الخياطة من النظام؟',
       onConfirm: () => {
         setSeamstresses(prev => prev.filter(s => s.id !== id));
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.SEAMSTRESSES, id);
         showToast('تم حذف الخياطة');
         setConfirmDelete(null);
       }
@@ -1001,11 +968,13 @@ export default function App() {
 
   const handleAddRawMaterial = (mat: RawMaterial) => {
     setRawMaterials(prev => [mat, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, mat);
     showToast(`تمت إضافة القماش / السلعة: ${mat.name}`);
   };
 
   const handleUpdateRawMaterial = (id: string, data: Partial<RawMaterial>) => {
     setRawMaterials(prev => prev.map(m => m.id === id ? { ...m, ...data, updatedAt: new Date().toISOString() } : m));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, id, { ...data, updatedAt: new Date().toISOString() });
     showToast('تم تحديث بيانات القماش');
   };
 
@@ -1015,6 +984,7 @@ export default function App() {
       message: 'هل أنت متأكد من حذف هذا القماش من سجل المخزن؟',
       onConfirm: () => {
         setRawMaterials(prev => prev.filter(m => m.id !== id));
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, id);
         showToast('تم حذف القماش بنجاح');
         setConfirmDelete(null);
       }
@@ -1024,6 +994,7 @@ export default function App() {
   const handleAddCredit = (credData: any) => {
     const newCred: Credit = { ...credData, id: generateId() };
     setCredits(prev => [newCred, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCred);
     showToast(credData.supplierDebt ? 'تم تسجيل دين للمورد' : 'تم تسجيل الدين على الزبون');
   };
 
@@ -1035,22 +1006,30 @@ export default function App() {
         if (exp.id === cred.relatedExpenseId) {
           const currentPaid = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
           const newPaid = currentPaid + cred.amount;
-          return {
+          const updated = {
             ...exp,
             paidAmount: newPaid,
             amount: newPaid,
             creditAmount: 0
           };
+          updateItemInFirebase(FIREBASE_COLLECTIONS.EXPENSES, cred.relatedExpenseId!, {
+            paidAmount: newPaid,
+            amount: newPaid,
+            creditAmount: 0
+          });
+          return updated;
         }
         return exp;
       }));
     }
     setCredits(prev => prev.filter(c => c.id !== id));
+    deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, id);
     showToast('تم تسديد وتصفية الدين بنجاح');
   };
 
   const handleDeleteCredit = (id: string) => {
     setCredits(prev => prev.filter(c => c.id !== id));
+    deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, id);
     showToast('تم حذف السجل');
   };
 
@@ -1062,6 +1041,7 @@ export default function App() {
       const filtered = prev.filter(c => c.date !== closure.date);
       return [closure, ...filtered];
     });
+    saveItemToFirebase(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, closure);
     showToast(`تم إقفال وحفظ صندوق يوم ${closure.date} بنجاح`);
   };
 
@@ -1071,6 +1051,7 @@ export default function App() {
       message: 'هل أنت متأكد من حذف هذا السجل لصندوق اليومية؟',
       onConfirm: () => {
         setCaisseClosures(prev => prev.filter(c => c.id !== id));
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, id);
         showToast('تم حذف سجل إقفال الصندوق');
         setConfirmDelete(null);
       }
@@ -1084,12 +1065,15 @@ export default function App() {
     const payoutId = generateId();
     const newPayout: StaffPayout = { ...data, id: payoutId };
     setStaffPayouts(prev => [newPayout, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, newPayout);
 
     // If absences were deducted in this payout, mark them as deducted
     if (deductedAbsenceIds && deductedAbsenceIds.length > 0) {
       setStaffAbsences(prev => prev.map(a => {
         if (deductedAbsenceIds.includes(a.id)) {
-          return { ...a, isDeducted: true, payoutId };
+          const updated = { ...a, isDeducted: true, payoutId };
+          updateItemInFirebase(FIREBASE_COLLECTIONS.STAFF_ABSENCES, a.id, { isDeducted: true, payoutId });
+          return updated;
         }
         return a;
       }));
@@ -1100,19 +1084,28 @@ export default function App() {
 
   const handleDeleteStaffPayout = (id: string) => {
     setStaffPayouts(prev => prev.filter(p => p.id !== id));
+    deleteItemFromFirebase(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, id);
     // Restore deducted status if payout is deleted
-    setStaffAbsences(prev => prev.map(a => a.payoutId === id ? { ...a, isDeducted: false, payoutId: undefined } : a));
+    setStaffAbsences(prev => prev.map(a => {
+      if (a.payoutId === id) {
+        updateItemInFirebase(FIREBASE_COLLECTIONS.STAFF_ABSENCES, a.id, { isDeducted: false, payoutId: null });
+        return { ...a, isDeducted: false, payoutId: undefined };
+      }
+      return a;
+    }));
     showToast('تم حذف سجل الراتب');
   };
 
   const handleAddStaffMember = (data: any) => {
     const newMember: StaffMember = { ...data, id: generateId() };
     setStaffMembers(prev => [...prev, newMember]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.STAFF_MEMBERS, newMember);
     showToast(`تمت إضافة العامل/ة ${data.name}`);
   };
 
   const handleUpdateStaffMember = (id: string, data: any) => {
     setStaffMembers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.STAFF_MEMBERS, id, data);
     showToast('تم تحديث بيانات العامل');
   };
 
@@ -1122,6 +1115,7 @@ export default function App() {
       message: 'هل تريد حذف هذا العامل من النظام؟',
       onConfirm: () => {
         setStaffMembers(prev => prev.filter(s => s.id !== id));
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.STAFF_MEMBERS, id);
         showToast('تم حذف العامل');
         setConfirmDelete(null);
       }
@@ -1131,11 +1125,13 @@ export default function App() {
   const handleAddAbsence = (data: any) => {
     const newAbsence: StaffAbsence = { ...data, id: generateId() };
     setStaffAbsences(prev => [newAbsence, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.STAFF_ABSENCES, newAbsence);
     showToast(`تم تسجيل غياب ${data.staffName} بقيمة خصم ${data.deductionAmount} دج`);
   };
 
   const handleDeleteAbsence = (id: string) => {
     setStaffAbsences(prev => prev.filter(a => a.id !== id));
+    deleteItemFromFirebase(FIREBASE_COLLECTIONS.STAFF_ABSENCES, id);
     showToast('تم حذف سجل الغياب');
   };
 
@@ -1167,6 +1163,7 @@ export default function App() {
     };
 
     setMaintenanceOrders(prev => [newOrder, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, newOrder);
 
     if (newOrder.remainingAmount > 0 && newOrder.customerName) {
       const newCredit: Credit = {
@@ -1179,6 +1176,7 @@ export default function App() {
         date: new Date().toISOString()
       };
       setCredits(prev => [newCredit, ...prev]);
+      saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCredit);
     }
 
     showToast('تم تسجيل طلب الخياطة والصيانة بنجاح');
@@ -1187,21 +1185,26 @@ export default function App() {
 
   const handleUpdateTailoringOrder = (id: string, data: Partial<MaintenanceOrder>) => {
     setMaintenanceOrders(prev => prev.map(o => o.id === id ? { ...o, ...data } : o));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, id, data);
     showToast('تم تحديث بيانات طلب الخياطة');
     setActiveModal(null);
   };
 
   const handleUpdateTailoringStatus = (id: string, newStatus: MaintenanceStatus) => {
+    const updates = { 
+      status: newStatus, 
+      actualDeliveryDate: newStatus === 'delivered' ? new Date().toISOString().split('T')[0] : undefined 
+    };
     setMaintenanceOrders(prev => prev.map(o => {
       if (o.id === id) {
         return { 
           ...o, 
-          status: newStatus, 
-          actualDeliveryDate: newStatus === 'delivered' ? new Date().toISOString().split('T')[0] : o.actualDeliveryDate 
+          ...updates
         };
       }
       return o;
     }));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, id, updates);
     showToast('تم تحديث حالة الطلب');
   };
 
@@ -1211,6 +1214,7 @@ export default function App() {
       message: 'هل أنت متأكد من حذف هذا الطلب من سجل الخياطة؟',
       onConfirm: () => {
         setMaintenanceOrders(prev => prev.filter(o => o.id !== id));
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, id);
         showToast('تم حذف الطلب بنجاح');
         setConfirmDelete(null);
       }

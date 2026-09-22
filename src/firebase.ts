@@ -82,9 +82,54 @@ const queryCacheTimestamps = new Map<string, number>();
 const memoryCache = new Map<string, any[]>();
 const cacheTimestamps = new Map<string, number>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
+const MAX_QUERY_CACHE_ENTRIES = 40;
+const MAX_CANONICAL_ITEMS_PER_COLLECTION = 800;
 
 // Track locally initiated writes with item-level precision to avoid echo loops
 const pendingItemWrites = new Map<string, number>();
+
+/**
+ * Performs active eviction of expired or oversized in-memory caches to keep RAM footprint low
+ */
+function evictStaleQueryCaches(): void {
+  const now = Date.now();
+  // Evict expired queries not actively listened to
+  for (const [qKey, ts] of queryCacheTimestamps.entries()) {
+    if (now - ts > CACHE_TTL_MS && !activeListenersRegistry.has(qKey)) {
+      queryMemoryCache.delete(qKey);
+      queryCacheTimestamps.delete(qKey);
+    }
+  }
+
+  // If query cache is still above max entries, trim oldest entries
+  if (queryMemoryCache.size > MAX_QUERY_CACHE_ENTRIES) {
+    const sorted = Array.from(queryCacheTimestamps.entries())
+      .filter(([k]) => !activeListenersRegistry.has(k))
+      .sort((a, b) => a[1] - b[1]);
+
+    const toRemoveCount = queryMemoryCache.size - MAX_QUERY_CACHE_ENTRIES;
+    for (let i = 0; i < Math.min(toRemoveCount, sorted.length); i++) {
+      const keyToRemove = sorted[i][0];
+      queryMemoryCache.delete(keyToRemove);
+      queryCacheTimestamps.delete(keyToRemove);
+    }
+  }
+}
+
+/**
+ * Prunes RAM canonical store if it exceeds max items limit without affecting Firebase
+ */
+function pruneCanonicalStoreIfNeeded(colKey: string, store: Map<string, any>): void {
+  if (store.size > MAX_CANONICAL_ITEMS_PER_COLLECTION && HEAVY_COLLECTIONS.has(colKey)) {
+    const excess = store.size - MAX_CANONICAL_ITEMS_PER_COLLECTION;
+    const keys = Array.from(store.keys());
+    for (let i = 0; i < excess; i++) {
+      store.delete(keys[i]);
+    }
+    // Refresh memory cache array
+    memoryCache.set(colKey, Array.from(store.values()));
+  }
+}
 
 /**
  * Manually invalidate cached collection in memory (both query and canonical caches)
@@ -205,7 +250,22 @@ export async function saveItemToFirebase<T extends { id: string }>(
 
   // Optimistically update canonical & query caches
   colStore.set(item.id, item);
-  memoryCache.set(collectionKey, Array.from(colStore.values()));
+  pruneCanonicalStoreIfNeeded(collectionKey, colStore);
+  
+  let currentArr = memoryCache.get(collectionKey);
+  if (!currentArr) {
+    currentArr = Array.from(colStore.values());
+    memoryCache.set(collectionKey, currentArr);
+  } else {
+    const idx = currentArr.findIndex(x => x.id === item.id);
+    if (idx >= 0) {
+      currentArr[idx] = item;
+    } else {
+      currentArr.unshift(item);
+    }
+  }
+  cacheTimestamps.set(collectionKey, Date.now());
+  evictStaleQueryCaches();
   
   for (const [qKey, qList] of queryMemoryCache.entries()) {
     if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
@@ -313,7 +373,18 @@ export async function updateItemInFirebase<T extends { id?: string } = any>(
   if (hadItem && prevItem) {
     const merged = { ...prevItem, ...updates };
     colStore.set(itemId, merged);
-    memoryCache.set(collectionKey, Array.from(colStore.values()));
+    
+    let currentArr = memoryCache.get(collectionKey);
+    if (currentArr) {
+      const idx = currentArr.findIndex(x => x.id === itemId);
+      if (idx >= 0) {
+        currentArr[idx] = merged;
+      }
+    } else {
+      memoryCache.set(collectionKey, Array.from(colStore.values()));
+    }
+    cacheTimestamps.set(collectionKey, Date.now());
+
     for (const [qKey, qList] of queryMemoryCache.entries()) {
       if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
         const idx = qList.findIndex(x => x.id === itemId);
@@ -345,7 +416,11 @@ export async function updateItemInFirebase<T extends { id?: string } = any>(
     // Rollback
     if (hadItem && prevItem) {
       colStore.set(itemId, prevItem);
-      memoryCache.set(collectionKey, Array.from(colStore.values()));
+      let currentArr = memoryCache.get(collectionKey);
+      if (currentArr) {
+        const idx = currentArr.findIndex(x => x.id === itemId);
+        if (idx >= 0) currentArr[idx] = prevItem;
+      }
       for (const [qKey, qList] of queryMemoryCache.entries()) {
         if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
           const idx = qList.findIndex(x => x.id === itemId);
@@ -384,7 +459,13 @@ export async function deleteItemFromFirebase(
 
   // Optimistically remove from canonical and query caches
   colStore.delete(itemId);
-  memoryCache.set(collectionKey, Array.from(colStore.values()));
+  let currentArr = memoryCache.get(collectionKey);
+  if (currentArr) {
+    const idx = currentArr.findIndex(x => x.id === itemId);
+    if (idx >= 0) currentArr.splice(idx, 1);
+  }
+  cacheTimestamps.set(collectionKey, Date.now());
+
   for (const [qKey, qList] of queryMemoryCache.entries()) {
     if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
       const idx = qList.findIndex(x => x.id === itemId);
@@ -413,7 +494,10 @@ export async function deleteItemFromFirebase(
     // Rollback
     if (hadItem && prevItem) {
       colStore.set(itemId, prevItem);
-      memoryCache.set(collectionKey, Array.from(colStore.values()));
+      let currentArr = memoryCache.get(collectionKey);
+      if (currentArr) {
+        if (!currentArr.some(x => x.id === itemId)) currentArr.unshift(prevItem);
+      }
       for (const [qKey, qList] of queryMemoryCache.entries()) {
         if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
           if (!qList.some(x => x.id === itemId)) {
@@ -606,8 +690,10 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
             for (const item of normalized) {
               if (item?.id) colStore.set(item.id, item);
             }
+            pruneCanonicalStoreIfNeeded(key, colStore);
             memoryCache.set(key, Array.from(colStore.values()));
             cacheTimestamps.set(key, Date.now());
+            evictStaleQueryCaches();
             
             const currentEntry = activeListenersRegistry.get(registryKey);
             if (currentEntry) {

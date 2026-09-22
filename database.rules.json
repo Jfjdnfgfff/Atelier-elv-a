@@ -7,14 +7,14 @@
         ".read": true,
         ".write": true,
         "records": {
-          ".indexOn": ["category", "code", "updatedAt"]
+          ".indexOn": ["category", "code", "barcode", "purpose", "updatedAt"]
         }
       },
       "boutique_rentals": {
         ".read": true,
         ".write": true,
         "records": {
-          ".indexOn": ["status", "startDate", "expectedReturnDate", "createdAt", "updatedAt"],
+          ".indexOn": ["status", "startDate", "expectedReturnDate", "createdAt", "updatedAt", "customerId", "itemId"],
           "$rentalId": {
             ".validate": "newData.hasChildren(['customerName', 'itemId'])"
           }
@@ -34,7 +34,7 @@
         ".read": true,
         ".write": true,
         "records": {
-          ".indexOn": ["date", "category", "createdAt"],
+          ".indexOn": ["date", "category", "createdAt", "supplierId"],
           "$expenseId": {
             ".validate": "newData.hasChildren(['amount', 'category', 'date'])"
           }
@@ -44,7 +44,7 @@
         ".read": true,
         ".write": true,
         "records": {
-          ".indexOn": ["date", "phone", "relatedRentalId"],
+          ".indexOn": ["date", "phone", "relatedRentalId", "supplierDebt", "paid"],
           "$creditId": {
             ".validate": "newData.hasChildren(['customerName', 'amount', 'date'])"
           }
@@ -54,7 +54,7 @@
         ".read": true,
         ".write": true,
         "records": {
-          ".indexOn": ["staffId", "date"],
+          ".indexOn": ["staffId", "date", "createdAt"],
           "$payoutId": {
             ".validate": "newData.hasChildren(['staffId', 'amount', 'date'])"
           }
@@ -71,21 +71,21 @@
         ".read": true,
         ".write": true,
         "records": {
-          ".indexOn": ["staffId", "date"]
+          ".indexOn": ["staffId", "date", "createdAt"]
         }
       },
       "boutique_customers": {
         ".read": true,
         ".write": true,
         "records": {
-          ".indexOn": ["phone", "name"]
+          ".indexOn": ["phone", "name", "createdAt"]
         }
       },
       "boutique_maintenance": {
         ".read": true,
         ".write": true,
         "records": {
-          ".indexOn": ["status", "expectedDeliveryDate", "receivedDate"],
+          ".indexOn": ["status", "expectedDeliveryDate", "receivedDate", "createdAt", "orderNumber"],
           "$orderId": {
             ".validate": "newData.hasChildren(['customerName', 'expectedDeliveryDate'])"
           }
@@ -109,14 +109,14 @@
         ".read": true,
         ".write": true,
         "records": {
-          ".indexOn": ["name", "type"]
+          ".indexOn": ["name", "type", "code"]
         }
       },
       "boutique_caisse_closures": {
         ".read": true,
         ".write": true,
         "records": {
-          ".indexOn": ["date"],
+          ".indexOn": ["date", "createdAt"],
           "$closureId": {
             ".validate": "newData.hasChildren(['date', 'actualCash'])"
           }
