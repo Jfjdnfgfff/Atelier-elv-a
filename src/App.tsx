@@ -85,20 +85,11 @@ import {
 export default function App() {
   perfMonitor.recordAppRender();
 
-  // 1. Core Collections (Loaded Cache-First immediately at startup)
-  const [clothes, setClothes] = useState<ClothItem[]>(() => {
-    initializeStorage();
-    return loadFromStorage<ClothItem[]>(STORAGE_KEYS.CLOTHES, DEFAULT_CLOTHES);
-  });
-  const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => 
-    loadFromStorage<StaffMember[]>(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF)
-  );
-  const [staffAbsences, setStaffAbsences] = useState<StaffAbsence[]>(() => 
-    loadFromStorage<StaffAbsence[]>(STORAGE_KEYS.STAFF_ABSENCES, [])
-  );
-  const [caisseClosures, setCaisseClosures] = useState<DailyCaisseClosure[]>(() => 
-    loadFromStorage<DailyCaisseClosure[]>(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES)
-  );
+  // 1. Core Collections (Loaded directly and live from Firebase Realtime Database)
+  const [clothes, setClothes] = useState<ClothItem[]>([]);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  const [staffAbsences, setStaffAbsences] = useState<StaffAbsence[]>([]);
+  const [caisseClosures, setCaisseClosures] = useState<DailyCaisseClosure[]>([]);
 
   // 2. Lazy Collections (Deferred until section or modal is opened)
   const [rentals, setRentals] = useState<Rental[]>([]);
@@ -116,9 +107,7 @@ export default function App() {
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
   }, []);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => {
-    return loadFromStorage<ActivityLog[]>(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS);
-  });
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
 
   // Track loaded collections & active singleton listeners to prevent duplicate subscriptions
   const loadedCollectionsRef = useRef<Set<string>>(new Set([
@@ -280,7 +269,7 @@ export default function App() {
     };
   }, []);
 
-  // On-demand lazy collection loader: Cache-first (0ms) + Real-time Background Sync
+  // On-demand collection loader: Real-time Firebase Subscriptions
   const ensureCollection = useCallback((key: string) => {
     if (loadedCollectionsRef.current.has(key)) {
       return;
@@ -289,10 +278,6 @@ export default function App() {
 
     switch (key) {
       case 'rentals': {
-        const cached = getCachedCollection<Rental>(STORAGE_KEYS.RENTALS, DEFAULT_RENTALS).data;
-        if (cached) {
-          setRentals(cached);
-        }
         const unsub = SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
           if (items && Array.isArray(items)) {
             setRentals(prev => {
@@ -301,19 +286,12 @@ export default function App() {
               return items;
             });
             markCloudSyncActive();
-          } else {
-            const local = loadFromStorage<Rental[]>(STORAGE_KEYS.RENTALS, []);
-            if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.RENTALS, local);
           }
         });
         activeSubscriptionsRef.current.set(key, unsub);
         break;
       }
       case 'sales': {
-        const cached = getCachedCollection<Sale>(STORAGE_KEYS.SALES, []).data;
-        if (cached) {
-          setSales(cached);
-        }
         const unsub = SubscriptionManager.subscribe<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
           if (items && Array.isArray(items)) {
             setSales(prev => {
@@ -328,10 +306,6 @@ export default function App() {
         break;
       }
       case 'expenses': {
-        const cached = getCachedCollection<Expense>(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES).data;
-        if (cached) {
-          setExpenses(cached);
-        }
         const unsub = SubscriptionManager.subscribe<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
           if (items && Array.isArray(items)) {
             setExpenses(prev => {
@@ -340,19 +314,12 @@ export default function App() {
               return items;
             });
             markCloudSyncActive();
-          } else {
-            const local = loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, []);
-            if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.EXPENSES, local);
           }
         });
         activeSubscriptionsRef.current.set(key, unsub);
         break;
       }
       case 'credits': {
-        const cached = getCachedCollection<Credit>(STORAGE_KEYS.CREDITS, []).data;
-        if (cached) {
-          setCredits(cached);
-        }
         const unsub = SubscriptionManager.subscribe<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
           if (items && Array.isArray(items)) {
             setCredits(prev => {
@@ -367,10 +334,6 @@ export default function App() {
         break;
       }
       case 'staffPayouts': {
-        const cached = getCachedCollection<StaffPayout>(STORAGE_KEYS.STAFF_PAYOUTS, []).data;
-        if (cached) {
-          setStaffPayouts(cached);
-        }
         const unsub = SubscriptionManager.subscribe<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
           if (items && Array.isArray(items)) {
             setStaffPayouts(prev => {
@@ -385,10 +348,6 @@ export default function App() {
         break;
       }
       case 'maintenance': {
-        const cached = getCachedCollection<MaintenanceOrder>(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE).data;
-        if (cached) {
-          setMaintenanceOrders(cached);
-        }
         const unsub = SubscriptionManager.subscribe<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
           if (items && Array.isArray(items)) {
             setMaintenanceOrders(prev => {
@@ -397,19 +356,12 @@ export default function App() {
               return items;
             });
             markCloudSyncActive();
-          } else {
-            const local = loadFromStorage<MaintenanceOrder[]>(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE);
-            if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, local);
           }
         });
         activeSubscriptionsRef.current.set(key, unsub);
         break;
       }
       case 'suppliers': {
-        const cached = getCachedCollection<Supplier>(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS).data;
-        if (cached) {
-          setSuppliers(cached);
-        }
         const unsub = SubscriptionManager.subscribe<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
           if (items && Array.isArray(items)) {
             setSuppliers(prev => {
@@ -418,19 +370,12 @@ export default function App() {
               return items;
             });
             markCloudSyncActive();
-          } else {
-            const local = loadFromStorage<Supplier[]>(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS);
-            if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, local);
           }
         });
         activeSubscriptionsRef.current.set(key, unsub);
         break;
       }
       case 'seamstresses': {
-        const cached = getCachedCollection<Seamstress>(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES).data;
-        if (cached) {
-          setSeamstresses(cached);
-        }
         const unsub = SubscriptionManager.subscribe<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
           if (items && Array.isArray(items)) {
             setSeamstresses(prev => {
@@ -439,19 +384,12 @@ export default function App() {
               return items;
             });
             markCloudSyncActive();
-          } else {
-            const local = loadFromStorage<Seamstress[]>(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES);
-            if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, local);
           }
         });
         activeSubscriptionsRef.current.set(key, unsub);
         break;
       }
       case 'rawMaterials': {
-        const cached = getCachedCollection<RawMaterial>(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS).data;
-        if (cached) {
-          setRawMaterials(cached);
-        }
         const unsub = SubscriptionManager.subscribe<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
           if (items && Array.isArray(items)) {
             setRawMaterials(prev => {
@@ -460,9 +398,6 @@ export default function App() {
               return items;
             });
             markCloudSyncActive();
-          } else {
-            const local = loadFromStorage<RawMaterial[]>(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS);
-            if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, local);
           }
         });
         activeSubscriptionsRef.current.set(key, unsub);
