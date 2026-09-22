@@ -147,23 +147,70 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   const getItemStock2 = (item: ClothItem) => item.stock2 !== undefined ? item.stock2 : 0;
   const getItemTotalStock = (item: ClothItem) => getItemStock1(item) + getItemStock2(item);
 
-  // Total statistics across both stocks
-  const totalStock1 = clothes.reduce((sum, c) => sum + getItemStock1(c), 0);
-  const totalStock2 = clothes.reduce((sum, c) => sum + getItemStock2(c), 0);
-  const grandTotalStock = totalStock1 + totalStock2;
-  
-  // Financial valuations for stock (ثمن القيمة، ثمن البيع، وهامش الربح)
-  const totalCostReadyClothes = clothes.reduce((sum, c) => sum + (c.buyCost * getItemTotalStock(c)), 0);
-  const totalSellReadyClothes = clothes.reduce((sum, c) => sum + (c.sellPrice * getItemTotalStock(c)), 0);
-  const expectedProfitReadyClothes = totalSellReadyClothes - totalCostReadyClothes;
+  // Single-pass memoized inventory & valuation statistics
+  const {
+    totalStock1,
+    totalStock2,
+    grandTotalStock,
+    totalCostReadyClothes,
+    totalSellReadyClothes,
+    expectedProfitReadyClothes,
+    totalRawRolls,
+    totalRawMeters,
+    totalRawMaterialsCost,
+    grandTotalStoreCapital,
+    clothesBarcodeMap,
+    clothesIdMap
+  } = useMemo(() => {
+    let s1 = 0;
+    let s2 = 0;
+    let cost = 0;
+    let sell = 0;
+    const bMap = new Map<string, ClothItem>();
+    const idMap = new Map<string, ClothItem>();
 
-  // Raw Materials valuation (السلع الأولية بالرولو والأمتار)
-  const totalRawRolls = rawMaterials.reduce((sum, m) => sum + (m.rollCount || 0), 0);
-  const totalRawMeters = rawMaterials.reduce((sum, m) => sum + (m.totalMeters || 0), 0);
-  const totalRawMaterialsCost = rawMaterials.reduce((sum, m) => sum + (m.totalCostValue || (m.totalMeters * m.costPerMeter) || 0), 0);
-  
-  // Combined capital of all store inventory & fabrics
-  const grandTotalStoreCapital = totalCostReadyClothes + totalRawMaterialsCost;
+    for (let i = 0; i < clothes.length; i++) {
+      const c = clothes[i];
+      const stock1 = c.stock1 !== undefined ? c.stock1 : (c.stock || 0);
+      const stock2 = c.stock2 !== undefined ? c.stock2 : 0;
+      const total = stock1 + stock2;
+      s1 += stock1;
+      s2 += stock2;
+      cost += (c.buyCost * total);
+      sell += (c.sellPrice * total);
+      if (c.barcode) {
+        bMap.set(c.barcode.trim().toLowerCase(), c);
+      }
+      if (c.id) {
+        idMap.set(c.id, c);
+      }
+    }
+
+    let rawRolls = 0;
+    let rawMeters = 0;
+    let rawCost = 0;
+    for (let i = 0; i < rawMaterials.length; i++) {
+      const m = rawMaterials[i];
+      rawRolls += (m.rollCount || 0);
+      rawMeters += (m.totalMeters || 0);
+      rawCost += (m.totalCostValue || (m.totalMeters * m.costPerMeter) || 0);
+    }
+
+    return {
+      totalStock1: s1,
+      totalStock2: s2,
+      grandTotalStock: s1 + s2,
+      totalCostReadyClothes: cost,
+      totalSellReadyClothes: sell,
+      expectedProfitReadyClothes: sell - cost,
+      totalRawRolls: rawRolls,
+      totalRawMeters: rawMeters,
+      totalRawMaterialsCost: rawCost,
+      grandTotalStoreCapital: cost + rawCost,
+      clothesBarcodeMap: bMap,
+      clothesIdMap: idMap
+    };
+  }, [clothes, rawMaterials]);
 
   // Collect all unique sizes & colors present in the inventory
   const allAvailableSizes = useMemo(() => {
@@ -193,7 +240,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   // Process a scanned barcode in Inventory:
   const handleProcessBarcode = (code: string) => {
     const cleanCode = code.trim().toLowerCase();
-    const existing = clothes.find(
+    const existing = clothesBarcodeMap.get(cleanCode) || clothes.find(
       c => c.barcode.trim().toLowerCase() === cleanCode || c.name.toLowerCase().includes(cleanCode)
     );
 
@@ -238,11 +285,11 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [clothes]);
+  }, [clothesBarcodeMap]);
 
   // Handle transfer between stock 1 and stock 2
   const handleTransferStock = (itemId: string, direction: '1_to_2' | '2_to_1', qty: number) => {
-    const item = clothes.find(c => c.id === itemId);
+    const item = clothesIdMap.get(itemId) || clothes.find(c => c.id === itemId);
     if (!item) return;
 
     const s1 = getItemStock1(item);

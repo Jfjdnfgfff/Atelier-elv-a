@@ -152,7 +152,6 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.clothes = true;
         setClothes(items);
-        saveToStorage(STORAGE_KEYS.CLOTHES, items, false);
         setLastCloudSyncTime(new Date());
       } else {
         const local = loadFromStorage<ClothItem[]>(STORAGE_KEYS.CLOTHES, []);
@@ -165,7 +164,6 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.rentals = true;
         setRentals(items);
-        saveToStorage(STORAGE_KEYS.RENTALS, items, false);
         setLastCloudSyncTime(new Date());
       } else {
         const local = loadFromStorage<Rental[]>(STORAGE_KEYS.RENTALS, []);
@@ -178,7 +176,6 @@ export default function App() {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.sales = true;
         setSales(items);
-        saveToStorage(STORAGE_KEYS.SALES, items, false);
         setLastCloudSyncTime(new Date());
       }
     });
@@ -188,7 +185,6 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.expenses = true;
         setExpenses(items);
-        saveToStorage(STORAGE_KEYS.EXPENSES, items, false);
         setLastCloudSyncTime(new Date());
       } else {
         const local = loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, []);
@@ -201,7 +197,6 @@ export default function App() {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.credits = true;
         setCredits(items);
-        saveToStorage(STORAGE_KEYS.CREDITS, items, false);
         setLastCloudSyncTime(new Date());
       }
     });
@@ -211,7 +206,6 @@ export default function App() {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.staffPayouts = true;
         setStaffPayouts(items);
-        saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, items, false);
         setLastCloudSyncTime(new Date());
       }
     });
@@ -221,7 +215,6 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.staffMembers = true;
         setStaffMembers(items);
-        saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, items, false);
         setLastCloudSyncTime(new Date());
       } else {
         const local = loadFromStorage<StaffMember[]>(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF);
@@ -234,7 +227,6 @@ export default function App() {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.staffAbsences = true;
         setStaffAbsences(items);
-        saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, items, false);
         setLastCloudSyncTime(new Date());
       }
     });
@@ -244,7 +236,6 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.maintenanceOrders = true;
         setMaintenanceOrders(items);
-        saveToStorage(STORAGE_KEYS.MAINTENANCE, items, false);
         setLastCloudSyncTime(new Date());
       } else {
         const local = loadFromStorage<MaintenanceOrder[]>(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE);
@@ -257,7 +248,6 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.suppliers = true;
         setSuppliers(items);
-        saveToStorage(STORAGE_KEYS.SUPPLIERS, items, false);
         setLastCloudSyncTime(new Date());
       } else {
         const local = loadFromStorage<Supplier[]>(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS);
@@ -270,7 +260,6 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.caisseClosures = true;
         setCaisseClosures(items);
-        saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, items, false);
         setLastCloudSyncTime(new Date());
       } else {
         const local = loadFromStorage<DailyCaisseClosure[]>(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES);
@@ -283,7 +272,6 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.seamstresses = true;
         setSeamstresses(items);
-        saveToStorage(STORAGE_KEYS.SEAMSTRESSES, items, false);
         setLastCloudSyncTime(new Date());
       } else {
         const local = loadFromStorage<Seamstress[]>(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES);
@@ -296,7 +284,6 @@ export default function App() {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.rawMaterials = true;
         setRawMaterials(items);
-        saveToStorage(STORAGE_KEYS.RAW_MATERIALS, items, false);
         setLastCloudSyncTime(new Date());
       } else {
         const local = loadFromStorage<RawMaterial[]>(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS);

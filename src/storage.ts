@@ -499,6 +499,40 @@ const lastWrittenRef = new Map<string, any>();
 const dirtyKeys = new Set<string>();
 let idleFlushScheduled = false;
 
+/**
+ * Flushes all pending dirty collections immediately to localStorage synchronously.
+ * Called automatically on beforeunload, pagehide, and visibilitychange to prevent data loss.
+ */
+export function flushPendingStorageSynchronously(): void {
+  if (dirtyKeys.size === 0) return;
+
+  const keysToFlush = Array.from(dirtyKeys);
+  dirtyKeys.clear();
+
+  for (let i = 0; i < keysToFlush.length; i++) {
+    const key = keysToFlush[i];
+    const dataToPersist = memoryStore.get(key);
+    if (dataToPersist === undefined) continue;
+
+    try {
+      const storagePayload = Array.isArray(dataToPersist) && dataToPersist.length > 300
+        ? dataToPersist.slice(0, 300)
+        : dataToPersist;
+      localStorage.setItem(key, JSON.stringify(storagePayload));
+    } catch (e: any) {
+      if (e?.name === 'QuotaExceededError' || e?.code === 22) {
+        try {
+          if (Array.isArray(dataToPersist)) {
+            localStorage.setItem(key, JSON.stringify(dataToPersist.slice(0, 50)));
+          }
+        } catch (_) {}
+      } else {
+        console.error(`Error flushing key ${key} to storage:`, e);
+      }
+    }
+  }
+}
+
 // Non-blocking idle flush for localStorage disk I/O
 function scheduleIdleStorageFlush() {
   if (idleFlushScheduled) return;
@@ -506,35 +540,7 @@ function scheduleIdleStorageFlush() {
 
   const performFlush = () => {
     idleFlushScheduled = false;
-    if (dirtyKeys.size === 0) return;
-
-    const keysToFlush = Array.from(dirtyKeys);
-    dirtyKeys.clear();
-
-    for (let i = 0; i < keysToFlush.length; i++) {
-      const key = keysToFlush[i];
-      const dataToPersist = memoryStore.get(key);
-      if (dataToPersist === undefined) continue;
-
-      try {
-        // Keep localStorage within safe limits (latest 300 items for large array collections)
-        const storagePayload = Array.isArray(dataToPersist) && dataToPersist.length > 300
-          ? dataToPersist.slice(0, 300)
-          : dataToPersist;
-        localStorage.setItem(key, JSON.stringify(storagePayload));
-      } catch (e: any) {
-        if (e?.name === 'QuotaExceededError' || e?.code === 22) {
-          console.warn(`[localStorage quota exceeded for ${key}], trimming offline snapshot`);
-          try {
-            if (Array.isArray(dataToPersist)) {
-              localStorage.setItem(key, JSON.stringify(dataToPersist.slice(0, 50)));
-            }
-          } catch (_) {}
-        } else {
-          console.error(`Error saving key ${key} to storage:`, e);
-        }
-      }
-    }
+    flushPendingStorageSynchronously();
   };
 
   if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
@@ -542,6 +548,17 @@ function scheduleIdleStorageFlush() {
   } else {
     setTimeout(performFlush, 200);
   }
+}
+
+// Ensure pending writes are always committed before page refresh/exit
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', flushPendingStorageSynchronously);
+  window.addEventListener('pagehide', flushPendingStorageSynchronously);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      flushPendingStorageSynchronously();
+    }
+  });
 }
 
 export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
