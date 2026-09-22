@@ -14,16 +14,17 @@ import {
   endAt
 } from 'firebase/database';
 import { getFirestore } from 'firebase/firestore';
+import appletConfig from '../firebase-applet-config.json';
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyCbvyOhZK42hTsKjOWPPDc60LRyyrpoo34",
-  authDomain: "ateliu-14e23.firebaseapp.com",
-  databaseURL: "https://ateliu-14e23-default-rtdb.firebaseio.com",
-  projectId: "ateliu-14e23",
-  storageBucket: "ateliu-14e23.firebasestorage.app",
-  messagingSenderId: "137350226746",
-  appId: "1:137350226746:web:d4f824a6580b7c152be603",
-  measurementId: "G-WYDHE63XZS"
+  apiKey: appletConfig.apiKey || "AIzaSyCbvyOhZK42hTsKjOWPPDc60LRyyrpoo34",
+  authDomain: appletConfig.authDomain || "ateliu-14e23.firebaseapp.com",
+  databaseURL: (appletConfig as any).databaseURL || `https://${appletConfig.projectId || 'ateliu-14e23'}-default-rtdb.firebaseio.com`,
+  projectId: appletConfig.projectId || "ateliu-14e23",
+  storageBucket: appletConfig.storageBucket || "ateliu-14e23.firebasestorage.app",
+  messagingSenderId: appletConfig.messagingSenderId || "137350226746",
+  appId: appletConfig.appId || "1:137350226746:web:d4f824a6580b7c152be603",
+  measurementId: appletConfig.measurementId || "G-WYDHE63XZS"
 };
 
 // Initialize Firebase App singleton
@@ -33,7 +34,9 @@ export const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(fireb
 export const rtdb = getDatabase(firebaseApp);
 
 // Initialize Firestore for security rules compliance
-export const db = getFirestore(firebaseApp);
+export const db = appletConfig.firestoreDatabaseId 
+  ? getFirestore(firebaseApp, appletConfig.firestoreDatabaseId)
+  : getFirestore(firebaseApp);
 
 export type SyncStatus = 'connected' | 'syncing' | 'offline' | 'error';
 
