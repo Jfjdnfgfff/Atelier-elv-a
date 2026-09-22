@@ -721,8 +721,6 @@ export async function deleteItemFromFirebase(
   const prevItem = colStore.get(itemId);
   const hadItem = colStore.has(itemId);
 
-  if (!hadItem) return true;
-
   // Optimistically remove from canonical and query caches
   colStore.delete(itemId);
   let currentArr = memoryCache.get(collectionKey);
@@ -730,6 +728,9 @@ export async function deleteItemFromFirebase(
     let idx = getCollectionItemIndexO1(collectionKey, currentArr, itemId, prevItem);
     if (idx >= 0) {
       const nextArr = currentArr.filter((_, i) => i !== idx);
+      setMemoryCacheEntry(collectionKey, nextArr);
+    } else {
+      const nextArr = currentArr.filter((x: any) => x && x.id !== itemId);
       setMemoryCacheEntry(collectionKey, nextArr);
     }
   }
@@ -742,6 +743,9 @@ export async function deleteItemFromFirebase(
       let idx = getQueryItemIndexO1(qKey, qList, itemId, prevItem);
       if (idx >= 0) {
         const nextList = qList.filter((_, i) => i !== idx);
+        setQueryCacheEntry(qKey, nextList);
+      } else {
+        const nextList = qList.filter((x: any) => x && x.id !== itemId);
         setQueryCacheEntry(qKey, nextList);
       }
     }

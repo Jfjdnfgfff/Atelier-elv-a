@@ -12,7 +12,8 @@ import {
   Supplier, 
   Seamstress, 
   RawMaterial, 
-  MaintenanceStatus 
+  MaintenanceStatus,
+  ActivityLog
 } from '../types';
 import { NavButton } from './Shared';
 import { ViewRenderer } from './ViewRenderer';
@@ -48,12 +49,16 @@ export interface AppNavigationProps {
   suppliers: Supplier[];
   seamstresses: Seamstress[];
   rawMaterials: RawMaterial[];
+  activityLogs?: ActivityLog[];
   posScannedBarcode: string | null;
 
   // Action Handlers
   onOpenAddRental: () => void;
   onOpenReturnModal: (rental: Rental) => void;
   onSendMessage: (rental: Rental) => void;
+  onDeleteLog?: (id: string, passwordVerified: boolean) => void;
+  onClearAllLogs?: (passwordVerified: boolean) => void;
+  onAddManualLog?: (log: Omit<ActivityLog, 'id' | 'timestamp'>) => void;
   onAddRentalWithItem: (itemId?: string) => void;
   onEditRentalModal: (rental: Rental) => void;
   onDeleteRental: (id: string) => void;
@@ -110,10 +115,14 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
   suppliers,
   seamstresses,
   rawMaterials,
+  activityLogs,
   posScannedBarcode,
   onOpenAddRental,
   onOpenReturnModal,
   onSendMessage,
+  onDeleteLog,
+  onClearAllLogs,
+  onAddManualLog,
   onAddRentalWithItem,
   onEditRentalModal,
   onDeleteRental,
@@ -361,6 +370,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
           suppliers={suppliers}
           seamstresses={seamstresses}
           rawMaterials={rawMaterials}
+          activityLogs={activityLogs}
           hideFinances={hideFinances}
           posScannedBarcode={posScannedBarcode}
           onPrivacyToggle={toggleFinances}
@@ -368,6 +378,11 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
           onOpenAddRental={onOpenAddRental}
           onOpenReturnModal={onOpenReturnModal}
           onSendMessage={onSendMessage}
+          onOpenStaffPayoutsModal={openStaffPayoutsModal}
+          onOpenFullReportModal={openFullReportModal}
+          onDeleteLog={onDeleteLog}
+          onClearAllLogs={onClearAllLogs}
+          onAddManualLog={onAddManualLog}
           onAddRentalWithItem={onAddRentalWithItem}
           onEditRentalModal={onEditRentalModal}
           onDeleteRental={onDeleteRental}

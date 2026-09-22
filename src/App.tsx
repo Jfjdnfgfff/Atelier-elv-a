@@ -233,11 +233,11 @@ export default function App() {
     switch (key) {
       case 'rentals': {
         const cached = getCachedCollection<Rental>(STORAGE_KEYS.RENTALS, DEFAULT_RENTALS).data;
-        if (cached && cached.length > 0) {
+        if (cached) {
           setRentals(cached);
         }
         const unsub = SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
-          if (items && Array.isArray(items) && items.length > 0) {
+          if (items && Array.isArray(items)) {
             setRentals(prev => {
               if (areArraysEqual(prev, items)) return prev;
               isRemoteUpdateRef.current.rentals = true;
@@ -254,7 +254,7 @@ export default function App() {
       }
       case 'sales': {
         const cached = getCachedCollection<Sale>(STORAGE_KEYS.SALES, []).data;
-        if (cached && cached.length > 0) {
+        if (cached) {
           setSales(cached);
         }
         const unsub = SubscriptionManager.subscribe<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
@@ -272,11 +272,11 @@ export default function App() {
       }
       case 'expenses': {
         const cached = getCachedCollection<Expense>(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES).data;
-        if (cached && cached.length > 0) {
+        if (cached) {
           setExpenses(cached);
         }
         const unsub = SubscriptionManager.subscribe<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
-          if (items && Array.isArray(items) && items.length > 0) {
+          if (items && Array.isArray(items)) {
             setExpenses(prev => {
               if (areArraysEqual(prev, items)) return prev;
               isRemoteUpdateRef.current.expenses = true;
@@ -293,7 +293,7 @@ export default function App() {
       }
       case 'credits': {
         const cached = getCachedCollection<Credit>(STORAGE_KEYS.CREDITS, []).data;
-        if (cached && cached.length > 0) {
+        if (cached) {
           setCredits(cached);
         }
         const unsub = SubscriptionManager.subscribe<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
@@ -311,7 +311,7 @@ export default function App() {
       }
       case 'staffPayouts': {
         const cached = getCachedCollection<StaffPayout>(STORAGE_KEYS.STAFF_PAYOUTS, []).data;
-        if (cached && cached.length > 0) {
+        if (cached) {
           setStaffPayouts(cached);
         }
         const unsub = SubscriptionManager.subscribe<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
@@ -329,11 +329,11 @@ export default function App() {
       }
       case 'maintenance': {
         const cached = getCachedCollection<MaintenanceOrder>(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE).data;
-        if (cached && cached.length > 0) {
+        if (cached) {
           setMaintenanceOrders(cached);
         }
         const unsub = SubscriptionManager.subscribe<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
-          if (items && Array.isArray(items) && items.length > 0) {
+          if (items && Array.isArray(items)) {
             setMaintenanceOrders(prev => {
               if (areArraysEqual(prev, items)) return prev;
               isRemoteUpdateRef.current.maintenanceOrders = true;
@@ -350,11 +350,11 @@ export default function App() {
       }
       case 'suppliers': {
         const cached = getCachedCollection<Supplier>(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS).data;
-        if (cached && cached.length > 0) {
+        if (cached) {
           setSuppliers(cached);
         }
         const unsub = SubscriptionManager.subscribe<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
-          if (items && Array.isArray(items) && items.length > 0) {
+          if (items && Array.isArray(items)) {
             setSuppliers(prev => {
               if (areArraysEqual(prev, items)) return prev;
               isRemoteUpdateRef.current.suppliers = true;
@@ -371,11 +371,11 @@ export default function App() {
       }
       case 'seamstresses': {
         const cached = getCachedCollection<Seamstress>(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES).data;
-        if (cached && cached.length > 0) {
+        if (cached) {
           setSeamstresses(cached);
         }
         const unsub = SubscriptionManager.subscribe<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
-          if (items && Array.isArray(items) && items.length > 0) {
+          if (items && Array.isArray(items)) {
             setSeamstresses(prev => {
               if (areArraysEqual(prev, items)) return prev;
               isRemoteUpdateRef.current.seamstresses = true;
@@ -392,11 +392,11 @@ export default function App() {
       }
       case 'rawMaterials': {
         const cached = getCachedCollection<RawMaterial>(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS).data;
-        if (cached && cached.length > 0) {
+        if (cached) {
           setRawMaterials(cached);
         }
         const unsub = SubscriptionManager.subscribe<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
-          if (items && Array.isArray(items) && items.length > 0) {
+          if (items && Array.isArray(items)) {
             setRawMaterials(prev => {
               if (areArraysEqual(prev, items)) return prev;
               isRemoteUpdateRef.current.rawMaterials = true;
@@ -421,6 +421,7 @@ export default function App() {
         break;
       case 'sales':
         ensureCollection('sales');
+        ensureCollection('rentals');
         break;
       case 'inventory':
         ensureCollection('rawMaterials');
@@ -450,9 +451,20 @@ export default function App() {
         ensureCollection('staffPayouts');
         break;
       case 'dashboard':
-        // Core collections already active
+        ensureCollection('sales');
+        ensureCollection('rentals');
+        ensureCollection('expenses');
+        ensureCollection('credits');
         break;
     }
+  }, [ensureCollection]);
+
+  // Immediately pre-load core financial/income collections at startup for zero-delay loading
+  useEffect(() => {
+    ensureCollection('sales');
+    ensureCollection('rentals');
+    ensureCollection('expenses');
+    ensureCollection('credits');
   }, [ensureCollection]);
 
   const handleEnsureCollection = useCallback((view: ViewType) => {
@@ -1207,7 +1219,11 @@ export default function App() {
       title: 'حذف المورد',
       message: 'هل أنت متأكد من حذف هذا المورد؟',
       onConfirm: () => {
-        setSuppliers(prev => prev.filter(s => s.id !== id));
+        setSuppliers(prev => {
+          const next = prev.filter(s => s.id !== id);
+          saveToStorage(STORAGE_KEYS.SUPPLIERS, next, true);
+          return next;
+        });
         deleteItemFromFirebase(FIREBASE_COLLECTIONS.SUPPLIERS, id);
         showToast('تم حذف المورد بنجاح');
         setConfirmDelete(null);
@@ -1235,7 +1251,11 @@ export default function App() {
       title: 'حذف الخياطة',
       message: 'هل تريد حذف هذه الخياطة من النظام؟',
       onConfirm: () => {
-        setSeamstresses(prev => prev.filter(s => s.id !== id));
+        setSeamstresses(prev => {
+          const next = prev.filter(s => s.id !== id);
+          saveToStorage(STORAGE_KEYS.SEAMSTRESSES, next, true);
+          return next;
+        });
         deleteItemFromFirebase(FIREBASE_COLLECTIONS.SEAMSTRESSES, id);
         showToast('تم حذف الخياطة');
         setConfirmDelete(null);

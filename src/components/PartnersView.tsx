@@ -544,11 +544,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm(`هل أنت متأكد من حذف المورد "${sup.name}"؟`)) {
-                            onDeleteSupplier(sup.id);
-                          }
-                        }}
+                        onClick={() => onDeleteSupplier(sup.id)}
                         className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-all"
                         title="حذف"
                       >
@@ -690,11 +686,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm(`هل أنت متأكد من حذف الخياطة "${seam.name}"؟`)) {
-                            onDeleteSeamstress(seam.id);
-                          }
-                        }}
+                        onClick={() => onDeleteSeamstress(seam.id)}
                         className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-all"
                         title="حذف"
                       >

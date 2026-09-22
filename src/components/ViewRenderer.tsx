@@ -14,6 +14,7 @@ import {
   Seamstress,
   RawMaterial,
   MaintenanceStatus,
+  ActivityLog,
 } from '../types';
 
 // Lazy-loaded Views for optimal code splitting & bundle performance
@@ -26,6 +27,7 @@ const ExpensesView = React.lazy(() => import('./ExpensesView').then(m => ({ defa
 const CreditsView = React.lazy(() => import('./CreditsView').then(m => ({ default: m.CreditsView })));
 const CaisseView = React.lazy(() => import('./CaisseView').then(m => ({ default: m.CaisseView })));
 const PartnersView = React.lazy(() => import('./PartnersView').then(m => ({ default: m.PartnersView })));
+const LogsView = React.lazy(() => import('./LogsView').then(m => ({ default: m.LogsView })));
 
 export interface ViewRendererProps {
   currentView: ViewType;
@@ -41,6 +43,7 @@ export interface ViewRendererProps {
   suppliers: Supplier[];
   seamstresses: Seamstress[];
   rawMaterials: RawMaterial[];
+  activityLogs?: ActivityLog[];
   hideFinances: boolean;
   posScannedBarcode: string | null;
 
@@ -50,6 +53,11 @@ export interface ViewRendererProps {
   onOpenAddRental: () => void;
   onOpenReturnModal: (rental: Rental) => void;
   onSendMessage: (rental: Rental) => void;
+  onOpenStaffPayoutsModal?: () => void;
+  onOpenFullReportModal?: () => void;
+  onDeleteLog?: (id: string, passwordVerified: boolean) => void;
+  onClearAllLogs?: (passwordVerified: boolean) => void;
+  onAddManualLog?: (log: Omit<ActivityLog, 'id' | 'timestamp'>) => void;
 
   // RentalsView handlers
   onAddRentalWithItem: (itemId?: string) => void;
@@ -115,6 +123,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   suppliers,
   seamstresses,
   rawMaterials,
+  activityLogs = [],
   hideFinances,
   posScannedBarcode,
   onPrivacyToggle,
@@ -122,6 +131,11 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   onOpenAddRental,
   onOpenReturnModal,
   onSendMessage,
+  onOpenStaffPayoutsModal,
+  onOpenFullReportModal,
+  onDeleteLog,
+  onClearAllLogs,
+  onAddManualLog,
   onAddRentalWithItem,
   onEditRentalModal,
   onDeleteRental,
@@ -170,12 +184,18 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           sales={sales}
           expenses={expenses}
           staffPayouts={staffPayouts}
+          activityLogs={activityLogs}
           hideFinances={hideFinances}
           onPrivacyToggle={onPrivacyToggle}
           onNavigate={onNavigate}
           onOpenAddRental={onOpenAddRental}
           onOpenReturnModal={onOpenReturnModal}
           onSendMessage={onSendMessage}
+          onOpenStaffPayoutsModal={onOpenStaffPayoutsModal}
+          onOpenFullReportModal={onOpenFullReportModal}
+          onDeleteLog={onDeleteLog}
+          onClearAllLogs={onClearAllLogs}
+          onAddManualLog={onAddManualLog}
         />
       )}
 
@@ -284,6 +304,18 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           onUpdateSeamstress={onUpdateSeamstress}
           onDeleteSeamstress={onDeleteSeamstress}
           onSettleSupplierCredit={onSettleSupplierCredit}
+        />
+      )}
+
+      {currentView === 'logs' && (
+        <LogsView
+          logs={activityLogs}
+          onDeleteLog={onDeleteLog}
+          onClearAllLogs={onClearAllLogs}
+          onAddManualLog={onAddManualLog}
+          showToast={(msg, type) => {
+            // LogsView provides toast notifications
+          }}
         />
       )}
     </React.Suspense>
