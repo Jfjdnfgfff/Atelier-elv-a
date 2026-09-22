@@ -31,7 +31,7 @@ import {
 } from './storage';
 import { 
   syncCollectionToCloud, 
-  subscribeToCloudCollection, 
+  SubscriptionManager, 
   saveItemToFirebase,
   updateItemInFirebase,
   deleteItemFromFirebase,
@@ -126,6 +126,10 @@ export default function App() {
     loadFromStorage<DailyCaisseClosure[]>(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES)
   );
 
+  // UI state
+  const [currentView, setCurrentView] = useState<ViewType>('dashboard');
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+
   // Cloud Real-time Synchronization state
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [lastCloudSyncTime, setLastCloudSyncTime] = useState<Date>(new Date());
@@ -154,10 +158,10 @@ export default function App() {
     }
   }, []);
 
-  // Real-time Cloud Subscriptions on Mount
+  // 1. Core Permanent Real-time Cloud Subscriptions (Global App Dependencies)
   useEffect(() => {
-    // 1. Subscribe to Clothes
-    const unsubClothes = subscribeToCloudCollection<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
+    // Clothes
+    const unsubClothes = SubscriptionManager.subscribe<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.clothes = true;
         setClothes(prev => areArraysEqual(prev, items) ? prev : items);
@@ -168,8 +172,8 @@ export default function App() {
       }
     });
 
-    // 2. Subscribe to Rentals
-    const unsubRentals = subscribeToCloudCollection<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
+    // Rentals
+    const unsubRentals = SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.rentals = true;
         setRentals(prev => areArraysEqual(prev, items) ? prev : items);
@@ -180,47 +184,8 @@ export default function App() {
       }
     });
 
-    // 3. Subscribe to Sales
-    const unsubSales = subscribeToCloudCollection<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
-      if (items && Array.isArray(items)) {
-        isRemoteUpdateRef.current.sales = true;
-        setSales(prev => areArraysEqual(prev, items) ? prev : items);
-        markCloudSyncActive();
-      }
-    });
-
-    // 4. Subscribe to Expenses
-    const unsubExpenses = subscribeToCloudCollection<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
-      if (items && Array.isArray(items) && items.length > 0) {
-        isRemoteUpdateRef.current.expenses = true;
-        setExpenses(prev => areArraysEqual(prev, items) ? prev : items);
-        markCloudSyncActive();
-      } else {
-        const local = loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, []);
-        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.EXPENSES, local);
-      }
-    });
-
-    // 5. Subscribe to Credits
-    const unsubCredits = subscribeToCloudCollection<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
-      if (items && Array.isArray(items)) {
-        isRemoteUpdateRef.current.credits = true;
-        setCredits(prev => areArraysEqual(prev, items) ? prev : items);
-        markCloudSyncActive();
-      }
-    });
-
-    // 6. Subscribe to Staff Payouts
-    const unsubStaffPayouts = subscribeToCloudCollection<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
-      if (items && Array.isArray(items)) {
-        isRemoteUpdateRef.current.staffPayouts = true;
-        setStaffPayouts(prev => areArraysEqual(prev, items) ? prev : items);
-        markCloudSyncActive();
-      }
-    });
-
-    // 7. Subscribe to Staff Members
-    const unsubStaffMembers = subscribeToCloudCollection<StaffMember>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, (items) => {
+    // Staff Members
+    const unsubStaffMembers = SubscriptionManager.subscribe<StaffMember>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.staffMembers = true;
         setStaffMembers(prev => areArraysEqual(prev, items) ? prev : items);
@@ -231,8 +196,8 @@ export default function App() {
       }
     });
 
-    // 8. Subscribe to Staff Absences
-    const unsubStaffAbsences = subscribeToCloudCollection<StaffAbsence>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, (items) => {
+    // Staff Absences
+    const unsubStaffAbsences = SubscriptionManager.subscribe<StaffAbsence>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, (items) => {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.staffAbsences = true;
         setStaffAbsences(prev => areArraysEqual(prev, items) ? prev : items);
@@ -240,8 +205,8 @@ export default function App() {
       }
     });
 
-    // 9. Subscribe to Maintenance Orders
-    const unsubMaintenance = subscribeToCloudCollection<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
+    // Maintenance Orders
+    const unsubMaintenance = SubscriptionManager.subscribe<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.maintenanceOrders = true;
         setMaintenanceOrders(prev => areArraysEqual(prev, items) ? prev : items);
@@ -252,20 +217,8 @@ export default function App() {
       }
     });
 
-    // 10. Subscribe to Suppliers
-    const unsubSuppliers = subscribeToCloudCollection<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
-      if (items && Array.isArray(items) && items.length > 0) {
-        isRemoteUpdateRef.current.suppliers = true;
-        setSuppliers(prev => areArraysEqual(prev, items) ? prev : items);
-        markCloudSyncActive();
-      } else {
-        const local = loadFromStorage<Supplier[]>(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS);
-        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, local);
-      }
-    });
-
-    // 11. Subscribe to Caisse Closures
-    const unsubCaisse = subscribeToCloudCollection<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
+    // Caisse Closures
+    const unsubCaisse = SubscriptionManager.subscribe<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.caisseClosures = true;
         setCaisseClosures(prev => areArraysEqual(prev, items) ? prev : items);
@@ -276,8 +229,103 @@ export default function App() {
       }
     });
 
-    // 12. Subscribe to Seamstresses
-    const unsubSeamstresses = subscribeToCloudCollection<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
+    return () => {
+      unsubClothes();
+      unsubRentals();
+      unsubStaffMembers();
+      unsubStaffAbsences();
+      unsubMaintenance();
+      unsubCaisse();
+    };
+  }, [markCloudSyncActive]);
+
+  // 2. Lazy / On-Demand Subscriptions (Sales)
+  useEffect(() => {
+    const needsSales = ['dashboard', 'sales', 'caisse'].includes(currentView) || activeModal === 'fullReport';
+    if (!needsSales) return;
+
+    const unsub = SubscriptionManager.subscribe<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
+      if (items && Array.isArray(items)) {
+        isRemoteUpdateRef.current.sales = true;
+        setSales(prev => areArraysEqual(prev, items) ? prev : items);
+        markCloudSyncActive();
+      }
+    });
+    return unsub;
+  }, [currentView, activeModal, markCloudSyncActive]);
+
+  // 3. Lazy / On-Demand Subscriptions (Expenses)
+  useEffect(() => {
+    const needsExpenses = ['dashboard', 'expenses', 'caisse'].includes(currentView) || activeModal === 'fullReport';
+    if (!needsExpenses) return;
+
+    const unsub = SubscriptionManager.subscribe<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.expenses = true;
+        setExpenses(prev => areArraysEqual(prev, items) ? prev : items);
+        markCloudSyncActive();
+      } else {
+        const local = loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, []);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.EXPENSES, local);
+      }
+    });
+    return unsub;
+  }, [currentView, activeModal, markCloudSyncActive]);
+
+  // 4. Lazy / On-Demand Subscriptions (Credits)
+  useEffect(() => {
+    const needsCredits = ['dashboard', 'credits', 'caisse'].includes(currentView) || activeModal === 'fullReport';
+    if (!needsCredits) return;
+
+    const unsub = SubscriptionManager.subscribe<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
+      if (items && Array.isArray(items)) {
+        isRemoteUpdateRef.current.credits = true;
+        setCredits(prev => areArraysEqual(prev, items) ? prev : items);
+        markCloudSyncActive();
+      }
+    });
+    return unsub;
+  }, [currentView, activeModal, markCloudSyncActive]);
+
+  // 5. Lazy / On-Demand Subscriptions (Staff Payouts)
+  useEffect(() => {
+    const needsStaffPayouts = currentView === 'dashboard' || ['staffPayouts', 'fullReport'].includes(activeModal || '');
+    if (!needsStaffPayouts) return;
+
+    const unsub = SubscriptionManager.subscribe<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
+      if (items && Array.isArray(items)) {
+        isRemoteUpdateRef.current.staffPayouts = true;
+        setStaffPayouts(prev => areArraysEqual(prev, items) ? prev : items);
+        markCloudSyncActive();
+      }
+    });
+    return unsub;
+  }, [currentView, activeModal, markCloudSyncActive]);
+
+  // 6. Lazy / On-Demand Subscriptions (Suppliers)
+  useEffect(() => {
+    const needsSuppliers = currentView === 'partners';
+    if (!needsSuppliers) return;
+
+    const unsub = SubscriptionManager.subscribe<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.suppliers = true;
+        setSuppliers(prev => areArraysEqual(prev, items) ? prev : items);
+        markCloudSyncActive();
+      } else {
+        const local = loadFromStorage<Supplier[]>(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, local);
+      }
+    });
+    return unsub;
+  }, [currentView, markCloudSyncActive]);
+
+  // 7. Lazy / On-Demand Subscriptions (Seamstresses)
+  useEffect(() => {
+    const needsSeamstresses = ['partners', 'tailoring'].includes(currentView) || activeModal === 'tailoringModal';
+    if (!needsSeamstresses) return;
+
+    const unsub = SubscriptionManager.subscribe<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.seamstresses = true;
         setSeamstresses(prev => areArraysEqual(prev, items) ? prev : items);
@@ -287,9 +335,15 @@ export default function App() {
         if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, local);
       }
     });
+    return unsub;
+  }, [currentView, activeModal, markCloudSyncActive]);
 
-    // 13. Subscribe to Raw Materials
-    const unsubRawMaterials = subscribeToCloudCollection<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
+  // 8. Lazy / On-Demand Subscriptions (Raw Materials)
+  useEffect(() => {
+    const needsRawMaterials = ['partners', 'tailoring'].includes(currentView) || activeModal === 'tailoringModal';
+    if (!needsRawMaterials) return;
+
+    const unsub = SubscriptionManager.subscribe<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.rawMaterials = true;
         setRawMaterials(prev => areArraysEqual(prev, items) ? prev : items);
@@ -299,23 +353,8 @@ export default function App() {
         if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, local);
       }
     });
-
-    return () => {
-      unsubClothes();
-      unsubRentals();
-      unsubSales();
-      unsubExpenses();
-      unsubCredits();
-      unsubStaffPayouts();
-      unsubStaffMembers();
-      unsubStaffAbsences();
-      unsubMaintenance();
-      unsubSuppliers();
-      unsubSeamstresses();
-      unsubRawMaterials();
-      unsubCaisse();
-    };
-  }, []);
+    return unsub;
+  }, [currentView, activeModal, markCloudSyncActive]);
 
   // Local Storage Persistence
   useEffect(() => {
@@ -399,8 +438,6 @@ export default function App() {
   };
 
   // UI state
-  const [currentView, setCurrentView] = useState<ViewType>('dashboard');
-  const [activeModal, setActiveModal] = useState<string | null>(null);
   const [hideFinances, setHideFinances] = useState(() => localStorage.getItem('bm_hideFinances') !== 'false');
   const [toasts, setToasts] = useState<{ id: number; message: string; type: 'success' | 'error' }[]>([]);
   const [isScanning, setIsScanning] = useState(false);

@@ -1225,3 +1225,78 @@ export async function fetchHistoricalCollection<T extends { id?: string }>(
 export const saveToFirebase = saveCollectionToFirebase;
 export const syncCollectionToCloud = saveCollectionToFirebase;
 export const subscribeToCloudCollection = subscribeToFirebaseKey;
+
+/**
+ * Centralized Subscription Manager for managing Firebase Realtime Database subscriptions.
+ * Enforces singleton listener multiplexing, shared callbacks, and reference counting.
+ */
+export class SubscriptionManager {
+  /**
+   * Subscribe to a collection with optional query constraints.
+   * Prevents duplicate RTDB listeners and multiplexes callbacks.
+   */
+  static subscribe<T extends { id?: string }>(
+    key: string,
+    callback: (data: T[]) => void,
+    options?: SubscribeQueryOptions
+  ): () => void {
+    return subscribeToFirebaseKey<T>(key, callback, options);
+  }
+
+  /**
+   * Explicitly unsubscribe a callback from a collection query.
+   */
+  static unsubscribe(
+    key: string,
+    callback?: (data: any[]) => void,
+    options?: SubscribeQueryOptions
+  ): void {
+    const registryKey = buildQueryRegistryKey(key, options);
+    const entry = activeListenersRegistry.get(registryKey);
+    if (!entry) return;
+
+    if (callback) {
+      entry.callbacks.delete(callback);
+      if (entry.callbacks.size === 0) {
+        entry.unsub();
+        activeListenersRegistry.delete(registryKey);
+      }
+    } else {
+      entry.unsub();
+      activeListenersRegistry.delete(registryKey);
+    }
+  }
+
+  /**
+   * Checks if an active Firebase RTDB listener exists for the collection query.
+   */
+  static isSubscribed(key: string, options?: SubscribeQueryOptions): boolean {
+    const registryKey = buildQueryRegistryKey(key, options);
+    return activeListenersRegistry.has(registryKey);
+  }
+
+  /**
+   * Returns total count of active multiplexed Firebase RTDB listeners.
+   */
+  static getActiveListenerCount(): number {
+    return activeListenersRegistry.size;
+  }
+
+  /**
+   * Subscribe once or fetch cached data without keeping a persistent listener.
+   */
+  static async subscribeOnce<T extends { id?: string }>(
+    key: string,
+    options?: SubscribeQueryOptions
+  ): Promise<T[]> {
+    const registryKey = buildQueryRegistryKey(key, options);
+    if (queryMemoryCache.has(registryKey)) {
+      return queryMemoryCache.get(registryKey) as T[];
+    }
+    if (!options && memoryCache.has(key)) {
+      return memoryCache.get(key) as T[];
+    }
+    return getCachedOrFetchData<T>(key);
+  }
+}
+
