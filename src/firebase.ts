@@ -112,19 +112,32 @@ function getQueryLimitFromKey(qKey: string): number | null {
   const num = parseInt(valStr, 10);
   return isNaN(num) ? null : num;
 }
-function isDeepEqual(a: any, b: any): boolean {
+function isShallowEqual(a: any, b: any): boolean {
   if (a === b) return true;
   if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+
+  // Fast timestamp/updatedAt check if present
+  if (a.updatedAt && b.updatedAt && a.updatedAt === b.updatedAt) return true;
+  if (a.updated_at && b.updated_at && a.updated_at === b.updated_at) return true;
+  if (a.timestamp && b.timestamp && a.timestamp === b.timestamp) return true;
+
   const keysA = Object.keys(a);
   const keysB = Object.keys(b);
   if (keysA.length !== keysB.length) return false;
+
   for (let i = 0; i < keysA.length; i++) {
     const k = keysA[i];
     const valA = a[k];
     const valB = b[k];
     if (valA === valB) continue;
-    if (valA && valB && typeof valA === 'object' && typeof valB === 'object') {
-      if (!isDeepEqual(valA, valB)) return false;
+
+    if (Array.isArray(valA) && Array.isArray(valB)) {
+      if (valA.length !== valB.length) return false;
+      for (let j = 0; j < valA.length; j++) {
+        if (valA[j] !== valB[j] && !isShallowEqual(valA[j], valB[j])) return false;
+      }
+    } else if (valA && valB && typeof valA === 'object' && typeof valB === 'object') {
+      if (!isShallowEqual(valA, valB)) return false;
     } else {
       return false;
     }
@@ -132,20 +145,57 @@ function isDeepEqual(a: any, b: any): boolean {
   return true;
 }
 
-export function areArraysEqual(arr1: any[], arr2: any[]): boolean {
+export function isArrayIdentical<T>(arr1: T[] | undefined | null, arr2: T[] | undefined | null): boolean {
   if (arr1 === arr2) return true;
   if (!arr1 || !arr2 || arr1.length !== arr2.length) return false;
   for (let i = 0; i < arr1.length; i++) {
-    if (!isDeepEqual(arr1[i], arr2[i])) return false;
+    if (arr1[i] !== arr2[i]) return false;
   }
   return true;
 }
+
+// Backward compatibility alias for fast pointer-based array equality
+export const areArraysEqual = isArrayIdentical;
 
 const memoryCache = new Map<string, any[]>();
 const cacheTimestamps = new Map<string, number>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
 const MAX_QUERY_CACHE_ENTRIES = 40;
 const MAX_CANONICAL_ITEMS_PER_COLLECTION = 800;
+
+// Index mapping collectionKey -> Set of registryKeys in queryMemoryCache for O(1) query lookups
+const collectionQueryIndex = new Map<string, Set<string>>();
+
+function registerQueryCacheKey(colKey: string, regKey: string): void {
+  let set = collectionQueryIndex.get(colKey);
+  if (!set) {
+    set = new Set<string>();
+    collectionQueryIndex.set(colKey, set);
+  }
+  set.add(regKey);
+}
+
+function unregisterQueryCacheKey(colKey: string, regKey: string): void {
+  const set = collectionQueryIndex.get(colKey);
+  if (set) {
+    set.delete(regKey);
+    if (set.size === 0) collectionQueryIndex.delete(colKey);
+  }
+}
+
+function deleteQueryCacheEntry(qKey: string): void {
+  queryMemoryCache.delete(qKey);
+  queryCacheTimestamps.delete(qKey);
+  const colKey = qKey.split('|')[0];
+  unregisterQueryCacheKey(colKey, qKey);
+}
+
+function setQueryCacheEntry(qKey: string, val: any[]): void {
+  queryMemoryCache.set(qKey, val);
+  queryCacheTimestamps.set(qKey, Date.now());
+  const colKey = qKey.split('|')[0];
+  registerQueryCacheKey(colKey, qKey);
+}
 
 // Track locally initiated writes with item-level precision to avoid echo loops
 const pendingItemWrites = new Map<string, number>();
@@ -158,8 +208,7 @@ function evictStaleQueryCaches(): void {
   // Evict expired queries not actively listened to
   for (const [qKey, ts] of queryCacheTimestamps.entries()) {
     if (now - ts > CACHE_TTL_MS && !activeListenersRegistry.has(qKey)) {
-      queryMemoryCache.delete(qKey);
-      queryCacheTimestamps.delete(qKey);
+      deleteQueryCacheEntry(qKey);
     }
   }
 
@@ -172,8 +221,7 @@ function evictStaleQueryCaches(): void {
     const toRemoveCount = queryMemoryCache.size - MAX_QUERY_CACHE_ENTRIES;
     for (let i = 0; i < Math.min(toRemoveCount, sorted.length); i++) {
       const keyToRemove = sorted[i][0];
-      queryMemoryCache.delete(keyToRemove);
-      queryCacheTimestamps.delete(keyToRemove);
+      deleteQueryCacheEntry(keyToRemove);
     }
   }
 }
@@ -203,15 +251,12 @@ export function invalidateMemoryCache(key?: string): void {
     memoryCache.delete(key);
     cacheTimestamps.delete(key);
     canonicalStoreCache.delete(key);
-    const keysToDelete: string[] = [];
-    for (const qKey of queryMemoryCache.keys()) {
-      if (qKey === key || qKey.startsWith(`${key}|`)) {
-        keysToDelete.push(qKey);
+    const targetQueryKeys = collectionQueryIndex.get(key);
+    if (targetQueryKeys) {
+      const keysToDelete = Array.from(targetQueryKeys);
+      for (let i = 0; i < keysToDelete.length; i++) {
+        deleteQueryCacheEntry(keysToDelete[i]);
       }
-    }
-    for (let i = 0; i < keysToDelete.length; i++) {
-      queryMemoryCache.delete(keysToDelete[i]);
-      queryCacheTimestamps.delete(keysToDelete[i]);
     }
   } else {
     memoryCache.clear();
@@ -219,6 +264,7 @@ export function invalidateMemoryCache(key?: string): void {
     canonicalStoreCache.clear();
     queryMemoryCache.clear();
     queryCacheTimestamps.clear();
+    collectionQueryIndex.clear();
   }
 }
 
@@ -316,8 +362,10 @@ export async function saveItemToFirebase<T extends { id: string }>(
   const prevItem = colStore.get(item.id);
   const hadItem = colStore.has(item.id);
 
+  const itemToStore = (hadItem && prevItem && isShallowEqual(prevItem, item)) ? prevItem : item;
+
   // Optimistically update canonical & query caches
-  colStore.set(item.id, item);
+  colStore.set(item.id, itemToStore);
   pruneCanonicalStoreIfNeeded(collectionKey, colStore);
   
   let currentArr = memoryCache.get(collectionKey);
@@ -327,25 +375,36 @@ export async function saveItemToFirebase<T extends { id: string }>(
   } else {
     const idx = currentArr.findIndex(x => x.id === item.id);
     if (idx >= 0) {
-      currentArr[idx] = item;
+      if (currentArr[idx] !== itemToStore) {
+        const nextArr = [...currentArr];
+        nextArr[idx] = itemToStore;
+        memoryCache.set(collectionKey, nextArr);
+      }
     } else {
-      currentArr.unshift(item);
+      memoryCache.set(collectionKey, [itemToStore, ...currentArr]);
     }
   }
   cacheTimestamps.set(collectionKey, Date.now());
   evictStaleQueryCaches();
   
-  for (const [qKey, qList] of queryMemoryCache.entries()) {
-    let matches = itemMatchesQueryKey(qKey, collectionKey, item);
-    if (matches) {
-      const idx = qList.findIndex(x => x.id === item.id);
-      if (idx >= 0) {
-        qList[idx] = item;
-      } else {
-        qList.unshift(item);
-        const lim = getQueryLimitFromKey(qKey);
-        if (lim !== null && qList.length > lim) {
-          qList.splice(lim);
+  const targetQueryKeys = collectionQueryIndex.get(collectionKey);
+  if (targetQueryKeys) {
+    for (const qKey of targetQueryKeys) {
+      const qList = queryMemoryCache.get(qKey);
+      if (!qList) continue;
+      let matches = itemMatchesQueryKey(qKey, collectionKey, itemToStore);
+      if (matches) {
+        const idx = qList.findIndex(x => x.id === item.id);
+        if (idx >= 0) {
+          if (qList[idx] !== itemToStore) {
+            qList[idx] = itemToStore;
+          }
+        } else {
+          qList.unshift(itemToStore);
+          const lim = getQueryLimitFromKey(qKey);
+          if (lim !== null && qList.length > lim) {
+            qList.splice(lim);
+          }
         }
       }
     }
@@ -384,8 +443,11 @@ export async function saveItemToFirebase<T extends { id: string }>(
         if (idx >= 0) currentArr.splice(idx, 1);
       }
     }
-    for (const [qKey, qList] of queryMemoryCache.entries()) {
-      if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
+    const rollbackQueryKeys = collectionQueryIndex.get(collectionKey);
+    if (rollbackQueryKeys) {
+      for (const qKey of rollbackQueryKeys) {
+        const qList = queryMemoryCache.get(qKey);
+        if (!qList) continue;
         const idx = qList.findIndex(x => x.id === item.id);
         if (idx >= 0) {
           if (hadItem) {
@@ -426,24 +488,30 @@ export async function updateItemInFirebase<T extends { id?: string } = any>(
 
   if (hadItem && prevItem) {
     const merged = { ...prevItem, ...updates };
-    colStore.set(itemId, merged);
+    const itemToStore = isShallowEqual(prevItem, merged) ? prevItem : merged;
+    colStore.set(itemId, itemToStore);
     
     let currentArr = memoryCache.get(collectionKey);
     if (currentArr) {
       const idx = currentArr.findIndex(x => x.id === itemId);
-      if (idx >= 0) {
-        currentArr[idx] = merged;
+      if (idx >= 0 && currentArr[idx] !== itemToStore) {
+        const nextArr = [...currentArr];
+        nextArr[idx] = itemToStore;
+        memoryCache.set(collectionKey, nextArr);
       }
     } else {
       memoryCache.set(collectionKey, Array.from(colStore.values()));
     }
     cacheTimestamps.set(collectionKey, Date.now());
 
-    for (const [qKey, qList] of queryMemoryCache.entries()) {
-      if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
+    const targetQueryKeys = collectionQueryIndex.get(collectionKey);
+    if (targetQueryKeys) {
+      for (const qKey of targetQueryKeys) {
+        const qList = queryMemoryCache.get(qKey);
+        if (!qList) continue;
         const idx = qList.findIndex(x => x.id === itemId);
-        if (idx >= 0) {
-          qList[idx] = { ...qList[idx], ...updates };
+        if (idx >= 0 && qList[idx] !== itemToStore) {
+          qList[idx] = itemToStore;
         }
       }
     }
@@ -475,8 +543,11 @@ export async function updateItemInFirebase<T extends { id?: string } = any>(
         const idx = currentArr.findIndex(x => x.id === itemId);
         if (idx >= 0) currentArr[idx] = prevItem;
       }
-      for (const [qKey, qList] of queryMemoryCache.entries()) {
-        if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
+      const rollbackQueryKeys = collectionQueryIndex.get(collectionKey);
+      if (rollbackQueryKeys) {
+        for (const qKey of rollbackQueryKeys) {
+          const qList = queryMemoryCache.get(qKey);
+          if (!qList) continue;
           const idx = qList.findIndex(x => x.id === itemId);
           if (idx >= 0) {
             qList[idx] = prevItem;
@@ -516,12 +587,18 @@ export async function deleteItemFromFirebase(
   let currentArr = memoryCache.get(collectionKey);
   if (currentArr) {
     const idx = currentArr.findIndex(x => x.id === itemId);
-    if (idx >= 0) currentArr.splice(idx, 1);
+    if (idx >= 0) {
+      const nextArr = currentArr.filter(x => x.id !== itemId);
+      memoryCache.set(collectionKey, nextArr);
+    }
   }
   cacheTimestamps.set(collectionKey, Date.now());
 
-  for (const [qKey, qList] of queryMemoryCache.entries()) {
-    if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
+  const targetQueryKeys = collectionQueryIndex.get(collectionKey);
+  if (targetQueryKeys) {
+    for (const qKey of targetQueryKeys) {
+      const qList = queryMemoryCache.get(qKey);
+      if (!qList) continue;
       const idx = qList.findIndex(x => x.id === itemId);
       if (idx >= 0) {
         qList.splice(idx, 1);
@@ -729,29 +806,42 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
         if (Date.now() - lastWrite > 800) {
           if (snapshot.exists()) {
             const val = snapshot.val();
-            const normalized = normalizeSnapshotData<T>(val);
+            const rawList = normalizeSnapshotData<T>(val);
             
-            // Fast equality check: If query memory cache already contains identical content, skip work and prevent re-renders
-            const existingCache = queryMemoryCache.get(registryKey);
-            if (existingCache && areArraysEqual(existingCache, normalized)) {
-              updateStatus('connected');
-              return;
-            }
-
-            // 1. Store strictly in the isolated query cache
-            queryMemoryCache.set(registryKey, normalized);
-            queryCacheTimestamps.set(registryKey, Date.now());
-
-            // 2. Register into canonical store by ID without overwriting other query results
             let colStore = canonicalStoreCache.get(key);
             if (!colStore) {
               colStore = new Map<string, any>();
               canonicalStoreCache.set(key, colStore);
             }
-            for (const item of normalized) {
-              if (item?.id) colStore.set(item.id, item);
+
+            // 1. Map raw items to canonical colStore items with reference preservation
+            const normalized: T[] = new Array(rawList.length);
+            for (let i = 0; i < rawList.length; i++) {
+              const item = rawList[i];
+              if (item && item.id) {
+                const existing = colStore.get(item.id);
+                if (existing && isShallowEqual(existing, item)) {
+                  normalized[i] = existing;
+                } else {
+                  colStore.set(item.id, item);
+                  normalized[i] = item;
+                }
+              } else {
+                normalized[i] = item;
+              }
             }
             pruneCanonicalStoreIfNeeded(key, colStore);
+
+            // 2. Fast pointer equality check: If query cache already contains identical content, skip work
+            const existingCache = queryMemoryCache.get(registryKey);
+            if (existingCache && isArrayIdentical(existingCache, normalized)) {
+              updateStatus('connected');
+              return;
+            }
+
+            // 3. Store in query cache with index registration
+            setQueryCacheEntry(registryKey, normalized);
+
             if (!options) {
               memoryCache.set(key, normalized);
             } else {
@@ -759,13 +849,25 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
               if (!currentArr) {
                 memoryCache.set(key, normalized);
               } else {
+                let updated = false;
+                const nextArr = [...currentArr];
                 for (let i = 0; i < normalized.length; i++) {
                   const item = normalized[i];
-                  if (item?.id) {
-                    const idx = currentArr.findIndex(x => x.id === item.id);
-                    if (idx >= 0) currentArr[idx] = item;
-                    else currentArr.unshift(item);
+                  if (item && item.id) {
+                    const idx = nextArr.findIndex(x => x.id === item.id);
+                    if (idx >= 0) {
+                      if (nextArr[idx] !== item) {
+                        nextArr[idx] = item;
+                        updated = true;
+                      }
+                    } else {
+                      nextArr.unshift(item);
+                      updated = true;
+                    }
                   }
+                }
+                if (updated) {
+                  memoryCache.set(key, nextArr);
                 }
               }
             }
@@ -790,18 +892,29 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
             get(parentRef).then((parentSnap) => {
               if (parentSnap.exists()) {
                 const parentVal = parentSnap.val();
-                const normalized = normalizeSnapshotData<T>(parentVal);
-                if (normalized.length > 0) {
-                  queryMemoryCache.set(registryKey, normalized);
-                  queryCacheTimestamps.set(registryKey, Date.now());
+                const rawList = normalizeSnapshotData<T>(parentVal);
+                if (rawList.length > 0) {
                   let colStore = canonicalStoreCache.get(key);
                   if (!colStore) {
                     colStore = new Map<string, any>();
                     canonicalStoreCache.set(key, colStore);
                   }
-                  for (const item of normalized) {
-                    if (item?.id) colStore.set(item.id, item);
+                  const normalized: T[] = new Array(rawList.length);
+                  for (let i = 0; i < rawList.length; i++) {
+                    const item = rawList[i];
+                    if (item && item.id) {
+                      const existing = colStore.get(item.id);
+                      if (existing && isShallowEqual(existing, item)) {
+                        normalized[i] = existing;
+                      } else {
+                        colStore.set(item.id, item);
+                        normalized[i] = item;
+                      }
+                    } else {
+                      normalized[i] = item;
+                    }
                   }
+                  setQueryCacheEntry(registryKey, normalized);
                   memoryCache.set(key, Array.from(colStore.values()));
                   cacheTimestamps.set(key, Date.now());
                   const currentEntry = activeListenersRegistry.get(registryKey);
@@ -814,7 +927,7 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
               }
               const existingCache = queryMemoryCache.get(registryKey) || [];
               if (existingCache.length === 0) {
-                queryMemoryCache.set(registryKey, []);
+                setQueryCacheEntry(registryKey, []);
                 const currentEntry = activeListenersRegistry.get(registryKey);
                 if (currentEntry) {
                   currentEntry.callbacks.forEach(cb => cb([]));
@@ -920,8 +1033,7 @@ export async function fetchHistoricalCollection<T extends { id?: string }>(
     if (snap.exists()) {
       const normalized = normalizeSnapshotData<T>(snap.val());
       const queryKey = buildQueryRegistryKey(key, { orderBy: dateField, limit });
-      queryMemoryCache.set(queryKey, normalized);
-      queryCacheTimestamps.set(queryKey, Date.now());
+      setQueryCacheEntry(queryKey, normalized);
 
       let colStore = canonicalStoreCache.get(key);
       if (!colStore) {
