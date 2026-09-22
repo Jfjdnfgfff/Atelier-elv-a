@@ -177,20 +177,32 @@ function rebuildQueryIndexMap(qKey: string, qList: any[]): Map<string, number> {
 }
 
 function getCollectionItemIndexO1(colKey: string, arr: any[], itemId: string, refObj?: any): number {
-  if (refObj) {
-    const pIdx = arr.indexOf(refObj);
-    if (pIdx !== -1) return pIdx;
-  }
+  if (!itemId) return -1;
   let indexMap = collectionIndexMaps.get(colKey);
   if (!indexMap) {
     indexMap = rebuildCollectionIndexMap(colKey, arr);
   }
   const cachedIdx = indexMap.get(itemId);
-  if (cachedIdx !== undefined && cachedIdx < arr.length) {
-    const candidate = arr[cachedIdx];
-    if (candidate && candidate.id === itemId) return cachedIdx;
+  if (cachedIdx !== undefined && cachedIdx < arr.length && arr[cachedIdx]?.id === itemId) {
+    return cachedIdx;
   }
-  // Fast fallback & auto-repair index map
+  
+  // Auto-repair index map and retry O(1) lookup
+  indexMap = rebuildCollectionIndexMap(colKey, arr);
+  const repairedIdx = indexMap.get(itemId);
+  if (repairedIdx !== undefined && repairedIdx < arr.length && arr[repairedIdx]?.id === itemId) {
+    return repairedIdx;
+  }
+
+  // Fallback path ONLY for rare recovery
+  if (refObj) {
+    const pIdx = arr.indexOf(refObj);
+    if (pIdx !== -1) {
+      indexMap.set(itemId, pIdx);
+      return pIdx;
+    }
+  }
+
   for (let i = 0; i < arr.length; i++) {
     if (arr[i] && arr[i].id === itemId) {
       indexMap.set(itemId, i);
@@ -201,20 +213,32 @@ function getCollectionItemIndexO1(colKey: string, arr: any[], itemId: string, re
 }
 
 function getQueryItemIndexO1(qKey: string, qList: any[], itemId: string, refObj?: any): number {
-  if (refObj) {
-    const pIdx = qList.indexOf(refObj);
-    if (pIdx !== -1) return pIdx;
-  }
+  if (!itemId) return -1;
   let indexMap = queryIndexMaps.get(qKey);
   if (!indexMap) {
     indexMap = rebuildQueryIndexMap(qKey, qList);
   }
   const cachedIdx = indexMap.get(itemId);
-  if (cachedIdx !== undefined && cachedIdx < qList.length) {
-    const candidate = qList[cachedIdx];
-    if (candidate && candidate.id === itemId) return cachedIdx;
+  if (cachedIdx !== undefined && cachedIdx < qList.length && qList[cachedIdx]?.id === itemId) {
+    return cachedIdx;
   }
-  // Fast fallback & auto-repair index map
+
+  // Auto-repair index map and retry O(1) lookup
+  indexMap = rebuildQueryIndexMap(qKey, qList);
+  const repairedIdx = indexMap.get(itemId);
+  if (repairedIdx !== undefined && repairedIdx < qList.length && qList[repairedIdx]?.id === itemId) {
+    return repairedIdx;
+  }
+
+  // Fallback path ONLY for rare recovery
+  if (refObj) {
+    const pIdx = qList.indexOf(refObj);
+    if (pIdx !== -1) {
+      indexMap.set(itemId, pIdx);
+      return pIdx;
+    }
+  }
+
   for (let i = 0; i < qList.length; i++) {
     if (qList[i] && qList[i].id === itemId) {
       indexMap.set(itemId, i);
@@ -857,12 +881,15 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
   // If we already have query-isolated cache data, immediately deliver it to caller
   if (queryMemoryCache.has(registryKey)) {
     const cachedQueryData = queryMemoryCache.get(registryKey) as T[];
-    if (cachedQueryData && cachedQueryData.length > 0) {
+    if (cachedQueryData) {
       onDataReceived(cachedQueryData);
     }
   } else if (!options && memoryCache.has(key)) {
     // For full unconstrained subscriptions only, use canonical cache
-    onDataReceived(memoryCache.get(key) as T[]);
+    const cachedMemData = memoryCache.get(key) as T[];
+    if (cachedMemData) {
+      onDataReceived(cachedMemData);
+    }
   }
 
   // Check if a shared listener already exists for this exact collection + query combination

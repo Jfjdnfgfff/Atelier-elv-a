@@ -158,7 +158,7 @@ export default function App() {
     }
   }, []);
 
-  // 1. Core Permanent Real-time Cloud Subscriptions (Global App Dependencies)
+  // 1. Core Permanent Real-time Cloud Subscriptions (Small Essential Global Collections)
   useEffect(() => {
     // Clothes
     const unsubClothes = SubscriptionManager.subscribe<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
@@ -169,18 +169,6 @@ export default function App() {
       } else {
         const local = loadFromStorage<ClothItem[]>(STORAGE_KEYS.CLOTHES, []);
         if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.CLOTHES, local);
-      }
-    });
-
-    // Rentals
-    const unsubRentals = SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
-      if (items && Array.isArray(items) && items.length > 0) {
-        isRemoteUpdateRef.current.rentals = true;
-        setRentals(prev => areArraysEqual(prev, items) ? prev : items);
-        markCloudSyncActive();
-      } else {
-        const local = loadFromStorage<Rental[]>(STORAGE_KEYS.RENTALS, []);
-        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.RENTALS, local);
       }
     });
 
@@ -205,18 +193,6 @@ export default function App() {
       }
     });
 
-    // Maintenance Orders
-    const unsubMaintenance = SubscriptionManager.subscribe<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
-      if (items && Array.isArray(items) && items.length > 0) {
-        isRemoteUpdateRef.current.maintenanceOrders = true;
-        setMaintenanceOrders(prev => areArraysEqual(prev, items) ? prev : items);
-        markCloudSyncActive();
-      } else {
-        const local = loadFromStorage<MaintenanceOrder[]>(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE);
-        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, local);
-      }
-    });
-
     // Caisse Closures
     const unsubCaisse = SubscriptionManager.subscribe<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
@@ -231,15 +207,51 @@ export default function App() {
 
     return () => {
       unsubClothes();
-      unsubRentals();
       unsubStaffMembers();
       unsubStaffAbsences();
-      unsubMaintenance();
       unsubCaisse();
     };
   }, [markCloudSyncActive]);
 
-  // 2. Lazy / On-Demand Subscriptions (Sales)
+  // 2. Lazy / On-Demand Subscriptions (Rentals)
+  useEffect(() => {
+    const needsRentals = ['dashboard', 'rentals', 'caisse'].includes(currentView) ||
+      ['fullReport', 'addRental', 'editRental', 'returnRental', 'receiptModal', 'messageModal'].includes(activeModal || '');
+    if (!needsRentals) return;
+
+    const unsub = SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.rentals = true;
+        setRentals(prev => areArraysEqual(prev, items) ? prev : items);
+        markCloudSyncActive();
+      } else {
+        const local = loadFromStorage<Rental[]>(STORAGE_KEYS.RENTALS, []);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.RENTALS, local);
+      }
+    });
+    return unsub;
+  }, [currentView, activeModal, markCloudSyncActive]);
+
+  // 3. Lazy / On-Demand Subscriptions (Maintenance Orders)
+  useEffect(() => {
+    const needsMaintenance = ['dashboard', 'inventory', 'tailoring'].includes(currentView) ||
+      ['fullReport', 'addTailoring', 'editTailoring', 'tailoringReceipt', 'tailoringModal'].includes(activeModal || '');
+    if (!needsMaintenance) return;
+
+    const unsub = SubscriptionManager.subscribe<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
+      if (items && Array.isArray(items) && items.length > 0) {
+        isRemoteUpdateRef.current.maintenanceOrders = true;
+        setMaintenanceOrders(prev => areArraysEqual(prev, items) ? prev : items);
+        markCloudSyncActive();
+      } else {
+        const local = loadFromStorage<MaintenanceOrder[]>(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE);
+        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, local);
+      }
+    });
+    return unsub;
+  }, [currentView, activeModal, markCloudSyncActive]);
+
+  // 4. Lazy / On-Demand Subscriptions (Sales)
   useEffect(() => {
     const needsSales = ['dashboard', 'sales', 'caisse'].includes(currentView) || activeModal === 'fullReport';
     if (!needsSales) return;
@@ -254,7 +266,7 @@ export default function App() {
     return unsub;
   }, [currentView, activeModal, markCloudSyncActive]);
 
-  // 3. Lazy / On-Demand Subscriptions (Expenses)
+  // 5. Lazy / On-Demand Subscriptions (Expenses)
   useEffect(() => {
     const needsExpenses = ['dashboard', 'expenses', 'caisse'].includes(currentView) || activeModal === 'fullReport';
     if (!needsExpenses) return;
@@ -272,7 +284,7 @@ export default function App() {
     return unsub;
   }, [currentView, activeModal, markCloudSyncActive]);
 
-  // 4. Lazy / On-Demand Subscriptions (Credits)
+  // 6. Lazy / On-Demand Subscriptions (Credits)
   useEffect(() => {
     const needsCredits = ['dashboard', 'credits', 'caisse'].includes(currentView) || activeModal === 'fullReport';
     if (!needsCredits) return;
@@ -287,7 +299,7 @@ export default function App() {
     return unsub;
   }, [currentView, activeModal, markCloudSyncActive]);
 
-  // 5. Lazy / On-Demand Subscriptions (Staff Payouts)
+  // 7. Lazy / On-Demand Subscriptions (Staff Payouts)
   useEffect(() => {
     const needsStaffPayouts = currentView === 'dashboard' || ['staffPayouts', 'fullReport'].includes(activeModal || '');
     if (!needsStaffPayouts) return;
@@ -302,9 +314,9 @@ export default function App() {
     return unsub;
   }, [currentView, activeModal, markCloudSyncActive]);
 
-  // 6. Lazy / On-Demand Subscriptions (Suppliers)
+  // 8. Lazy / On-Demand Subscriptions (Suppliers)
   useEffect(() => {
-    const needsSuppliers = currentView === 'partners';
+    const needsSuppliers = currentView === 'partners' || activeModal === 'supplierModal';
     if (!needsSuppliers) return;
 
     const unsub = SubscriptionManager.subscribe<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
@@ -318,11 +330,12 @@ export default function App() {
       }
     });
     return unsub;
-  }, [currentView, markCloudSyncActive]);
+  }, [currentView, activeModal, markCloudSyncActive]);
 
-  // 7. Lazy / On-Demand Subscriptions (Seamstresses)
+  // 9. Lazy / On-Demand Subscriptions (Seamstresses)
   useEffect(() => {
-    const needsSeamstresses = ['partners', 'tailoring'].includes(currentView) || activeModal === 'tailoringModal';
+    const needsSeamstresses = ['partners', 'tailoring'].includes(currentView) ||
+      ['addTailoring', 'editTailoring', 'seamstressModal', 'tailoringModal'].includes(activeModal || '');
     if (!needsSeamstresses) return;
 
     const unsub = SubscriptionManager.subscribe<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
@@ -338,9 +351,10 @@ export default function App() {
     return unsub;
   }, [currentView, activeModal, markCloudSyncActive]);
 
-  // 8. Lazy / On-Demand Subscriptions (Raw Materials)
+  // 10. Lazy / On-Demand Subscriptions (Raw Materials)
   useEffect(() => {
-    const needsRawMaterials = ['partners', 'tailoring'].includes(currentView) || activeModal === 'tailoringModal';
+    const needsRawMaterials = ['partners', 'tailoring'].includes(currentView) ||
+      ['addTailoring', 'editTailoring', 'rawMaterialModal', 'tailoringModal'].includes(activeModal || '');
     if (!needsRawMaterials) return;
 
     const unsub = SubscriptionManager.subscribe<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
