@@ -520,9 +520,11 @@ export default function App() {
     return map;
   }, [clothes]);
 
-  // Synchronous instant navigation transitions
+  // Non-blocking instant concurrent navigation transitions
   const navigateTo = useCallback((view: ViewType) => {
-    setCurrentView(view);
+    startTransition(() => {
+      setCurrentView(view);
+    });
   }, []);
 
   const goDashboard = useCallback(() => navigateTo('dashboard'), [navigateTo]);
