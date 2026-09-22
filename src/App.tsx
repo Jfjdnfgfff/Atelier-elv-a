@@ -36,7 +36,8 @@ import {
   updateItemInFirebase,
   deleteItemFromFirebase,
   FIREBASE_COLLECTIONS,
-  firebaseConfig 
+  firebaseConfig,
+  areArraysEqual
 } from './firebase';
 
 // Components
@@ -159,7 +160,7 @@ export default function App() {
     const unsubClothes = subscribeToCloudCollection<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.clothes = true;
-        setClothes(items);
+        setClothes(prev => areArraysEqual(prev, items) ? prev : items);
         markCloudSyncActive();
       } else {
         const local = loadFromStorage<ClothItem[]>(STORAGE_KEYS.CLOTHES, []);
@@ -171,7 +172,7 @@ export default function App() {
     const unsubRentals = subscribeToCloudCollection<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.rentals = true;
-        setRentals(items);
+        setRentals(prev => areArraysEqual(prev, items) ? prev : items);
         markCloudSyncActive();
       } else {
         const local = loadFromStorage<Rental[]>(STORAGE_KEYS.RENTALS, []);
@@ -183,7 +184,7 @@ export default function App() {
     const unsubSales = subscribeToCloudCollection<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.sales = true;
-        setSales(items);
+        setSales(prev => areArraysEqual(prev, items) ? prev : items);
         markCloudSyncActive();
       }
     });
@@ -192,7 +193,7 @@ export default function App() {
     const unsubExpenses = subscribeToCloudCollection<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.expenses = true;
-        setExpenses(items);
+        setExpenses(prev => areArraysEqual(prev, items) ? prev : items);
         markCloudSyncActive();
       } else {
         const local = loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, []);
@@ -204,7 +205,7 @@ export default function App() {
     const unsubCredits = subscribeToCloudCollection<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.credits = true;
-        setCredits(items);
+        setCredits(prev => areArraysEqual(prev, items) ? prev : items);
         markCloudSyncActive();
       }
     });
@@ -213,7 +214,7 @@ export default function App() {
     const unsubStaffPayouts = subscribeToCloudCollection<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.staffPayouts = true;
-        setStaffPayouts(items);
+        setStaffPayouts(prev => areArraysEqual(prev, items) ? prev : items);
         markCloudSyncActive();
       }
     });
@@ -222,7 +223,7 @@ export default function App() {
     const unsubStaffMembers = subscribeToCloudCollection<StaffMember>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.staffMembers = true;
-        setStaffMembers(items);
+        setStaffMembers(prev => areArraysEqual(prev, items) ? prev : items);
         markCloudSyncActive();
       } else {
         const local = loadFromStorage<StaffMember[]>(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF);
@@ -234,7 +235,7 @@ export default function App() {
     const unsubStaffAbsences = subscribeToCloudCollection<StaffAbsence>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, (items) => {
       if (items && Array.isArray(items)) {
         isRemoteUpdateRef.current.staffAbsences = true;
-        setStaffAbsences(items);
+        setStaffAbsences(prev => areArraysEqual(prev, items) ? prev : items);
         markCloudSyncActive();
       }
     });
@@ -243,7 +244,7 @@ export default function App() {
     const unsubMaintenance = subscribeToCloudCollection<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.maintenanceOrders = true;
-        setMaintenanceOrders(items);
+        setMaintenanceOrders(prev => areArraysEqual(prev, items) ? prev : items);
         markCloudSyncActive();
       } else {
         const local = loadFromStorage<MaintenanceOrder[]>(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE);
@@ -255,7 +256,7 @@ export default function App() {
     const unsubSuppliers = subscribeToCloudCollection<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.suppliers = true;
-        setSuppliers(items);
+        setSuppliers(prev => areArraysEqual(prev, items) ? prev : items);
         markCloudSyncActive();
       } else {
         const local = loadFromStorage<Supplier[]>(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS);
@@ -267,7 +268,7 @@ export default function App() {
     const unsubCaisse = subscribeToCloudCollection<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.caisseClosures = true;
-        setCaisseClosures(items);
+        setCaisseClosures(prev => areArraysEqual(prev, items) ? prev : items);
         markCloudSyncActive();
       } else {
         const local = loadFromStorage<DailyCaisseClosure[]>(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES);
@@ -279,7 +280,7 @@ export default function App() {
     const unsubSeamstresses = subscribeToCloudCollection<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.seamstresses = true;
-        setSeamstresses(items);
+        setSeamstresses(prev => areArraysEqual(prev, items) ? prev : items);
         markCloudSyncActive();
       } else {
         const local = loadFromStorage<Seamstress[]>(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES);
@@ -291,7 +292,7 @@ export default function App() {
     const unsubRawMaterials = subscribeToCloudCollection<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
       if (items && Array.isArray(items) && items.length > 0) {
         isRemoteUpdateRef.current.rawMaterials = true;
-        setRawMaterials(items);
+        setRawMaterials(prev => areArraysEqual(prev, items) ? prev : items);
         markCloudSyncActive();
       } else {
         const local = loadFromStorage<RawMaterial[]>(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS);

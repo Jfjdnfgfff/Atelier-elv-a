@@ -112,6 +112,35 @@ function getQueryLimitFromKey(qKey: string): number | null {
   const num = parseInt(valStr, 10);
   return isNaN(num) ? null : num;
 }
+function isDeepEqual(a: any, b: any): boolean {
+  if (a === b) return true;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  for (let i = 0; i < keysA.length; i++) {
+    const k = keysA[i];
+    const valA = a[k];
+    const valB = b[k];
+    if (valA === valB) continue;
+    if (valA && valB && typeof valA === 'object' && typeof valB === 'object') {
+      if (!isDeepEqual(valA, valB)) return false;
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function areArraysEqual(arr1: any[], arr2: any[]): boolean {
+  if (arr1 === arr2) return true;
+  if (!arr1 || !arr2 || arr1.length !== arr2.length) return false;
+  for (let i = 0; i < arr1.length; i++) {
+    if (!isDeepEqual(arr1[i], arr2[i])) return false;
+  }
+  return true;
+}
+
 const memoryCache = new Map<string, any[]>();
 const cacheTimestamps = new Map<string, number>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
@@ -702,6 +731,13 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
             const val = snapshot.val();
             const normalized = normalizeSnapshotData<T>(val);
             
+            // Fast equality check: If query memory cache already contains identical content, skip work and prevent re-renders
+            const existingCache = queryMemoryCache.get(registryKey);
+            if (existingCache && areArraysEqual(existingCache, normalized)) {
+              updateStatus('connected');
+              return;
+            }
+
             // 1. Store strictly in the isolated query cache
             queryMemoryCache.set(registryKey, normalized);
             queryCacheTimestamps.set(registryKey, Date.now());
