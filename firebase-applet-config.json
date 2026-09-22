@@ -1,12 +1,10 @@
 {
-  "projectId": "apt-service-kr5vm",
-  "appId": "1:931004998179:web:ddd0106b947ce0c5bc0796",
-  "apiKey": "AIzaSyCeJmAfN_adH0yVbFC5pdawBjwHKvsQ2lo",
-  "authDomain": "apt-service-kr5vm.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-1d2efddc-d317-4fc3-9988-e73b30b2b41d",
-  "storageBucket": "apt-service-kr5vm.firebasestorage.app",
-  "messagingSenderId": "931004998179",
-  "measurementId": "",
-  "oAuthClientId": "931004998179-18cp1pe15e7hb9cukmaugg1cqrmcq3ua.apps.googleusercontent.com",
-  "recaptchaSiteKey": ""
+  "projectId": "ateliu-14e23",
+  "appId": "1:137350226746:web:d4f824a6580b7c152be603",
+  "apiKey": "AIzaSyCbvyOhZK42hTsKjOWPPDc60LRyyrpoo34",
+  "authDomain": "ateliu-14e23.firebaseapp.com",
+  "databaseURL": "https://ateliu-14e23-default-rtdb.firebaseio.com",
+  "storageBucket": "ateliu-14e23.firebasestorage.app",
+  "messagingSenderId": "137350226746",
+  "measurementId": "G-WYDHE63XZS"
 }
