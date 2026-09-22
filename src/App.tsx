@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback, startTransition } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   ClothItem, 
   Rental, 
@@ -42,7 +42,7 @@ import {
 
 // Components
 import { NavButton, Modal } from './components/Shared';
-import { DashboardView } from './components/DashboardView';
+import { ViewRenderer } from './components/ViewRenderer';
 
 const BarcodeScanner = React.lazy(() => import('./components/BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
 const FullReport = React.lazy(() => import('./components/FullReport').then(m => ({ default: m.FullReport })));
@@ -520,11 +520,9 @@ export default function App() {
     return map;
   }, [clothes]);
 
-  // Non-blocking instant concurrent navigation transitions
+  // Non-blocking instant navigation
   const navigateTo = useCallback((view: ViewType) => {
-    startTransition(() => {
-      setCurrentView(view);
-    });
+    setCurrentView(view);
   }, []);
 
   const goDashboard = useCallback(() => navigateTo('dashboard'), [navigateTo]);
@@ -1650,133 +1648,61 @@ export default function App() {
 
       {/* Main Views Container */}
       <main className="flex-1 max-w-6xl mx-auto w-full px-3 sm:px-6 md:px-8 py-4 pb-12 overflow-y-auto">
-        <React.Suspense fallback={null}>
-          {currentView === 'dashboard' && (
-            <DashboardView 
-              rentals={rentals} 
-              maintenanceOrders={maintenanceOrders}
-              clothes={clothes}
-              caisseClosures={caisseClosures}
-              sales={sales}
-              expenses={expenses}
-              staffPayouts={staffPayouts}
-              hideFinances={hideFinances}
-              onPrivacyToggle={toggleFinances}
-              onNavigate={navigateTo}
-              onOpenAddRental={handleOpenAddRental}
-              onOpenReturnModal={handleOpenReturnModal}
-              onSendMessage={handleOpenMessageModal}
-            />
-          )}
-
-          {currentView === 'rentals' && (
-            <RentalsView 
-              rentals={rentals} 
-              clothes={clothes}
-              onAddRental={handleOpenAddRentalWithItem}
-              onEditRental={handleOpenEditRentalModal}
-              onDeleteRental={handleDeleteRental}
-              onActivateRental={handleActivateRental}
-              onOpenReturnModal={handleOpenReturnModal}
-              onOpenReceiptModal={handleOpenReceiptModal}
-              onSendMessage={handleOpenMessageModal}
-              onScanBarcode={openBarcodeScan}
-            />
-          )}
-
-          {currentView === 'inventory' && (
-            <InventoryView 
-              clothes={clothes}
-              rawMaterials={rawMaterials}
-              suppliers={suppliers}
-              onAddCloth={handleAddCloth}
-              onUpdateCloth={handleUpdateCloth}
-              onDeleteCloth={handleDeleteCloth}
-              onAddRawMaterial={handleAddRawMaterial}
-              onUpdateRawMaterial={handleUpdateRawMaterial}
-              onDeleteRawMaterial={handleDeleteRawMaterial}
-              onScanBarcode={openBarcodeScan}
-            />
-          )}
-
-          {currentView === 'sales' && (
-            <SalesPOSView 
-              clothes={clothes}
-              sales={sales}
-              onCompleteSale={handleCompleteSale}
-              onDeleteSale={handleDeleteSale}
-              onScanBarcode={openBarcodeScan}
-              scannedCode={posScannedBarcode}
-              onClearScannedCode={handleClearPosScannedBarcode}
-            />
-          )}
-
-          {currentView === 'tailoring' && (
-            <TailoringView 
-              orders={maintenanceOrders}
-              clothes={clothes}
-              onOpenAddModal={handleOpenAddTailoringModal}
-              onEditOrder={handleOpenEditTailoringModal}
-              onDeleteOrder={handleDeleteTailoringOrder}
-              onUpdateStatus={handleUpdateTailoringStatus}
-              onOpenReceiptModal={handleOpenTailoringReceiptModal}
-            />
-          )}
-
-          {currentView === 'expenses' && (
-            <ExpensesView 
-              expenses={expenses}
-              suppliers={suppliers}
-              credits={credits}
-              onAddExpense={handleAddExpense}
-              onDeleteExpense={handleDeleteExpense}
-              onSettleSupplierCredit={handleSettleSupplierCredit}
-              onAddSupplier={handleAddSupplier}
-            />
-          )}
-
-          {currentView === 'credits' && (
-            <CreditsView 
-              credits={credits}
-              suppliers={suppliers}
-              onAddCredit={handleAddCredit}
-              onSettleCredit={handleSettleCredit}
-              onDeleteCredit={handleDeleteCredit}
-            />
-          )}
-
-          {currentView === 'caisse' && (
-            <CaisseView 
-              sales={sales}
-              rentals={rentals}
-              expenses={expenses}
-              staffPayouts={staffPayouts}
-              maintenanceOrders={maintenanceOrders}
-              caisseClosures={caisseClosures}
-              onSaveClosure={handleSaveCaisseClosure}
-              onDeleteClosure={handleDeleteCaisseClosure}
-              hideFinances={hideFinances}
-              onPrivacyToggle={toggleFinances}
-            />
-          )}
-
-          {currentView === 'partners' && (
-            <PartnersView 
-              suppliers={suppliers}
-              seamstresses={seamstresses}
-              expenses={expenses}
-              maintenanceOrders={maintenanceOrders}
-              credits={credits}
-              onAddSupplier={handleAddSupplier}
-              onUpdateSupplier={handleUpdateSupplier}
-              onDeleteSupplier={handleDeleteSupplier}
-              onAddSeamstress={handleAddSeamstress}
-              onUpdateSeamstress={handleUpdateSeamstress}
-              onDeleteSeamstress={handleDeleteSeamstress}
-              onSettleSupplierCredit={handleSettleSupplierCredit}
-            />
-          )}
-        </React.Suspense>
+        <ViewRenderer
+          currentView={currentView}
+          rentals={rentals}
+          clothes={clothes}
+          sales={sales}
+          expenses={expenses}
+          credits={credits}
+          staffPayouts={staffPayouts}
+          maintenanceOrders={maintenanceOrders}
+          caisseClosures={caisseClosures}
+          suppliers={suppliers}
+          seamstresses={seamstresses}
+          rawMaterials={rawMaterials}
+          hideFinances={hideFinances}
+          posScannedBarcode={posScannedBarcode}
+          onPrivacyToggle={toggleFinances}
+          onNavigate={navigateTo}
+          onOpenAddRental={handleOpenAddRental}
+          onOpenReturnModal={handleOpenReturnModal}
+          onSendMessage={handleOpenMessageModal}
+          onAddRentalWithItem={handleOpenAddRentalWithItem}
+          onEditRentalModal={handleOpenEditRentalModal}
+          onDeleteRental={handleDeleteRental}
+          onActivateRental={handleActivateRental}
+          onOpenReceiptModal={handleOpenReceiptModal}
+          onScanBarcode={openBarcodeScan}
+          onAddCloth={handleAddCloth}
+          onUpdateCloth={handleUpdateCloth}
+          onDeleteCloth={handleDeleteCloth}
+          onAddRawMaterial={handleAddRawMaterial}
+          onUpdateRawMaterial={handleUpdateRawMaterial}
+          onDeleteRawMaterial={handleDeleteRawMaterial}
+          onCompleteSale={handleCompleteSale}
+          onDeleteSale={handleDeleteSale}
+          onClearPosScannedBarcode={handleClearPosScannedBarcode}
+          onOpenAddTailoringModal={handleOpenAddTailoringModal}
+          onEditTailoringModal={handleOpenEditTailoringModal}
+          onDeleteTailoringOrder={handleDeleteTailoringOrder}
+          onUpdateTailoringStatus={handleUpdateTailoringStatus}
+          onOpenTailoringReceiptModal={handleOpenTailoringReceiptModal}
+          onAddExpense={handleAddExpense}
+          onDeleteExpense={handleDeleteExpense}
+          onSettleSupplierCredit={handleSettleSupplierCredit}
+          onAddSupplier={handleAddSupplier}
+          onUpdateSupplier={handleUpdateSupplier}
+          onDeleteSupplier={handleDeleteSupplier}
+          onAddCredit={handleAddCredit}
+          onSettleCredit={handleSettleCredit}
+          onDeleteCredit={handleDeleteCredit}
+          onSaveCaisseClosure={handleSaveCaisseClosure}
+          onDeleteCaisseClosure={handleDeleteCaisseClosure}
+          onAddSeamstress={handleAddSeamstress}
+          onUpdateSeamstress={handleUpdateSeamstress}
+          onDeleteSeamstress={handleDeleteSeamstress}
+        />
       </main>
 
       {/* ================= MODALS ================= */}
