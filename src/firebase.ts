@@ -78,7 +78,40 @@ const canonicalStoreCache = new Map<string, Map<string, any>>();
 const queryMemoryCache = new Map<string, any[]>();
 const queryCacheTimestamps = new Map<string, number>();
 
-// Backward-compatible memoryCache mapping collectionKey -> canonical items array
+/**
+ * Helper to match an item against a structured query registry key without expensive RegExp parsing
+ */
+function itemMatchesQueryKey(qKey: string, collectionKey: string, item: any): boolean {
+  if (qKey === collectionKey) return true;
+  if (!qKey.startsWith(`${collectionKey}|`)) return false;
+
+  const itemDate = (item as any)?.date || (item as any)?.startDate || (item as any)?.receivedDate || (item as any)?.createdAt || '';
+  
+  const saIdx = qKey.indexOf('|sa:');
+  if (saIdx !== -1) {
+    const end = qKey.indexOf('|', saIdx + 4);
+    const saVal = end === -1 ? qKey.slice(saIdx + 4) : qKey.slice(saIdx + 4, end);
+    if (itemDate && itemDate < saVal) return false;
+  }
+
+  const eaIdx = qKey.indexOf('|ea:');
+  if (eaIdx !== -1) {
+    const end = qKey.indexOf('|', eaIdx + 4);
+    const eaVal = end === -1 ? qKey.slice(eaIdx + 4) : qKey.slice(eaIdx + 4, end);
+    if (itemDate && itemDate > eaVal) return false;
+  }
+
+  return true;
+}
+
+function getQueryLimitFromKey(qKey: string): number | null {
+  const limIdx = qKey.indexOf('|lim:');
+  if (limIdx === -1) return null;
+  const end = qKey.indexOf('|', limIdx + 5);
+  const valStr = end === -1 ? qKey.slice(limIdx + 5) : qKey.slice(limIdx + 5, end);
+  const num = parseInt(valStr, 10);
+  return isNaN(num) ? null : num;
+}
 const memoryCache = new Map<string, any[]>();
 const cacheTimestamps = new Map<string, number>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
@@ -274,39 +307,16 @@ export async function saveItemToFirebase<T extends { id: string }>(
   evictStaleQueryCaches();
   
   for (const [qKey, qList] of queryMemoryCache.entries()) {
-    if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
+    let matches = itemMatchesQueryKey(qKey, collectionKey, item);
+    if (matches) {
       const idx = qList.findIndex(x => x.id === item.id);
       if (idx >= 0) {
         qList[idx] = item;
       } else {
-        let matches = true;
-        // Check date startAt
-        if (qKey.includes('|sa:')) {
-          const saMatch = qKey.match(/\|sa:([^|]+)/);
-          if (saMatch) {
-            const saVal = saMatch[1];
-            const itemDate = (item as any).date || (item as any).startDate || (item as any).receivedDate || (item as any).createdAt || '';
-            if (itemDate && itemDate < saVal) matches = false;
-          }
-        }
-        // Check date endAt
-        if (qKey.includes('|ea:')) {
-          const eaMatch = qKey.match(/\|ea:([^|]+)/);
-          if (eaMatch) {
-            const eaVal = eaMatch[1];
-            const itemDate = (item as any).date || (item as any).startDate || (item as any).receivedDate || (item as any).createdAt || '';
-            if (itemDate && itemDate > eaVal) matches = false;
-          }
-        }
-        if (matches) {
-          qList.unshift(item);
-          if (qKey.includes('|lim:')) {
-            const limMatch = qKey.match(/\|lim:(\d+)/);
-            if (limMatch) {
-              const lim = parseInt(limMatch[1], 10);
-              if (qList.length > lim) qList.splice(lim);
-            }
-          }
+        qList.unshift(item);
+        const lim = getQueryLimitFromKey(qKey);
+        if (lim !== null && qList.length > lim) {
+          qList.splice(lim);
         }
       }
     }
@@ -332,10 +342,19 @@ export async function saveItemToFirebase<T extends { id: string }>(
     // Rollback optimistic update
     if (hadItem) {
       colStore.set(item.id, prevItem);
+      let currentArr = memoryCache.get(collectionKey);
+      if (currentArr) {
+        const idx = currentArr.findIndex(x => x.id === item.id);
+        if (idx >= 0) currentArr[idx] = prevItem;
+      }
     } else {
       colStore.delete(item.id);
+      let currentArr = memoryCache.get(collectionKey);
+      if (currentArr) {
+        const idx = currentArr.findIndex(x => x.id === item.id);
+        if (idx >= 0) currentArr.splice(idx, 1);
+      }
     }
-    memoryCache.set(collectionKey, Array.from(colStore.values()));
     for (const [qKey, qList] of queryMemoryCache.entries()) {
       if (qKey === collectionKey || qKey.startsWith(`${collectionKey}|`)) {
         const idx = qList.findIndex(x => x.id === item.id);
@@ -697,7 +716,23 @@ export function subscribeToFirebaseKey<T extends { id?: string }>(
               if (item?.id) colStore.set(item.id, item);
             }
             pruneCanonicalStoreIfNeeded(key, colStore);
-            memoryCache.set(key, Array.from(colStore.values()));
+            if (!options) {
+              memoryCache.set(key, normalized);
+            } else {
+              let currentArr = memoryCache.get(key);
+              if (!currentArr) {
+                memoryCache.set(key, normalized);
+              } else {
+                for (let i = 0; i < normalized.length; i++) {
+                  const item = normalized[i];
+                  if (item?.id) {
+                    const idx = currentArr.findIndex(x => x.id === item.id);
+                    if (idx >= 0) currentArr[idx] = item;
+                    else currentArr.unshift(item);
+                  }
+                }
+              }
+            }
             cacheTimestamps.set(key, Date.now());
             evictStaleQueryCaches();
             

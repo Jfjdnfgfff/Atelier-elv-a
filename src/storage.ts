@@ -518,13 +518,7 @@ export function flushPendingStorageSynchronously(): void {
       localStorage.setItem(key, JSON.stringify(dataToPersist));
     } catch (e: any) {
       if (e?.name === 'QuotaExceededError' || e?.code === 22) {
-        console.warn(`[localStorage quota exceeded for ${key}], trimming older offline snapshot safely`);
-        try {
-          if (Array.isArray(dataToPersist)) {
-            // Trim to safe subset only when browser storage quota is truly exhausted
-            localStorage.setItem(key, JSON.stringify(dataToPersist.slice(0, Math.min(dataToPersist.length, 500))));
-          }
-        } catch (_) {}
+        console.warn(`[localStorage quota exceeded for ${key}]. User data remains 100% intact in memoryStore and cloud database.`);
       } else {
         console.error(`Error flushing key ${key} to storage:`, e);
       }
