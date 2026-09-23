@@ -110,6 +110,62 @@ export interface ViewRendererProps {
   onDeleteSeamstress: (id: string) => void;
 }
 
+function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererProps): boolean {
+  if (prev.currentView !== next.currentView) return false;
+  if (prev.hideFinances !== next.hideFinances) return false;
+
+  switch (next.currentView) {
+    case 'inventory':
+      return prev.clothes === next.clothes && 
+             prev.rawMaterials === next.rawMaterials && 
+             prev.suppliers === next.suppliers;
+    case 'rentals':
+      return prev.rentals === next.rentals && 
+             prev.clothes === next.clothes;
+    case 'sales':
+      return prev.sales === next.sales && 
+             prev.clothes === next.clothes && 
+             prev.posScannedBarcode === next.posScannedBarcode;
+    case 'tailoring':
+      return prev.maintenanceOrders === next.maintenanceOrders && 
+             prev.clothes === next.clothes;
+    case 'expenses':
+      return prev.expenses === next.expenses && 
+             prev.suppliers === next.suppliers && 
+             prev.credits === next.credits;
+    case 'credits':
+      return prev.credits === next.credits && 
+             prev.suppliers === next.suppliers;
+    case 'partners':
+      return prev.suppliers === next.suppliers && 
+             prev.seamstresses === next.seamstresses && 
+             prev.expenses === next.expenses && 
+             prev.maintenanceOrders === next.maintenanceOrders && 
+             prev.credits === next.credits;
+    case 'caisse':
+      return prev.caisseClosures === next.caisseClosures && 
+             prev.sales === next.sales && 
+             prev.rentals === next.rentals && 
+             prev.expenses === next.expenses && 
+             prev.staffPayouts === next.staffPayouts && 
+             prev.maintenanceOrders === next.maintenanceOrders;
+    case 'logs':
+      return prev.activityLogs === next.activityLogs;
+    case 'dashboard':
+      return prev.rentals === next.rentals &&
+             prev.clothes === next.clothes &&
+             prev.caisseClosures === next.caisseClosures &&
+             prev.sales === next.sales &&
+             prev.expenses === next.expenses &&
+             prev.staffPayouts === next.staffPayouts &&
+             prev.maintenanceOrders === next.maintenanceOrders &&
+             prev.credits === next.credits &&
+             prev.activityLogs === next.activityLogs;
+    default:
+      return false;
+  }
+}
+
 export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   currentView,
   rentals,
@@ -320,6 +376,6 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
       )}
     </React.Suspense>
   );
-});
+}, areViewRendererPropsEqual);
 
 export default ViewRenderer;

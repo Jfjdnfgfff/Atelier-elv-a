@@ -364,6 +364,20 @@ export class SubscriptionManager {
   }
 
   /**
+   * Get total count of active Firebase collection listeners
+   */
+  static getActiveSubscriptionsCount(): number {
+    return this.activeSubscriptions.size;
+  }
+
+  /**
+   * Get array of actively subscribed collection names
+   */
+  static getActiveCollections(): string[] {
+    return Array.from(this.activeSubscriptions.keys());
+  }
+
+  /**
    * Check if a collection is actively subscribed
    */
   static isSubscribed(collectionKey: string): boolean {

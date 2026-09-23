@@ -10,6 +10,8 @@ export interface PerformanceMetrics {
   localStorageWrites: number;
   startupCollectionsLoaded: string[];
   startupRecordCount: number;
+  activeFirebaseListenersCount?: number;
+  activeFirebaseCollections?: string[];
 }
 
 class PerformanceMonitorService {
@@ -25,14 +27,19 @@ class PerformanceMonitorService {
   private lastNavigationLatencyMs: number = 0;
   private localStorageReads: number = 0;
   private localStorageWrites: number = 0;
-  private startupCollections: string[] = ['clothes', 'staffMembers', 'staffAbsences', 'caisseClosures'];
+  private startupCollections: string[] = ['clothes', 'rentals', 'caisseClosures', 'activityLogs'];
   private startupRecordCount: number = 0;
+  private getFirebaseListenersFn?: () => { count: number; collections: string[] };
 
   constructor() {
     if (typeof window !== 'undefined') {
       (window as any).__GET_PERF_METRICS__ = () => this.getMetrics();
       (window as any).__PRINT_PERF_REPORT__ = () => this.printReport();
     }
+  }
+
+  setFirebaseListenerQuery(fn: () => { count: number; collections: string[] }) {
+    this.getFirebaseListenersFn = fn;
   }
 
   markFirstUsableUI(recordCount: number = 0) {
@@ -85,6 +92,7 @@ class PerformanceMonitorService {
   }
 
   getMetrics(): PerformanceMetrics {
+    const fb = this.getFirebaseListenersFn ? this.getFirebaseListenersFn() : { count: 0, collections: [] };
     return {
       startupTimeMs: typeof performance !== 'undefined' ? performance.now() - this.startTime : 0,
       timeToFirstUsableUIMs: this.firstUsableUITime,
@@ -96,7 +104,9 @@ class PerformanceMonitorService {
       localStorageReads: this.localStorageReads,
       localStorageWrites: this.localStorageWrites,
       startupCollectionsLoaded: [...this.startupCollections],
-      startupRecordCount: this.startupRecordCount
+      startupRecordCount: this.startupRecordCount,
+      activeFirebaseListenersCount: fb.count,
+      activeFirebaseCollections: fb.collections
     };
   }
 
@@ -110,7 +120,9 @@ class PerformanceMonitorService {
       'LocalStorage Writes': m.localStorageWrites,
       'Startup Collections Loaded': m.startupCollectionsLoaded.join(', '),
       'Startup Records Loaded': m.startupRecordCount,
-      'Last Navigation Latency': `${m.lastNavigationLatencyMs.toFixed(1)} ms`
+      'Last Navigation Latency': `${m.lastNavigationLatencyMs.toFixed(1)} ms`,
+      'Active Firebase Listeners': m.activeFirebaseListenersCount,
+      'Active Firebase Collections': (m.activeFirebaseCollections || []).join(', ')
     });
     return m;
   }

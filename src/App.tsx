@@ -88,21 +88,81 @@ import {
 export default function App() {
   perfMonitor.recordAppRender();
 
-  // Core & Lazy Collections loaded directly from Local Storage
-  const [clothes, setClothes] = useState<ClothItem[]>(() => loadFromStorage(STORAGE_KEYS.CLOTHES, DEFAULT_CLOTHES));
-  const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF));
-  const [staffAbsences, setStaffAbsences] = useState<StaffAbsence[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_ABSENCES, DEFAULT_STAFF_ABSENCES));
-  const [caisseClosures, setCaisseClosures] = useState<DailyCaisseClosure[]>(() => loadFromStorage(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES));
-  const [rentals, setRentals] = useState<Rental[]>(() => loadFromStorage(STORAGE_KEYS.RENTALS, DEFAULT_RENTALS));
-  const [sales, setSales] = useState<Sale[]>(() => loadFromStorage(STORAGE_KEYS.SALES, DEFAULT_SALES));
-  const [expenses, setExpenses] = useState<Expense[]>(() => loadFromStorage(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES));
-  const [credits, setCredits] = useState<Credit[]>(() => loadFromStorage(STORAGE_KEYS.CREDITS, DEFAULT_CREDITS));
-  const [staffPayouts, setStaffPayouts] = useState<StaffPayout[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_PAYOUTS, DEFAULT_STAFF_PAYOUTS));
-  const [maintenanceOrders, setMaintenanceOrders] = useState<MaintenanceOrder[]>(() => loadFromStorage(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE));
-  const [suppliers, setSuppliers] = useState<Supplier[]>(() => loadFromStorage(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS));
-  const [seamstresses, setSeamstresses] = useState<Seamstress[]>(() => loadFromStorage(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES));
-  const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>(() => loadFromStorage(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS));
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => loadFromStorage(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS));
+  // Core Startup Collections (Required for initial Dashboard & quick KPIs)
+  const [clothes, setClothes] = useState<ClothItem[]>(() => loadFromStorage(STORAGE_KEYS.CLOTHES, []));
+  const [rentals, setRentals] = useState<Rental[]>(() => loadFromStorage(STORAGE_KEYS.RENTALS, []));
+  const [caisseClosures, setCaisseClosures] = useState<DailyCaisseClosure[]>(() => loadFromStorage(STORAGE_KEYS.CAISSE_CLOSURES, []));
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => loadFromStorage(STORAGE_KEYS.ACTIVITY_LOGS, []));
+
+  // Lazy Collections (Initialized as empty arrays for instant startup; loaded on-demand from cache/storage)
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => []);
+  const [staffAbsences, setStaffAbsences] = useState<StaffAbsence[]>(() => []);
+  const [sales, setSales] = useState<Sale[]>(() => []);
+  const [expenses, setExpenses] = useState<Expense[]>(() => []);
+  const [credits, setCredits] = useState<Credit[]>(() => []);
+  const [staffPayouts, setStaffPayouts] = useState<StaffPayout[]>(() => []);
+  const [maintenanceOrders, setMaintenanceOrders] = useState<MaintenanceOrder[]>(() => []);
+  const [suppliers, setSuppliers] = useState<Supplier[]>(() => []);
+  const [seamstresses, setSeamstresses] = useState<Seamstress[]>(() => []);
+  const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>(() => []);
+
+  // Track collections that have been loaded into React state
+  const loadedCollectionsRef = useRef<Set<string>>(new Set([
+    STORAGE_KEYS.CLOTHES,
+    STORAGE_KEYS.RENTALS,
+    STORAGE_KEYS.CAISSE_CLOSURES,
+    STORAGE_KEYS.ACTIVITY_LOGS
+  ]));
+
+  // Cache-First On-Demand Storage Loader
+  const ensureCollectionLoaded = useCallback((storageKey: string) => {
+    if (loadedCollectionsRef.current.has(storageKey)) return;
+    loadedCollectionsRef.current.add(storageKey);
+    switch (storageKey) {
+      case STORAGE_KEYS.SALES:
+        setSales(loadFromStorage<Sale[]>(STORAGE_KEYS.SALES, []));
+        break;
+      case STORAGE_KEYS.EXPENSES:
+        setExpenses(loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, []));
+        break;
+      case STORAGE_KEYS.CREDITS:
+        setCredits(loadFromStorage<Credit[]>(STORAGE_KEYS.CREDITS, []));
+        break;
+      case STORAGE_KEYS.STAFF_PAYOUTS:
+        setStaffPayouts(loadFromStorage<StaffPayout[]>(STORAGE_KEYS.STAFF_PAYOUTS, []));
+        break;
+      case STORAGE_KEYS.STAFF_MEMBERS:
+        setStaffMembers(loadFromStorage<StaffMember[]>(STORAGE_KEYS.STAFF_MEMBERS, []));
+        break;
+      case STORAGE_KEYS.STAFF_ABSENCES:
+        setStaffAbsences(loadFromStorage<StaffAbsence[]>(STORAGE_KEYS.STAFF_ABSENCES, []));
+        break;
+      case STORAGE_KEYS.MAINTENANCE:
+        setMaintenanceOrders(loadFromStorage<MaintenanceOrder[]>(STORAGE_KEYS.MAINTENANCE, []));
+        break;
+      case STORAGE_KEYS.SUPPLIERS:
+        setSuppliers(loadFromStorage<Supplier[]>(STORAGE_KEYS.SUPPLIERS, []));
+        break;
+      case STORAGE_KEYS.SEAMSTRESSES:
+        setSeamstresses(loadFromStorage<Seamstress[]>(STORAGE_KEYS.SEAMSTRESSES, []));
+        break;
+      case STORAGE_KEYS.RAW_MATERIALS:
+        setRawMaterials(loadFromStorage<RawMaterial[]>(STORAGE_KEYS.RAW_MATERIALS, []));
+        break;
+      case STORAGE_KEYS.CLOTHES:
+        setClothes(loadFromStorage<ClothItem[]>(STORAGE_KEYS.CLOTHES, []));
+        break;
+      case STORAGE_KEYS.RENTALS:
+        setRentals(loadFromStorage<Rental[]>(STORAGE_KEYS.RENTALS, []));
+        break;
+      case STORAGE_KEYS.CAISSE_CLOSURES:
+        setCaisseClosures(loadFromStorage<DailyCaisseClosure[]>(STORAGE_KEYS.CAISSE_CLOSURES, []));
+        break;
+      case STORAGE_KEYS.ACTIVITY_LOGS:
+        setActivityLogs(loadFromStorage<ActivityLog[]>(STORAGE_KEYS.ACTIVITY_LOGS, []));
+        break;
+    }
+  }, []);
 
   // Firebase Realtime Connection & Sync State
   const [isFirebaseConnected, setIsFirebaseConnected] = useState(false);
@@ -179,65 +239,102 @@ export default function App() {
 
   // First usable UI instrumentation
   useEffect(() => {
-    const coreRecords = clothes.length + staffMembers.length + staffAbsences.length + caisseClosures.length;
+    const coreRecords = clothes.length + rentals.length + caisseClosures.length + activityLogs.length;
     perfMonitor.markFirstUsableUI(coreRecords);
   }, []);
 
-  // Local Storage Persistence (Scheduled via non-blocking requestIdleCallback)
+  // Performance monitor active listener hookup
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.CLOTHES, clothes);
+    perfMonitor.setFirebaseListenerQuery(() => ({
+      count: SubscriptionManager.getActiveSubscriptionsCount(),
+      collections: SubscriptionManager.getActiveCollections()
+    }));
+  }, []);
+
+  // Local Storage Persistence (Scheduled via non-blocking requestIdleCallback)
+  // Safe: only persists collections that are loaded to avoid overwriting with initial empty state
+  useEffect(() => {
+    if (loadedCollectionsRef.current.has(STORAGE_KEYS.CLOTHES)) {
+      saveToStorage(STORAGE_KEYS.CLOTHES, clothes);
+    }
   }, [clothes]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.RENTALS, rentals);
+    if (loadedCollectionsRef.current.has(STORAGE_KEYS.RENTALS)) {
+      saveToStorage(STORAGE_KEYS.RENTALS, rentals);
+    }
   }, [rentals]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.SALES, sales);
+    if (loadedCollectionsRef.current.has(STORAGE_KEYS.SALES)) {
+      saveToStorage(STORAGE_KEYS.SALES, sales);
+    }
   }, [sales]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.EXPENSES, expenses);
+    if (loadedCollectionsRef.current.has(STORAGE_KEYS.EXPENSES)) {
+      saveToStorage(STORAGE_KEYS.EXPENSES, expenses);
+    }
   }, [expenses]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.CREDITS, credits);
+    if (loadedCollectionsRef.current.has(STORAGE_KEYS.CREDITS)) {
+      saveToStorage(STORAGE_KEYS.CREDITS, credits);
+    }
   }, [credits]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, staffPayouts);
+    if (loadedCollectionsRef.current.has(STORAGE_KEYS.STAFF_PAYOUTS)) {
+      saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, staffPayouts);
+    }
   }, [staffPayouts]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, staffMembers);
+    if (loadedCollectionsRef.current.has(STORAGE_KEYS.STAFF_MEMBERS)) {
+      saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, staffMembers);
+    }
   }, [staffMembers]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, staffAbsences);
+    if (loadedCollectionsRef.current.has(STORAGE_KEYS.STAFF_ABSENCES)) {
+      saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, staffAbsences);
+    }
   }, [staffAbsences]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.MAINTENANCE, maintenanceOrders);
+    if (loadedCollectionsRef.current.has(STORAGE_KEYS.MAINTENANCE)) {
+      saveToStorage(STORAGE_KEYS.MAINTENANCE, maintenanceOrders);
+    }
   }, [maintenanceOrders]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.SUPPLIERS, suppliers);
+    if (loadedCollectionsRef.current.has(STORAGE_KEYS.SUPPLIERS)) {
+      saveToStorage(STORAGE_KEYS.SUPPLIERS, suppliers);
+    }
   }, [suppliers]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.SEAMSTRESSES, seamstresses);
+    if (loadedCollectionsRef.current.has(STORAGE_KEYS.SEAMSTRESSES)) {
+      saveToStorage(STORAGE_KEYS.SEAMSTRESSES, seamstresses);
+    }
   }, [seamstresses]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.RAW_MATERIALS, rawMaterials);
+    if (loadedCollectionsRef.current.has(STORAGE_KEYS.RAW_MATERIALS)) {
+      saveToStorage(STORAGE_KEYS.RAW_MATERIALS, rawMaterials);
+    }
   }, [rawMaterials]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, caisseClosures);
+    if (loadedCollectionsRef.current.has(STORAGE_KEYS.CAISSE_CLOSURES)) {
+      saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, caisseClosures);
+    }
   }, [caisseClosures]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.ACTIVITY_LOGS, activityLogs);
+    if (loadedCollectionsRef.current.has(STORAGE_KEYS.ACTIVITY_LOGS)) {
+      saveToStorage(STORAGE_KEYS.ACTIVITY_LOGS, activityLogs);
+    }
   }, [activityLogs]);
 
   // Firebase Realtime Database: Connection Status Listener
@@ -254,78 +351,91 @@ export default function App() {
       case FIREBASE_COLLECTIONS.CLOTHES:
         return SubscriptionManager.subscribe<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
           if (items && items.length > 0) {
+            loadedCollectionsRef.current.add(STORAGE_KEYS.CLOTHES);
             setClothes(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.RENTALS:
         return SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
           if (items && items.length > 0) {
+            loadedCollectionsRef.current.add(STORAGE_KEYS.RENTALS);
             setRentals(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.CAISSE_CLOSURES:
         return SubscriptionManager.subscribe<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
           if (items && items.length > 0) {
+            loadedCollectionsRef.current.add(STORAGE_KEYS.CAISSE_CLOSURES);
             setCaisseClosures(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.SALES:
         return SubscriptionManager.subscribe<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
           if (items && items.length > 0) {
+            loadedCollectionsRef.current.add(STORAGE_KEYS.SALES);
             setSales(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.EXPENSES:
         return SubscriptionManager.subscribe<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
           if (items && items.length > 0) {
+            loadedCollectionsRef.current.add(STORAGE_KEYS.EXPENSES);
             setExpenses(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.CREDITS:
         return SubscriptionManager.subscribe<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
           if (items && items.length > 0) {
+            loadedCollectionsRef.current.add(STORAGE_KEYS.CREDITS);
             setCredits(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.STAFF_PAYOUTS:
         return SubscriptionManager.subscribe<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
           if (items && items.length > 0) {
+            loadedCollectionsRef.current.add(STORAGE_KEYS.STAFF_PAYOUTS);
             setStaffPayouts(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.STAFF_MEMBERS:
         return SubscriptionManager.subscribe<StaffMember>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, (items) => {
           if (items && items.length > 0) {
+            loadedCollectionsRef.current.add(STORAGE_KEYS.STAFF_MEMBERS);
             setStaffMembers(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.STAFF_ABSENCES:
         return SubscriptionManager.subscribe<StaffAbsence>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, (items) => {
           if (items && items.length > 0) {
+            loadedCollectionsRef.current.add(STORAGE_KEYS.STAFF_ABSENCES);
             setStaffAbsences(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.MAINTENANCE:
         return SubscriptionManager.subscribe<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
           if (items && items.length > 0) {
+            loadedCollectionsRef.current.add(STORAGE_KEYS.MAINTENANCE);
             setMaintenanceOrders(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.SUPPLIERS:
         return SubscriptionManager.subscribe<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
           if (items && items.length > 0) {
+            loadedCollectionsRef.current.add(STORAGE_KEYS.SUPPLIERS);
             setSuppliers(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.SEAMSTRESSES:
         return SubscriptionManager.subscribe<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
           if (items && items.length > 0) {
+            loadedCollectionsRef.current.add(STORAGE_KEYS.SEAMSTRESSES);
             setSeamstresses(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.RAW_MATERIALS:
         return SubscriptionManager.subscribe<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
           if (items && items.length > 0) {
+            loadedCollectionsRef.current.add(STORAGE_KEYS.RAW_MATERIALS);
             setRawMaterials(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
@@ -334,15 +444,72 @@ export default function App() {
           FIREBASE_COLLECTIONS.ACTIVITY_LOGS, 
           (items) => {
             if (items && items.length > 0) {
+              loadedCollectionsRef.current.add(STORAGE_KEYS.ACTIVITY_LOGS);
               setActivityLogs(prev => areArraysEqual(prev, items) ? prev : items);
             }
           }, 
-          { limit: 300 }
+          { limit: 200 }
         );
       default:
         return () => {};
     }
   }, []);
+
+  // Precise mapping of required LocalStorage collections per view
+  const VIEW_STORAGE_MAP: Record<ViewType, readonly string[]> = {
+    dashboard: [
+      STORAGE_KEYS.CLOTHES, 
+      STORAGE_KEYS.RENTALS, 
+      STORAGE_KEYS.CAISSE_CLOSURES,
+      STORAGE_KEYS.ACTIVITY_LOGS
+    ],
+    rentals: [
+      STORAGE_KEYS.RENTALS, 
+      STORAGE_KEYS.CLOTHES
+    ],
+    inventory: [
+      STORAGE_KEYS.CLOTHES,
+      STORAGE_KEYS.RAW_MATERIALS,
+      STORAGE_KEYS.SUPPLIERS
+    ],
+    sales: [
+      STORAGE_KEYS.SALES, 
+      STORAGE_KEYS.CLOTHES
+    ],
+    tailoring: [
+      STORAGE_KEYS.MAINTENANCE, 
+      STORAGE_KEYS.CLOTHES, 
+      STORAGE_KEYS.STAFF_MEMBERS
+    ],
+    expenses: [
+      STORAGE_KEYS.EXPENSES, 
+      STORAGE_KEYS.SUPPLIERS, 
+      STORAGE_KEYS.CREDITS
+    ],
+    credits: [
+      STORAGE_KEYS.CREDITS, 
+      STORAGE_KEYS.SUPPLIERS
+    ],
+    partners: [
+      STORAGE_KEYS.SUPPLIERS, 
+      STORAGE_KEYS.SEAMSTRESSES,
+      STORAGE_KEYS.EXPENSES,
+      STORAGE_KEYS.MAINTENANCE,
+      STORAGE_KEYS.CREDITS
+    ],
+    caisse: [
+      STORAGE_KEYS.CAISSE_CLOSURES, 
+      STORAGE_KEYS.SALES, 
+      STORAGE_KEYS.RENTALS, 
+      STORAGE_KEYS.EXPENSES, 
+      STORAGE_KEYS.STAFF_PAYOUTS,
+      STORAGE_KEYS.MAINTENANCE
+    ],
+    customers: [],
+    logs: [
+      STORAGE_KEYS.ACTIVITY_LOGS
+    ]
+  };
 
   // Precise mapping of required Firebase collections per view
   const VIEW_COLLECTIONS_MAP: Record<ViewType, readonly string[]> = {
@@ -350,10 +517,6 @@ export default function App() {
       FIREBASE_COLLECTIONS.CLOTHES, 
       FIREBASE_COLLECTIONS.RENTALS, 
       FIREBASE_COLLECTIONS.CAISSE_CLOSURES,
-      FIREBASE_COLLECTIONS.SALES,
-      FIREBASE_COLLECTIONS.EXPENSES,
-      FIREBASE_COLLECTIONS.STAFF_PAYOUTS,
-      FIREBASE_COLLECTIONS.MAINTENANCE,
       FIREBASE_COLLECTIONS.ACTIVITY_LOGS
     ],
     rentals: [
@@ -409,9 +572,16 @@ export default function App() {
   const currentActiveViewRef = useRef<ViewType | null>(null);
 
   // Dynamic on-demand collection subscription per View:
-  // Diff-based subscription: only unsubscribes collections that are no longer needed
-  // and subscribes to new ones, keeping shared collections uninterrupted!
+  // 1. Loads missing collections from memory/local storage
+  // 2. Unsubscribes from collections no longer needed
+  // 3. Subscribes to newly needed Firebase collections
   const handleEnsureCollection = useCallback((view: ViewType) => {
+    // 1. Ensure required collections are loaded into React state from LocalStorage cache
+    const neededStorageKeys = VIEW_STORAGE_MAP[view] || [];
+    for (const key of neededStorageKeys) {
+      ensureCollectionLoaded(key);
+    }
+
     if (currentActiveViewRef.current === view && activeViewUnsubsMapRef.current.size > 0) {
       return;
     }
@@ -425,7 +595,7 @@ export default function App() {
     const neededSet = new Set(neededCollections);
     const activeMap = activeViewUnsubsMapRef.current;
 
-    // 1. Unsubscribe only collections that are NO LONGER needed in the new view
+    // Unsubscribe only collections that are NO LONGER needed in the new view
     for (const [col, unsub] of activeMap.entries()) {
       if (!neededSet.has(col)) {
         try {
@@ -437,14 +607,14 @@ export default function App() {
       }
     }
 
-    // 2. Subscribe to newly needed collections (if not already subscribed)
+    // Subscribe to newly needed collections (if not already subscribed)
     for (const col of neededCollections) {
       if (!activeMap.has(col)) {
         const unsub = subscribeToCollection(col);
         activeMap.set(col, unsub);
       }
     }
-  }, [subscribeToCollection]);
+  }, [subscribeToCollection, ensureCollectionLoaded]);
 
   // Initial load: subscribe only to initial dashboard view collections
   useEffect(() => {
@@ -453,16 +623,21 @@ export default function App() {
       for (const unsub of activeViewUnsubsMapRef.current.values()) {
         try {
           unsub();
-        } catch (e) {}
+        } catch (e) {
+          // ignore
+        }
       }
       activeViewUnsubsMapRef.current.clear();
       currentActiveViewRef.current = null;
     };
   }, [handleEnsureCollection]);
 
-  // Modal-specific subscriptions: only active while the modal is open, auto-unsubscribes on close!
+  // Modal-specific subscriptions & cache loaders: only active while the modal is open, auto-unsubscribes on close!
   useEffect(() => {
     if (activeModal === 'staffPayouts') {
+      ensureCollectionLoaded(STORAGE_KEYS.STAFF_PAYOUTS);
+      ensureCollectionLoaded(STORAGE_KEYS.STAFF_MEMBERS);
+      ensureCollectionLoaded(STORAGE_KEYS.STAFF_ABSENCES);
       const unsubs = [
         subscribeToCollection(FIREBASE_COLLECTIONS.STAFF_PAYOUTS),
         subscribeToCollection(FIREBASE_COLLECTIONS.STAFF_MEMBERS),
@@ -473,6 +648,13 @@ export default function App() {
       };
     }
     if (activeModal === 'fullReport') {
+      ensureCollectionLoaded(STORAGE_KEYS.SALES);
+      ensureCollectionLoaded(STORAGE_KEYS.EXPENSES);
+      ensureCollectionLoaded(STORAGE_KEYS.CREDITS);
+      ensureCollectionLoaded(STORAGE_KEYS.STAFF_PAYOUTS);
+      ensureCollectionLoaded(STORAGE_KEYS.MAINTENANCE);
+      ensureCollectionLoaded(STORAGE_KEYS.RENTALS);
+      ensureCollectionLoaded(STORAGE_KEYS.CAISSE_CLOSURES);
       const unsubs = [
         subscribeToCollection(FIREBASE_COLLECTIONS.SALES),
         subscribeToCollection(FIREBASE_COLLECTIONS.EXPENSES),
@@ -483,7 +665,7 @@ export default function App() {
         unsubs.forEach(u => u());
       };
     }
-  }, [activeModal, subscribeToCollection]);
+  }, [activeModal, subscribeToCollection, ensureCollectionLoaded]);
 
   const handleSyncAllToCloud = useCallback(async () => {
     setIsCloudSyncing(true);
