@@ -85,14 +85,17 @@ import {
   Database
 } from 'lucide-react';
 
+// Run storage initialization once to guarantee 50 items dataset is present
+initializeStorage();
+
 export default function App() {
   perfMonitor.recordAppRender();
 
   // Core Startup Collections (Required for initial Dashboard & quick KPIs)
-  const [clothes, setClothes] = useState<ClothItem[]>(() => loadFromStorage(STORAGE_KEYS.CLOTHES, []));
-  const [rentals, setRentals] = useState<Rental[]>(() => loadFromStorage(STORAGE_KEYS.RENTALS, []));
-  const [caisseClosures, setCaisseClosures] = useState<DailyCaisseClosure[]>(() => loadFromStorage(STORAGE_KEYS.CAISSE_CLOSURES, []));
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => loadFromStorage(STORAGE_KEYS.ACTIVITY_LOGS, []));
+  const [clothes, setClothes] = useState<ClothItem[]>(() => loadFromStorage(STORAGE_KEYS.CLOTHES, DEFAULT_CLOTHES));
+  const [rentals, setRentals] = useState<Rental[]>(() => loadFromStorage(STORAGE_KEYS.RENTALS, DEFAULT_RENTALS));
+  const [caisseClosures, setCaisseClosures] = useState<DailyCaisseClosure[]>(() => loadFromStorage(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES));
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => loadFromStorage(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS));
 
   // Lazy Collections (Initialized as empty arrays for instant startup; loaded on-demand from cache/storage)
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => []);
@@ -120,46 +123,46 @@ export default function App() {
     loadedCollectionsRef.current.add(storageKey);
     switch (storageKey) {
       case STORAGE_KEYS.SALES:
-        setSales(loadFromStorage<Sale[]>(STORAGE_KEYS.SALES, []));
+        setSales(loadFromStorage<Sale[]>(STORAGE_KEYS.SALES, DEFAULT_SALES));
         break;
       case STORAGE_KEYS.EXPENSES:
-        setExpenses(loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, []));
+        setExpenses(loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES));
         break;
       case STORAGE_KEYS.CREDITS:
-        setCredits(loadFromStorage<Credit[]>(STORAGE_KEYS.CREDITS, []));
+        setCredits(loadFromStorage<Credit[]>(STORAGE_KEYS.CREDITS, DEFAULT_CREDITS));
         break;
       case STORAGE_KEYS.STAFF_PAYOUTS:
-        setStaffPayouts(loadFromStorage<StaffPayout[]>(STORAGE_KEYS.STAFF_PAYOUTS, []));
+        setStaffPayouts(loadFromStorage<StaffPayout[]>(STORAGE_KEYS.STAFF_PAYOUTS, DEFAULT_STAFF_PAYOUTS));
         break;
       case STORAGE_KEYS.STAFF_MEMBERS:
-        setStaffMembers(loadFromStorage<StaffMember[]>(STORAGE_KEYS.STAFF_MEMBERS, []));
+        setStaffMembers(loadFromStorage<StaffMember[]>(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF));
         break;
       case STORAGE_KEYS.STAFF_ABSENCES:
-        setStaffAbsences(loadFromStorage<StaffAbsence[]>(STORAGE_KEYS.STAFF_ABSENCES, []));
+        setStaffAbsences(loadFromStorage<StaffAbsence[]>(STORAGE_KEYS.STAFF_ABSENCES, DEFAULT_STAFF_ABSENCES));
         break;
       case STORAGE_KEYS.MAINTENANCE:
-        setMaintenanceOrders(loadFromStorage<MaintenanceOrder[]>(STORAGE_KEYS.MAINTENANCE, []));
+        setMaintenanceOrders(loadFromStorage<MaintenanceOrder[]>(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE));
         break;
       case STORAGE_KEYS.SUPPLIERS:
-        setSuppliers(loadFromStorage<Supplier[]>(STORAGE_KEYS.SUPPLIERS, []));
+        setSuppliers(loadFromStorage<Supplier[]>(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS));
         break;
       case STORAGE_KEYS.SEAMSTRESSES:
-        setSeamstresses(loadFromStorage<Seamstress[]>(STORAGE_KEYS.SEAMSTRESSES, []));
+        setSeamstresses(loadFromStorage<Seamstress[]>(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES));
         break;
       case STORAGE_KEYS.RAW_MATERIALS:
-        setRawMaterials(loadFromStorage<RawMaterial[]>(STORAGE_KEYS.RAW_MATERIALS, []));
+        setRawMaterials(loadFromStorage<RawMaterial[]>(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS));
         break;
       case STORAGE_KEYS.CLOTHES:
-        setClothes(loadFromStorage<ClothItem[]>(STORAGE_KEYS.CLOTHES, []));
+        setClothes(loadFromStorage<ClothItem[]>(STORAGE_KEYS.CLOTHES, DEFAULT_CLOTHES));
         break;
       case STORAGE_KEYS.RENTALS:
-        setRentals(loadFromStorage<Rental[]>(STORAGE_KEYS.RENTALS, []));
+        setRentals(loadFromStorage<Rental[]>(STORAGE_KEYS.RENTALS, DEFAULT_RENTALS));
         break;
       case STORAGE_KEYS.CAISSE_CLOSURES:
-        setCaisseClosures(loadFromStorage<DailyCaisseClosure[]>(STORAGE_KEYS.CAISSE_CLOSURES, []));
+        setCaisseClosures(loadFromStorage<DailyCaisseClosure[]>(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES));
         break;
       case STORAGE_KEYS.ACTIVITY_LOGS:
-        setActivityLogs(loadFromStorage<ActivityLog[]>(STORAGE_KEYS.ACTIVITY_LOGS, []));
+        setActivityLogs(loadFromStorage<ActivityLog[]>(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS));
         break;
     }
   }, []);
