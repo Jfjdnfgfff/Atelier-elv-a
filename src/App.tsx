@@ -402,35 +402,29 @@ export default function App() {
   }, []);
 
   // Individual collection subscription helper returning an idempotent unsubscribe function
-  const subscribeToCollection = useCallback((collection: string): () => void => {
+  const subscribeToCollection = useCallback((collection: string, options?: { limit?: number }): () => void => {
     switch (collection) {
       case FIREBASE_COLLECTIONS.CLOTHES:
         return SubscriptionManager.subscribe<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.CLOTHES);
-            setClothes(prev => {
-              const map = new Map<string, ClothItem>();
-              prev.forEach(c => map.set(c.id, c));
-              items.forEach(c => map.set(c.id, c));
-              const merged = Array.from(map.values());
-              return areArraysEqual(prev, merged) ? prev : merged;
-            });
+            setClothes(prev => areArraysEqual(prev, items) ? prev : items);
           }
-        });
+        }, options);
       case FIREBASE_COLLECTIONS.RENTALS:
         return SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.RENTALS);
             setRentals(prev => areArraysEqual(prev, items) ? prev : items);
           }
-        });
+        }, options);
       case FIREBASE_COLLECTIONS.CAISSE_CLOSURES:
         return SubscriptionManager.subscribe<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.CAISSE_CLOSURES);
             setCaisseClosures(prev => areArraysEqual(prev, items) ? prev : items);
           }
-        });
+        }, options);
       case FIREBASE_COLLECTIONS.SALES:
         return SubscriptionManager.subscribe<Sale>(
           FIREBASE_COLLECTIONS.SALES, 
@@ -438,15 +432,20 @@ export default function App() {
             if (Array.isArray(items)) {
               loadedCollectionsRef.current.add(STORAGE_KEYS.SALES);
               setSales(prev => {
-                const map = new Map<string, Sale>();
-                prev.forEach(s => map.set(s.id, s));
-                items.forEach(s => map.set(s.id, s));
-                const merged = Array.from(map.values()).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-                return areArraysEqual(prev, merged) ? prev : merged;
+                // If this is a limited subscription (e.g. POS view), merge received items into prev
+                // If it's a full subscription (no limit), items represents the full dataset
+                if (options?.limit && prev.length > items.length) {
+                  const map = new Map<string, Sale>();
+                  prev.forEach(s => map.set(s.id, s));
+                  items.forEach(s => map.set(s.id, s));
+                  const merged = Array.from(map.values()).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+                  return areArraysEqual(prev, merged) ? prev : merged;
+                }
+                return areArraysEqual(prev, items) ? prev : items;
               });
             }
           },
-          { limit: 150 }
+          options
         );
       case FIREBASE_COLLECTIONS.EXPENSES:
         return SubscriptionManager.subscribe<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
@@ -644,7 +643,7 @@ export default function App() {
   const currentActiveViewRef = useRef<ViewType | null>(null);
 
   // Dynamic on-demand collection subscription per View:
-  // Subscribes to needed Firebase collections and keeps them active in a warm pool for instant navigation
+  // Subscribes ONLY to needed Firebase collections for the currently active view on-demand
   const handleEnsureCollection = useCallback((view: ViewType) => {
     // 1. Ensure required collections are loaded into React state from LocalStorage cache
     const neededStorageKeys = VIEW_STORAGE_MAP[view] || [];
@@ -661,35 +660,22 @@ export default function App() {
 
     const activeMap = activeViewUnsubsMapRef.current;
 
-    // Subscribe to newly needed collections (if not already subscribed)
+    // Subscribe ONLY to newly needed collections for active view
     for (const col of neededCollections) {
       if (!activeMap.has(col)) {
-        const unsub = subscribeToCollection(col);
+        // Apply limit: 100 specifically for Sales POS view to avoid downloading entire sales history
+        const options = (col === FIREBASE_COLLECTIONS.SALES && view === 'sales') ? { limit: 100 } : undefined;
+        const unsub = subscribeToCollection(col, options);
         activeMap.set(col, unsub);
       }
     }
   }, [subscribeToCollection, ensureCollectionLoaded]);
 
-  // Initial load: subscribe to dashboard view and pre-warm remaining views in idle background
+  // Initial load: subscribe ONLY to dashboard view (NO pre-warm of other views)
   useEffect(() => {
     handleEnsureCollection('dashboard');
 
-    const warmTimer = setTimeout(() => {
-      // Pre-warm all view collections in background so navigation is instant
-      const allViews: ViewType[] = ['inventory', 'sales', 'rentals', 'tailoring', 'expenses', 'credits', 'caisse', 'partners', 'logs'];
-      allViews.forEach(v => {
-        const neededCols = VIEW_COLLECTIONS_MAP[v] || [];
-        neededCols.forEach(col => {
-          if (!activeViewUnsubsMapRef.current.has(col)) {
-            const unsub = subscribeToCollection(col);
-            activeViewUnsubsMapRef.current.set(col, unsub);
-          }
-        });
-      });
-    }, 1200);
-
     return () => {
-      clearTimeout(warmTimer);
       for (const unsub of activeViewUnsubsMapRef.current.values()) {
         try {
           unsub();
@@ -700,7 +686,7 @@ export default function App() {
       activeViewUnsubsMapRef.current.clear();
       currentActiveViewRef.current = null;
     };
-  }, [handleEnsureCollection, subscribeToCollection]);
+  }, [handleEnsureCollection]);
 
   // Modal-specific subscriptions & cache loaders: only active while the modal is open, auto-unsubscribes on close!
   useEffect(() => {
