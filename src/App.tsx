@@ -320,114 +320,118 @@ export default function App() {
     }
   }, []);
 
-  // Track active view subscriptions and the current view name
-  const activeViewUnsubsRef = useRef<(() => void)[]>([]);
+  // Precise mapping of required Firebase collections per view
+  const VIEW_COLLECTIONS_MAP: Record<ViewType, readonly string[]> = {
+    dashboard: [
+      FIREBASE_COLLECTIONS.CLOTHES, 
+      FIREBASE_COLLECTIONS.RENTALS, 
+      FIREBASE_COLLECTIONS.CAISSE_CLOSURES
+    ],
+    rentals: [
+      FIREBASE_COLLECTIONS.RENTALS, 
+      FIREBASE_COLLECTIONS.CLOTHES
+    ],
+    inventory: [
+      FIREBASE_COLLECTIONS.CLOTHES,
+      FIREBASE_COLLECTIONS.RAW_MATERIALS,
+      FIREBASE_COLLECTIONS.SUPPLIERS
+    ],
+    sales: [
+      FIREBASE_COLLECTIONS.SALES, 
+      FIREBASE_COLLECTIONS.CLOTHES
+    ],
+    tailoring: [
+      FIREBASE_COLLECTIONS.MAINTENANCE, 
+      FIREBASE_COLLECTIONS.CLOTHES, 
+      FIREBASE_COLLECTIONS.STAFF_MEMBERS
+    ],
+    expenses: [
+      FIREBASE_COLLECTIONS.EXPENSES, 
+      FIREBASE_COLLECTIONS.SUPPLIERS, 
+      FIREBASE_COLLECTIONS.CREDITS
+    ],
+    credits: [
+      FIREBASE_COLLECTIONS.CREDITS, 
+      FIREBASE_COLLECTIONS.SUPPLIERS
+    ],
+    partners: [
+      FIREBASE_COLLECTIONS.SUPPLIERS, 
+      FIREBASE_COLLECTIONS.SEAMSTRESSES,
+      FIREBASE_COLLECTIONS.EXPENSES,
+      FIREBASE_COLLECTIONS.MAINTENANCE,
+      FIREBASE_COLLECTIONS.CREDITS
+    ],
+    caisse: [
+      FIREBASE_COLLECTIONS.CAISSE_CLOSURES, 
+      FIREBASE_COLLECTIONS.SALES, 
+      FIREBASE_COLLECTIONS.RENTALS, 
+      FIREBASE_COLLECTIONS.EXPENSES, 
+      FIREBASE_COLLECTIONS.STAFF_PAYOUTS,
+      FIREBASE_COLLECTIONS.MAINTENANCE
+    ],
+    customers: [
+      FIREBASE_COLLECTIONS.RENTALS,
+      FIREBASE_COLLECTIONS.SALES,
+      FIREBASE_COLLECTIONS.CREDITS
+    ],
+    logs: [
+      FIREBASE_COLLECTIONS.ACTIVITY_LOGS
+    ]
+  };
+
+  // Map of active view subscription cleanup functions: collectionKey -> unsubscribeFn
+  const activeViewUnsubsMapRef = useRef<Map<string, () => void>>(new Map());
   const currentActiveViewRef = useRef<ViewType | null>(null);
 
   // Dynamic on-demand collection subscription per View:
-  // Automatically unsubscribes previous view's collections when navigating to another view!
+  // Diff-based subscription: only unsubscribes collections that are no longer needed
+  // and subscribes to new ones, keeping shared collections uninterrupted!
   const handleEnsureCollection = useCallback((view: ViewType) => {
-    if (currentActiveViewRef.current === view && activeViewUnsubsRef.current.length > 0) {
+    if (currentActiveViewRef.current === view && activeViewUnsubsMapRef.current.size > 0) {
       return;
     }
     currentActiveViewRef.current = view;
 
-    // 1. Unsubscribe from previous view's listeners so refCount becomes 0 and off() is called
-    if (activeViewUnsubsRef.current.length > 0) {
-      activeViewUnsubsRef.current.forEach(unsub => unsub());
-      activeViewUnsubsRef.current = [];
+    const neededCollections = VIEW_COLLECTIONS_MAP[view] || [
+      FIREBASE_COLLECTIONS.CLOTHES, 
+      FIREBASE_COLLECTIONS.RENTALS
+    ];
+
+    const neededSet = new Set(neededCollections);
+    const activeMap = activeViewUnsubsMapRef.current;
+
+    // 1. Unsubscribe only collections that are NO LONGER needed in the new view
+    for (const [col, unsub] of activeMap.entries()) {
+      if (!neededSet.has(col)) {
+        try {
+          unsub();
+        } catch (err) {
+          console.warn(`[App] Error unsubscribing from ${col}:`, err);
+        }
+        activeMap.delete(col);
+      }
     }
 
-    // 2. Identify the collections strictly needed for this view
-    let neededCollections: string[] = [];
-    switch (view) {
-      case 'dashboard':
-        neededCollections = [
-          FIREBASE_COLLECTIONS.CLOTHES, 
-          FIREBASE_COLLECTIONS.RENTALS, 
-          FIREBASE_COLLECTIONS.CAISSE_CLOSURES
-        ];
-        break;
-      case 'inventory':
-        neededCollections = [FIREBASE_COLLECTIONS.CLOTHES];
-        break;
-      case 'rentals':
-        neededCollections = [
-          FIREBASE_COLLECTIONS.RENTALS, 
-          FIREBASE_COLLECTIONS.CLOTHES
-        ];
-        break;
-      case 'sales':
-        neededCollections = [
-          FIREBASE_COLLECTIONS.SALES, 
-          FIREBASE_COLLECTIONS.CLOTHES, 
-          FIREBASE_COLLECTIONS.CREDITS
-        ];
-        break;
-      case 'tailoring':
-        neededCollections = [
-          FIREBASE_COLLECTIONS.MAINTENANCE, 
-          FIREBASE_COLLECTIONS.SEAMSTRESSES, 
-          FIREBASE_COLLECTIONS.RAW_MATERIALS, 
-          FIREBASE_COLLECTIONS.CLOTHES, 
-          FIREBASE_COLLECTIONS.STAFF_MEMBERS
-        ];
-        break;
-      case 'expenses':
-        neededCollections = [
-          FIREBASE_COLLECTIONS.EXPENSES, 
-          FIREBASE_COLLECTIONS.SUPPLIERS, 
-          FIREBASE_COLLECTIONS.CREDITS
-        ];
-        break;
-      case 'credits':
-        neededCollections = [
-          FIREBASE_COLLECTIONS.CREDITS, 
-          FIREBASE_COLLECTIONS.SUPPLIERS
-        ];
-        break;
-      case 'partners':
-        neededCollections = [
-          FIREBASE_COLLECTIONS.SUPPLIERS, 
-          FIREBASE_COLLECTIONS.SEAMSTRESSES
-        ];
-        break;
-      case 'caisse':
-        neededCollections = [
-          FIREBASE_COLLECTIONS.CAISSE_CLOSURES, 
-          FIREBASE_COLLECTIONS.SALES, 
-          FIREBASE_COLLECTIONS.RENTALS, 
-          FIREBASE_COLLECTIONS.EXPENSES, 
-          FIREBASE_COLLECTIONS.STAFF_PAYOUTS
-        ];
-        break;
-      case 'logs':
-        neededCollections = [FIREBASE_COLLECTIONS.ACTIVITY_LOGS];
-        break;
-      default:
-        neededCollections = [
-          FIREBASE_COLLECTIONS.CLOTHES, 
-          FIREBASE_COLLECTIONS.RENTALS
-        ];
-        break;
+    // 2. Subscribe to newly needed collections (if not already subscribed)
+    for (const col of neededCollections) {
+      if (!activeMap.has(col)) {
+        const unsub = subscribeToCollection(col);
+        activeMap.set(col, unsub);
+      }
     }
-
-    // 3. Subscribe to the needed collections
-    const newUnsubs: (() => void)[] = [];
-    neededCollections.forEach(col => {
-      newUnsubs.push(subscribeToCollection(col));
-    });
-    activeViewUnsubsRef.current = newUnsubs;
   }, [subscribeToCollection]);
 
-  // Initial load: subscribe to dashboard view collections
+  // Initial load: subscribe only to initial dashboard view collections
   useEffect(() => {
     handleEnsureCollection('dashboard');
     return () => {
-      if (activeViewUnsubsRef.current.length > 0) {
-        activeViewUnsubsRef.current.forEach(unsub => unsub());
-        activeViewUnsubsRef.current = [];
+      for (const unsub of activeViewUnsubsMapRef.current.values()) {
+        try {
+          unsub();
+        } catch (e) {}
       }
+      activeViewUnsubsMapRef.current.clear();
+      currentActiveViewRef.current = null;
     };
   }, [handleEnsureCollection]);
 
