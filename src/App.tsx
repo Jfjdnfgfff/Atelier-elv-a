@@ -57,6 +57,7 @@ import {
 import { Modal } from './components/Shared';
 import AppNavigation from './components/AppNavigation';
 
+// Lazy-loaded Modals with idle background preloading
 const BarcodeScanner = React.lazy(() => import('./components/BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
 const FullReport = React.lazy(() => import('./components/FullReport').then(m => ({ default: m.FullReport })));
 const RentalModal = React.lazy(() => import('./components/RentalModal').then(m => ({ default: m.RentalModal })));
@@ -65,6 +66,25 @@ const RentalReceiptModal = React.lazy(() => import('./components/RentalReceiptMo
 const StaffPayoutsModal = React.lazy(() => import('./components/StaffPayoutsModal').then(m => ({ default: m.StaffPayoutsModal })));
 const TailoringModal = React.lazy(() => import('./components/TailoringModal').then(m => ({ default: m.TailoringModal })));
 const TailoringReceiptModal = React.lazy(() => import('./components/TailoringReceiptModal').then(m => ({ default: m.TailoringReceiptModal })));
+
+// Background preloading of all modal chunks in idle time for zero-latency clicks
+if (typeof window !== 'undefined') {
+  const preloadModals = () => {
+    import('./components/RentalModal');
+    import('./components/ReturnRentalModal');
+    import('./components/RentalReceiptModal');
+    import('./components/TailoringModal');
+    import('./components/TailoringReceiptModal');
+    import('./components/StaffPayoutsModal');
+    import('./components/FullReport');
+    import('./components/BarcodeScanner');
+  };
+  if ('requestIdleCallback' in window) {
+    (window as any).requestIdleCallback(preloadModals, { timeout: 1500 });
+  } else {
+    setTimeout(preloadModals, 1000);
+  }
+}
 import { 
   Scale, 
   Shirt, 
@@ -92,31 +112,24 @@ initializeStorage();
 export default function App() {
   perfMonitor.recordAppRender();
 
-  // Core Startup Collections (Required for initial Dashboard & quick KPIs)
+  // Startup Collections: Initialized immediately from browser storage cache for instant rendering
   const [clothes, setClothes] = useState<ClothItem[]>(() => loadFromStorage(STORAGE_KEYS.CLOTHES, DEFAULT_CLOTHES));
   const [rentals, setRentals] = useState<Rental[]>(() => loadFromStorage(STORAGE_KEYS.RENTALS, DEFAULT_RENTALS));
   const [caisseClosures, setCaisseClosures] = useState<DailyCaisseClosure[]>(() => loadFromStorage(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES));
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => loadFromStorage(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS));
-
-  // Lazy Collections (Initialized as empty arrays for instant startup; loaded on-demand from cache/storage)
-  const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => []);
-  const [staffAbsences, setStaffAbsences] = useState<StaffAbsence[]>(() => []);
-  const [sales, setSales] = useState<Sale[]>(() => []);
-  const [expenses, setExpenses] = useState<Expense[]>(() => []);
-  const [credits, setCredits] = useState<Credit[]>(() => []);
-  const [staffPayouts, setStaffPayouts] = useState<StaffPayout[]>(() => []);
-  const [maintenanceOrders, setMaintenanceOrders] = useState<MaintenanceOrder[]>(() => []);
-  const [suppliers, setSuppliers] = useState<Supplier[]>(() => []);
-  const [seamstresses, setSeamstresses] = useState<Seamstress[]>(() => []);
-  const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>(() => []);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF));
+  const [staffAbsences, setStaffAbsences] = useState<StaffAbsence[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_ABSENCES, DEFAULT_STAFF_ABSENCES));
+  const [sales, setSales] = useState<Sale[]>(() => loadFromStorage(STORAGE_KEYS.SALES, DEFAULT_SALES));
+  const [expenses, setExpenses] = useState<Expense[]>(() => loadFromStorage(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES));
+  const [credits, setCredits] = useState<Credit[]>(() => loadFromStorage(STORAGE_KEYS.CREDITS, DEFAULT_CREDITS));
+  const [staffPayouts, setStaffPayouts] = useState<StaffPayout[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_PAYOUTS, DEFAULT_STAFF_PAYOUTS));
+  const [maintenanceOrders, setMaintenanceOrders] = useState<MaintenanceOrder[]>(() => loadFromStorage(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE));
+  const [suppliers, setSuppliers] = useState<Supplier[]>(() => loadFromStorage(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS));
+  const [seamstresses, setSeamstresses] = useState<Seamstress[]>(() => loadFromStorage(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES));
+  const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>(() => loadFromStorage(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS));
 
   // Track collections that have been loaded into React state
-  const loadedCollectionsRef = useRef<Set<string>>(new Set([
-    STORAGE_KEYS.CLOTHES,
-    STORAGE_KEYS.RENTALS,
-    STORAGE_KEYS.CAISSE_CLOSURES,
-    STORAGE_KEYS.ACTIVITY_LOGS
-  ]));
+  const loadedCollectionsRef = useRef<Set<string>>(new Set(Object.values(STORAGE_KEYS)));
 
   // Cache-First On-Demand Storage Loader
   const ensureCollectionLoaded = useCallback((storageKey: string) => {
@@ -615,9 +628,7 @@ export default function App() {
   const currentActiveViewRef = useRef<ViewType | null>(null);
 
   // Dynamic on-demand collection subscription per View:
-  // 1. Loads missing collections from memory/local storage
-  // 2. Unsubscribes from collections no longer needed
-  // 3. Subscribes to newly needed Firebase collections
+  // Subscribes to needed Firebase collections and keeps them active in a warm pool for instant navigation
   const handleEnsureCollection = useCallback((view: ViewType) => {
     // 1. Ensure required collections are loaded into React state from LocalStorage cache
     const neededStorageKeys = VIEW_STORAGE_MAP[view] || [];
@@ -625,9 +636,6 @@ export default function App() {
       ensureCollectionLoaded(key);
     }
 
-    if (currentActiveViewRef.current === view && activeViewUnsubsMapRef.current.size > 0) {
-      return;
-    }
     currentActiveViewRef.current = view;
 
     const neededCollections = VIEW_COLLECTIONS_MAP[view] || [
@@ -635,20 +643,7 @@ export default function App() {
       FIREBASE_COLLECTIONS.RENTALS
     ];
 
-    const neededSet = new Set(neededCollections);
     const activeMap = activeViewUnsubsMapRef.current;
-
-    // Unsubscribe only collections that are NO LONGER needed in the new view
-    for (const [col, unsub] of activeMap.entries()) {
-      if (!neededSet.has(col)) {
-        try {
-          unsub();
-        } catch (err) {
-          console.warn(`[App] Error unsubscribing from ${col}:`, err);
-        }
-        activeMap.delete(col);
-      }
-    }
 
     // Subscribe to newly needed collections (if not already subscribed)
     for (const col of neededCollections) {
@@ -659,10 +654,26 @@ export default function App() {
     }
   }, [subscribeToCollection, ensureCollectionLoaded]);
 
-  // Initial load: subscribe only to initial dashboard view collections
+  // Initial load: subscribe to dashboard view and pre-warm remaining views in idle background
   useEffect(() => {
     handleEnsureCollection('dashboard');
+
+    const warmTimer = setTimeout(() => {
+      // Pre-warm all view collections in background so navigation is instant
+      const allViews: ViewType[] = ['inventory', 'sales', 'rentals', 'tailoring', 'expenses', 'credits', 'caisse', 'partners', 'logs'];
+      allViews.forEach(v => {
+        const neededCols = VIEW_COLLECTIONS_MAP[v] || [];
+        neededCols.forEach(col => {
+          if (!activeViewUnsubsMapRef.current.has(col)) {
+            const unsub = subscribeToCollection(col);
+            activeViewUnsubsMapRef.current.set(col, unsub);
+          }
+        });
+      });
+    }, 1200);
+
     return () => {
+      clearTimeout(warmTimer);
       for (const unsub of activeViewUnsubsMapRef.current.values()) {
         try {
           unsub();
@@ -673,7 +684,7 @@ export default function App() {
       activeViewUnsubsMapRef.current.clear();
       currentActiveViewRef.current = null;
     };
-  }, [handleEnsureCollection]);
+  }, [handleEnsureCollection, subscribeToCollection]);
 
   // Modal-specific subscriptions & cache loaders: only active while the modal is open, auto-unsubscribes on close!
   useEffect(() => {
@@ -2122,6 +2133,7 @@ export default function App() {
         onDeleteCredit={handleDeleteCredit}
         onSaveCaisseClosure={handleSaveCaisseClosure}
         onDeleteCaisseClosure={handleDeleteCaisseClosure}
+        onDeleteStaffPayout={handleDeleteStaffPayout}
         onAddSeamstress={handleAddSeamstress}
         onUpdateSeamstress={handleUpdateSeamstress}
         onDeleteSeamstress={handleDeleteSeamstress}

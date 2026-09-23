@@ -419,40 +419,23 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
     });
   }, [sellableClothes, selectedCategory, search]);
 
-  // Progressive infinite scroll for products (20 items at a time)
-  const [visibleProductCount, setVisibleProductCount] = useState(20);
-  const posProductsLoadMoreRef = useRef<HTMLDivElement>(null);
+  // Progressive display for products (5 items at a time)
+  const [visibleProductCount, setVisibleProductCount] = useState(5);
 
   useEffect(() => {
-    setVisibleProductCount(20);
+    setVisibleProductCount(5);
   }, [selectedCategory, search]);
 
   const visibleClothes = useMemo(() => {
     return filteredClothes.slice(0, visibleProductCount);
   }, [filteredClothes, visibleProductCount]);
 
-  // Progressive infinite scroll for sales history (20 items at a time)
-  const [visibleSalesCount, setVisibleSalesCount] = useState(20);
-  const salesHistoryLoadMoreRef = useRef<HTMLDivElement>(null);
+  // Progressive display for sales history (5 items at a time)
+  const [visibleSalesCount, setVisibleSalesCount] = useState(5);
 
   const visibleSales = useMemo(() => {
     return sales.slice(0, visibleSalesCount);
   }, [sales, visibleSalesCount]);
-
-  // Infinite scroll observer for sales history
-  useEffect(() => {
-    if (!salesHistoryLoadMoreRef.current) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisibleSalesCount(prev => (prev < sales.length ? Math.min(prev + 20, sales.length) : prev));
-        }
-      },
-      { rootMargin: '200px' }
-    );
-    observer.observe(salesHistoryLoadMoreRef.current);
-    return () => observer.disconnect();
-  }, [sales.length]);
 
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6" dir="rtl">
@@ -599,15 +582,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
           </div>
 
           {/* Grid of Sellable Products with Photo Gallery */}
-          <div 
-            onScroll={(e) => {
-              const target = e.currentTarget;
-              if (target.scrollTop + target.clientHeight >= target.scrollHeight - 50) {
-                setVisibleProductCount(prev => (prev < filteredClothes.length ? Math.min(prev + 20, filteredClothes.length) : prev));
-              }
-            }}
-            className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[560px] overflow-y-auto pr-1 hide-scrollbar"
-          >
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[560px] overflow-y-auto pr-1 hide-scrollbar">
             {visibleClothes.map(item => {
               const s1 = getItemStock1(item);
               const s2 = getItemStock2(item);
@@ -753,15 +728,16 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                 </div>
               );
             })}
-            {/* Bottom load more indicator inside product grid */}
+            {/* Bottom load more button inside product grid */}
             {visibleProductCount < filteredClothes.length && (
               <div className="col-span-2 sm:col-span-3 py-2 text-center">
                 <button
                   type="button"
-                  onClick={() => setVisibleProductCount(prev => Math.min(prev + 20, filteredClothes.length))}
-                  className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-semibold transition-all border border-slate-200"
+                  onClick={() => setVisibleProductCount(prev => Math.min(prev + 5, filteredClothes.length))}
+                  className="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all border border-blue-200 active:scale-95 flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
                 >
-                  تحميل 20 سلعة أخرى ({visibleClothes.length} من {filteredClothes.length})
+                  <span>عرض 5 سلع إضافية (+5)</span>
+                  <span className="text-[11px] font-normal opacity-75">({visibleClothes.length} من {filteredClothes.length})</span>
                 </button>
               </div>
             )}
@@ -1280,19 +1256,20 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               );
             })}
 
-            {/* Bottom Progressive Scroll Sentinel for Sales History */}
-            <div ref={salesHistoryLoadMoreRef} className="pt-3 flex justify-between items-center text-xs">
+            {/* Bottom Progressive Load Button for Sales History */}
+            <div className="pt-3 flex justify-between items-center text-xs">
               {visibleSalesCount < sales.length ? (
                 <button
                   type="button"
-                  onClick={() => setVisibleSalesCount(prev => Math.min(prev + 20, sales.length))}
-                  className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-semibold transition-all border border-slate-200 text-center"
+                  onClick={() => setVisibleSalesCount(prev => Math.min(prev + 5, sales.length))}
+                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold transition-all border border-slate-200 text-center active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  تحميل 20 عملية بيع أخرى (عرض {visibleSales.length} من {sales.length})
+                  <span>عرض 5 عمليات بيع أخرى (+5)</span>
+                  <span className="text-[11px] font-normal text-slate-500">(عرض {visibleSales.length} من إجمالي {sales.length})</span>
                 </button>
               ) : (
-                <div className="w-full text-center text-slate-400 py-1">
-                  ✓ تم عرض كامل سجل المبيعات
+                <div className="w-full text-center text-emerald-700 bg-emerald-50 border border-emerald-200/80 py-2 rounded-xl font-medium">
+                  ✓ تم عرض كامل سجل المبيعات ({sales.length})
                 </div>
               )}
             </div>

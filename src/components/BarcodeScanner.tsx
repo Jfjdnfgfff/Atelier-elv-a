@@ -169,7 +169,17 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     isClosingRef.current = false;
 
     const video = videoRef.current;
-    if (!video) return;
+    if (!video) {
+      setIsInitializing(false);
+      return;
+    }
+
+    // Guard against environments without mediaDevices (e.g. non-HTTPS, restricted iframes)
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setIsInitializing(false);
+      setErrorMsg('ميزة الكاميرا غير متوفرة في هذا المتصفح أو تتطلب اتصالاً آمناً (HTTPS). يمكنك إدخال الباركود يدوياً بالأسفل.');
+      return;
+    }
 
     try {
       // Decode hints with restricted barcode types + TRY_HARDER
@@ -195,44 +205,18 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
       });
       zxingReaderRef.current = zxingReader;
 
-      // Identify device ID
-      let targetDeviceId = selectedDeviceId;
-      if (!targetDeviceId) {
-        try {
-          const tempStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: facingMode } },
-            audio: false
-          });
-          tempStream.getTracks().forEach((track) => track.stop());
-
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          const cameras = devices.filter((d) => d.kind === 'videoinput');
-          if (facingMode === 'environment') {
-            const rear = cameras.find((d) =>
-              /back|rear|environment|world|خلف|خلفية/i.test(d.label || '')
-            );
-            targetDeviceId = rear ? rear.deviceId : cameras[0]?.deviceId;
-          } else {
-            const front = cameras.find((d) =>
-              /front|user|facing|أمام|أمامية/i.test(d.label || '')
-            );
-            targetDeviceId = front ? front.deviceId : cameras[0]?.deviceId;
-          }
-        } catch (e) {}
-      }
-
-      // High-resolution flexible constraints
+      // Video track constraints
       const videoConstraints: MediaTrackConstraints = {
-        deviceId: targetDeviceId ? { ideal: targetDeviceId } : undefined,
-        facingMode: targetDeviceId ? undefined : { ideal: facingMode },
-        width: { ideal: 1920, min: 640 },
-        height: { ideal: 1080, min: 480 }
+        deviceId: selectedDeviceId ? { ideal: selectedDeviceId } : undefined,
+        facingMode: selectedDeviceId ? undefined : { ideal: facingMode },
+        width: { ideal: 1280, min: 480 },
+        height: { ideal: 720, min: 360 }
       };
 
       const controls = await zxingReader.decodeFromConstraints(
         { video: videoConstraints, audio: false },
         video,
-        async (result, error) => {
+        async (result, _error) => {
           if (!result || isClosingRef.current) return;
 
           const barcode = String(result.getText ? result.getText() : (result as any).text || '').trim();
@@ -247,7 +231,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           try {
             await processBarcode(barcode);
           } catch (e) {
-            console.error('Barcode processing error:', e);
+            console.warn('Barcode processing notice:', e);
           } finally {
             scannerCallbackProcessingRef.current = false;
           }
@@ -297,14 +281,18 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
 
       setIsInitializing(false);
     } catch (err: any) {
-      console.error('ZXing camera scanner error:', err);
+      console.warn('ZXing camera scanner notice (permission or device state):', err?.message || err);
       await closeBarcodeCamera();
       setIsInitializing(false);
-      const msg = err?.message || String(err);
-      if (msg.includes('NotAllowed') || msg.includes('Permission') || msg.includes('denied')) {
-        setErrorMsg('تم رفض إذن الكاميرا. يرجى تفعيل إذن الكاميرا في إعدادات المتصفح.');
+      const msg = (err?.name || err?.message || String(err)).toLowerCase();
+      if (msg.includes('notallowed') || msg.includes('permission') || msg.includes('denied')) {
+        setErrorMsg('تم رفض إذن الكاميرا من المتصفح. يرجى السماح بالوصول للكاميرا أو إدخال الباركود يدوياً بالأسفل.');
+      } else if (msg.includes('notfound') || msg.includes('devicesnotfound')) {
+        setErrorMsg('لم يتم العثور على كاميرا متصلة بالجهاز. يمكنك إدخال الباركود يدوياً بالأسفل.');
+      } else if (msg.includes('notreadable') || msg.includes('trackstart')) {
+        setErrorMsg('الكاميرا قيد الاستخدام من قِبل تطبيق آخر. يمكنك إدخال الباركود يدوياً.');
       } else {
-        setErrorMsg('تعذر تشغيل قارئ الباركود. تأكد من السماح بالكاميرا أو أدخل الرقم يدوياً.');
+        setErrorMsg('تعذر تشغيل الكاميرا حالياً. يمكنك كتابة الباركود يدوياً في الخانة أدناه.');
       }
     }
   }, [closeBarcodeCamera, facingMode, processBarcode, selectedDeviceId]);

@@ -89,6 +89,7 @@ export interface AppNavigationProps {
   onDeleteCredit: (id: string) => void;
   onSaveCaisseClosure: (closure: DailyCaisseClosure) => void;
   onDeleteCaisseClosure: (id: string) => void;
+  onDeleteStaffPayout?: (id: string) => void;
   onAddSeamstress: (seam: Seamstress) => void;
   onUpdateSeamstress: (id: string, data: Partial<Seamstress>) => void;
   onDeleteSeamstress: (id: string) => void;
@@ -161,6 +162,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
   onDeleteCredit,
   onSaveCaisseClosure,
   onDeleteCaisseClosure,
+  onDeleteStaffPayout,
   onAddSeamstress,
   onUpdateSeamstress,
   onDeleteSeamstress,
@@ -424,6 +426,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
           onDeleteCredit={onDeleteCredit}
           onSaveCaisseClosure={onSaveCaisseClosure}
           onDeleteCaisseClosure={onDeleteCaisseClosure}
+          onDeleteStaffPayout={onDeleteStaffPayout}
           onAddSeamstress={onAddSeamstress}
           onUpdateSeamstress={onUpdateSeamstress}
           onDeleteSeamstress={onDeleteSeamstress}

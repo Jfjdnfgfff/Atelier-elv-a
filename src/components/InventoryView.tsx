@@ -522,34 +522,12 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
     });
   }, [clothes, filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search]);
 
-  const [visibleCount, setVisibleCount] = useState(20);
-  const BATCH_SIZE = 20;
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [visibleCount, setVisibleCount] = useState(5);
+  const BATCH_SIZE = 5;
 
   useEffect(() => {
-    setVisibleCount(20);
+    setVisibleCount(5);
   }, [filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search]);
-
-  // Infinite scroll observer: loads next 20 items when scrolling near bottom
-  useEffect(() => {
-    if (!loadMoreRef.current) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisibleCount(prev => {
-            if (prev < filteredClothes.length) {
-              return Math.min(prev + BATCH_SIZE, filteredClothes.length);
-            }
-            return prev;
-          });
-        }
-      },
-      { rootMargin: '200px' }
-    );
-
-    observer.observe(loadMoreRef.current);
-    return () => observer.disconnect();
-  }, [filteredClothes.length]);
 
   const visibleClothes = useMemo(() => {
     return filteredClothes.slice(0, visibleCount);
@@ -1147,10 +1125,10 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         })}
       </div>
 
-      {/* Bottom Progressive Infinite Scroll Sentinel & Counter */}
-      <div ref={loadMoreRef} className="py-3 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+      {/* Bottom Progressive Load Button & Counter */}
+      <div className="py-3 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
         <div className="text-xs text-slate-600 font-medium flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-indigo-600" />
           <span>
             عرض <span className="font-bold text-slate-900 font-mono">{visibleClothes.length}</span> من إجمالي <span className="font-bold text-slate-900 font-mono">{filteredClothes.length}</span> قطعة
           </span>
@@ -1160,14 +1138,14 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           <button
             type="button"
             onClick={() => setVisibleCount(prev => Math.min(prev + BATCH_SIZE, filteredClothes.length))}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-all shadow-2xs flex items-center gap-2 active:scale-95"
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 active:scale-95 cursor-pointer"
           >
-            <span>تحميل 20 قطعة إضافية (أو انزل لأسفل الصفحة)</span>
-            <ChevronLeft className="w-3.5 h-3.5" />
+            <span>عرض 5 قطع إضافية (+5)</span>
+            <ChevronLeft className="w-4 h-4" />
           </button>
         ) : (
-          <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-3 py-1 rounded-xl font-medium">
-            ✓ تم عرض كامل قائمة القطع بالمخزن
+          <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-3 py-1.5 rounded-xl font-medium">
+            ✓ تم عرض كامل قائمة القطع بالمخزن ({filteredClothes.length})
           </div>
         )}
       </div>

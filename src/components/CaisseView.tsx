@@ -32,7 +32,12 @@ import {
   Trash2,
   Lock,
   Unlock,
-  ShieldCheck
+  ShieldCheck,
+  Search,
+  Filter,
+  Layers,
+  ArrowUpDown,
+  Clock
 } from 'lucide-react';
 
 interface CaisseViewProps {
@@ -44,6 +49,11 @@ interface CaisseViewProps {
   caisseClosures: DailyCaisseClosure[];
   onSaveClosure: (closure: DailyCaisseClosure) => void;
   onDeleteClosure: (closureId: string) => void;
+  onDeleteSale?: (sale: Sale) => void;
+  onDeleteRental?: (rentalId: string) => void;
+  onDeleteExpense?: (expenseId: string) => void;
+  onDeleteStaffPayout?: (payoutId: string) => void;
+  onDeleteTailoringOrder?: (orderId: string) => void;
   hideFinances: boolean;
   onPrivacyToggle: () => void;
 }
@@ -57,6 +67,11 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
   caisseClosures,
   onSaveClosure,
   onDeleteClosure,
+  onDeleteSale,
+  onDeleteRental,
+  onDeleteExpense,
+  onDeleteStaffPayout,
+  onDeleteTailoringOrder,
   hideFinances,
   onPrivacyToggle
 }) => {
@@ -112,7 +127,13 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
   };
   const today = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState<string>(today);
-  const [viewTab, setViewTab] = useState<'today' | 'history'>('today');
+  const [viewTab, setViewTab] = useState<'today' | 'transactions' | 'history'>('today');
+
+  // Transactions tab search & filters
+  const [txSearch, setTxSearch] = useState('');
+  const [txTypeFilter, setTxTypeFilter] = useState<'all' | 'sale' | 'rental' | 'tailoring' | 'expense' | 'staffPayout'>('all');
+  const [txDirectionFilter, setTxDirectionFilter] = useState<'all' | 'inflow' | 'outflow'>('all');
+  const [txDateFilter, setTxDateFilter] = useState<string>('');
 
   // Filter history by month and year
   const [historyYear, setHistoryYear] = useState<string>(today.split('-')[0]);
@@ -386,6 +407,177 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
     return { totalTh, totalAc, totalDf };
   }, [filteredHistory]);
 
+  // ==========================================
+  // 4. CONSOLIDATED TRANSACTIONS & DELETION
+  // ==========================================
+  const allTransactions = useMemo(() => {
+    const list: Array<{
+      id: string;
+      type: 'sale' | 'rental' | 'tailoring' | 'expense' | 'staffPayout';
+      typeLabel: string;
+      date: string;
+      time?: string;
+      direction: 'inflow' | 'outflow';
+      title: string;
+      subtitle: string;
+      amount: number;
+      originalItem: any;
+    }> = [];
+
+    // Sales (inflow)
+    sales.forEach(s => {
+      const d = s.date || '';
+      const datePart = d.includes('T') ? d.split('T')[0] : (d.split(' ')[0] || '');
+      const timePart = d.includes('T') ? d.split('T')[1]?.substring(0, 5) : '';
+      const amount = s.paidAmount !== undefined ? s.paidAmount : s.totalAmount || 0;
+      list.push({
+        id: s.id,
+        type: 'sale',
+        typeLabel: 'بيع',
+        date: datePart,
+        time: timePart,
+        direction: 'inflow',
+        title: s.customerName || 'زبون عام',
+        subtitle: `${s.items.length} قطع (${s.items.map(i => i.name).join('، ')})`,
+        amount,
+        originalItem: s
+      });
+    });
+
+    // Rentals (inflow)
+    rentals.forEach(r => {
+      const d = r.createdAt || r.startDate || '';
+      const datePart = d.includes('T') ? d.split('T')[0] : (d.split(' ')[0] || '');
+      const timePart = d.includes('T') ? d.split('T')[1]?.substring(0, 5) : '';
+      const amount = r.paidAmount || 0;
+      list.push({
+        id: r.id,
+        type: 'rental',
+        typeLabel: 'كراء',
+        date: datePart,
+        time: timePart,
+        direction: 'inflow',
+        title: r.customerName || 'زبون كراء',
+        subtitle: `${r.itemName} (عربون/دفع: ${(r.paidAmount || 0).toLocaleString()} دج)`,
+        amount,
+        originalItem: r
+      });
+    });
+
+    // Tailoring (inflow)
+    maintenanceOrders.forEach(o => {
+      const d = o.receivedDate || o.createdAt || '';
+      const datePart = d.includes('T') ? d.split('T')[0] : (d.split(' ')[0] || '');
+      const timePart = d.includes('T') ? d.split('T')[1]?.substring(0, 5) : '';
+      const amount = o.paidAmount || 0;
+      list.push({
+        id: o.id,
+        type: 'tailoring',
+        typeLabel: 'خياطة وتعديل',
+        date: datePart,
+        time: timePart,
+        direction: 'inflow',
+        title: o.customerName || 'زبون خياطة',
+        subtitle: `${o.clothName} - ${o.description || 'طلب تعديل/خياطة'}`,
+        amount,
+        originalItem: o
+      });
+    });
+
+    // Expenses (outflow)
+    expenses.forEach(e => {
+      const d = e.date || '';
+      const datePart = d.includes('T') ? d.split('T')[0] : (d.split(' ')[0] || '');
+      const timePart = d.includes('T') ? d.split('T')[1]?.substring(0, 5) : '';
+      const amount = Number(e.amount || 0);
+      list.push({
+        id: e.id,
+        type: 'expense',
+        typeLabel: 'مصروف',
+        date: datePart,
+        time: timePart,
+        direction: 'outflow',
+        title: e.desc || e.category,
+        subtitle: `تصنيف: ${e.category} ${e.supplierName ? `• مورد: ${e.supplierName}` : ''}`,
+        amount,
+        originalItem: e
+      });
+    });
+
+    // Staff Payouts (outflow)
+    staffPayouts.forEach(p => {
+      const d = p.date || '';
+      const datePart = d.includes('T') ? d.split('T')[0] : (d.split(' ')[0] || '');
+      const timePart = d.includes('T') ? d.split('T')[1]?.substring(0, 5) : '';
+      const amount = Number(p.amount || 0);
+      list.push({
+        id: p.id,
+        type: 'staffPayout',
+        typeLabel: 'أجور/سلفة',
+        date: datePart,
+        time: timePart,
+        direction: 'outflow',
+        title: p.name,
+        subtitle: `${p.type === 'advance' ? 'سلفة على الراتب' : 'صرف راتب شهري'} ${p.notes ? `• ${p.notes}` : ''}`,
+        amount,
+        originalItem: p
+      });
+    });
+
+    // Sort descending by date & time
+    return list.sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')));
+  }, [sales, rentals, maintenanceOrders, expenses, staffPayouts]);
+
+  // Filtered transactions for Transactions Tab
+  const filteredTransactions = useMemo(() => {
+    return allTransactions.filter(tx => {
+      if (txTypeFilter !== 'all' && tx.type !== txTypeFilter) return false;
+      if (txDirectionFilter !== 'all' && tx.direction !== txDirectionFilter) return false;
+      if (txDateFilter && tx.date !== txDateFilter) return false;
+      if (txSearch.trim()) {
+        const q = txSearch.toLowerCase();
+        const matchTitle = tx.title.toLowerCase().includes(q);
+        const matchSub = tx.subtitle.toLowerCase().includes(q);
+        const matchType = tx.typeLabel.toLowerCase().includes(q);
+        const matchAmount = String(tx.amount).includes(q);
+        const matchDate = tx.date.includes(q);
+        if (!matchTitle && !matchSub && !matchType && !matchAmount && !matchDate) return false;
+      }
+      return true;
+    });
+  }, [allTransactions, txTypeFilter, txDirectionFilter, txDateFilter, txSearch]);
+
+  const transactionsTotals = useMemo(() => {
+    const totalInflow = filteredTransactions.filter(t => t.direction === 'inflow').reduce((s, t) => s + t.amount, 0);
+    const totalOutflow = filteredTransactions.filter(t => t.direction === 'outflow').reduce((s, t) => s + t.amount, 0);
+    const net = totalInflow - totalOutflow;
+    return { totalInflow, totalOutflow, net };
+  }, [filteredTransactions]);
+
+  const handleDeleteTransaction = (tx: { id: string; type: string; title: string; amount: number; originalItem: any }) => {
+    if (tx.type === 'sale') {
+      if (window.confirm(`هل أنت متأكد من إلغاء وحذف عملية البيع للزبون (${tx.title}) بمبلغ ${tx.amount.toLocaleString()} دج؟ سيتم استرجاع السلع للمخزن.`)) {
+        onDeleteSale?.(tx.originalItem);
+      }
+    } else if (tx.type === 'rental') {
+      if (window.confirm(`هل أنت متأكد من حذف عملية الكراء (${tx.title})؟ سيتم استرجاع حالة الفستان للمخزن.`)) {
+        onDeleteRental?.(tx.id);
+      }
+    } else if (tx.type === 'tailoring') {
+      if (window.confirm(`هل أنت متأكد من حذف طلب الخياطة والتعديل (${tx.title})؟`)) {
+        onDeleteTailoringOrder?.(tx.id);
+      }
+    } else if (tx.type === 'expense') {
+      if (window.confirm(`هل أنت متأكد من حذف سند المصروف (${tx.title}) بمبلغ ${tx.amount.toLocaleString()} دج؟`)) {
+        onDeleteExpense?.(tx.id);
+      }
+    } else if (tx.type === 'staffPayout') {
+      if (window.confirm(`هل أنت متأكد من حذف سجل الدفعة/الراتب (${tx.title}) بمبلغ ${tx.amount.toLocaleString()} دج؟`)) {
+        onDeleteStaffPayout?.(tx.id);
+      }
+    }
+  };
+
   if (!isUnlocked) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-4" dir="rtl">
@@ -525,6 +717,14 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
               }`}
             >
               صندوق اليوم ({selectedDate === today ? 'اليوم' : selectedDate})
+            </button>
+            <button
+              onClick={() => setViewTab('transactions')}
+              className={`px-3 py-1.5 rounded-lg transition-colors ${
+                viewTab === 'transactions' ? 'bg-white text-slate-900 font-bold shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              سجل العمليات والمعاملات ({allTransactions.length})
             </button>
             <button
               onClick={() => setViewTab('history')}
@@ -971,19 +1171,35 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 {/* List of Today's Sales */}
                 {dateSales.length > 0 && (
                   <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
-                    <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px]">
-                      قائمة مبيعات اليوم النقدية:
+                    <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px] flex justify-between items-center">
+                      <span>قائمة مبيعات اليوم النقدية ({dateSales.length}):</span>
                     </div>
-                    <div className="divide-y divide-slate-100 max-h-36 overflow-y-auto">
+                    <div className="divide-y divide-slate-100 max-h-40 overflow-y-auto">
                       {dateSales.map(s => (
-                        <div key={s.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors">
-                          <div>
-                            <span className="font-semibold text-slate-800">{s.customerName || 'زبون عام'}</span>
-                            <span className="text-[10px] text-slate-400 mr-2">({s.items.length} قطع)</span>
+                        <div key={s.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors group">
+                          <div className="flex-1 min-w-0 pr-1">
+                            <span className="font-semibold text-slate-800 block truncate">{s.customerName || 'زبون عام'}</span>
+                            <span className="text-[10px] text-slate-400">({s.items.length} قطع) {s.items.map(i => i.name).join('، ')}</span>
                           </div>
-                          <span className="font-mono font-bold text-slate-900">
-                            +{(s.paidAmount !== undefined ? s.paidAmount : s.totalAmount).toLocaleString()} دج
-                          </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono font-bold text-slate-900">
+                              +{(s.paidAmount !== undefined ? s.paidAmount : s.totalAmount).toLocaleString()} دج
+                            </span>
+                            {onDeleteSale && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(`هل أنت متأكد من إلغاء وحذف عملية البيع هذه للزبون (${s.customerName || 'عام'}) بمبلغ ${(s.paidAmount !== undefined ? s.paidAmount : s.totalAmount).toLocaleString()} دج؟ سيتم استرجاع السلع للمخزن.`)) {
+                                    onDeleteSale(s);
+                                  }
+                                }}
+                                title="حذف عملية البيع واسترجاع السلع"
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-80 group-hover:opacity-100"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -993,19 +1209,73 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 {/* List of Today's Rentals */}
                 {dateRentals.length > 0 && (
                   <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
-                    <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px]">
-                      قائمة كراء اليوم النقدية:
+                    <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px] flex justify-between items-center">
+                      <span>قائمة كراء اليوم النقدية ({dateRentals.length}):</span>
                     </div>
-                    <div className="divide-y divide-slate-100 max-h-36 overflow-y-auto">
+                    <div className="divide-y divide-slate-100 max-h-40 overflow-y-auto">
                       {dateRentals.map(r => (
-                        <div key={r.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors">
-                          <div>
-                            <span className="font-semibold text-slate-800">{r.customerName}</span>
-                            <span className="text-[10px] text-slate-400 mr-2">({r.itemName})</span>
+                        <div key={r.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors group">
+                          <div className="flex-1 min-w-0 pr-1">
+                            <span className="font-semibold text-slate-800 block truncate">{r.customerName}</span>
+                            <span className="text-[10px] text-slate-400">({r.itemName})</span>
                           </div>
-                          <span className="font-mono font-bold text-slate-900">
-                            +{(r.paidAmount || 0).toLocaleString()} دج
-                          </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono font-bold text-slate-900">
+                              +{(r.paidAmount || 0).toLocaleString()} دج
+                            </span>
+                            {onDeleteRental && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(`هل أنت متأكد من حذف عملية كراء (${r.customerName} - ${r.itemName})؟ سيتم استرجاع حالة الفستان للمخزن.`)) {
+                                    onDeleteRental(r.id);
+                                  }
+                                }}
+                                title="حذف عملية الكراء"
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-80 group-hover:opacity-100"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* List of Today's Tailoring */}
+                {dateTailoring.length > 0 && (
+                  <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
+                    <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px] flex justify-between items-center">
+                      <span>طلبات الخياطة والتعديل لليوم ({dateTailoring.length}):</span>
+                    </div>
+                    <div className="divide-y divide-slate-100 max-h-40 overflow-y-auto">
+                      {dateTailoring.map(o => (
+                        <div key={o.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors group">
+                          <div className="flex-1 min-w-0 pr-1">
+                            <span className="font-semibold text-slate-800 block truncate">{o.customerName}</span>
+                            <span className="text-[10px] text-slate-400">({o.clothName || 'تعديل'}) {o.description}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono font-bold text-slate-900">
+                              +{(o.paidAmount || 0).toLocaleString()} دج
+                            </span>
+                            {onDeleteTailoringOrder && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(`هل أنت متأكد من حذف طلب الخياطة والتعديل (${o.customerName})؟`)) {
+                                    onDeleteTailoringOrder(o.id);
+                                  }
+                                }}
+                                title="حذف طلب الخياطة"
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-80 group-hover:opacity-100"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1044,19 +1314,35 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 {/* List of Today's Expenses */}
                 {dateExpenses.length > 0 && (
                   <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
-                    <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px]">
-                      تفاصيل مصاريف اليوم:
+                    <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px] flex justify-between items-center">
+                      <span>تفاصيل مصاريف اليوم ({dateExpenses.length}):</span>
                     </div>
-                    <div className="divide-y divide-slate-100 max-h-36 overflow-y-auto">
+                    <div className="divide-y divide-slate-100 max-h-40 overflow-y-auto">
                       {dateExpenses.map(e => (
-                        <div key={e.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors">
-                          <div>
-                            <span className="font-semibold text-slate-800">{e.desc || e.category}</span>
-                            <span className="text-[10px] text-slate-400 mr-2">[{e.category}]</span>
+                        <div key={e.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors group">
+                          <div className="flex-1 min-w-0 pr-1">
+                            <span className="font-semibold text-slate-800 block truncate">{e.desc || e.category}</span>
+                            <span className="text-[10px] text-slate-400">[{e.category}] {e.supplierName ? `• مورد: ${e.supplierName}` : ''}</span>
                           </div>
-                          <span className="font-mono font-bold text-rose-600">
-                            -{Number(e.amount).toLocaleString()} دج
-                          </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono font-bold text-rose-600">
+                              -{Number(e.amount).toLocaleString()} دج
+                            </span>
+                            {onDeleteExpense && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(`هل أنت متأكد من حذف سند المصروف (${e.desc || e.category}) بمبلغ ${Number(e.amount).toLocaleString()} دج؟`)) {
+                                    onDeleteExpense(e.id);
+                                  }
+                                }}
+                                title="حذف المصروف"
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-80 group-hover:opacity-100"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1066,19 +1352,35 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 {/* List of Today's Staff Payouts */}
                 {dateStaffPayouts.length > 0 && (
                   <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
-                    <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px]">
-                      دفعات العمال المسددة اليوم:
+                    <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px] flex justify-between items-center">
+                      <span>دفعات العمال المسددة اليوم ({dateStaffPayouts.length}):</span>
                     </div>
-                    <div className="divide-y divide-slate-100 max-h-36 overflow-y-auto">
+                    <div className="divide-y divide-slate-100 max-h-40 overflow-y-auto">
                       {dateStaffPayouts.map(p => (
-                        <div key={p.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors">
-                          <div>
-                            <span className="font-semibold text-slate-800">{p.name}</span>
-                            <span className="text-[10px] text-slate-400 mr-2">({p.type})</span>
+                        <div key={p.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors group">
+                          <div className="flex-1 min-w-0 pr-1">
+                            <span className="font-semibold text-slate-800 block truncate">{p.name}</span>
+                            <span className="text-[10px] text-slate-400">({p.type === 'advance' ? 'سلفة' : 'راتب'}) {p.notes}</span>
                           </div>
-                          <span className="font-mono font-bold text-rose-600">
-                            -{Number(p.amount).toLocaleString()} دج
-                          </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono font-bold text-rose-600">
+                              -{Number(p.amount).toLocaleString()} دج
+                            </span>
+                            {onDeleteStaffPayout && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(`هل أنت متأكد من حذف سجل الدفعة/الراتب (${p.name}) بمبلغ ${Number(p.amount).toLocaleString()} دج؟`)) {
+                                    onDeleteStaffPayout(p.id);
+                                  }
+                                }}
+                                title="حذف الدفعة"
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-80 group-hover:opacity-100"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1086,6 +1388,177 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      ) : viewTab === 'transactions' ? (
+        /* ==================================================== */
+        /* VIEW TAB 2 = LIVE ALL TRANSACTIONS & DELETIONS       */
+        /* ==================================================== */
+        <div className="space-y-4">
+          {/* Summary Pills */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+              <div>
+                <div className="text-xs font-semibold text-slate-500">إجمالي المقبوضات المفلترة:</div>
+                <div className="text-base sm:text-lg font-bold font-mono text-emerald-600 mt-1">
+                  +{transactionsTotals.totalInflow.toLocaleString()} دج
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <ArrowDownLeft className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+              <div>
+                <div className="text-xs font-semibold text-slate-500">إجمالي المصاريف المفلترة:</div>
+                <div className="text-base sm:text-lg font-bold font-mono text-rose-600 mt-1">
+                  -{transactionsTotals.totalOutflow.toLocaleString()} دج
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                <ArrowUpRight className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+              <div>
+                <div className="text-xs font-semibold text-slate-500">الصافي النقدي:</div>
+                <div className={`text-base sm:text-lg font-bold font-mono mt-1 ${transactionsTotals.net >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
+                  {transactionsTotals.net.toLocaleString()} دج
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs">
+                {filteredTransactions.length} عملية
+              </div>
+            </div>
+          </div>
+
+          {/* Search & Filter Toolbar */}
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
+            <div className="flex-1 min-w-[240px] relative">
+              <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={txSearch}
+                onChange={(e) => setTxSearch(e.target.value)}
+                placeholder="بحث في المعاملات بالاسم، الوصف، أو المبلغ..."
+                className="w-full pr-9 pl-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:border-slate-400 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={txTypeFilter}
+                onChange={(e) => setTxTypeFilter(e.target.value as any)}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:border-slate-400 focus:outline-none"
+              >
+                <option value="all">كل أنواع المعاملات</option>
+                <option value="sale">مبيعات (Ventes)</option>
+                <option value="rental">كراء (Locations)</option>
+                <option value="tailoring">خياطة وتفصيل (Couture)</option>
+                <option value="expense">مصاريف (Dépenses)</option>
+                <option value="staffPayout">أجور وسلفيات (Salaires)</option>
+              </select>
+
+              <select
+                value={txDirectionFilter}
+                onChange={(e) => setTxDirectionFilter(e.target.value as any)}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:border-slate-400 focus:outline-none"
+              >
+                <option value="all">كل الاتجاهات</option>
+                <option value="inflow">مداخيل ومقبوضات (+)</option>
+                <option value="outflow">مصاريف ومدفوعات (-)</option>
+              </select>
+
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={txDateFilter}
+                  onChange={(e) => setTxDateFilter(e.target.value)}
+                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 font-mono focus:bg-white focus:border-slate-400 focus:outline-none"
+                />
+                {txDateFilter && (
+                  <button
+                    type="button"
+                    onClick={() => setTxDateFilter('')}
+                    className="p-2 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-xl text-xs"
+                    title="إلغاء تصفية التاريخ"
+                  >
+                    إلغاء
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Transactions Table */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+            {filteredTransactions.length === 0 ? (
+              <div className="p-12 text-center text-slate-400">
+                <Inbox className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                <p className="text-xs font-medium text-slate-500">لا توجد عمليات أو معاملات تطابق البحث والتصفية المحددة</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-right text-xs">
+                  <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                    <tr>
+                      <th className="p-3">التاريخ والوقت</th>
+                      <th className="p-3">نوع العملية</th>
+                      <th className="p-3">الجهة / الوصف</th>
+                      <th className="p-3">التفاصيل</th>
+                      <th className="p-3">المبلغ النقدي</th>
+                      <th className="p-3 text-center">حذف العملية</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredTransactions.map(tx => {
+                      const isInflow = tx.direction === 'inflow';
+                      return (
+                        <tr key={`${tx.type}_${tx.id}`} className="hover:bg-slate-50/80 transition-colors group">
+                          <td className="p-3 font-mono text-slate-700 whitespace-nowrap">
+                            <div className="font-semibold">{tx.date}</div>
+                            {tx.time && <div className="text-[10px] text-slate-400">{tx.time}</div>}
+                          </td>
+                          <td className="p-3 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold border ${
+                              tx.type === 'sale' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                              tx.type === 'rental' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                              tx.type === 'tailoring' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                              tx.type === 'expense' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                              'bg-slate-100 text-slate-700 border-slate-200'
+                            }`}>
+                              {tx.typeLabel}
+                            </span>
+                          </td>
+                          <td className="p-3 font-semibold text-slate-900">
+                            {tx.title}
+                          </td>
+                          <td className="p-3 text-slate-500 text-[11px] max-w-sm truncate">
+                            {tx.subtitle}
+                          </td>
+                          <td className="p-3 font-mono font-bold whitespace-nowrap">
+                            <span className={isInflow ? 'text-emerald-600' : 'text-rose-600'}>
+                              {isInflow ? '+' : '-'}{tx.amount.toLocaleString()} دج
+                            </span>
+                          </td>
+                          <td className="p-3 text-center whitespace-nowrap">
+                            <button
+                              onClick={() => handleDeleteTransaction(tx)}
+                              title="حذف هذه المعاملة"
+                              className="p-1.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-500 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       ) : (
