@@ -522,18 +522,38 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
     });
   }, [clothes, filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search]);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 24;
+  const [visibleCount, setVisibleCount] = useState(20);
+  const BATCH_SIZE = 20;
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setCurrentPage(1);
+    setVisibleCount(20);
   }, [filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredClothes.length / PAGE_SIZE));
-  const paginatedClothes = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredClothes.slice(start, start + PAGE_SIZE);
-  }, [filteredClothes, currentPage]);
+  // Infinite scroll observer: loads next 20 items when scrolling near bottom
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount(prev => {
+            if (prev < filteredClothes.length) {
+              return Math.min(prev + BATCH_SIZE, filteredClothes.length);
+            }
+            return prev;
+          });
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [filteredClothes.length]);
+
+  const visibleClothes = useMemo(() => {
+    return filteredClothes.slice(0, visibleCount);
+  }, [filteredClothes, visibleCount]);
 
   return (
     <div className="space-y-4 sm:space-y-5 p-3 sm:p-6" dir="rtl">
@@ -888,7 +908,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {paginatedClothes.map(item => {
+        {visibleClothes.map(item => {
           const s1 = getItemStock1(item);
           const s2 = getItemStock2(item);
           const totalStock = s1 + s2;
@@ -1127,42 +1147,30 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         })}
       </div>
 
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="text-xs text-slate-500 font-medium">
-            عرض {((currentPage - 1) * PAGE_SIZE) + 1} - {Math.min(currentPage * PAGE_SIZE, filteredClothes.length)} من إجمالي {filteredClothes.length} قطعة
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all"
-            >
-              <ChevronRight className="w-4 h-4" />
-              <span>السابق</span>
-            </button>
-            
-            <div className="flex items-center gap-1 text-xs font-bold text-slate-800 px-2">
-              <span>صفحة</span>
-              <span className="font-mono bg-slate-100 px-2 py-0.5 rounded-lg">{currentPage}</span>
-              <span>من</span>
-              <span className="font-mono">{totalPages}</span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all"
-            >
-              <span>التالي</span>
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-          </div>
+      {/* Bottom Progressive Infinite Scroll Sentinel & Counter */}
+      <div ref={loadMoreRef} className="py-3 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="text-xs text-slate-600 font-medium flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+          <span>
+            عرض <span className="font-bold text-slate-900 font-mono">{visibleClothes.length}</span> من إجمالي <span className="font-bold text-slate-900 font-mono">{filteredClothes.length}</span> قطعة
+          </span>
         </div>
-      )}
+
+        {visibleCount < filteredClothes.length ? (
+          <button
+            type="button"
+            onClick={() => setVisibleCount(prev => Math.min(prev + BATCH_SIZE, filteredClothes.length))}
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-all shadow-2xs flex items-center gap-2 active:scale-95"
+          >
+            <span>تحميل 20 قطعة إضافية (أو انزل لأسفل الصفحة)</span>
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </button>
+        ) : (
+          <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-3 py-1 rounded-xl font-medium">
+            ✓ تم عرض كامل قائمة القطع بالمخزن
+          </div>
+        )}
+      </div>
 
       {/* Image Preview Modal */}
       {previewImage && (

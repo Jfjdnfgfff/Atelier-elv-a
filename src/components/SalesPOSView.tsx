@@ -419,6 +419,41 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
     });
   }, [sellableClothes, selectedCategory, search]);
 
+  // Progressive infinite scroll for products (20 items at a time)
+  const [visibleProductCount, setVisibleProductCount] = useState(20);
+  const posProductsLoadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVisibleProductCount(20);
+  }, [selectedCategory, search]);
+
+  const visibleClothes = useMemo(() => {
+    return filteredClothes.slice(0, visibleProductCount);
+  }, [filteredClothes, visibleProductCount]);
+
+  // Progressive infinite scroll for sales history (20 items at a time)
+  const [visibleSalesCount, setVisibleSalesCount] = useState(20);
+  const salesHistoryLoadMoreRef = useRef<HTMLDivElement>(null);
+
+  const visibleSales = useMemo(() => {
+    return sales.slice(0, visibleSalesCount);
+  }, [sales, visibleSalesCount]);
+
+  // Infinite scroll observer for sales history
+  useEffect(() => {
+    if (!salesHistoryLoadMoreRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleSalesCount(prev => (prev < sales.length ? Math.min(prev + 20, sales.length) : prev));
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(salesHistoryLoadMoreRef.current);
+    return () => observer.disconnect();
+  }, [sales.length]);
+
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6" dir="rtl">
       {/* Top Split Layout: POS Selector and Cart */}
@@ -564,8 +599,16 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
           </div>
 
           {/* Grid of Sellable Products with Photo Gallery */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[560px] overflow-y-auto pr-1 hide-scrollbar">
-            {filteredClothes.map(item => {
+          <div 
+            onScroll={(e) => {
+              const target = e.currentTarget;
+              if (target.scrollTop + target.clientHeight >= target.scrollHeight - 50) {
+                setVisibleProductCount(prev => (prev < filteredClothes.length ? Math.min(prev + 20, filteredClothes.length) : prev));
+              }
+            }}
+            className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[560px] overflow-y-auto pr-1 hide-scrollbar"
+          >
+            {visibleClothes.map(item => {
               const s1 = getItemStock1(item);
               const s2 = getItemStock2(item);
               const totalStock = s1 + s2;
@@ -710,6 +753,18 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                 </div>
               );
             })}
+            {/* Bottom load more indicator inside product grid */}
+            {visibleProductCount < filteredClothes.length && (
+              <div className="col-span-2 sm:col-span-3 py-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setVisibleProductCount(prev => Math.min(prev + 20, filteredClothes.length))}
+                  className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-semibold transition-all border border-slate-200"
+                >
+                  تحميل 20 سلعة أخرى ({visibleClothes.length} من {filteredClothes.length})
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1163,12 +1218,18 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
 
       {/* Recent Sales History */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs space-y-4">
-        <h3 className="font-bold text-slate-900 text-base">سجل المبيعات السابقة</h3>
+        <div className="flex justify-between items-center">
+          <h3 className="font-bold text-slate-900 text-base">سجل المبيعات السابقة</h3>
+          <span className="text-xs text-slate-500 font-medium">
+            عرض {visibleSales.length} من {sales.length} عملية
+          </span>
+        </div>
+
         {sales.length === 0 ? (
           <p className="text-xs text-slate-400 text-center py-6">لم يتم تسجيل أي مبيعات بعد.</p>
         ) : (
           <div className="divide-y divide-slate-100">
-            {sales.map(sale => {
+            {visibleSales.map(sale => {
               const saleDateObj = new Date(sale.date);
               const formattedDate = !isNaN(saleDateObj.getTime())
                 ? saleDateObj.toLocaleDateString('ar-DZ', { year: 'numeric', month: 'numeric', day: 'numeric' })
@@ -1218,6 +1279,23 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                 </div>
               );
             })}
+
+            {/* Bottom Progressive Scroll Sentinel for Sales History */}
+            <div ref={salesHistoryLoadMoreRef} className="pt-3 flex justify-between items-center text-xs">
+              {visibleSalesCount < sales.length ? (
+                <button
+                  type="button"
+                  onClick={() => setVisibleSalesCount(prev => Math.min(prev + 20, sales.length))}
+                  className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-semibold transition-all border border-slate-200 text-center"
+                >
+                  تحميل 20 عملية بيع أخرى (عرض {visibleSales.length} من {sales.length})
+                </button>
+              ) : (
+                <div className="w-full text-center text-slate-400 py-1">
+                  ✓ تم عرض كامل سجل المبيعات
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

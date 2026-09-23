@@ -46,6 +46,7 @@ import {
   saveItemToFirebase, 
   updateItemInFirebase, 
   deleteItemFromFirebase, 
+  fetchCollectionOnce,
   syncCollectionToCloud, 
   SubscriptionManager, 
   areArraysEqual,
@@ -165,6 +166,45 @@ export default function App() {
         setActivityLogs(loadFromStorage<ActivityLog[]>(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS));
         break;
     }
+  }, []);
+
+  // Fetch static/lookup data once on startup and cache in browser storage (localStorage)
+  useEffect(() => {
+    const fetchStaticData = async () => {
+      try {
+        const [remoteSuppliers, remoteSeamstresses, remoteMaterials, remoteStaff] = await Promise.all([
+          fetchCollectionOnce<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS),
+          fetchCollectionOnce<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES),
+          fetchCollectionOnce<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS),
+          fetchCollectionOnce<StaffMember>(FIREBASE_COLLECTIONS.STAFF_MEMBERS)
+        ]);
+
+        if (remoteSuppliers && remoteSuppliers.length > 0) {
+          setSuppliers(remoteSuppliers);
+          saveToStorage(STORAGE_KEYS.SUPPLIERS, remoteSuppliers);
+          loadedCollectionsRef.current.add(STORAGE_KEYS.SUPPLIERS);
+        }
+        if (remoteSeamstresses && remoteSeamstresses.length > 0) {
+          setSeamstresses(remoteSeamstresses);
+          saveToStorage(STORAGE_KEYS.SEAMSTRESSES, remoteSeamstresses);
+          loadedCollectionsRef.current.add(STORAGE_KEYS.SEAMSTRESSES);
+        }
+        if (remoteMaterials && remoteMaterials.length > 0) {
+          setRawMaterials(remoteMaterials);
+          saveToStorage(STORAGE_KEYS.RAW_MATERIALS, remoteMaterials);
+          loadedCollectionsRef.current.add(STORAGE_KEYS.RAW_MATERIALS);
+        }
+        if (remoteStaff && remoteStaff.length > 0) {
+          setStaffMembers(remoteStaff);
+          saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, remoteStaff);
+          loadedCollectionsRef.current.add(STORAGE_KEYS.STAFF_MEMBERS);
+        }
+      } catch (err) {
+        console.warn('[Startup] Static collections background sync failed:', err);
+      }
+    };
+
+    fetchStaticData();
   }, []);
 
   // Firebase Realtime Connection & Sync State

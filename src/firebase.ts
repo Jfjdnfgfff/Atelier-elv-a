@@ -10,6 +10,7 @@ import {
   off,
   query,
   limitToLast,
+  get,
   Query
 } from 'firebase/database';
 
@@ -199,6 +200,39 @@ export async function deleteItemFromFirebase(collectionKey: string, itemId: stri
     await remove(itemRef);
   } catch (error) {
     console.warn(`[Firebase RTDB] Failed to delete targeted item ${collectionKey}/${itemId}:`, error);
+  }
+}
+
+/**
+ * Single-Read Fetch:
+ * Fetches collection once on demand (e.g. startup for static/lookup tables)
+ * without maintaining an ongoing persistent subscription.
+ */
+export async function fetchCollectionOnce<T extends { id?: string }>(collectionKey: string): Promise<T[]> {
+  try {
+    const snapshot = await get(ref(rtdb, collectionKey));
+    let items: T[] = [];
+    if (snapshot.exists()) {
+      const val = snapshot.val();
+      if (Array.isArray(val)) {
+        items = val.filter(Boolean);
+      } else if (typeof val === 'object' && val !== null) {
+        items = Object.keys(val).map(k => {
+          const item = val[k];
+          if (item && typeof item === 'object') {
+            if (!item.id) {
+              item.id = k;
+            }
+            return item;
+          }
+          return null;
+        }).filter(Boolean);
+      }
+    }
+    return items;
+  } catch (error) {
+    console.warn(`[Firebase RTDB] Failed to fetch static collection ${collectionKey}:`, error);
+    return [];
   }
 }
 
