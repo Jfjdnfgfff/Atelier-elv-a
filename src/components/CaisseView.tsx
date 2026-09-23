@@ -156,6 +156,12 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
   // Selected closure for receipt printing
   const [selectedClosureForReceipt, setSelectedClosureForReceipt] = useState<DailyCaisseClosure | null>(null);
 
+  // Clear/Reset Caisse Modal State
+  const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
+  const [clearPinInput, setClearPinInput] = useState('');
+  const [clearPinError, setClearPinError] = useState(false);
+  const [clearOption, setClearOption] = useState<'reset_closure' | 'delete_today_txs'>('reset_closure');
+
   // Check if a closure is already saved for selected date
   const existingClosure = useMemo(() => {
     return caisseClosures.find(c => c.date === selectedDate);
@@ -578,6 +584,44 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
     }
   };
 
+  const handleExecuteClearCaisse = () => {
+    if (!checkSecurityPin(clearPinInput)) {
+      setClearPinError(true);
+      return;
+    }
+
+    // 1. Delete existing closure if any
+    if (existingClosure) {
+      onDeleteClosure(existingClosure.id);
+    }
+
+    // 2. Delete today's transactions if requested
+    if (clearOption === 'delete_today_txs') {
+      const todayTxs = allTransactions.filter(tx => tx.date === selectedDate);
+      todayTxs.forEach(tx => {
+        if (tx.type === 'sale') onDeleteSale?.(tx.originalItem);
+        else if (tx.type === 'rental') onDeleteRental?.(tx.id);
+        else if (tx.type === 'expense') onDeleteExpense?.(tx.id);
+        else if (tx.type === 'staffPayout') onDeleteStaffPayout?.(tx.id);
+        else if (tx.type === 'tailoring') onDeleteTailoringOrder?.(tx.id);
+      });
+    }
+
+    // Reset local inputs
+    setOpeningBalance(0);
+    setActualInput('0');
+    setNotes('');
+    setCounts({
+      '2000': 0, '1000': 0, '500': 0, '200': 0,
+      '100': 0, '50': 0, '20': 0, '10': 0, 'coins': 0
+    });
+
+    setShowClearConfirmModal(false);
+    setClearPinInput('');
+    setClearPinError(false);
+    alert('تم تفريغ وتصفير الصندوق بنجاح، ويبدو الصندوق الآن فارغاً (0 دج)');
+  };
+
   if (!isUnlocked) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-4" dir="rtl">
@@ -735,6 +779,19 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
               سجل الإقفالات ({caisseClosures.length})
             </button>
           </div>
+
+          <button
+            onClick={() => {
+              setClearPinInput('');
+              setClearPinError(false);
+              setShowClearConfirmModal(true);
+            }}
+            title="تفريغ وتصفير بيانات الصندوق (0 دج)"
+            className="h-9 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-200 active:scale-95 cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+            <span>تفريغ وتصفير الصندوق</span>
+          </button>
 
           <button
             onClick={onPrivacyToggle}
@@ -1738,6 +1795,125 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
             closure={selectedClosureForReceipt} 
             onClose={() => setSelectedClosureForReceipt(null)} 
           />
+        </Modal>
+      )}
+
+      {/* Clear/Reset Caisse Modal */}
+      {showClearConfirmModal && (
+        <Modal
+          title="تفريغ وتصفير الصندوق"
+          onClose={() => {
+            setShowClearConfirmModal(false);
+            setClearPinError(false);
+            setClearPinInput('');
+          }}
+        >
+          <div className="space-y-4" dir="rtl">
+            <div className="bg-rose-50 p-3.5 rounded-2xl border border-rose-200 text-rose-900 text-xs leading-relaxed font-bold flex items-start gap-2.5">
+              <Trash2 className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-black text-rose-950 text-sm">تنبيه أمان هـام!</p>
+                <p className="font-normal text-rose-800 text-xs mt-0.5">
+                  أنت على وشك تفريغ وتصفير بيانات الصندوق لهذا اليوم ({selectedDate}). يرجى تحديد الخيار المطلوب وإدخال كلمة المرور للترخيص.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-800">اختر طريقة التفريغ:</label>
+              
+              <button
+                type="button"
+                onClick={() => setClearOption('reset_closure')}
+                className={`w-full p-3 rounded-2xl border text-right transition-all flex items-start gap-3 ${
+                  clearOption === 'reset_closure'
+                    ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-500/20'
+                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="clear_opt"
+                  checked={clearOption === 'reset_closure'}
+                  onChange={() => setClearOption('reset_closure')}
+                  className="mt-1"
+                />
+                <div>
+                  <div className="font-bold text-xs text-slate-900">تصفير الإقفال والمحسوب اليومي فقط (0 دج)</div>
+                  <div className="text-[11px] text-slate-500">إلغاء قيد الإقفال المحفوظ وتفريغ المحسوب الفعلي بالدرج مع الإبقاء على سجلات المبيعات والمصاريف.</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setClearOption('delete_today_txs')}
+                className={`w-full p-3 rounded-2xl border text-right transition-all flex items-start gap-3 ${
+                  clearOption === 'delete_today_txs'
+                    ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-500/20'
+                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="clear_opt"
+                  checked={clearOption === 'delete_today_txs'}
+                  onChange={() => setClearOption('delete_today_txs')}
+                  className="mt-1"
+                />
+                <div>
+                  <div className="font-bold text-xs text-rose-900">حذف كافة معاملات وتفريغ الصندوق بالكامل</div>
+                  <div className="text-[11px] text-rose-700">حذف عمليات البيع، الكراء، الخياطة، والمصاريف الخاصة بهذا اليوم ليبدو الصندوق فارغاً تماماً (0 دج).</div>
+                </div>
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleExecuteClearCaisse();
+              }}
+              className="space-y-3 pt-2"
+            >
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">رمز المرور / كلمة السر للتأكيد:</label>
+                <input
+                  type="password"
+                  value={clearPinInput}
+                  onChange={(e) => {
+                    setClearPinInput(e.target.value);
+                    setClearPinError(false);
+                  }}
+                  placeholder="••••"
+                  maxLength={8}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-center text-lg font-mono font-bold focus:border-rose-500 focus:bg-white focus:outline-none"
+                />
+                {clearPinError && (
+                  <p className="text-xs text-rose-600 font-bold mt-1">رمز المرور غير صحيح!</p>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowClearConfirmModal(false);
+                    setClearPinError(false);
+                    setClearPinInput('');
+                  }}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>تأكيد تفريغ الصندوق</span>
+                </button>
+              </div>
+            </form>
+          </div>
         </Modal>
       )}
     </div>

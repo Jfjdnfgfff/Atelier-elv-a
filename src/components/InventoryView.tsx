@@ -523,15 +523,14 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   }, [clothes, filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search]);
 
   const [visibleCount, setVisibleCount] = useState(5);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const BATCH_SIZE = 5;
 
   useEffect(() => {
-    setIsInitialLoading(true);
-    const timer = setTimeout(() => setIsInitialLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, [inventoryTab]);
+    if (clothes !== undefined) {
+      setIsInitialLoading(false);
+    }
+  }, [clothes, inventoryTab]);
 
   useEffect(() => {
     setVisibleCount(5);
@@ -1164,27 +1163,13 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         {visibleCount < filteredClothes.length ? (
           <button
             type="button"
-            disabled={isLoadingMore}
             onClick={() => {
-              setIsLoadingMore(true);
-              setTimeout(() => {
-                setVisibleCount(prev => Math.min(prev + BATCH_SIZE, filteredClothes.length));
-                setIsLoadingMore(false);
-              }, 250);
+              setVisibleCount(prev => Math.min(prev + BATCH_SIZE, filteredClothes.length));
             }}
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-80 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 active:scale-95 cursor-pointer"
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 active:scale-95 cursor-pointer"
           >
-            {isLoadingMore ? (
-              <>
-                <Loader2 className="w-4 h-4 text-white animate-spin shrink-0" />
-                <span>جاري التحميل...</span>
-              </>
-            ) : (
-              <>
-                <span>عرض 5 قطع إضافية (+5)</span>
-                <ChevronLeft className="w-4 h-4" />
-              </>
-            )}
+            <span>عرض 5 قطع إضافية (+5)</span>
+            <ChevronLeft className="w-4 h-4" />
           </button>
         ) : (
           <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-3 py-1.5 rounded-xl font-medium">
