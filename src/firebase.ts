@@ -96,6 +96,10 @@ export function areArraysEqual<T extends { id?: string; updatedAt?: string | num
     if (itemA.amount !== itemB.amount) return false;
     if (itemA.totalAmount !== itemB.totalAmount) return false;
     if (itemA.isDeducted !== itemB.isDeducted) return false;
+    if (itemA.barcode !== itemB.barcode) return false;
+    if (itemA.sellPrice !== itemB.sellPrice) return false;
+    if (itemA.rentPrice !== itemB.rentPrice) return false;
+    if (itemA.buyCost !== itemB.buyCost) return false;
   }
 
   return true;
@@ -237,6 +241,36 @@ export async function fetchCollectionOnce<T extends { id?: string }>(collectionK
 }
 
 /**
+ * Targeted Single-Item Fetch by Barcode:
+ * Enables O(1) direct lookup from Firebase RTDB without loading entire collection.
+ */
+export async function fetchClothByBarcode(barcode: string): Promise<any | null> {
+  if (!barcode) return null;
+  const clean = barcode.trim().toLowerCase();
+  try {
+    const snapshot = await get(ref(rtdb, FIREBASE_COLLECTIONS.CLOTHES));
+    if (snapshot.exists()) {
+      const val = snapshot.val();
+      if (typeof val === 'object' && val !== null) {
+        for (const k of Object.keys(val)) {
+          const item = val[k];
+          if (item && typeof item === 'object') {
+            const itemBc = String(item.barcode || '').trim().toLowerCase();
+            const itemId = String(item.id || k).trim().toLowerCase();
+            if (itemBc === clean || itemId === clean) {
+              return { ...item, id: item.id || k };
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.warn(`[Firebase RTDB] Targeted barcode lookup error for ${barcode}:`, error);
+  }
+  return null;
+}
+
+/**
  * STRICTLY FOR MANUAL BACKUP / RESTORE / FULL SYNC:
  * Synchronizes an entire collection map to Firebase Realtime Database.
  * WARNING: NEVER call this in automated CRUD handlers or useEffects!
@@ -260,6 +294,7 @@ export async function syncCollectionToCloud<T extends { id?: string }>(
 
 interface ActiveSubscriptionEntry<T = any> {
   collectionKey: string;
+  subKey: string;
   targetRef: Query;
   listener: (snapshot: any) => void;
   unsubFirebase: () => void;
@@ -269,7 +304,7 @@ interface ActiveSubscriptionEntry<T = any> {
 
 /**
  * Unified Subscription Manager with Reference Counting and Deduplication:
- * - Guarantees strictly ONE active Firebase listener (onValue) per collectionKey.
+ * - Guarantees strictly ONE active Firebase listener (onValue) per subKey.
  * - Reuses the single listener across multiple consumers with multiple callbacks.
  * - Dynamically attaches new callbacks to the active listener and provides last data immediately.
  * - Automatically unsubscribes and calls off() when reference count (active consumers) reaches 0.
@@ -280,17 +315,18 @@ export class SubscriptionManager {
 
   /**
    * Subscribe to a collection with deduplication and reference counting.
-   * Invariant: 1 Collection = 1 Firebase listener maximum.
+   * Invariant: 1 SubKey = 1 Firebase listener maximum.
    */
   static subscribe<T extends { id?: string }>(
     collectionKey: string,
     callback: (items: T[]) => void,
     options?: { limit?: number }
   ): () => void {
-    let entry = this.activeSubscriptions.get(collectionKey);
+    const subKey = options?.limit && options.limit > 0 ? `${collectionKey}_limit_${options.limit}` : collectionKey;
+    let entry = this.activeSubscriptions.get(subKey);
 
     if (entry) {
-      // Reuse existing Firebase listener for this collection
+      // Reuse existing Firebase listener for this subscription key
       entry.callbacks.add(callback);
 
       // Provide latest data snapshot immediately if already fetched
@@ -298,11 +334,11 @@ export class SubscriptionManager {
         try {
           callback(entry.lastData);
         } catch (err) {
-          console.error(`[SubscriptionManager] Callback error on ${collectionKey}:`, err);
+          console.error(`[SubscriptionManager] Callback error on ${subKey}:`, err);
         }
       }
     } else {
-      // Create a brand new subscription for this collection - strictly 1 onValue listener
+      // Create a brand new subscription for this subKey - strictly 1 onValue listener
       const callbacks = new Set<(items: any[]) => void>();
       callbacks.add(callback);
 
@@ -312,6 +348,7 @@ export class SubscriptionManager {
       }
 
       const listener = (snapshot: any) => {
+        const startMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
         let items: T[] = [];
         if (snapshot.exists()) {
           const val = snapshot.val();
@@ -320,11 +357,12 @@ export class SubscriptionManager {
           } else if (typeof val === 'object' && val !== null) {
             items = Object.keys(val).map(k => {
               const item = val[k];
-              if (item && typeof item === 'object' && !item.id) {
-                item.id = k;
+              if (item && typeof item === 'object') {
+                if (!item.id) item.id = k;
+                return item;
               }
-              return item;
-            });
+              return null;
+            }).filter(Boolean);
           }
 
           // Sort items consistently (newest first if timestamps/dates are available)
@@ -338,25 +376,29 @@ export class SubscriptionManager {
           });
         }
 
-        const currentEntry = SubscriptionManager.activeSubscriptions.get(collectionKey);
+        const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startMs;
+        console.log(`⚡ [Firebase RTDB] ${subKey} payload received: ${items.length} records in ${durationMs.toFixed(1)}ms`);
+
+        const currentEntry = SubscriptionManager.activeSubscriptions.get(subKey);
         if (currentEntry) {
           currentEntry.lastData = items;
           currentEntry.callbacks.forEach(cb => {
             try {
               cb(items);
             } catch (err) {
-              console.error(`[SubscriptionManager] Callback error on ${collectionKey}:`, err);
+              console.error(`[SubscriptionManager] Callback error on ${subKey}:`, err);
             }
           });
         }
       };
 
       const unsubFirebase = onValue(targetRef, listener, (error) => {
-        console.warn(`[Firebase RTDB] Listener error on ${collectionKey}:`, error);
+        console.warn(`[Firebase RTDB] Listener error on ${subKey}:`, error);
       });
 
       entry = {
         collectionKey,
+        subKey,
         targetRef,
         listener,
         unsubFirebase,
@@ -364,7 +406,7 @@ export class SubscriptionManager {
         lastData: null
       };
 
-      this.activeSubscriptions.set(collectionKey, entry);
+      this.activeSubscriptions.set(subKey, entry);
     }
 
     // Return reference-counted, idempotent unsubscribe function
@@ -373,26 +415,22 @@ export class SubscriptionManager {
       if (isUnsubscribed) return;
       isUnsubscribed = true;
 
-      const activeEntry = SubscriptionManager.activeSubscriptions.get(collectionKey);
+      const activeEntry = SubscriptionManager.activeSubscriptions.get(subKey);
       if (!activeEntry) return;
 
       activeEntry.callbacks.delete(callback);
 
-      // If no more consumers are listening to this collection, detach listener and cleanup
+      // If no more consumers are listening to this subscription key, detach listener and cleanup
       if (activeEntry.callbacks.size === 0) {
         try {
           if (typeof activeEntry.unsubFirebase === 'function') {
             activeEntry.unsubFirebase();
           }
-        } catch (e) {
-          // ignore
-        }
+        } catch (e) {}
         try {
           off(activeEntry.targetRef, 'value', activeEntry.listener);
-        } catch (e) {
-          // ignore
-        }
-        SubscriptionManager.activeSubscriptions.delete(collectionKey);
+        } catch (e) {}
+        SubscriptionManager.activeSubscriptions.delete(subKey);
       }
     };
   }

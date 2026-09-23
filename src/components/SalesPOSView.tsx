@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ClothItem, Sale, SaleItem } from '../types';
+import { fetchClothByBarcode } from '../firebase';
 import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
 import { BarcodeScanner } from './BarcodeScanner';
 import { LettersInput, NumbersInput } from './Shared';
@@ -131,28 +132,39 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
     const code = validation.isValid ? validation.code : rawCode.trim();
     if (!code) return;
 
-    const matched = clothesBarcodeMap.get(code.toLowerCase());
-    if (matched) {
-      const s1 = getItemStock1(matched);
-      const s2 = getItemStock2(matched);
-      const totalAvailable = s1 + s2 - (matched.rentedCount || 0);
+    const processMatchedItem = (matchedItem: ClothItem) => {
+      const s1 = getItemStock1(matchedItem);
+      const s2 = getItemStock2(matchedItem);
+      const totalAvailable = s1 + s2 - (matchedItem.rentedCount || 0);
 
       if (totalAvailable <= 0) {
         playPosErrorBeep();
-        alert(`القطعة "${matched.name}" نفدت من كلا المخزنين.`);
+        alert(`القطعة "${matchedItem.name}" نفدت من كلا المخزنين.`);
       } else {
         playPosScannerBeep('classic');
         const defaultSource = s1 > 0 ? 'stock1' : 'stock2';
         setScannedItemModal({
-          item: matched,
+          item: matchedItem,
           qty: 1,
           stockSource: defaultSource
         });
         setBarcodeInput('');
       }
+    };
+
+    const matched = clothesBarcodeMap.get(code.toLowerCase());
+    if (matched) {
+      processMatchedItem(matched);
     } else {
-      playPosErrorBeep();
-      alert(`لم يتم العثور على قطعة بالباركود: ${code}`);
+      // Fallback: targeted O(1) single-item lookup from Firebase without downloading full collection
+      fetchClothByBarcode(code).then(remoteItem => {
+        if (remoteItem) {
+          processMatchedItem(remoteItem);
+        } else {
+          playPosErrorBeep();
+          alert(`لم يتم العثور على قطعة بالباركود: ${code}`);
+        }
+      });
     }
   };
 

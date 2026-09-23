@@ -408,7 +408,13 @@ export default function App() {
         return SubscriptionManager.subscribe<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.CLOTHES);
-            setClothes(prev => areArraysEqual(prev, items) ? prev : items);
+            setClothes(prev => {
+              const map = new Map<string, ClothItem>();
+              prev.forEach(c => map.set(c.id, c));
+              items.forEach(c => map.set(c.id, c));
+              const merged = Array.from(map.values());
+              return areArraysEqual(prev, merged) ? prev : merged;
+            });
           }
         });
       case FIREBASE_COLLECTIONS.RENTALS:
@@ -426,12 +432,22 @@ export default function App() {
           }
         });
       case FIREBASE_COLLECTIONS.SALES:
-        return SubscriptionManager.subscribe<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
-          if (Array.isArray(items)) {
-            loadedCollectionsRef.current.add(STORAGE_KEYS.SALES);
-            setSales(prev => areArraysEqual(prev, items) ? prev : items);
-          }
-        });
+        return SubscriptionManager.subscribe<Sale>(
+          FIREBASE_COLLECTIONS.SALES, 
+          (items) => {
+            if (Array.isArray(items)) {
+              loadedCollectionsRef.current.add(STORAGE_KEYS.SALES);
+              setSales(prev => {
+                const map = new Map<string, Sale>();
+                prev.forEach(s => map.set(s.id, s));
+                items.forEach(s => map.set(s.id, s));
+                const merged = Array.from(map.values()).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+                return areArraysEqual(prev, merged) ? prev : merged;
+              });
+            }
+          },
+          { limit: 150 }
+        );
       case FIREBASE_COLLECTIONS.EXPENSES:
         return SubscriptionManager.subscribe<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
           if (Array.isArray(items)) {
