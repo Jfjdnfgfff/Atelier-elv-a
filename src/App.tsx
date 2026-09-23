@@ -224,109 +224,89 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // Track which collections are currently subscribed to avoid redundant requests
-  const subscribedCollectionsRef = useRef<Set<string>>(new Set());
-
-  // Lazy subscription helper for individual collections
-  const ensureSubscription = useCallback((collection: string) => {
-    if (subscribedCollectionsRef.current.has(collection)) return;
-    subscribedCollectionsRef.current.add(collection);
-
+  // Individual collection subscription helper returning an idempotent unsubscribe function
+  const subscribeToCollection = useCallback((collection: string): () => void => {
     switch (collection) {
       case FIREBASE_COLLECTIONS.CLOTHES:
-        SubscriptionManager.subscribe<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
+        return SubscriptionManager.subscribe<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
           if (items && items.length > 0) {
             setClothes(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
-        break;
       case FIREBASE_COLLECTIONS.RENTALS:
-        SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
+        return SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
           if (items && items.length > 0) {
             setRentals(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
-        break;
       case FIREBASE_COLLECTIONS.CAISSE_CLOSURES:
-        SubscriptionManager.subscribe<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
+        return SubscriptionManager.subscribe<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
           if (items && items.length > 0) {
             setCaisseClosures(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
-        break;
       case FIREBASE_COLLECTIONS.SALES:
-        SubscriptionManager.subscribe<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
+        return SubscriptionManager.subscribe<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
           if (items && items.length > 0) {
             setSales(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
-        break;
       case FIREBASE_COLLECTIONS.EXPENSES:
-        SubscriptionManager.subscribe<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
+        return SubscriptionManager.subscribe<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
           if (items && items.length > 0) {
             setExpenses(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
-        break;
       case FIREBASE_COLLECTIONS.CREDITS:
-        SubscriptionManager.subscribe<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
+        return SubscriptionManager.subscribe<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
           if (items && items.length > 0) {
             setCredits(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
-        break;
       case FIREBASE_COLLECTIONS.STAFF_PAYOUTS:
-        SubscriptionManager.subscribe<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
+        return SubscriptionManager.subscribe<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
           if (items && items.length > 0) {
             setStaffPayouts(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
-        break;
       case FIREBASE_COLLECTIONS.STAFF_MEMBERS:
-        SubscriptionManager.subscribe<StaffMember>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, (items) => {
+        return SubscriptionManager.subscribe<StaffMember>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, (items) => {
           if (items && items.length > 0) {
             setStaffMembers(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
-        break;
       case FIREBASE_COLLECTIONS.STAFF_ABSENCES:
-        SubscriptionManager.subscribe<StaffAbsence>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, (items) => {
+        return SubscriptionManager.subscribe<StaffAbsence>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, (items) => {
           if (items && items.length > 0) {
             setStaffAbsences(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
-        break;
       case FIREBASE_COLLECTIONS.MAINTENANCE:
-        SubscriptionManager.subscribe<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
+        return SubscriptionManager.subscribe<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
           if (items && items.length > 0) {
             setMaintenanceOrders(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
-        break;
       case FIREBASE_COLLECTIONS.SUPPLIERS:
-        SubscriptionManager.subscribe<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
+        return SubscriptionManager.subscribe<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
           if (items && items.length > 0) {
             setSuppliers(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
-        break;
       case FIREBASE_COLLECTIONS.SEAMSTRESSES:
-        SubscriptionManager.subscribe<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
+        return SubscriptionManager.subscribe<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
           if (items && items.length > 0) {
             setSeamstresses(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
-        break;
       case FIREBASE_COLLECTIONS.RAW_MATERIALS:
-        SubscriptionManager.subscribe<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
+        return SubscriptionManager.subscribe<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
           if (items && items.length > 0) {
             setRawMaterials(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
-        break;
       case FIREBASE_COLLECTIONS.ACTIVITY_LOGS:
-        // Bound query to last 300 logs for high scalability
-        SubscriptionManager.subscribe<ActivityLog>(
+        return SubscriptionManager.subscribe<ActivityLog>(
           FIREBASE_COLLECTIONS.ACTIVITY_LOGS, 
           (items) => {
             if (items && items.length > 0) {
@@ -335,69 +315,146 @@ export default function App() {
           }, 
           { limit: 300 }
         );
-        break;
+      default:
+        return () => {};
     }
   }, []);
 
-  // Startup: Load only Core collections (Clothes & Rentals & Caisse)
-  useEffect(() => {
-    ensureSubscription(FIREBASE_COLLECTIONS.CLOTHES);
-    ensureSubscription(FIREBASE_COLLECTIONS.RENTALS);
-    ensureSubscription(FIREBASE_COLLECTIONS.CAISSE_CLOSURES);
-  }, [ensureSubscription]);
+  // Track active view subscriptions and the current view name
+  const activeViewUnsubsRef = useRef<(() => void)[]>([]);
+  const currentActiveViewRef = useRef<ViewType | null>(null);
 
-  // On-Demand Lazy Loading when user navigates to a section
+  // Dynamic on-demand collection subscription per View:
+  // Automatically unsubscribes previous view's collections when navigating to another view!
   const handleEnsureCollection = useCallback((view: ViewType) => {
+    if (currentActiveViewRef.current === view && activeViewUnsubsRef.current.length > 0) {
+      return;
+    }
+    currentActiveViewRef.current = view;
+
+    // 1. Unsubscribe from previous view's listeners so refCount becomes 0 and off() is called
+    if (activeViewUnsubsRef.current.length > 0) {
+      activeViewUnsubsRef.current.forEach(unsub => unsub());
+      activeViewUnsubsRef.current = [];
+    }
+
+    // 2. Identify the collections strictly needed for this view
+    let neededCollections: string[] = [];
     switch (view) {
       case 'dashboard':
-        ensureSubscription(FIREBASE_COLLECTIONS.CLOTHES);
-        ensureSubscription(FIREBASE_COLLECTIONS.RENTALS);
-        ensureSubscription(FIREBASE_COLLECTIONS.CAISSE_CLOSURES);
+        neededCollections = [
+          FIREBASE_COLLECTIONS.CLOTHES, 
+          FIREBASE_COLLECTIONS.RENTALS, 
+          FIREBASE_COLLECTIONS.CAISSE_CLOSURES
+        ];
         break;
       case 'inventory':
-        ensureSubscription(FIREBASE_COLLECTIONS.CLOTHES);
+        neededCollections = [FIREBASE_COLLECTIONS.CLOTHES];
         break;
       case 'rentals':
-        ensureSubscription(FIREBASE_COLLECTIONS.RENTALS);
-        ensureSubscription(FIREBASE_COLLECTIONS.CLOTHES);
+        neededCollections = [
+          FIREBASE_COLLECTIONS.RENTALS, 
+          FIREBASE_COLLECTIONS.CLOTHES
+        ];
         break;
       case 'sales':
-        ensureSubscription(FIREBASE_COLLECTIONS.SALES);
-        ensureSubscription(FIREBASE_COLLECTIONS.CLOTHES);
-        ensureSubscription(FIREBASE_COLLECTIONS.CREDITS);
+        neededCollections = [
+          FIREBASE_COLLECTIONS.SALES, 
+          FIREBASE_COLLECTIONS.CLOTHES, 
+          FIREBASE_COLLECTIONS.CREDITS
+        ];
         break;
       case 'tailoring':
-        ensureSubscription(FIREBASE_COLLECTIONS.MAINTENANCE);
-        ensureSubscription(FIREBASE_COLLECTIONS.SEAMSTRESSES);
-        ensureSubscription(FIREBASE_COLLECTIONS.RAW_MATERIALS);
-        ensureSubscription(FIREBASE_COLLECTIONS.CLOTHES);
-        ensureSubscription(FIREBASE_COLLECTIONS.STAFF_MEMBERS);
+        neededCollections = [
+          FIREBASE_COLLECTIONS.MAINTENANCE, 
+          FIREBASE_COLLECTIONS.SEAMSTRESSES, 
+          FIREBASE_COLLECTIONS.RAW_MATERIALS, 
+          FIREBASE_COLLECTIONS.CLOTHES, 
+          FIREBASE_COLLECTIONS.STAFF_MEMBERS
+        ];
         break;
       case 'expenses':
-        ensureSubscription(FIREBASE_COLLECTIONS.EXPENSES);
-        ensureSubscription(FIREBASE_COLLECTIONS.SUPPLIERS);
-        ensureSubscription(FIREBASE_COLLECTIONS.CREDITS);
+        neededCollections = [
+          FIREBASE_COLLECTIONS.EXPENSES, 
+          FIREBASE_COLLECTIONS.SUPPLIERS, 
+          FIREBASE_COLLECTIONS.CREDITS
+        ];
         break;
       case 'credits':
-        ensureSubscription(FIREBASE_COLLECTIONS.CREDITS);
-        ensureSubscription(FIREBASE_COLLECTIONS.SUPPLIERS);
+        neededCollections = [
+          FIREBASE_COLLECTIONS.CREDITS, 
+          FIREBASE_COLLECTIONS.SUPPLIERS
+        ];
         break;
       case 'partners':
-        ensureSubscription(FIREBASE_COLLECTIONS.SUPPLIERS);
-        ensureSubscription(FIREBASE_COLLECTIONS.SEAMSTRESSES);
+        neededCollections = [
+          FIREBASE_COLLECTIONS.SUPPLIERS, 
+          FIREBASE_COLLECTIONS.SEAMSTRESSES
+        ];
         break;
       case 'caisse':
-        ensureSubscription(FIREBASE_COLLECTIONS.CAISSE_CLOSURES);
-        ensureSubscription(FIREBASE_COLLECTIONS.SALES);
-        ensureSubscription(FIREBASE_COLLECTIONS.RENTALS);
-        ensureSubscription(FIREBASE_COLLECTIONS.EXPENSES);
-        ensureSubscription(FIREBASE_COLLECTIONS.STAFF_PAYOUTS);
+        neededCollections = [
+          FIREBASE_COLLECTIONS.CAISSE_CLOSURES, 
+          FIREBASE_COLLECTIONS.SALES, 
+          FIREBASE_COLLECTIONS.RENTALS, 
+          FIREBASE_COLLECTIONS.EXPENSES, 
+          FIREBASE_COLLECTIONS.STAFF_PAYOUTS
+        ];
         break;
       case 'logs':
-        ensureSubscription(FIREBASE_COLLECTIONS.ACTIVITY_LOGS);
+        neededCollections = [FIREBASE_COLLECTIONS.ACTIVITY_LOGS];
+        break;
+      default:
+        neededCollections = [
+          FIREBASE_COLLECTIONS.CLOTHES, 
+          FIREBASE_COLLECTIONS.RENTALS
+        ];
         break;
     }
-  }, [ensureSubscription]);
+
+    // 3. Subscribe to the needed collections
+    const newUnsubs: (() => void)[] = [];
+    neededCollections.forEach(col => {
+      newUnsubs.push(subscribeToCollection(col));
+    });
+    activeViewUnsubsRef.current = newUnsubs;
+  }, [subscribeToCollection]);
+
+  // Initial load: subscribe to dashboard view collections
+  useEffect(() => {
+    handleEnsureCollection('dashboard');
+    return () => {
+      if (activeViewUnsubsRef.current.length > 0) {
+        activeViewUnsubsRef.current.forEach(unsub => unsub());
+        activeViewUnsubsRef.current = [];
+      }
+    };
+  }, [handleEnsureCollection]);
+
+  // Modal-specific subscriptions: only active while the modal is open, auto-unsubscribes on close!
+  useEffect(() => {
+    if (activeModal === 'staffPayouts') {
+      const unsubs = [
+        subscribeToCollection(FIREBASE_COLLECTIONS.STAFF_PAYOUTS),
+        subscribeToCollection(FIREBASE_COLLECTIONS.STAFF_MEMBERS),
+        subscribeToCollection(FIREBASE_COLLECTIONS.STAFF_ABSENCES)
+      ];
+      return () => {
+        unsubs.forEach(u => u());
+      };
+    }
+    if (activeModal === 'fullReport') {
+      const unsubs = [
+        subscribeToCollection(FIREBASE_COLLECTIONS.SALES),
+        subscribeToCollection(FIREBASE_COLLECTIONS.EXPENSES),
+        subscribeToCollection(FIREBASE_COLLECTIONS.CREDITS),
+        subscribeToCollection(FIREBASE_COLLECTIONS.STAFF_PAYOUTS)
+      ];
+      return () => {
+        unsubs.forEach(u => u());
+      };
+    }
+  }, [activeModal, subscribeToCollection]);
 
   const handleSyncAllToCloud = useCallback(async () => {
     setIsCloudSyncing(true);
@@ -492,19 +549,12 @@ export default function App() {
   }, []);
 
   const openFullReportModal = useCallback(() => {
-    ensureSubscription(FIREBASE_COLLECTIONS.SALES);
-    ensureSubscription(FIREBASE_COLLECTIONS.EXPENSES);
-    ensureSubscription(FIREBASE_COLLECTIONS.CREDITS);
-    ensureSubscription(FIREBASE_COLLECTIONS.STAFF_PAYOUTS);
     setActiveModal('fullReport');
-  }, [ensureSubscription]);
+  }, []);
 
   const openStaffPayoutsModal = useCallback(() => {
-    ensureSubscription(FIREBASE_COLLECTIONS.STAFF_PAYOUTS);
-    ensureSubscription(FIREBASE_COLLECTIONS.STAFF_MEMBERS);
-    ensureSubscription(FIREBASE_COLLECTIONS.STAFF_ABSENCES);
     setActiveModal('staffPayouts');
-  }, [ensureSubscription]);
+  }, []);
 
   const openBarcodeScan = useCallback(() => {
     setIsScanning(true);

@@ -224,47 +224,52 @@ export async function syncCollectionToCloud<T extends { id?: string }>(
   }
 }
 
-interface ActiveSubscriptionEntry<T> {
-  refCount: number;
+interface ActiveSubscriptionEntry<T = any> {
+  collectionKey: string;
+  targetRef: Query;
+  listener: (snapshot: any) => void;
+  unsubFirebase: () => void;
   callbacks: Set<(items: T[]) => void>;
   lastData: T[] | null;
-  unsubscribeFirebase: () => void;
 }
 
 /**
  * Unified Subscription Manager with Reference Counting and Deduplication:
- * - Guarantees maximum of 1 active listener per collection.
- * - Prevents listener duplication when views open/close repeatedly.
- * - Supports bounded queries (limitToLast) for large append-only collections (e.g., activityLogs).
- * - Shares cached snapshot immediately to newly attached callbacks.
+ * - Guarantees strictly ONE active Firebase listener (onValue) per collectionKey.
+ * - Reuses the single listener across multiple consumers with multiple callbacks.
+ * - Dynamically attaches new callbacks to the active listener and provides last data immediately.
+ * - Automatically unsubscribes and calls off() when reference count (active consumers) reaches 0.
+ * - Memory leak proof, React Strict Mode compliant, and idempotent.
  */
 export class SubscriptionManager {
-  private static activeSubscriptions = new Map<string, ActiveSubscriptionEntry<any>>();
+  private static activeSubscriptions = new Map<string, ActiveSubscriptionEntry>();
 
   /**
    * Subscribe to a collection with deduplication and reference counting.
+   * Invariant: 1 Collection = 1 Firebase listener maximum.
    */
   static subscribe<T extends { id?: string }>(
     collectionKey: string,
     callback: (items: T[]) => void,
     options?: { limit?: number }
   ): () => void {
-    const subKey = options?.limit ? `${collectionKey}_limit_${options.limit}` : collectionKey;
-
-    let entry = this.activeSubscriptions.get(subKey);
+    let entry = this.activeSubscriptions.get(collectionKey);
 
     if (entry) {
-      // Reuse existing Firebase listener
-      entry.refCount++;
+      // Reuse existing Firebase listener for this collection
       entry.callbacks.add(callback);
 
-      // Provide latest data immediately if already fetched
+      // Provide latest data snapshot immediately if already fetched
       if (entry.lastData !== null) {
-        callback(entry.lastData);
+        try {
+          callback(entry.lastData);
+        } catch (err) {
+          console.error(`[SubscriptionManager] Callback error on ${collectionKey}:`, err);
+        }
       }
     } else {
-      // Create a brand new subscription
-      const callbacks = new Set<(items: T[]) => void>();
+      // Create a brand new subscription for this collection - strictly 1 onValue listener
+      const callbacks = new Set<(items: any[]) => void>();
       callbacks.add(callback);
 
       let targetRef: Query = ref(rtdb, collectionKey);
@@ -299,48 +304,61 @@ export class SubscriptionManager {
           });
         }
 
-        const currentEntry = SubscriptionManager.activeSubscriptions.get(subKey);
+        const currentEntry = SubscriptionManager.activeSubscriptions.get(collectionKey);
         if (currentEntry) {
           currentEntry.lastData = items;
           currentEntry.callbacks.forEach(cb => {
             try {
               cb(items);
             } catch (err) {
-              console.error(`[SubscriptionManager] Callback error on ${subKey}:`, err);
+              console.error(`[SubscriptionManager] Callback error on ${collectionKey}:`, err);
             }
           });
         }
       };
 
-      onValue(targetRef, listener, (error) => {
-        console.warn(`[Firebase RTDB] Listener error on ${subKey}:`, error);
+      const unsubFirebase = onValue(targetRef, listener, (error) => {
+        console.warn(`[Firebase RTDB] Listener error on ${collectionKey}:`, error);
       });
 
-      const unsubscribeFirebase = () => {
-        off(targetRef, 'value', listener);
-      };
-
       entry = {
-        refCount: 1,
+        collectionKey,
+        targetRef,
+        listener,
+        unsubFirebase,
         callbacks,
-        lastData: null,
-        unsubscribeFirebase
+        lastData: null
       };
 
-      this.activeSubscriptions.set(subKey, entry);
+      this.activeSubscriptions.set(collectionKey, entry);
     }
 
-    // Return reference-counted unsubscribe function
+    // Return reference-counted, idempotent unsubscribe function
+    let isUnsubscribed = false;
     return () => {
-      const activeEntry = SubscriptionManager.activeSubscriptions.get(subKey);
+      if (isUnsubscribed) return;
+      isUnsubscribed = true;
+
+      const activeEntry = SubscriptionManager.activeSubscriptions.get(collectionKey);
       if (!activeEntry) return;
 
       activeEntry.callbacks.delete(callback);
-      activeEntry.refCount--;
 
-      if (activeEntry.refCount <= 0) {
-        activeEntry.unsubscribeFirebase();
-        SubscriptionManager.activeSubscriptions.delete(subKey);
+      // If no more consumers are listening to this collection, detach listener and cleanup
+      if (activeEntry.callbacks.size === 0) {
+        try {
+          if (typeof activeEntry.unsubFirebase === 'function') {
+            activeEntry.unsubFirebase();
+          }
+        } catch (e) {
+          // ignore
+        }
+        try {
+          off(activeEntry.targetRef, 'value', activeEntry.listener);
+        } catch (e) {
+          // ignore
+        }
+        SubscriptionManager.activeSubscriptions.delete(collectionKey);
       }
     };
   }
@@ -353,16 +371,38 @@ export class SubscriptionManager {
   }
 
   /**
-   * Listen to Firebase connection state
+   * Get count of active consumers for a specific collection
+   */
+  static getConsumerCount(collectionKey: string): number {
+    return this.activeSubscriptions.get(collectionKey)?.callbacks.size || 0;
+  }
+
+  /**
+   * Get total number of active Firebase collection listeners
+   */
+  static getActiveListenerCount(): number {
+    return this.activeSubscriptions.size;
+  }
+
+  /**
+   * Listen to Firebase connection state with independent listener on .info/connected
    */
   static onConnectionStatus(callback: (connected: boolean) => void): () => void {
     const connectedRef = ref(rtdb, '.info/connected');
     const listener = (snapshot: any) => {
       callback(snapshot.val() === true);
     };
-    onValue(connectedRef, listener);
+    const unsub = onValue(connectedRef, listener);
+    let unsubscribed = false;
     return () => {
-      off(connectedRef, 'value', listener);
+      if (unsubscribed) return;
+      unsubscribed = true;
+      try {
+        if (typeof unsub === 'function') unsub();
+      } catch (e) {}
+      try {
+        off(connectedRef, 'value', listener);
+      } catch (e) {}
     };
   }
 }
