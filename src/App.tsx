@@ -112,24 +112,34 @@ initializeStorage();
 export default function App() {
   perfMonitor.recordAppRender();
 
-  // Startup Collections: Initialized immediately from browser storage cache for instant rendering
+  // Priority Startup Collections: Initialized immediately from browser storage cache for instant rendering
   const [clothes, setClothes] = useState<ClothItem[]>(() => loadFromStorage(STORAGE_KEYS.CLOTHES, DEFAULT_CLOTHES));
   const [rentals, setRentals] = useState<Rental[]>(() => loadFromStorage(STORAGE_KEYS.RENTALS, DEFAULT_RENTALS));
   const [caisseClosures, setCaisseClosures] = useState<DailyCaisseClosure[]>(() => loadFromStorage(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES));
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => loadFromStorage(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS));
-  const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF));
-  const [staffAbsences, setStaffAbsences] = useState<StaffAbsence[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_ABSENCES, DEFAULT_STAFF_ABSENCES));
   const [sales, setSales] = useState<Sale[]>(() => loadFromStorage(STORAGE_KEYS.SALES, DEFAULT_SALES));
   const [expenses, setExpenses] = useState<Expense[]>(() => loadFromStorage(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES));
   const [credits, setCredits] = useState<Credit[]>(() => loadFromStorage(STORAGE_KEYS.CREDITS, DEFAULT_CREDITS));
-  const [staffPayouts, setStaffPayouts] = useState<StaffPayout[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_PAYOUTS, DEFAULT_STAFF_PAYOUTS));
-  const [maintenanceOrders, setMaintenanceOrders] = useState<MaintenanceOrder[]>(() => loadFromStorage(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE));
-  const [suppliers, setSuppliers] = useState<Supplier[]>(() => loadFromStorage(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS));
-  const [seamstresses, setSeamstresses] = useState<Seamstress[]>(() => loadFromStorage(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES));
-  const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>(() => loadFromStorage(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS));
 
-  // Track collections that have been loaded into React state
-  const loadedCollectionsRef = useRef<Set<string>>(new Set(Object.values(STORAGE_KEYS)));
+  // Secondary Collections: Lazy-loaded from browser storage cache on-demand when view/modal opens!
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  const [staffAbsences, setStaffAbsences] = useState<StaffAbsence[]>([]);
+  const [staffPayouts, setStaffPayouts] = useState<StaffPayout[]>([]);
+  const [maintenanceOrders, setMaintenanceOrders] = useState<MaintenanceOrder[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [seamstresses, setSeamstresses] = useState<Seamstress[]>([]);
+  const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
+
+  // Track collections that have been loaded into React state from LocalStorage cache
+  const loadedCollectionsRef = useRef<Set<string>>(new Set([
+    STORAGE_KEYS.CLOTHES,
+    STORAGE_KEYS.RENTALS,
+    STORAGE_KEYS.CAISSE_CLOSURES,
+    STORAGE_KEYS.ACTIVITY_LOGS,
+    STORAGE_KEYS.SALES,
+    STORAGE_KEYS.EXPENSES,
+    STORAGE_KEYS.CREDITS
+  ]));
 
   // Cache-First On-Demand Storage Loader
   const ensureCollectionLoaded = useCallback((storageKey: string) => {
@@ -405,12 +415,16 @@ export default function App() {
   const subscribeToCollection = useCallback((collection: string, options?: { limit?: number }): () => void => {
     switch (collection) {
       case FIREBASE_COLLECTIONS.CLOTHES:
-        return SubscriptionManager.subscribe<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
-          if (Array.isArray(items)) {
-            loadedCollectionsRef.current.add(STORAGE_KEYS.CLOTHES);
-            setClothes(prev => areArraysEqual(prev, items) ? prev : items);
-          }
-        }, options);
+        return SubscriptionManager.subscribe<ClothItem>(
+          FIREBASE_COLLECTIONS.CLOTHES, 
+          (items) => {
+            if (Array.isArray(items)) {
+              loadedCollectionsRef.current.add(STORAGE_KEYS.CLOTHES);
+              setClothes(prev => areArraysEqual(prev, items) ? prev : items);
+            }
+          }, 
+          { sort: false, ...options }
+        );
       case FIREBASE_COLLECTIONS.RENTALS:
         return SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
           if (Array.isArray(items)) {

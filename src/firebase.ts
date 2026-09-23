@@ -320,7 +320,7 @@ export class SubscriptionManager {
   static subscribe<T extends { id?: string }>(
     collectionKey: string,
     callback: (items: T[]) => void,
-    options?: { limit?: number }
+    options?: { limit?: number; sort?: boolean }
   ): () => void {
     const subKey = options?.limit && options.limit > 0 ? `${collectionKey}_limit_${options.limit}` : collectionKey;
     let entry = this.activeSubscriptions.get(subKey);
@@ -365,15 +365,17 @@ export class SubscriptionManager {
             }).filter(Boolean);
           }
 
-          // Sort items consistently (newest first if timestamps/dates are available)
-          items.sort((a: any, b: any) => {
-            const timeA = a.createdAt || a.timestamp || a.date || '';
-            const timeB = b.createdAt || b.timestamp || b.date || '';
-            if (timeA && timeB) {
-              return timeB.localeCompare(timeA);
-            }
-            return 0;
-          });
+          // Sort items if sort option is not explicitly false
+          if (options?.sort !== false) {
+            items.sort((a: any, b: any) => {
+              const timeA = a.createdAt || a.timestamp || a.date || '';
+              const timeB = b.createdAt || b.timestamp || b.date || '';
+              if (timeA && timeB) {
+                return timeB.localeCompare(timeA);
+              }
+              return 0;
+            });
+          }
         }
 
         const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startMs;

@@ -50,14 +50,8 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
   const getItemStock2 = (c: ClothItem) => c.stock2 !== undefined ? c.stock2 : 0;
   const getItemTotalStock = (c: ClothItem) => getItemStock1(c) + getItemStock2(c);
 
-  const sellableClothes = useMemo(() => {
-    return clothes.filter(c => 
-      (c.purpose === 'sell' || c.purpose === 'both') && 
-      (getItemTotalStock(c) - (c.rentedCount || 0) > 0)
-    );
-  }, [clothes]);
-
-  const clothesBarcodeMap = useMemo(() => {
+  const { sellableClothes, clothesBarcodeMap } = useMemo(() => {
+    const list: ClothItem[] = [];
     const map = new Map<string, ClothItem>();
     for (let i = 0; i < clothes.length; i++) {
       const c = clothes[i];
@@ -67,8 +61,13 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
       if (c.id) {
         map.set(c.id.trim().toLowerCase(), c);
       }
+      const s1 = c.stock1 !== undefined ? c.stock1 : (c.stock || 0);
+      const s2 = c.stock2 !== undefined ? c.stock2 : 0;
+      if ((c.purpose === 'sell' || c.purpose === 'both') && (s1 + s2 - (c.rentedCount || 0) > 0)) {
+        list.push(c);
+      }
     }
-    return map;
+    return { sellableClothes: list, clothesBarcodeMap: map };
   }, [clothes]);
 
   const [cart, setCart] = useState<SaleItem[]>([]);

@@ -289,7 +289,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   const getItemStock2 = (item: ClothItem) => item.stock2 !== undefined ? item.stock2 : 0;
   const getItemTotalStock = (item: ClothItem) => getItemStock1(item) + getItemStock2(item);
 
-  // Single-pass memoized inventory & valuation statistics
+  // Single-pass memoized inventory & valuation statistics, maps, sizes, colors & purpose counts
   const {
     totalStock1,
     totalStock2,
@@ -302,14 +302,22 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
     totalRawMaterialsCost,
     grandTotalStoreCapital,
     clothesBarcodeMap,
-    clothesIdMap
+    clothesIdMap,
+    allAvailableSizes,
+    allAvailableColors,
+    rentCount,
+    sellCount
   } = useMemo(() => {
     let s1 = 0;
     let s2 = 0;
     let cost = 0;
     let sell = 0;
+    let rentC = 0;
+    let sellC = 0;
     const bMap = new Map<string, ClothItem>();
     const idMap = new Map<string, ClothItem>();
+    const sizeSet = new Set<string>();
+    const colorSet = new Set<string>();
 
     for (let i = 0; i < clothes.length; i++) {
       const c = clothes[i];
@@ -320,11 +328,27 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
       s2 += stock2;
       cost += (c.buyCost * total);
       sell += (c.sellPrice * total);
+
+      if (c.purpose === 'rent' || c.purpose === 'both') rentC++;
+      if (c.purpose === 'sell' || c.purpose === 'both') sellC++;
+
       if (c.barcode) {
         bMap.set(c.barcode.trim().toLowerCase(), c);
       }
       if (c.id) {
         idMap.set(c.id, c);
+      }
+
+      if (c.sizes && c.sizes.length > 0) {
+        c.sizes.forEach(s => s && sizeSet.add(s.trim()));
+      } else if (c.size) {
+        c.size.split(/[,،+/]/).forEach(s => s.trim() && sizeSet.add(s.trim()));
+      }
+
+      if (c.colors && c.colors.length > 0) {
+        c.colors.forEach(col => col && colorSet.add(col.trim()));
+      } else if (c.color) {
+        c.color.split(/[,،+/]/).forEach(col => col.trim() && colorSet.add(col.trim()));
       }
     }
 
@@ -350,34 +374,13 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
       totalRawMaterialsCost: rawCost,
       grandTotalStoreCapital: cost + rawCost,
       clothesBarcodeMap: bMap,
-      clothesIdMap: idMap
+      clothesIdMap: idMap,
+      allAvailableSizes: Array.from(sizeSet),
+      allAvailableColors: Array.from(colorSet),
+      rentCount: rentC,
+      sellCount: sellC
     };
   }, [clothes, rawMaterials]);
-
-  // Collect all unique sizes & colors present in the inventory
-  const allAvailableSizes = useMemo(() => {
-    const sizeSet = new Set<string>();
-    clothes.forEach(item => {
-      if (item.sizes && item.sizes.length > 0) {
-        item.sizes.forEach(s => s && sizeSet.add(s.trim()));
-      } else if (item.size) {
-        item.size.split(/[,،+/]/).forEach(s => s.trim() && sizeSet.add(s.trim()));
-      }
-    });
-    return Array.from(sizeSet);
-  }, [clothes]);
-
-  const allAvailableColors = useMemo(() => {
-    const colorSet = new Set<string>();
-    clothes.forEach(item => {
-      if (item.colors && item.colors.length > 0) {
-        item.colors.forEach(c => c && colorSet.add(c.trim()));
-      } else if (item.color) {
-        item.color.split(/[,،+/]/).forEach(c => c.trim() && colorSet.add(c.trim()));
-      }
-    });
-    return Array.from(colorSet);
-  }, [clothes]);
 
   // Process a scanned barcode in Inventory:
   const handleProcessBarcode = (code: string) => {
@@ -461,17 +464,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
     setTimeout(() => setBarcodeActionNotice(null), 3500);
     setQuickTransferItem(null);
   };
-
-  const { rentCount, sellCount } = useMemo(() => {
-    let rent = 0;
-    let sell = 0;
-    for (let i = 0; i < clothes.length; i++) {
-      const c = clothes[i];
-      if (c.purpose === 'rent' || c.purpose === 'both') rent++;
-      if (c.purpose === 'sell' || c.purpose === 'both') sell++;
-    }
-    return { rentCount: rent, sellCount: sell };
-  }, [clothes]);
 
   const filteredClothes = useMemo(() => {
     return clothes.filter(item => {
