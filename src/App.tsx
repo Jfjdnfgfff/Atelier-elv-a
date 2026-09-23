@@ -24,8 +24,12 @@ import {
   STORAGE_KEYS, 
   DEFAULT_CLOTHES,
   DEFAULT_RENTALS,
+  DEFAULT_SALES,
   DEFAULT_EXPENSES,
+  DEFAULT_CREDITS,
   DEFAULT_STAFF,
+  DEFAULT_STAFF_PAYOUTS,
+  DEFAULT_STAFF_ABSENCES,
   DEFAULT_SUPPLIERS,
   DEFAULT_MAINTENANCE,
   DEFAULT_CAISSE_CLOSURES,
@@ -35,6 +39,7 @@ import {
   initializeStorage,
   getCachedCollection
 } from './storage';
+import { generateFullDataset } from './utils/mockDataGenerator';
 import { perfMonitor } from './utils/performanceMonitor';
 import { 
   FIREBASE_COLLECTIONS, 
@@ -86,13 +91,13 @@ export default function App() {
   // Core & Lazy Collections loaded directly from Local Storage
   const [clothes, setClothes] = useState<ClothItem[]>(() => loadFromStorage(STORAGE_KEYS.CLOTHES, DEFAULT_CLOTHES));
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF));
-  const [staffAbsences, setStaffAbsences] = useState<StaffAbsence[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_ABSENCES, []));
+  const [staffAbsences, setStaffAbsences] = useState<StaffAbsence[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_ABSENCES, DEFAULT_STAFF_ABSENCES));
   const [caisseClosures, setCaisseClosures] = useState<DailyCaisseClosure[]>(() => loadFromStorage(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES));
   const [rentals, setRentals] = useState<Rental[]>(() => loadFromStorage(STORAGE_KEYS.RENTALS, DEFAULT_RENTALS));
-  const [sales, setSales] = useState<Sale[]>(() => loadFromStorage(STORAGE_KEYS.SALES, []));
+  const [sales, setSales] = useState<Sale[]>(() => loadFromStorage(STORAGE_KEYS.SALES, DEFAULT_SALES));
   const [expenses, setExpenses] = useState<Expense[]>(() => loadFromStorage(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES));
-  const [credits, setCredits] = useState<Credit[]>(() => loadFromStorage(STORAGE_KEYS.CREDITS, []));
-  const [staffPayouts, setStaffPayouts] = useState<StaffPayout[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_PAYOUTS, []));
+  const [credits, setCredits] = useState<Credit[]>(() => loadFromStorage(STORAGE_KEYS.CREDITS, DEFAULT_CREDITS));
+  const [staffPayouts, setStaffPayouts] = useState<StaffPayout[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_PAYOUTS, DEFAULT_STAFF_PAYOUTS));
   const [maintenanceOrders, setMaintenanceOrders] = useState<MaintenanceOrder[]>(() => loadFromStorage(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE));
   const [suppliers, setSuppliers] = useState<Supplier[]>(() => loadFromStorage(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS));
   const [seamstresses, setSeamstresses] = useState<Seamstress[]>(() => loadFromStorage(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES));
@@ -152,6 +157,25 @@ export default function App() {
   const handleAddManualLog = useCallback((log: Omit<ActivityLog, 'id' | 'timestamp'>) => {
     addActivityLog(log);
   }, [addActivityLog]);
+
+  const handleLoad50BenchmarkData = useCallback(() => {
+    const dataset = generateFullDataset();
+    setClothes(dataset.clothes);
+    setRentals(dataset.rentals);
+    setSales(dataset.sales);
+    setExpenses(dataset.expenses);
+    setCredits(dataset.credits);
+    setRawMaterials(dataset.rawMaterials);
+    setMaintenanceOrders(dataset.maintenanceOrders);
+    setSuppliers(dataset.suppliers);
+    setSeamstresses(dataset.seamstresses);
+    setStaffMembers(dataset.staffMembers);
+    setStaffPayouts(dataset.staffPayouts);
+    setStaffAbsences(dataset.staffAbsences);
+    setCaisseClosures(dataset.caisseClosures);
+    setActivityLogs(dataset.activityLogs);
+    showToast('تم تحميل 50 بياناً في كل قسم بنجاح لاختبار السرعة والتحمل!', 'success');
+  }, [showToast]);
 
   // First usable UI instrumentation
   useEffect(() => {
@@ -2459,6 +2483,24 @@ export default function App() {
                 <div>
                   <h4 className="font-black text-blue-900 text-xs">النسخ الاحتياطي واستعادة البيانات</h4>
                   <p className="text-[10px] text-blue-500 mt-0.5">تصدير أو استرجاع بيانات المحل (JSON)</p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                handleLoad50BenchmarkData();
+                setActiveModal(null);
+              }}
+              className="p-4 bg-emerald-50 hover:bg-emerald-100/70 rounded-2xl border border-emerald-200 text-right transition-all flex flex-col justify-between active:scale-95 col-span-2 group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-black text-emerald-950 text-xs">توليد 50 عنصراً في كل قسم (اختبار السرعة والتحمل)</h4>
+                  <p className="text-[10px] text-emerald-700 mt-0.5">شحن كافة الأقسام بـ 50 بياناً لاختبار خفة واستجابة النظام</p>
                 </div>
               </div>
             </button>

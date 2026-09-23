@@ -16,6 +16,7 @@ import {
   ActivityLog
 } from './types';
 import { perfMonitor } from './utils/performanceMonitor';
+import { generateFullDataset } from './utils/mockDataGenerator';
 
 export const STORAGE_KEYS = {
   CLOTHES: 'boutique_clothes',
@@ -37,25 +38,23 @@ export const STORAGE_KEYS = {
   STORE_CONFIG: 'boutique_store_config'
 };
 
-export const DEFAULT_ACTIVITY_LOGS: ActivityLog[] = [];
+// 50 benchmark items per section dataset
+const benchmarkDataset = generateFullDataset();
 
-export const DEFAULT_RAW_MATERIALS: RawMaterial[] = [];
-
-export const DEFAULT_SEAMSTRESSES: Seamstress[] = [];
-
-export const DEFAULT_SUPPLIERS: Supplier[] = [];
-
-export const DEFAULT_MAINTENANCE: MaintenanceOrder[] = [];
-
-export const DEFAULT_STAFF: StaffMember[] = [];
-
-export const DEFAULT_CLOTHES: ClothItem[] = [];
-
-export const DEFAULT_RENTALS: Rental[] = [];
-
-export const DEFAULT_EXPENSES: Expense[] = [];
-
-export const DEFAULT_CAISSE_CLOSURES: DailyCaisseClosure[] = [];
+export const DEFAULT_ACTIVITY_LOGS: ActivityLog[] = benchmarkDataset.activityLogs;
+export const DEFAULT_RAW_MATERIALS: RawMaterial[] = benchmarkDataset.rawMaterials;
+export const DEFAULT_SEAMSTRESSES: Seamstress[] = benchmarkDataset.seamstresses;
+export const DEFAULT_SUPPLIERS: Supplier[] = benchmarkDataset.suppliers;
+export const DEFAULT_MAINTENANCE: MaintenanceOrder[] = benchmarkDataset.maintenanceOrders;
+export const DEFAULT_STAFF: StaffMember[] = benchmarkDataset.staffMembers;
+export const DEFAULT_STAFF_PAYOUTS: StaffPayout[] = benchmarkDataset.staffPayouts;
+export const DEFAULT_STAFF_ABSENCES: StaffAbsence[] = benchmarkDataset.staffAbsences;
+export const DEFAULT_CLOTHES: ClothItem[] = benchmarkDataset.clothes;
+export const DEFAULT_RENTALS: Rental[] = benchmarkDataset.rentals;
+export const DEFAULT_SALES: Sale[] = benchmarkDataset.sales;
+export const DEFAULT_EXPENSES: Expense[] = benchmarkDataset.expenses;
+export const DEFAULT_CREDITS: Credit[] = benchmarkDataset.credits;
+export const DEFAULT_CAISSE_CLOSURES: DailyCaisseClosure[] = benchmarkDataset.caisseClosures;
 
 // In-memory cache for fast, synchronous lookups without reading localStorage repeatedly
 const memoryStore = new Map<string, any>();
@@ -189,7 +188,12 @@ if (typeof window !== 'undefined') {
 export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
   perfMonitor.recordStorageRead(key);
   if (memoryStore.has(key)) {
-    return memoryStore.get(key) as T;
+    const memVal = memoryStore.get(key);
+    if (Array.isArray(memVal) && memVal.length === 0 && Array.isArray(defaultValue) && defaultValue.length > 0) {
+      memoryStore.set(key, defaultValue);
+      return defaultValue as T;
+    }
+    return memVal as T;
   }
   try {
     const raw = localStorage.getItem(key);
@@ -199,6 +203,16 @@ export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
       return defaultValue;
     }
     const env = parseStorageEnvelope<T>(raw, defaultValue);
+    if (Array.isArray(env.data) && env.data.length === 0 && Array.isArray(defaultValue) && defaultValue.length > 0) {
+      memoryStore.set(key, defaultValue);
+      cacheMetaStore.set(key, { 
+        timestamp: Date.now(), 
+        version: 1, 
+        updatedAt: new Date().toISOString() 
+      });
+      lastWrittenRef.set(key, defaultValue);
+      return defaultValue;
+    }
     memoryStore.set(key, env.data);
     cacheMetaStore.set(key, { 
       timestamp: env.timestamp, 
@@ -250,27 +264,25 @@ export const generateId = (): string => {
 };
 
 /**
- * Initializes ONLY Core Data collections at startup:
- * - CLOTHES
- * - STAFF_MEMBERS
- * - STAFF_ABSENCES
- * - CAISSE_CLOSURES
- *
- * Lazy collections (sales, rentals, expenses, credits, etc.) are loaded on-demand
- * when their respective section or modal is opened, preserving RAM and startup speed.
+ * Initializes Core Data collections at startup with 50 benchmark items per section.
  */
 export const initializeStorage = () => {
-  // Completely empty initial storage to prevent any demo data conflicts.
-  if (!localStorage.getItem(STORAGE_KEYS.CLOTHES)) {
-    saveToStorage(STORAGE_KEYS.CLOTHES, []);
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.STAFF_MEMBERS)) {
-    saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, []);
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.STAFF_ABSENCES)) {
-    saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, []);
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.CAISSE_CLOSURES)) {
-    saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, []);
+  const clothesRaw = localStorage.getItem(STORAGE_KEYS.CLOTHES);
+  if (!clothesRaw || clothesRaw === '[]' || clothesRaw.includes('"data":[]')) {
+    saveToStorage(STORAGE_KEYS.CLOTHES, DEFAULT_CLOTHES);
+    saveToStorage(STORAGE_KEYS.RENTALS, DEFAULT_RENTALS);
+    saveToStorage(STORAGE_KEYS.SALES, DEFAULT_SALES);
+    saveToStorage(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES);
+    saveToStorage(STORAGE_KEYS.CREDITS, DEFAULT_CREDITS);
+    saveToStorage(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS);
+    saveToStorage(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE);
+    saveToStorage(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS);
+    saveToStorage(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES);
+    saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF);
+    saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, DEFAULT_STAFF_PAYOUTS);
+    saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, DEFAULT_STAFF_ABSENCES);
+    saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES);
+    saveToStorage(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS);
+    flushPendingStorageSynchronously();
   }
 };
