@@ -353,91 +353,91 @@ export default function App() {
     switch (collection) {
       case FIREBASE_COLLECTIONS.CLOTHES:
         return SubscriptionManager.subscribe<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
-          if (items && items.length > 0) {
+          if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.CLOTHES);
             setClothes(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.RENTALS:
         return SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
-          if (items && items.length > 0) {
+          if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.RENTALS);
             setRentals(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.CAISSE_CLOSURES:
         return SubscriptionManager.subscribe<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
-          if (items && items.length > 0) {
+          if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.CAISSE_CLOSURES);
             setCaisseClosures(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.SALES:
         return SubscriptionManager.subscribe<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
-          if (items && items.length > 0) {
+          if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.SALES);
             setSales(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.EXPENSES:
         return SubscriptionManager.subscribe<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
-          if (items && items.length > 0) {
+          if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.EXPENSES);
             setExpenses(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.CREDITS:
         return SubscriptionManager.subscribe<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
-          if (items && items.length > 0) {
+          if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.CREDITS);
             setCredits(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.STAFF_PAYOUTS:
         return SubscriptionManager.subscribe<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
-          if (items && items.length > 0) {
+          if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.STAFF_PAYOUTS);
             setStaffPayouts(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.STAFF_MEMBERS:
         return SubscriptionManager.subscribe<StaffMember>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, (items) => {
-          if (items && items.length > 0) {
+          if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.STAFF_MEMBERS);
             setStaffMembers(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.STAFF_ABSENCES:
         return SubscriptionManager.subscribe<StaffAbsence>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, (items) => {
-          if (items && items.length > 0) {
+          if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.STAFF_ABSENCES);
             setStaffAbsences(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.MAINTENANCE:
         return SubscriptionManager.subscribe<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
-          if (items && items.length > 0) {
+          if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.MAINTENANCE);
             setMaintenanceOrders(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.SUPPLIERS:
         return SubscriptionManager.subscribe<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
-          if (items && items.length > 0) {
+          if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.SUPPLIERS);
             setSuppliers(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.SEAMSTRESSES:
         return SubscriptionManager.subscribe<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
-          if (items && items.length > 0) {
+          if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.SEAMSTRESSES);
             setSeamstresses(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
       case FIREBASE_COLLECTIONS.RAW_MATERIALS:
         return SubscriptionManager.subscribe<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
-          if (items && items.length > 0) {
+          if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.RAW_MATERIALS);
             setRawMaterials(prev => areArraysEqual(prev, items) ? prev : items);
           }
@@ -446,7 +446,7 @@ export default function App() {
         return SubscriptionManager.subscribe<ActivityLog>(
           FIREBASE_COLLECTIONS.ACTIVITY_LOGS, 
           (items) => {
-            if (items && items.length > 0) {
+            if (Array.isArray(items)) {
               loadedCollectionsRef.current.add(STORAGE_KEYS.ACTIVITY_LOGS);
               setActivityLogs(prev => areArraysEqual(prev, items) ? prev : items);
             }
