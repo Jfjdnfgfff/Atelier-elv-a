@@ -674,6 +674,23 @@ export default function App() {
 
     const activeMap = activeViewUnsubsMapRef.current;
 
+    // Unsubscribe from collections that are no longer needed by the active view
+    const neededSet = new Set(neededCollections);
+    const existingCols = Array.from(activeMap.keys()) as string[];
+    for (const col of existingCols) {
+      if (!neededSet.has(col)) {
+        const unsub = activeMap.get(col);
+        if (unsub) {
+          try {
+            unsub();
+          } catch (err) {
+            console.error(`[App] Unsubscribe error for ${col}:`, err);
+          }
+        }
+        activeMap.delete(col);
+      }
+    }
+
     // Subscribe ONLY to newly needed collections for active view
     for (const col of neededCollections) {
       if (!activeMap.has(col)) {

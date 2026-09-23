@@ -84,18 +84,50 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
 
   // --- Calculations for Suppliers ---
   const supplierAnalytics = useMemo(() => {
+    // Single-pass index mapping supplier key -> expenses list
+    const expensesMap = new Map<string, Expense[]>();
+    for (let i = 0; i < expenses.length; i++) {
+      const e = expenses[i];
+      if (!e.isSupplierPurchase) continue;
+      const nameKey = e.supplierName ? e.supplierName.trim().toLowerCase() : '';
+      const phoneKey = e.supplierPhone ? e.supplierPhone.trim() : '';
+
+      if (nameKey) {
+        let list = expensesMap.get(nameKey);
+        if (!list) { list = []; expensesMap.set(nameKey, list); }
+        list.push(e);
+      }
+      if (phoneKey && phoneKey !== nameKey) {
+        let list = expensesMap.get(phoneKey);
+        if (!list) { list = []; expensesMap.set(phoneKey, list); }
+        list.push(e);
+      }
+    }
+
     return suppliers.map(sup => {
-      const supExpenses = expenses.filter(
-        e => e.isSupplierPurchase && (
-          e.supplierName?.trim().toLowerCase() === sup.name.trim().toLowerCase() ||
-          (sup.phone && e.supplierPhone?.trim() === sup.phone.trim())
-        )
-      );
+      const nameKey = sup.name ? sup.name.trim().toLowerCase() : '';
+      const phoneKey = sup.phone ? sup.phone.trim() : '';
+
+      const matchedSet = new Set<Expense>();
+      if (nameKey && expensesMap.has(nameKey)) {
+        expensesMap.get(nameKey)!.forEach(e => matchedSet.add(e));
+      }
+      if (phoneKey && expensesMap.has(phoneKey)) {
+        expensesMap.get(phoneKey)!.forEach(e => matchedSet.add(e));
+      }
+      const supExpenses = Array.from(matchedSet);
 
       const totalInvoices = supExpenses.length;
-      const totalBilled = supExpenses.reduce((s, e) => s + (e.totalInvoiceAmount || e.amount || 0), 0);
-      const totalPaid = supExpenses.reduce((s, e) => s + (e.paidAmount !== undefined ? e.paidAmount : e.amount || 0), 0);
-      const remainingDebt = supExpenses.reduce((s, e) => s + (e.creditAmount || 0), 0);
+      let totalBilled = 0;
+      let totalPaid = 0;
+      let remainingDebt = 0;
+
+      for (let j = 0; j < supExpenses.length; j++) {
+        const e = supExpenses[j];
+        totalBilled += (e.totalInvoiceAmount || e.amount || 0);
+        totalPaid += (e.paidAmount !== undefined ? e.paidAmount : e.amount || 0);
+        remainingDebt += (e.creditAmount || 0);
+      }
 
       return {
         ...sup,
@@ -113,16 +145,38 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
 
   // --- Calculations for Seamstresses ---
   const seamstressAnalytics = useMemo(() => {
+    // Single-pass index mapping tailorName -> maintenance orders list
+    const ordersMap = new Map<string, MaintenanceOrder[]>();
+    for (let i = 0; i < maintenanceOrders.length; i++) {
+      const o = maintenanceOrders[i];
+      const nameKey = o.tailorName ? o.tailorName.trim().toLowerCase() : '';
+      if (nameKey) {
+        let list = ordersMap.get(nameKey);
+        if (!list) { list = []; ordersMap.set(nameKey, list); }
+        list.push(o);
+      }
+    }
+
     return seamstresses.map(seam => {
-      const orders = maintenanceOrders.filter(
-        o => o.tailorName?.trim().toLowerCase() === seam.name.trim().toLowerCase()
-      );
+      const nameKey = seam.name ? seam.name.trim().toLowerCase() : '';
+      const orders = ordersMap.get(nameKey) || [];
 
       const totalOrders = orders.length;
-      const activeOrders = orders.filter(o => o.status !== 'delivered').length;
-      const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
-      const totalOrdersValue = orders.reduce((s, o) => s + (o.price || 0), 0);
-      const totalTailorCost = orders.reduce((s, o) => s + (o.cost || 0), 0);
+      let activeOrders = 0;
+      let deliveredOrders = 0;
+      let totalOrdersValue = 0;
+      let totalTailorCost = 0;
+
+      for (let j = 0; j < orders.length; j++) {
+        const o = orders[j];
+        if (o.status === 'delivered') {
+          deliveredOrders++;
+        } else {
+          activeOrders++;
+        }
+        totalOrdersValue += (o.price || 0);
+        totalTailorCost += (o.cost || 0);
+      }
 
       return {
         ...seam,

@@ -221,63 +221,100 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
   // ==========================================
   // 1. CALCULATIONS FOR SELECTED DATE (FI NHAR)
   // ==========================================
-  const dateSales = useMemo(() => {
-    return sales.filter(s => s.date && s.date.startsWith(selectedDate));
-  }, [sales, selectedDate]);
+  const {
+    dateSales,
+    dateSalesIncome,
+    dateRentals,
+    dateRentalsIncome,
+    dateCautionsReceived,
+    dateTailoring,
+    dateTailoringIncome,
+    dateExpenses,
+    dateExpensesPaid,
+    dateStaffPayouts,
+    dateStaffPayoutsPaid,
+    totalDailyInflow,
+    totalDailyOutflow,
+    theoreticalAmount
+  } = useMemo(() => {
+    const dSales: Sale[] = [];
+    let salesInc = 0;
+    for (let i = 0; i < sales.length; i++) {
+      const s = sales[i];
+      if (s.date && s.date.startsWith(selectedDate)) {
+        dSales.push(s);
+        salesInc += (s.paidAmount !== undefined ? s.paidAmount : s.totalAmount || 0);
+      }
+    }
 
-  const dateSalesIncome = useMemo(() => {
-    return dateSales.reduce((sum, s) => sum + (s.paidAmount !== undefined ? s.paidAmount : s.totalAmount || 0), 0);
-  }, [dateSales]);
+    const dRentals: Rental[] = [];
+    let rentalsInc = 0;
+    let cautionsRec = 0;
+    for (let i = 0; i < rentals.length; i++) {
+      const r = rentals[i];
+      if ((r.createdAt && r.createdAt.startsWith(selectedDate)) ||
+          (r.startDate && r.startDate.startsWith(selectedDate)) ||
+          (r.handoverDate && r.handoverDate.startsWith(selectedDate))) {
+        dRentals.push(r);
+        rentalsInc += (r.paidAmount || 0);
+        if (r.cautionStatus === 'held') {
+          cautionsRec += (r.cautionAmount || 0);
+        }
+      }
+    }
 
-  const dateRentals = useMemo(() => {
-    return rentals.filter(r => 
-      (r.createdAt && r.createdAt.startsWith(selectedDate)) ||
-      (r.startDate && r.startDate.startsWith(selectedDate)) ||
-      (r.handoverDate && r.handoverDate.startsWith(selectedDate))
-    );
-  }, [rentals, selectedDate]);
+    const dTailoring: MaintenanceOrder[] = [];
+    let tailoringInc = 0;
+    for (let i = 0; i < maintenanceOrders.length; i++) {
+      const o = maintenanceOrders[i];
+      if ((o.receivedDate && o.receivedDate.startsWith(selectedDate)) ||
+          (o.createdAt && o.createdAt.startsWith(selectedDate))) {
+        dTailoring.push(o);
+        tailoringInc += (o.paidAmount || 0);
+      }
+    }
 
-  const dateRentalsIncome = useMemo(() => {
-    return dateRentals.reduce((sum, r) => sum + (r.paidAmount || 0), 0);
-  }, [dateRentals]);
+    const dExpenses: Expense[] = [];
+    let expensesPaid = 0;
+    for (let i = 0; i < expenses.length; i++) {
+      const e = expenses[i];
+      if (e.date && e.date.startsWith(selectedDate)) {
+        dExpenses.push(e);
+        expensesPaid += Number(e.amount || 0);
+      }
+    }
 
-  const dateCautionsReceived = useMemo(() => {
-    return dateRentals.reduce((sum, r) => sum + (r.cautionStatus === 'held' ? (r.cautionAmount || 0) : 0), 0);
-  }, [dateRentals]);
+    const dStaffPayouts: StaffPayout[] = [];
+    let staffPayoutsPaid = 0;
+    for (let i = 0; i < staffPayouts.length; i++) {
+      const p = staffPayouts[i];
+      if (p.date && p.date.startsWith(selectedDate)) {
+        dStaffPayouts.push(p);
+        staffPayoutsPaid += Number(p.amount || 0);
+      }
+    }
 
-  const dateTailoring = useMemo(() => {
-    return maintenanceOrders.filter(o => 
-      (o.receivedDate && o.receivedDate.startsWith(selectedDate)) ||
-      (o.createdAt && o.createdAt.startsWith(selectedDate))
-    );
-  }, [maintenanceOrders, selectedDate]);
+    const totalInflow = salesInc + rentalsInc + tailoringInc + cautionsRec;
+    const totalOutflow = expensesPaid + staffPayoutsPaid;
+    const theoretical = openingBalance + totalInflow - totalOutflow;
 
-  const dateTailoringIncome = useMemo(() => {
-    return dateTailoring.reduce((sum, o) => sum + (o.paidAmount || 0), 0);
-  }, [dateTailoring]);
-
-  const dateExpenses = useMemo(() => {
-    return expenses.filter(e => e.date && e.date.startsWith(selectedDate));
-  }, [expenses, selectedDate]);
-
-  const dateExpensesPaid = useMemo(() => {
-    return dateExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
-  }, [dateExpenses]);
-
-  const dateStaffPayouts = useMemo(() => {
-    return staffPayouts.filter(p => p.date && p.date.startsWith(selectedDate));
-  }, [staffPayouts, selectedDate]);
-
-  const dateStaffPayoutsPaid = useMemo(() => {
-    return dateStaffPayouts.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-  }, [dateStaffPayouts]);
-
-  // Total daily Inflow & Outflow
-  const totalDailyInflow = dateSalesIncome + dateRentalsIncome + dateTailoringIncome + dateCautionsReceived;
-  const totalDailyOutflow = dateExpensesPaid + dateStaffPayoutsPaid;
-
-  // Expected / Theoretical amount in register drawer
-  const theoreticalAmount = openingBalance + totalDailyInflow - totalDailyOutflow;
+    return {
+      dateSales: dSales,
+      dateSalesIncome: salesInc,
+      dateRentals: dRentals,
+      dateRentalsIncome: rentalsInc,
+      dateCautionsReceived: cautionsRec,
+      dateTailoring: dTailoring,
+      dateTailoringIncome: tailoringInc,
+      dateExpenses: dExpenses,
+      dateExpensesPaid: expensesPaid,
+      dateStaffPayouts: dStaffPayouts,
+      dateStaffPayoutsPaid: staffPayoutsPaid,
+      totalDailyInflow: totalInflow,
+      totalDailyOutflow: totalOutflow,
+      theoreticalAmount: theoretical
+    };
+  }, [sales, rentals, maintenanceOrders, expenses, staffPayouts, selectedDate, openingBalance]);
 
   // Actual counted amount in drawer
   const actualAmount = Number(actualInput) || 0;

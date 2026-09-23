@@ -176,19 +176,21 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
   const currentViewRef = React.useRef(currentView);
   currentViewRef.current = currentView;
 
-  // Local navigation state only - does NOT trigger App.tsx re-renders
+  // Local navigation state with synchronous cache hydration
   const navigateTo = useCallback((view: ViewType) => {
     perfMonitor.startNavigation(currentViewRef.current, view);
+    // 1. Ensure LocalStorage cache is loaded into React state BEFORE view renders!
+    if (onEnsureCollection) {
+      onEnsureCollection(view);
+    }
+    // 2. Render view with fully hydrated cache state
     setCurrentView(view);
-  }, []);
+  }, [onEnsureCollection]);
 
-  // Ensure collection for active section is loaded on-demand
+  // Record end of navigation performance tracking
   React.useEffect(() => {
     perfMonitor.endNavigation(currentView);
-    if (onEnsureCollection) {
-      onEnsureCollection(currentView);
-    }
-  }, [currentView, onEnsureCollection]);
+  }, [currentView]);
 
   React.useEffect(() => {
     if (onInitNav) {
