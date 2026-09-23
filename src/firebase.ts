@@ -11,6 +11,8 @@ import {
   query,
   limitToLast,
   get,
+  orderByChild,
+  equalTo,
   Query
 } from 'firebase/database';
 
@@ -242,26 +244,38 @@ export async function fetchCollectionOnce<T extends { id?: string }>(collectionK
 
 /**
  * Targeted Single-Item Fetch by Barcode:
- * Enables O(1) direct lookup from Firebase RTDB without loading entire collection.
+ * Enables O(1) direct lookup from Firebase RTDB for a single item without loading the full collection.
  */
 export async function fetchClothByBarcode(barcode: string): Promise<any | null> {
   if (!barcode) return null;
   const clean = barcode.trim().toLowerCase();
+  if (!clean) return null;
+
   try {
-    const snapshot = await get(ref(rtdb, FIREBASE_COLLECTIONS.CLOTHES));
+    // 1. Query Firebase RTDB by barcode child field directly (returns ONLY 1 record over the wire)
+    const bcQuery = query(
+      ref(rtdb, FIREBASE_COLLECTIONS.CLOTHES),
+      orderByChild('barcode'),
+      equalTo(barcode.trim())
+    );
+    const snapshot = await get(bcQuery);
     if (snapshot.exists()) {
       const val = snapshot.val();
-      if (typeof val === 'object' && val !== null) {
-        for (const k of Object.keys(val)) {
-          const item = val[k];
-          if (item && typeof item === 'object') {
-            const itemBc = String(item.barcode || '').trim().toLowerCase();
-            const itemId = String(item.id || k).trim().toLowerCase();
-            if (itemBc === clean || itemId === clean) {
-              return { ...item, id: item.id || k };
-            }
-          }
+      if (val && typeof val === 'object') {
+        const keys = Object.keys(val);
+        if (keys.length > 0) {
+          const item = val[keys[0]];
+          return { ...item, id: item.id || keys[0] };
         }
+      }
+    }
+
+    // 2. Direct child ID lookup fallback
+    const idSnap = await get(ref(rtdb, `${FIREBASE_COLLECTIONS.CLOTHES}/${clean}`));
+    if (idSnap.exists()) {
+      const item = idSnap.val();
+      if (item && typeof item === 'object') {
+        return { ...item, id: item.id || clean };
       }
     }
   } catch (error) {

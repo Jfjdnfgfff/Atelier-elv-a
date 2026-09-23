@@ -2019,8 +2019,8 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        // Max dimension bounds: 1600px ensures ultra-crisp details on all screens without cropping
-        const MAX_DIM = 1600;
+        // Optimized thumbnail dimension (480px) & 0.70 quality keeps images lightweight (~15KB) and prevents LocalStorage quota errors
+        const MAX_DIM = 480;
         let width = img.width;
         let height = img.height;
 
@@ -2041,7 +2041,7 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
           ctx.imageSmoothingEnabled = true;
           ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, width, height);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.70);
           setImageUrl(dataUrl);
         }
         setIsProcessingImage(false);

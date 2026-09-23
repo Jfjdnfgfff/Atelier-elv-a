@@ -194,8 +194,8 @@ export function generateSecureImageFilename(originalFilename = 'photo.jpg', mime
  */
 export async function compressImageFile(
   fileOrDataUrl: File | string,
-  maxDimension = 1400,
-  quality = 0.82
+  maxDimension = 480,
+  quality = 0.70
 ): Promise<string> {
   return new Promise((resolve) => {
     const processImageSource = (src: string) => {

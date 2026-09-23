@@ -146,7 +146,29 @@ export function flushPendingStorageSynchronously(): void {
       localStorage.setItem(key, JSON.stringify(cacheEnvelope));
     } catch (e: any) {
       if (e?.name === 'QuotaExceededError' || e?.code === 22) {
-        console.warn(`[localStorage quota exceeded for ${key}]. User data remains 100% intact in memoryStore and cloud database.`);
+        console.warn(`[localStorage quota exceeded for ${key}]. Saving compact cache without giant image payloads...`);
+        try {
+          const meta = cacheMetaStore.get(key) || { timestamp: Date.now(), version: 1 };
+          let compactData = dataToPersist;
+          if (Array.isArray(dataToPersist)) {
+            compactData = dataToPersist.map((item: any) => {
+              if (item && typeof item === 'object' && item.imageUrl && typeof item.imageUrl === 'string' && item.imageUrl.length > 50000) {
+                const copy = { ...item };
+                delete copy.imageUrl;
+                return copy;
+              }
+              return item;
+            });
+          }
+          localStorage.setItem(key, JSON.stringify({
+            data: compactData,
+            timestamp: meta.timestamp,
+            version: meta.version
+          }));
+          console.log(`[localStorage] Compact cache for ${key} successfully written!`);
+        } catch (fallbackErr) {
+          console.error(`Fallback cache store failed for ${key}:`, fallbackErr);
+        }
       } else {
         console.error(`Error flushing key ${key} to storage:`, e);
       }
