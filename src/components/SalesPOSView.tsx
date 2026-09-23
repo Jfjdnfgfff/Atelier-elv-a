@@ -447,16 +447,27 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
     return sales.slice(0, visibleSalesCount);
   }, [sales, visibleSalesCount]);
 
+  if (isInitialLoading) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center" dir="rtl">
+        <div className="bg-white/95 backdrop-blur-md p-8 sm:p-10 rounded-3xl border border-blue-100 shadow-xl max-w-sm w-full flex flex-col items-center gap-4 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-inner">
+            <Loader2 className="w-8 h-8 animate-spin" />
+          </div>
+          <div>
+            <h3 className="font-black text-slate-900 text-base sm:text-lg mb-1">جاري تحميل بيانات قسم المبيعات...</h3>
+            <p className="text-xs text-slate-500 font-medium">يرجى الانتظار لحظة أثناء تجهيز واجهة المنتجات والمبيعات</p>
+          </div>
+          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-2">
+            <div className="bg-blue-600 h-full w-2/3 rounded-full animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6" dir="rtl">
-      {/* Initial Section Loading Banner */}
-      {isInitialLoading && (
-        <div className="p-3 bg-blue-50/90 border border-blue-200/80 rounded-2xl flex items-center justify-center gap-2.5 text-blue-900 text-xs font-bold shadow-2xs animate-in fade-in">
-          <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0" />
-          <span>جاري تحميل بيانات قسم المبيعات والمنتجات...</span>
-        </div>
-      )}
-
       {/* Top Split Layout: POS Selector and Cart */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
         {/* Mobile Cart Summary Sticky Pill */}

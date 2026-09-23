@@ -541,16 +541,27 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
     return filteredClothes.slice(0, visibleCount);
   }, [filteredClothes, visibleCount]);
 
+  if (isInitialLoading) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center" dir="rtl">
+        <div className="bg-white/95 backdrop-blur-md p-8 sm:p-10 rounded-3xl border border-indigo-100 shadow-xl max-w-sm w-full flex flex-col items-center gap-4 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-inner">
+            <Loader2 className="w-8 h-8 animate-spin" />
+          </div>
+          <div>
+            <h3 className="font-black text-slate-900 text-base sm:text-lg mb-1">جاري تحميل بيانات قسم المخزون...</h3>
+            <p className="text-xs text-slate-500 font-medium">يرجى الانتظار لحظة أثناء استرجاع السلع والمنتجات</p>
+          </div>
+          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-2">
+            <div className="bg-indigo-600 h-full w-2/3 rounded-full animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-5 p-3 sm:p-6" dir="rtl">
-      {/* Initial Section Loading Banner */}
-      {isInitialLoading && (
-        <div className="p-3 bg-indigo-50/90 border border-indigo-200/80 rounded-2xl flex items-center justify-center gap-2.5 text-indigo-900 text-xs font-bold shadow-2xs animate-in fade-in">
-          <Loader2 className="w-4 h-4 text-indigo-600 animate-spin shrink-0" />
-          <span>جاري تحميل بيانات قسم المخزون...</span>
-        </div>
-      )}
-
       {/* Top Header & Tab Switcher */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-indigo-50/70 via-white to-purple-50/70 p-4 sm:p-5 rounded-2xl border border-indigo-100 shadow-2xs">
         <div>
