@@ -514,9 +514,10 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
     });
   }, [clothes, filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search]);
 
-  const [visibleCount, setVisibleCount] = useState(5);
+  const BATCH_SIZE = 12;
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const BATCH_SIZE = 5;
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (clothes !== undefined) {
@@ -525,8 +526,23 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   }, [clothes, inventoryTab]);
 
   useEffect(() => {
-    setVisibleCount(5);
+    setVisibleCount(BATCH_SIZE);
   }, [filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount(prev => Math.min(prev + BATCH_SIZE, filteredClothes.length));
+        }
+      },
+      { rootMargin: '300px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [filteredClothes.length]);
 
   const visibleClothes = useMemo(() => {
     return filteredClothes.slice(0, visibleCount);
@@ -921,7 +937,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           return (
             <div
               key={item.id}
-              className="bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all duration-200 flex flex-col justify-between group"
+              className="bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all duration-200 flex flex-col justify-between group cv-auto"
             >
               {/* Product Image Box - Takes 100% of card width & vertical height with 100% fill */}
               <div 
@@ -935,6 +951,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                     <img
                       src={item.imageUrl}
                       alt={item.name}
+                      decoding="async"
                       className="relative z-1 w-full h-full object-fill transition-transform duration-300 group-hover:scale-103 select-none"
                       loading="lazy"
                       onError={(e) => {
@@ -952,18 +969,18 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                 {/* Purpose Badge on Top Left */}
                 <div className="absolute top-2.5 left-2.5 flex items-center gap-1">
                   {item.purpose === 'both' && (
-                    <span className="bg-slate-900/85 backdrop-blur-xs text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-lg shadow-2xs">
+                    <span className="bg-slate-900/90 text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-lg shadow-2xs">
                       بيع + كراء
                     </span>
                   )}
                   {item.purpose === 'rent' && (
-                    <span className="bg-slate-900/85 backdrop-blur-xs text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-lg shadow-2xs flex items-center gap-1">
+                    <span className="bg-slate-900/90 text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-lg shadow-2xs flex items-center gap-1">
                       <Shirt className="w-3 h-3" />
                       <span>كراء</span>
                     </span>
                   )}
                   {item.purpose === 'sell' && (
-                    <span className="bg-slate-900/85 backdrop-blur-xs text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-lg shadow-2xs flex items-center gap-1">
+                    <span className="bg-slate-900/90 text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-lg shadow-2xs flex items-center gap-1">
                       <Tag className="w-3 h-3" />
                       <span>بيع</span>
                     </span>
@@ -972,7 +989,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
 
                 {/* Category Badge on Top Right */}
                 <div className="absolute top-2.5 right-2.5">
-                  <span className="bg-slate-900/70 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded-lg">
+                  <span className="bg-slate-900/80 text-white text-[10px] font-medium px-2 py-0.5 rounded-lg">
                     {item.category}
                   </span>
                 </div>
@@ -1142,6 +1159,9 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           );
         })}
       </div>
+
+      {/* Infinite Scroll Sentinel */}
+      <div ref={sentinelRef} className="h-4 w-full" />
 
       {/* Bottom Progressive Load Button & Counter */}
       <div className="py-3 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">

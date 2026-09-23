@@ -77,6 +77,16 @@
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
   .hide-scrollbar::-webkit-scrollbar { display: none; }
   .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Smooth 60fps scrolling & content-visibility performance containment */
+  .cv-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 380px;
+  }
+  .cv-auto-row {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 64px;
+  }
   
   .custom-scrollbar::-webkit-scrollbar {
     width: 5px;

@@ -219,7 +219,7 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
             return (
               <div
                 key={order.id}
-                className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all flex flex-col justify-between space-y-3"
+                className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all flex flex-col justify-between space-y-3 cv-auto"
               >
                 {/* 10-Days Due Alert Notification Banner */}
                 {isDueSoon && (

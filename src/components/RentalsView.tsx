@@ -339,7 +339,7 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
             return (
               <div
                 key={rental.id}
-                className={`bg-white rounded-2xl border p-4 sm:p-5 flex flex-col justify-between transition-all duration-200 shadow-2xs hover:shadow-xs group ${
+                className={`bg-white rounded-2xl border p-4 sm:p-5 flex flex-col justify-between transition-all duration-200 shadow-2xs hover:shadow-xs group cv-auto ${
                   isReturned
                     ? 'border-slate-200/70 bg-slate-50/30'
                     : isReserved
@@ -357,6 +357,8 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
                         <img 
                           src={matchedCloth.imageUrl} 
                           alt={rental.itemName} 
+                          decoding="async"
+                          loading="lazy"
                           className="w-12 h-12 rounded-xl object-contain bg-slate-50 border border-slate-200 shrink-0 p-0.5" 
                         />
                       ) : (

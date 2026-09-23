@@ -630,7 +630,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               return (
                 <div
                   key={item.id}
-                  className={`bg-white rounded-2xl overflow-hidden border transition-all duration-200 select-none relative shadow-2xs hover:shadow-xs flex flex-col justify-between group ${
+                  className={`bg-white rounded-2xl overflow-hidden border transition-all duration-200 select-none relative shadow-2xs hover:shadow-xs flex flex-col justify-between group cv-auto ${
                     inCartCount > 0 ? 'border-slate-900 ring-2 ring-slate-900/10' : 'border-slate-200/80 hover:border-slate-300'
                   }`}
                 >
@@ -640,18 +640,11 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                     className="relative aspect-[3/4] bg-slate-900/5 overflow-hidden flex items-center justify-center cursor-pointer group"
                   >
                     {item.imageUrl ? (
-                      <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
-                        {imageDisplayMode !== 'fill' && (
-                          <img
-                            src={item.imageUrl}
-                            alt=""
-                            className="absolute inset-0 w-full h-full object-cover blur-xl scale-125 opacity-35 select-none pointer-events-none"
-                            aria-hidden="true"
-                          />
-                        )}
+                      <div className="relative w-full h-full overflow-hidden flex items-center justify-center bg-slate-100">
                         <img
                           src={item.imageUrl}
                           alt={item.name}
+                          decoding="async"
                           className={`relative z-1 w-full h-full transition-transform duration-300 group-hover:scale-103 select-none ${
                             imageDisplayMode === 'fill'
                               ? 'object-fill'
