@@ -228,7 +228,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
                   <path d="M7 21H5a2 2 0 01-2-2v-2" />
                   <line x1="7" y1="12" x2="17" y2="12" />
                 </svg>
-                <span className="hidden sm:inline text-xs">مسح الباركود</span>
+                <span className="text-[10px] sm:text-xs font-bold">مسح الباركود</span>
               </button>
 
               <button
@@ -254,7 +254,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
                     </>
                   )}
                 </svg>
-                <span className="hidden sm:inline text-xs">{hideFinances ? 'إظهار المبالغ' : 'إخفاء المبالغ'}</span>
+                <span className="text-[10px] sm:text-xs font-bold">{hideFinances ? 'إظهار المبالغ' : 'إخفاء المبالغ'}</span>
               </button>
 
               <button 
@@ -269,7 +269,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
                   <line x1="16" y1="17" x2="8" y2="17" />
                   <polyline points="10 9 9 9 8 9" />
                 </svg>
-                <span className="hidden sm:inline text-xs">التقرير الشامل</span>
+                <span className="text-[10px] sm:text-xs font-bold">التقرير الشامل</span>
               </button>
 
               <button 
@@ -282,8 +282,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
                 }`}
               >
                 <Scale className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 transition-colors ${currentView === 'caisse' ? 'text-white' : 'text-blue-600 group-hover:text-blue-700'}`} />
-                <span className="hidden sm:inline text-xs">الصندوق اليومي</span>
-                <span className="sm:hidden text-[10px]">الصندوق</span>
+                <span className="text-[10px] sm:text-xs font-bold">الصندوق اليومي</span>
               </button>
             </div>
 
