@@ -15,7 +15,6 @@ import {
   Seamstress,
   ActivityLog
 } from './types';
-import { saveToFirebase } from './firebase';
 import { perfMonitor } from './utils/performanceMonitor';
 
 export const STORAGE_KEYS = {
@@ -224,10 +223,10 @@ export const getCachedCollection = <T>(key: string, defaultValue: T[] = []): Col
   return { data: loaded, isFresh, timestamp };
 };
 
-export const saveToStorage = <T>(key: string, data: T, syncFirebase: boolean = false): void => {
+export const saveToStorage = <T>(key: string, data: T): void => {
   perfMonitor.recordStorageWrite(key);
-  // If the exact same object/array reference is passed and not forcing cloud sync, avoid redundant work
-  if (lastWrittenRef.get(key) === data && !syncFirebase) {
+  // If the exact same object/array reference is passed, avoid redundant work
+  if (lastWrittenRef.get(key) === data) {
     return;
   }
   console.log(`[Storage Write] Saving collection / key: "${key}"`, { 
@@ -244,12 +243,6 @@ export const saveToStorage = <T>(key: string, data: T, syncFirebase: boolean = f
 
   // Schedule disk flush in background without blocking the UI thread
   scheduleIdleStorageFlush();
-
-  if (syncFirebase && Array.isArray(data)) {
-    saveToFirebase(key, data).catch((err) => {
-      console.warn(`[Firebase sync warning for ${key}]:`, err);
-    });
-  }
 };
 
 export const generateId = (): string => {

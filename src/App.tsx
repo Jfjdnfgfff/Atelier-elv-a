@@ -37,14 +37,14 @@ import {
 } from './storage';
 import { perfMonitor } from './utils/performanceMonitor';
 import { 
+  FIREBASE_COLLECTIONS, 
+  saveItemToFirebase, 
+  updateItemInFirebase, 
+  deleteItemFromFirebase, 
   syncCollectionToCloud, 
   SubscriptionManager, 
-  saveItemToFirebase,
-  updateItemInFirebase,
-  deleteItemFromFirebase,
-  FIREBASE_COLLECTIONS,
-  firebaseConfig,
-  areArraysEqual
+  areArraysEqual,
+  firebaseConfig
 } from './firebase';
 
 // Components
@@ -73,52 +73,49 @@ import {
   BarChart3, 
   Save, 
   Globe,
+  Plus,
   Cloud,
+  CheckCircle,
   RefreshCw,
-  CheckCircle2,
-  Database,
-  Smartphone,
-  Laptop,
-  Plus
+  Database
 } from 'lucide-react';
 
 export default function App() {
   perfMonitor.recordAppRender();
 
-  // 1. Core Collections (Loaded directly and live from Firebase Realtime Database)
-  const [clothes, setClothes] = useState<ClothItem[]>([]);
-  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
-  const [staffAbsences, setStaffAbsences] = useState<StaffAbsence[]>([]);
-  const [caisseClosures, setCaisseClosures] = useState<DailyCaisseClosure[]>([]);
+  // Core & Lazy Collections loaded directly from Local Storage
+  const [clothes, setClothes] = useState<ClothItem[]>(() => loadFromStorage(STORAGE_KEYS.CLOTHES, DEFAULT_CLOTHES));
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF));
+  const [staffAbsences, setStaffAbsences] = useState<StaffAbsence[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_ABSENCES, []));
+  const [caisseClosures, setCaisseClosures] = useState<DailyCaisseClosure[]>(() => loadFromStorage(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES));
+  const [rentals, setRentals] = useState<Rental[]>(() => loadFromStorage(STORAGE_KEYS.RENTALS, DEFAULT_RENTALS));
+  const [sales, setSales] = useState<Sale[]>(() => loadFromStorage(STORAGE_KEYS.SALES, []));
+  const [expenses, setExpenses] = useState<Expense[]>(() => loadFromStorage(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES));
+  const [credits, setCredits] = useState<Credit[]>(() => loadFromStorage(STORAGE_KEYS.CREDITS, []));
+  const [staffPayouts, setStaffPayouts] = useState<StaffPayout[]>(() => loadFromStorage(STORAGE_KEYS.STAFF_PAYOUTS, []));
+  const [maintenanceOrders, setMaintenanceOrders] = useState<MaintenanceOrder[]>(() => loadFromStorage(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE));
+  const [suppliers, setSuppliers] = useState<Supplier[]>(() => loadFromStorage(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS));
+  const [seamstresses, setSeamstresses] = useState<Seamstress[]>(() => loadFromStorage(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES));
+  const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>(() => loadFromStorage(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS));
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => loadFromStorage(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS));
 
-  // 2. Lazy Collections (Deferred until section or modal is opened)
-  const [rentals, setRentals] = useState<Rental[]>([]);
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [credits, setCredits] = useState<Credit[]>([]);
-  const [staffPayouts, setStaffPayouts] = useState<StaffPayout[]>([]);
-  const [maintenanceOrders, setMaintenanceOrders] = useState<MaintenanceOrder[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [seamstresses, setSeamstresses] = useState<Seamstress[]>([]);
-  const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
+  // Firebase Realtime Connection & Sync State
+  const [isFirebaseConnected, setIsFirebaseConnected] = useState(false);
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  const [lastCloudSyncTime, setLastCloudSyncTime] = useState<string | null>(null);
+  const isRemoteUpdateRef = useRef<Record<string, boolean>>({});
+
   const [toasts, setToasts] = useState<{ id: number; message: string; type: 'success' | 'error' }[]>([]);
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
   }, []);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
 
-  // Track loaded collections & active singleton listeners to prevent duplicate subscriptions
-  const loadedCollectionsRef = useRef<Set<string>>(new Set([
-    'clothes', 'staffMembers', 'staffAbsences', 'caisseClosures', 'activityLogs'
-  ]));
-  const activeSubscriptionsRef = useRef<Map<string, () => void>>(new Map());
-
-  // UI state (activeView is now owned entirely by AppNavigation to avoid App re-renders!)
+  // UI state
   const [activeModal, setActiveModal] = useState<string | null>(null);
 
-  // Navigation callback refs to communicate with AppNavigation without triggering App re-renders
+  // Navigation callback refs
   const navRef = useRef<(view: ViewType) => void>(() => {});
   const getCurrentViewRef = useRef<() => ViewType>(() => 'dashboard');
 
@@ -126,106 +123,6 @@ export default function App() {
     navRef.current = navFn;
     getCurrentViewRef.current = getViewFn;
   }, []);
-
-  // Cloud Real-time Synchronization state
-  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
-  const [lastCloudSyncTime, setLastCloudSyncTime] = useState<Date>(new Date());
-  const isRemoteUpdateRef = useRef<Record<string, boolean>>({
-    clothes: false,
-    rentals: false,
-    sales: false,
-    expenses: false,
-    credits: false,
-    staffPayouts: false,
-    staffMembers: false,
-    staffAbsences: false,
-    maintenanceOrders: false,
-    suppliers: false,
-    seamstresses: false,
-    rawMaterials: false,
-    caisseClosures: false
-  });
-
-  const lastSyncUpdateTimestampRef = useRef<number>(0);
-  const markCloudSyncActive = useCallback(() => {
-    const now = Date.now();
-    if (now - lastSyncUpdateTimestampRef.current > 2500) {
-      lastSyncUpdateTimestampRef.current = now;
-      setLastCloudSyncTime(new Date());
-    }
-  }, []);
-
-  // 1. Core Permanent Real-time Cloud Subscriptions (Small Essential Global Collections)
-  useEffect(() => {
-    // Clothes
-    const unsubClothes = SubscriptionManager.subscribe<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
-      if (items && Array.isArray(items) && items.length > 0) {
-        isRemoteUpdateRef.current.clothes = true;
-        setClothes(prev => areArraysEqual(prev, items) ? prev : items);
-        markCloudSyncActive();
-      } else {
-        const local = loadFromStorage<ClothItem[]>(STORAGE_KEYS.CLOTHES, []);
-        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.CLOTHES, local);
-      }
-    });
-
-    // Staff Members
-    const unsubStaffMembers = SubscriptionManager.subscribe<StaffMember>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, (items) => {
-      if (items && Array.isArray(items) && items.length > 0) {
-        isRemoteUpdateRef.current.staffMembers = true;
-        setStaffMembers(prev => areArraysEqual(prev, items) ? prev : items);
-        markCloudSyncActive();
-      } else {
-        const local = loadFromStorage<StaffMember[]>(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF);
-        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_MEMBERS, local);
-      }
-    });
-
-    // Staff Absences
-    const unsubStaffAbsences = SubscriptionManager.subscribe<StaffAbsence>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, (items) => {
-      if (items && Array.isArray(items)) {
-        isRemoteUpdateRef.current.staffAbsences = true;
-        setStaffAbsences(prev => areArraysEqual(prev, items) ? prev : items);
-        markCloudSyncActive();
-      }
-    });
-
-    // Caisse Closures
-    const unsubCaisse = SubscriptionManager.subscribe<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
-      if (items && Array.isArray(items) && items.length > 0) {
-        isRemoteUpdateRef.current.caisseClosures = true;
-        setCaisseClosures(prev => areArraysEqual(prev, items) ? prev : items);
-        markCloudSyncActive();
-      } else {
-        const local = loadFromStorage<DailyCaisseClosure[]>(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES);
-        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, local);
-      }
-    });
-
-    // Activity Logs
-    const unsubLogs = SubscriptionManager.subscribe<ActivityLog>(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, (items) => {
-      if (items && Array.isArray(items) && items.length > 0) {
-        isRemoteUpdateRef.current.activityLogs = true;
-        setActivityLogs(prev => areArraysEqual(prev, items) ? prev : items);
-        markCloudSyncActive();
-      } else {
-        const local = loadFromStorage<ActivityLog[]>(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS);
-        if (local.length > 0) syncCollectionToCloud(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, local);
-      }
-    });
-
-    return () => {
-      unsubClothes();
-      unsubStaffMembers();
-      unsubStaffAbsences();
-      unsubCaisse();
-      unsubLogs();
-    };
-  }, [markCloudSyncActive]);
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.ACTIVITY_LOGS, activityLogs);
-  }, [activityLogs]);
 
   const addActivityLog = useCallback((log: Omit<ActivityLog, 'id' | 'timestamp'>) => {
     const newLog: ActivityLog = {
@@ -235,362 +132,362 @@ export default function App() {
       performedBy: log.performedBy || 'إدارة البوتيك'
     };
     setActivityLogs(prev => [newLog, ...prev]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, newLog);
   }, []);
 
   const handleDeleteLog = useCallback((id: string, passwordVerified: boolean) => {
     if (!passwordVerified) return;
     setActivityLogs(prev => prev.filter(l => l.id !== id));
-    deleteItemFromFirebase(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, id);
     showToast('تم حذف السجل بنجاح');
   }, [showToast]);
 
   const handleClearAllLogs = useCallback((passwordVerified: boolean) => {
     if (!passwordVerified) return;
-    activityLogs.forEach(l => deleteItemFromFirebase(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, l.id));
     setActivityLogs([]);
     showToast('تم مسح جميع سجلات العمليات بنجاح');
-  }, [activityLogs, showToast]);
+  }, [showToast]);
 
   const handleAddManualLog = useCallback((log: Omit<ActivityLog, 'id' | 'timestamp'>) => {
     addActivityLog(log);
   }, [addActivityLog]);
 
-  // First usable UI instrumentation & cleanup
+  // First usable UI instrumentation
   useEffect(() => {
     const coreRecords = clothes.length + staffMembers.length + staffAbsences.length + caisseClosures.length;
     perfMonitor.markFirstUsableUI(coreRecords);
   }, []);
 
-  useEffect(() => {
-    return () => {
-      activeSubscriptionsRef.current.forEach(unsub => unsub());
-      activeSubscriptionsRef.current.clear();
-    };
+  const handleEnsureCollection = useCallback((_view: ViewType) => {
+    // Pure local-first: all collections are ready in memory
   }, []);
 
-  // On-demand collection loader: Real-time Firebase Subscriptions
-  const ensureCollection = useCallback((key: string) => {
-    if (loadedCollectionsRef.current.has(key)) {
-      return;
-    }
-    loadedCollectionsRef.current.add(key);
-
-    switch (key) {
-      case 'rentals': {
-        const unsub = SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
-          if (items && Array.isArray(items)) {
-            setRentals(prev => {
-              if (areArraysEqual(prev, items)) return prev;
-              isRemoteUpdateRef.current.rentals = true;
-              return items;
-            });
-            markCloudSyncActive();
-          }
-        });
-        activeSubscriptionsRef.current.set(key, unsub);
-        break;
-      }
-      case 'sales': {
-        const unsub = SubscriptionManager.subscribe<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
-          if (items && Array.isArray(items)) {
-            setSales(prev => {
-              if (areArraysEqual(prev, items)) return prev;
-              isRemoteUpdateRef.current.sales = true;
-              return items;
-            });
-            markCloudSyncActive();
-          }
-        });
-        activeSubscriptionsRef.current.set(key, unsub);
-        break;
-      }
-      case 'expenses': {
-        const unsub = SubscriptionManager.subscribe<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
-          if (items && Array.isArray(items)) {
-            setExpenses(prev => {
-              if (areArraysEqual(prev, items)) return prev;
-              isRemoteUpdateRef.current.expenses = true;
-              return items;
-            });
-            markCloudSyncActive();
-          }
-        });
-        activeSubscriptionsRef.current.set(key, unsub);
-        break;
-      }
-      case 'credits': {
-        const unsub = SubscriptionManager.subscribe<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
-          if (items && Array.isArray(items)) {
-            setCredits(prev => {
-              if (areArraysEqual(prev, items)) return prev;
-              isRemoteUpdateRef.current.credits = true;
-              return items;
-            });
-            markCloudSyncActive();
-          }
-        });
-        activeSubscriptionsRef.current.set(key, unsub);
-        break;
-      }
-      case 'staffPayouts': {
-        const unsub = SubscriptionManager.subscribe<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
-          if (items && Array.isArray(items)) {
-            setStaffPayouts(prev => {
-              if (areArraysEqual(prev, items)) return prev;
-              isRemoteUpdateRef.current.staffPayouts = true;
-              return items;
-            });
-            markCloudSyncActive();
-          }
-        });
-        activeSubscriptionsRef.current.set(key, unsub);
-        break;
-      }
-      case 'maintenance': {
-        const unsub = SubscriptionManager.subscribe<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
-          if (items && Array.isArray(items)) {
-            setMaintenanceOrders(prev => {
-              if (areArraysEqual(prev, items)) return prev;
-              isRemoteUpdateRef.current.maintenanceOrders = true;
-              return items;
-            });
-            markCloudSyncActive();
-          }
-        });
-        activeSubscriptionsRef.current.set(key, unsub);
-        break;
-      }
-      case 'suppliers': {
-        const unsub = SubscriptionManager.subscribe<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
-          if (items && Array.isArray(items)) {
-            setSuppliers(prev => {
-              if (areArraysEqual(prev, items)) return prev;
-              isRemoteUpdateRef.current.suppliers = true;
-              return items;
-            });
-            markCloudSyncActive();
-          }
-        });
-        activeSubscriptionsRef.current.set(key, unsub);
-        break;
-      }
-      case 'seamstresses': {
-        const unsub = SubscriptionManager.subscribe<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
-          if (items && Array.isArray(items)) {
-            setSeamstresses(prev => {
-              if (areArraysEqual(prev, items)) return prev;
-              isRemoteUpdateRef.current.seamstresses = true;
-              return items;
-            });
-            markCloudSyncActive();
-          }
-        });
-        activeSubscriptionsRef.current.set(key, unsub);
-        break;
-      }
-      case 'rawMaterials': {
-        const unsub = SubscriptionManager.subscribe<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
-          if (items && Array.isArray(items)) {
-            setRawMaterials(prev => {
-              if (areArraysEqual(prev, items)) return prev;
-              isRemoteUpdateRef.current.rawMaterials = true;
-              return items;
-            });
-            markCloudSyncActive();
-          }
-        });
-        activeSubscriptionsRef.current.set(key, unsub);
-        break;
-      }
-    }
-  }, [markCloudSyncActive]);
-
-  const ensureCollectionsForView = useCallback((view: ViewType) => {
-    switch (view) {
-      case 'rentals':
-        ensureCollection('rentals');
-        break;
-      case 'sales':
-        ensureCollection('sales');
-        ensureCollection('rentals');
-        break;
-      case 'inventory':
-        ensureCollection('rawMaterials');
-        ensureCollection('suppliers');
-        break;
-      case 'tailoring':
-        ensureCollection('maintenance');
-        ensureCollection('seamstresses');
-        ensureCollection('rawMaterials');
-        break;
-      case 'expenses':
-        ensureCollection('expenses');
-        ensureCollection('suppliers');
-        break;
-      case 'credits':
-        ensureCollection('credits');
-        ensureCollection('suppliers');
-        break;
-      case 'partners':
-        ensureCollection('suppliers');
-        ensureCollection('seamstresses');
-        break;
-      case 'caisse':
-        ensureCollection('sales');
-        ensureCollection('rentals');
-        ensureCollection('expenses');
-        ensureCollection('staffPayouts');
-        break;
-      case 'dashboard':
-        ensureCollection('sales');
-        ensureCollection('rentals');
-        ensureCollection('expenses');
-        ensureCollection('credits');
-        break;
-    }
-  }, [ensureCollection]);
-
-  // Immediately pre-load core financial/income collections at startup for zero-delay loading
-  useEffect(() => {
-    ensureCollection('sales');
-    ensureCollection('rentals');
-    ensureCollection('expenses');
-    ensureCollection('credits');
-  }, [ensureCollection]);
-
-  const handleEnsureCollection = useCallback((view: ViewType) => {
-    ensureCollectionsForView(view);
-  }, [ensureCollectionsForView]);
-
-  // Ensure collections when modals are opened
-  useEffect(() => {
-    if (!activeModal) return;
-    if (['fullReport'].includes(activeModal)) {
-      ensureCollection('rentals');
-      ensureCollection('sales');
-      ensureCollection('expenses');
-      ensureCollection('credits');
-      ensureCollection('staffPayouts');
-      ensureCollection('maintenance');
-      ensureCollection('suppliers');
-    } else if (['addRental', 'editRental', 'returnRental', 'receiptModal'].includes(activeModal)) {
-      ensureCollection('rentals');
-    } else if (['addTailoring', 'editTailoring', 'tailoringReceipt', 'tailoringModal'].includes(activeModal)) {
-      ensureCollection('maintenance');
-      ensureCollection('seamstresses');
-      ensureCollection('rawMaterials');
-    } else if (['staffPayouts'].includes(activeModal)) {
-      ensureCollection('staffPayouts');
-    } else if (['supplierModal'].includes(activeModal)) {
-      ensureCollection('suppliers');
-    } else if (['seamstressModal'].includes(activeModal)) {
-      ensureCollection('seamstresses');
-    } else if (['rawMaterialModal'].includes(activeModal)) {
-      ensureCollection('rawMaterials');
-    }
-  }, [activeModal, ensureCollection]);
-
-  // Local Storage Persistence (Guarded: only writes to storage if the collection was loaded)
+  // Local Storage & Firebase Cloud Persistence
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.CLOTHES, clothes);
+    if (isRemoteUpdateRef.current[STORAGE_KEYS.CLOTHES]) {
+      isRemoteUpdateRef.current[STORAGE_KEYS.CLOTHES] = false;
+      return;
+    }
+    syncCollectionToCloud(FIREBASE_COLLECTIONS.CLOTHES, clothes);
   }, [clothes]);
 
   useEffect(() => {
-    if (loadedCollectionsRef.current.has('rentals')) {
-      saveToStorage(STORAGE_KEYS.RENTALS, rentals);
+    saveToStorage(STORAGE_KEYS.RENTALS, rentals);
+    if (isRemoteUpdateRef.current[STORAGE_KEYS.RENTALS]) {
+      isRemoteUpdateRef.current[STORAGE_KEYS.RENTALS] = false;
+      return;
     }
+    syncCollectionToCloud(FIREBASE_COLLECTIONS.RENTALS, rentals);
   }, [rentals]);
 
   useEffect(() => {
-    if (loadedCollectionsRef.current.has('sales')) {
-      saveToStorage(STORAGE_KEYS.SALES, sales);
+    saveToStorage(STORAGE_KEYS.SALES, sales);
+    if (isRemoteUpdateRef.current[STORAGE_KEYS.SALES]) {
+      isRemoteUpdateRef.current[STORAGE_KEYS.SALES] = false;
+      return;
     }
+    syncCollectionToCloud(FIREBASE_COLLECTIONS.SALES, sales);
   }, [sales]);
 
   useEffect(() => {
-    if (loadedCollectionsRef.current.has('expenses')) {
-      saveToStorage(STORAGE_KEYS.EXPENSES, expenses);
+    saveToStorage(STORAGE_KEYS.EXPENSES, expenses);
+    if (isRemoteUpdateRef.current[STORAGE_KEYS.EXPENSES]) {
+      isRemoteUpdateRef.current[STORAGE_KEYS.EXPENSES] = false;
+      return;
     }
+    syncCollectionToCloud(FIREBASE_COLLECTIONS.EXPENSES, expenses);
   }, [expenses]);
 
   useEffect(() => {
-    if (loadedCollectionsRef.current.has('credits')) {
-      saveToStorage(STORAGE_KEYS.CREDITS, credits);
+    saveToStorage(STORAGE_KEYS.CREDITS, credits);
+    if (isRemoteUpdateRef.current[STORAGE_KEYS.CREDITS]) {
+      isRemoteUpdateRef.current[STORAGE_KEYS.CREDITS] = false;
+      return;
     }
+    syncCollectionToCloud(FIREBASE_COLLECTIONS.CREDITS, credits);
   }, [credits]);
 
   useEffect(() => {
-    if (loadedCollectionsRef.current.has('staffPayouts')) {
-      saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, staffPayouts);
+    saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, staffPayouts);
+    if (isRemoteUpdateRef.current[STORAGE_KEYS.STAFF_PAYOUTS]) {
+      isRemoteUpdateRef.current[STORAGE_KEYS.STAFF_PAYOUTS] = false;
+      return;
     }
+    syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, staffPayouts);
   }, [staffPayouts]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, staffMembers);
+    if (isRemoteUpdateRef.current[STORAGE_KEYS.STAFF_MEMBERS]) {
+      isRemoteUpdateRef.current[STORAGE_KEYS.STAFF_MEMBERS] = false;
+      return;
+    }
+    syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_MEMBERS, staffMembers);
   }, [staffMembers]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, staffAbsences);
+    if (isRemoteUpdateRef.current[STORAGE_KEYS.STAFF_ABSENCES]) {
+      isRemoteUpdateRef.current[STORAGE_KEYS.STAFF_ABSENCES] = false;
+      return;
+    }
+    syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_ABSENCES, staffAbsences);
   }, [staffAbsences]);
 
   useEffect(() => {
-    if (loadedCollectionsRef.current.has('maintenance')) {
-      saveToStorage(STORAGE_KEYS.MAINTENANCE, maintenanceOrders);
+    saveToStorage(STORAGE_KEYS.MAINTENANCE, maintenanceOrders);
+    if (isRemoteUpdateRef.current[STORAGE_KEYS.MAINTENANCE]) {
+      isRemoteUpdateRef.current[STORAGE_KEYS.MAINTENANCE] = false;
+      return;
     }
+    syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, maintenanceOrders);
   }, [maintenanceOrders]);
 
   useEffect(() => {
-    if (loadedCollectionsRef.current.has('suppliers')) {
-      saveToStorage(STORAGE_KEYS.SUPPLIERS, suppliers);
+    saveToStorage(STORAGE_KEYS.SUPPLIERS, suppliers);
+    if (isRemoteUpdateRef.current[STORAGE_KEYS.SUPPLIERS]) {
+      isRemoteUpdateRef.current[STORAGE_KEYS.SUPPLIERS] = false;
+      return;
     }
+    syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, suppliers);
   }, [suppliers]);
 
   useEffect(() => {
-    if (loadedCollectionsRef.current.has('seamstresses')) {
-      saveToStorage(STORAGE_KEYS.SEAMSTRESSES, seamstresses);
+    saveToStorage(STORAGE_KEYS.SEAMSTRESSES, seamstresses);
+    if (isRemoteUpdateRef.current[STORAGE_KEYS.SEAMSTRESSES]) {
+      isRemoteUpdateRef.current[STORAGE_KEYS.SEAMSTRESSES] = false;
+      return;
     }
+    syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, seamstresses);
   }, [seamstresses]);
 
   useEffect(() => {
-    if (loadedCollectionsRef.current.has('rawMaterials')) {
-      saveToStorage(STORAGE_KEYS.RAW_MATERIALS, rawMaterials);
+    saveToStorage(STORAGE_KEYS.RAW_MATERIALS, rawMaterials);
+    if (isRemoteUpdateRef.current[STORAGE_KEYS.RAW_MATERIALS]) {
+      isRemoteUpdateRef.current[STORAGE_KEYS.RAW_MATERIALS] = false;
+      return;
     }
+    syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, rawMaterials);
   }, [rawMaterials]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, caisseClosures);
+    if (isRemoteUpdateRef.current[STORAGE_KEYS.CAISSE_CLOSURES]) {
+      isRemoteUpdateRef.current[STORAGE_KEYS.CAISSE_CLOSURES] = false;
+      return;
+    }
+    syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, caisseClosures);
   }, [caisseClosures]);
 
-  // Full Manual Cloud Sync Handler
-  const handleManualFullSync = async () => {
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.ACTIVITY_LOGS, activityLogs);
+    if (isRemoteUpdateRef.current[STORAGE_KEYS.ACTIVITY_LOGS]) {
+      isRemoteUpdateRef.current[STORAGE_KEYS.ACTIVITY_LOGS] = false;
+      return;
+    }
+    syncCollectionToCloud(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, activityLogs);
+  }, [activityLogs]);
+
+  // Firebase Realtime Database: Connection Status Listener
+  useEffect(() => {
+    const unsub = SubscriptionManager.onConnectionStatus(connected => {
+      setIsFirebaseConnected(connected);
+    });
+    return () => unsub();
+  }, []);
+
+  // Firebase Realtime Database: Real-time Subscriptions across all collections
+  useEffect(() => {
+    const unsubClothes = SubscriptionManager.subscribe<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, (items) => {
+      if (items && items.length > 0) {
+        setClothes(prev => {
+          if (areArraysEqual(prev, items)) return prev;
+          isRemoteUpdateRef.current[STORAGE_KEYS.CLOTHES] = true;
+          return items;
+        });
+      }
+    });
+
+    const unsubRentals = SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
+      if (items && items.length > 0) {
+        setRentals(prev => {
+          if (areArraysEqual(prev, items)) return prev;
+          isRemoteUpdateRef.current[STORAGE_KEYS.RENTALS] = true;
+          return items;
+        });
+      }
+    });
+
+    const unsubSales = SubscriptionManager.subscribe<Sale>(FIREBASE_COLLECTIONS.SALES, (items) => {
+      if (items && items.length > 0) {
+        setSales(prev => {
+          if (areArraysEqual(prev, items)) return prev;
+          isRemoteUpdateRef.current[STORAGE_KEYS.SALES] = true;
+          return items;
+        });
+      }
+    });
+
+    const unsubExpenses = SubscriptionManager.subscribe<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
+      if (items && items.length > 0) {
+        setExpenses(prev => {
+          if (areArraysEqual(prev, items)) return prev;
+          isRemoteUpdateRef.current[STORAGE_KEYS.EXPENSES] = true;
+          return items;
+        });
+      }
+    });
+
+    const unsubCredits = SubscriptionManager.subscribe<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
+      if (items && items.length > 0) {
+        setCredits(prev => {
+          if (areArraysEqual(prev, items)) return prev;
+          isRemoteUpdateRef.current[STORAGE_KEYS.CREDITS] = true;
+          return items;
+        });
+      }
+    });
+
+    const unsubStaffPayouts = SubscriptionManager.subscribe<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
+      if (items && items.length > 0) {
+        setStaffPayouts(prev => {
+          if (areArraysEqual(prev, items)) return prev;
+          isRemoteUpdateRef.current[STORAGE_KEYS.STAFF_PAYOUTS] = true;
+          return items;
+        });
+      }
+    });
+
+    const unsubStaffMembers = SubscriptionManager.subscribe<StaffMember>(FIREBASE_COLLECTIONS.STAFF_MEMBERS, (items) => {
+      if (items && items.length > 0) {
+        setStaffMembers(prev => {
+          if (areArraysEqual(prev, items)) return prev;
+          isRemoteUpdateRef.current[STORAGE_KEYS.STAFF_MEMBERS] = true;
+          return items;
+        });
+      }
+    });
+
+    const unsubStaffAbsences = SubscriptionManager.subscribe<StaffAbsence>(FIREBASE_COLLECTIONS.STAFF_ABSENCES, (items) => {
+      if (items && items.length > 0) {
+        setStaffAbsences(prev => {
+          if (areArraysEqual(prev, items)) return prev;
+          isRemoteUpdateRef.current[STORAGE_KEYS.STAFF_ABSENCES] = true;
+          return items;
+        });
+      }
+    });
+
+    const unsubMaintenance = SubscriptionManager.subscribe<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
+      if (items && items.length > 0) {
+        setMaintenanceOrders(prev => {
+          if (areArraysEqual(prev, items)) return prev;
+          isRemoteUpdateRef.current[STORAGE_KEYS.MAINTENANCE] = true;
+          return items;
+        });
+      }
+    });
+
+    const unsubSuppliers = SubscriptionManager.subscribe<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
+      if (items && items.length > 0) {
+        setSuppliers(prev => {
+          if (areArraysEqual(prev, items)) return prev;
+          isRemoteUpdateRef.current[STORAGE_KEYS.SUPPLIERS] = true;
+          return items;
+        });
+      }
+    });
+
+    const unsubSeamstresses = SubscriptionManager.subscribe<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
+      if (items && items.length > 0) {
+        setSeamstresses(prev => {
+          if (areArraysEqual(prev, items)) return prev;
+          isRemoteUpdateRef.current[STORAGE_KEYS.SEAMSTRESSES] = true;
+          return items;
+        });
+      }
+    });
+
+    const unsubRawMaterials = SubscriptionManager.subscribe<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
+      if (items && items.length > 0) {
+        setRawMaterials(prev => {
+          if (areArraysEqual(prev, items)) return prev;
+          isRemoteUpdateRef.current[STORAGE_KEYS.RAW_MATERIALS] = true;
+          return items;
+        });
+      }
+    });
+
+    const unsubCaisseClosures = SubscriptionManager.subscribe<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
+      if (items && items.length > 0) {
+        setCaisseClosures(prev => {
+          if (areArraysEqual(prev, items)) return prev;
+          isRemoteUpdateRef.current[STORAGE_KEYS.CAISSE_CLOSURES] = true;
+          return items;
+        });
+      }
+    });
+
+    const unsubActivityLogs = SubscriptionManager.subscribe<ActivityLog>(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, (items) => {
+      if (items && items.length > 0) {
+        setActivityLogs(prev => {
+          if (areArraysEqual(prev, items)) return prev;
+          isRemoteUpdateRef.current[STORAGE_KEYS.ACTIVITY_LOGS] = true;
+          return items;
+        });
+      }
+    });
+
+    return () => {
+      unsubClothes();
+      unsubRentals();
+      unsubSales();
+      unsubExpenses();
+      unsubCredits();
+      unsubStaffPayouts();
+      unsubStaffMembers();
+      unsubStaffAbsences();
+      unsubMaintenance();
+      unsubSuppliers();
+      unsubSeamstresses();
+      unsubRawMaterials();
+      unsubCaisseClosures();
+      unsubActivityLogs();
+    };
+  }, []);
+
+  const handleSyncAllToCloud = useCallback(async () => {
     setIsCloudSyncing(true);
     try {
-      const syncPromises = [
+      await Promise.all([
         syncCollectionToCloud(FIREBASE_COLLECTIONS.CLOTHES, clothes),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.RENTALS, rentals),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.SALES, sales),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.EXPENSES, expenses),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.CREDITS, credits),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, staffPayouts),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_MEMBERS, staffMembers),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_ABSENCES, staffAbsences),
-        syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, caisseClosures)
-      ];
-      if (loadedCollectionsRef.current.has('rentals')) syncPromises.push(syncCollectionToCloud(FIREBASE_COLLECTIONS.RENTALS, rentals));
-      if (loadedCollectionsRef.current.has('sales')) syncPromises.push(syncCollectionToCloud(FIREBASE_COLLECTIONS.SALES, sales));
-      if (loadedCollectionsRef.current.has('expenses')) syncPromises.push(syncCollectionToCloud(FIREBASE_COLLECTIONS.EXPENSES, expenses));
-      if (loadedCollectionsRef.current.has('credits')) syncPromises.push(syncCollectionToCloud(FIREBASE_COLLECTIONS.CREDITS, credits));
-      if (loadedCollectionsRef.current.has('staffPayouts')) syncPromises.push(syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, staffPayouts));
-      if (loadedCollectionsRef.current.has('maintenance')) syncPromises.push(syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, maintenanceOrders));
-      if (loadedCollectionsRef.current.has('suppliers')) syncPromises.push(syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, suppliers));
-      if (loadedCollectionsRef.current.has('seamstresses')) syncPromises.push(syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, seamstresses));
-      if (loadedCollectionsRef.current.has('rawMaterials')) syncPromises.push(syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, rawMaterials));
-
-      await Promise.all(syncPromises);
-      setLastCloudSyncTime(new Date());
-      showToast('تمت المزامنة وحفظ جميع التعديلات في Firebase بنجاح!');
-    } catch (err) {
-      showToast('تعذر إتمام المزامنة السحابية', 'error');
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, maintenanceOrders),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, suppliers),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, seamstresses),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, rawMaterials),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, caisseClosures),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, activityLogs)
+      ]);
+      const nowStr = new Date().toLocaleTimeString('ar-DZ');
+      setLastCloudSyncTime(nowStr);
+      showToast('تمت مزامنة ورفع جميع بيانات البوتيك إلى Firebase بنجاح!');
+    } catch (e) {
+      console.error(e);
+      showToast('تعذر استكمال المزامنة السحابية', 'error');
     } finally {
       setIsCloudSyncing(false);
     }
-  };
+  }, [
+    clothes, rentals, sales, expenses, credits, staffPayouts, 
+    staffMembers, staffAbsences, maintenanceOrders, suppliers, 
+    seamstresses, rawMaterials, caisseClosures, activityLogs, showToast
+  ]);
 
   // UI state
   const [hideFinances, setHideFinances] = useState(() => localStorage.getItem('bm_hideFinances') !== 'false');
@@ -728,7 +625,6 @@ export default function App() {
     
     // Add rental to state
     setRentals(prev => [newRental, ...prev]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.RENTALS, newRental);
 
     addActivityLog({
       actionType: newRental.status === 'active' ? 'deal' : 'create',
@@ -743,7 +639,6 @@ export default function App() {
       setClothes(prev => prev.map(c => {
         if (c.id === rentalData.itemId) {
           const updatedCount = (c.rentedCount || 0) + (rentalData.qty || 1);
-          updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
           return { ...c, rentedCount: updatedCount };
         }
         return c;
@@ -766,7 +661,6 @@ export default function App() {
         relatedRentalId: newRental.id
       };
       setCredits(prev => [newCredit, ...prev]);
-      saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCredit);
     }
 
     setActiveModal(null);
@@ -792,19 +686,11 @@ export default function App() {
       }
       return r;
     }));
-    updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, rental.id, {
-      status: 'active',
-      paidAmount: newPaid,
-      remainingAmount: newRemaining,
-      handoverDate: todayStr,
-      notes: notesStr
-    });
 
     // 2. DEDUCT INVENTORY: Increment rented count upon deal finalization/handover!
     setClothes(prev => prev.map(c => {
       if (c.id === rental.itemId) {
         const updatedCount = (c.rentedCount || 0) + (rental.qty || 1);
-        updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
         return { ...c, rentedCount: updatedCount };
       }
       return c;
@@ -813,9 +699,6 @@ export default function App() {
     // 3. Update or clear credit
     setCredits(prev => {
       const filtered = prev.filter(c => c.relatedRentalId !== rental.id);
-      prev.filter(c => c.relatedRentalId === rental.id).forEach(c => {
-        deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
-      });
       if (newRemaining > 0) {
         const updatedCredit: Credit = {
           id: generateId(),
@@ -827,7 +710,6 @@ export default function App() {
           date: new Date().toISOString(),
           relatedRentalId: rental.id
         };
-        saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, updatedCredit);
         return [updatedCredit, ...filtered];
       }
       return filtered;
@@ -862,7 +744,6 @@ export default function App() {
           setClothes(clothesPrev => clothesPrev.map(c => {
             if (c.id === updatedData.itemId) {
               const updatedCount = (c.rentedCount || 0) + (updatedData.qty || 1);
-              updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
               return { ...c, rentedCount: updatedCount };
             }
             return c;
@@ -872,7 +753,6 @@ export default function App() {
           setClothes(clothesPrev => clothesPrev.map(c => {
             if (c.id === prevRental.itemId) {
               const updatedCount = Math.max(0, (c.rentedCount || 0) - (prevRental.qty || 1));
-              updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
               return { ...c, rentedCount: updatedCount };
             }
             return c;
@@ -882,7 +762,6 @@ export default function App() {
       return prev.map(r => r.id === id ? { ...r, ...updatedData } : r);
     });
 
-    updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, id, updatedData);
     showToast('تم تحديث بيانات الكراء');
     setActiveModal(null);
   }, []);
@@ -903,14 +782,12 @@ export default function App() {
             setClothes(prev => prev.map(c => {
               if (c.id === target.itemId) {
                 const updatedCount = Math.max(0, (c.rentedCount || 0) - (target.qty || 1));
-                updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
                 return { ...c, rentedCount: updatedCount };
               }
               return c;
             }));
           }
           setRentals(prev => prev.filter(r => r.id !== id));
-          deleteItemFromFirebase(FIREBASE_COLLECTIONS.RENTALS, id);
 
           addActivityLog({
             actionType: 'delete',
@@ -918,12 +795,7 @@ export default function App() {
             title: target.status === 'reserved' ? 'إلغاء حجز فستان' : 'حذف عملية كراء فستان',
             details: `حذف كراء أو حجز القطعة ${target.itemName} للزبونة ${target.customerName}`
           });
-          setCredits(prev => {
-            prev.filter(c => c.relatedRentalId === id).forEach(c => {
-              deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
-            });
-            return prev.filter(c => c.relatedRentalId !== id);
-          });
+          setCredits(prev => prev.filter(c => c.relatedRentalId !== id));
           showToast(target.status === 'reserved' ? 'تم إلغاء الحجز بنجاح' : 'تم حذف عملية الكراء بنجاح');
           setConfirmDelete(null);
         }
@@ -948,18 +820,11 @@ export default function App() {
         notes: returnData.notes ? `${target.notes ? target.notes + ' | ' : ''}إرجاع: ${returnData.notes}` : target.notes
       };
 
-      // Update rental status
-      updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, rentalId, returnUpdates);
-
       // Update inventory: decrease rentedCount, add to inCleaningCount if requested
       setClothes(prev => prev.map(c => {
         if (c.id === target.itemId) {
           const newRented = Math.max(0, (c.rentedCount || 0) - (target.qty || 1));
           const newCleaning = returnData.sendToCleaning ? (c.inCleaningCount || 0) + (target.qty || 1) : (c.inCleaningCount || 0);
-          updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, {
-            rentedCount: newRented,
-            inCleaningCount: newCleaning
-          });
           return {
             ...c,
             rentedCount: newRented,
@@ -978,12 +843,7 @@ export default function App() {
 
       // Auto clear linked credit if collected
       if (returnData.collectedRemaining > 0) {
-        setCredits(prev => {
-          prev.filter(c => c.relatedRentalId === rentalId).forEach(c => {
-            deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
-          });
-          return prev.filter(c => c.relatedRentalId !== rentalId);
-        });
+        setCredits(prev => prev.filter(c => c.relatedRentalId !== rentalId));
       }
 
       return currentRentals.map(r => r.id === rentalId ? { ...r, ...returnUpdates } : r);
@@ -1005,7 +865,6 @@ export default function App() {
   const handleAddCloth = useCallback((itemData: any) => {
     const newCloth: ClothItem = { ...itemData, id: generateId() };
     setClothes(prev => [newCloth, ...prev]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.CLOTHES, newCloth);
 
     addActivityLog({
       actionType: 'create',
@@ -1021,7 +880,6 @@ export default function App() {
 
   const handleUpdateCloth = useCallback((id: string, itemData: any) => {
     setClothes(prev => prev.map(c => c.id === id ? { ...c, ...itemData } : c));
-    updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, id, itemData);
 
     addActivityLog({
       actionType: 'update',
@@ -1040,7 +898,6 @@ export default function App() {
       message: 'هل أنت متأكد من حذف هذه القطعة من المخزن؟ لا يمكن التراجع عن هذا الإجراء.',
       onConfirm: () => {
         setClothes(prev => prev.filter(c => c.id !== id));
-        deleteItemFromFirebase(FIREBASE_COLLECTIONS.CLOTHES, id);
 
         addActivityLog({
           actionType: 'delete',
@@ -1062,7 +919,6 @@ export default function App() {
   const handleCompleteSale = useCallback((saleData: any) => {
     const newSale: Sale = { ...saleData, id: generateId() };
     setSales(prev => [newSale, ...prev]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.SALES, newSale);
 
     addActivityLog({
       actionType: 'create',
@@ -1093,11 +949,6 @@ export default function App() {
             stock2: newS2,
             stock: newS1 + newS2 
           };
-          updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, {
-            stock1: newS1,
-            stock2: newS2,
-            stock: newS1 + newS2
-          });
           return updatedCloth;
         }
         return c;
@@ -1116,7 +967,6 @@ export default function App() {
         date: new Date().toISOString()
       };
       setCredits(prev => [newCredit, ...prev]);
-      saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCredit);
     }
 
     showToast('تم إتمام عملية البيع بنجاح');
@@ -1128,7 +978,6 @@ export default function App() {
       message: 'هل تريد إلغاء عملية البيع واسترجاع القطع للمخزن؟',
       onConfirm: () => {
         setSales(prev => prev.filter(s => s.id !== sale.id));
-        deleteItemFromFirebase(FIREBASE_COLLECTIONS.SALES, sale.id);
 
         addActivityLog({
           actionType: 'delete',
@@ -1157,11 +1006,6 @@ export default function App() {
                 stock2: newS2,
                 stock: newS1 + newS2 
               };
-              updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, {
-                stock1: newS1,
-                stock2: newS2,
-                stock: newS1 + newS2
-              });
               return updatedCloth;
             }
             return c;
@@ -1180,7 +1024,6 @@ export default function App() {
     const newExpId = generateId();
     const newExp: Expense = { ...expData, id: newExpId };
     setExpenses(prev => [newExp, ...prev]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.EXPENSES, newExp);
 
     addActivityLog({
       actionType: 'create',
@@ -1208,7 +1051,6 @@ export default function App() {
         paidAmount: expData.paidAmount
       };
       setCredits(prev => [newCredit, ...prev]);
-      saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCredit);
       showToast(`تم تسجيل مشتريات المورد (المسدد: ${expData.paidAmount?.toLocaleString()} دج + متبقي دين: ${expData.creditAmount?.toLocaleString()} دج)`);
     } else if (expData.isSupplierPurchase) {
       showToast(`تم تسجيل خلاص المورد بنجاح (${(expData.paidAmount || expData.amount)?.toLocaleString()} دج كاش)`);
@@ -1219,13 +1061,7 @@ export default function App() {
 
   const handleDeleteExpense = useCallback((id: string) => {
     setExpenses(prev => prev.filter(e => e.id !== id));
-    deleteItemFromFirebase(FIREBASE_COLLECTIONS.EXPENSES, id);
-    setCredits(prev => {
-      prev.filter(c => c.relatedExpenseId === id).forEach(c => {
-        deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
-      });
-      return prev.filter(c => c.relatedExpenseId !== id);
-    });
+    setCredits(prev => prev.filter(c => c.relatedExpenseId !== id));
 
     addActivityLog({
       actionType: 'delete',
@@ -1245,18 +1081,12 @@ export default function App() {
         const currentCredit = exp.creditAmount || 0;
         const newPaid = currentPaid + paidNow;
         const newCredit = Math.max(0, currentCredit - paidNow);
-        const updatedExp = {
+        return {
           ...exp,
           paidAmount: newPaid,
           amount: newPaid,
           creditAmount: newCredit
         };
-        updateItemInFirebase(FIREBASE_COLLECTIONS.EXPENSES, expenseId, {
-          paidAmount: newPaid,
-          amount: newPaid,
-          creditAmount: newCredit
-        });
-        return updatedExp;
       }
       return exp;
     }));
@@ -1266,11 +1096,6 @@ export default function App() {
       return prev.map(c => {
         if (c.relatedExpenseId === expenseId) {
           const newAmount = Math.max(0, c.amount - paidNow);
-          if (newAmount === 0) {
-            deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
-          } else {
-            updateItemInFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id, { amount: newAmount });
-          }
           return { ...c, amount: newAmount };
         }
         return c;
@@ -1291,7 +1116,6 @@ export default function App() {
   const handleAddSupplier = useCallback((newSup: Supplier) => {
     setSuppliers(prev => {
       if (prev.some(s => s.name.trim().toLowerCase() === newSup.name.trim().toLowerCase())) return prev;
-      saveItemToFirebase(FIREBASE_COLLECTIONS.SUPPLIERS, newSup);
       return [newSup, ...prev];
     });
 
@@ -1307,7 +1131,6 @@ export default function App() {
 
   const handleUpdateSupplier = useCallback((id: string, data: Partial<Supplier>) => {
     setSuppliers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
-    updateItemInFirebase(FIREBASE_COLLECTIONS.SUPPLIERS, id, data);
 
     addActivityLog({
       actionType: 'update',
@@ -1326,10 +1149,9 @@ export default function App() {
       onConfirm: () => {
         setSuppliers(prev => {
           const next = prev.filter(s => s.id !== id);
-          saveToStorage(STORAGE_KEYS.SUPPLIERS, next, true);
+          saveToStorage(STORAGE_KEYS.SUPPLIERS, next);
           return next;
         });
-        deleteItemFromFirebase(FIREBASE_COLLECTIONS.SUPPLIERS, id);
 
         addActivityLog({
           actionType: 'delete',
@@ -1349,7 +1171,6 @@ export default function App() {
   // ==========================
   const handleAddSeamstress = useCallback((seam: Seamstress) => {
     setSeamstresses(prev => [seam, ...prev]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.SEAMSTRESSES, seam);
 
     addActivityLog({
       actionType: 'create',
@@ -1363,7 +1184,6 @@ export default function App() {
 
   const handleUpdateSeamstress = useCallback((id: string, data: Partial<Seamstress>) => {
     setSeamstresses(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
-    updateItemInFirebase(FIREBASE_COLLECTIONS.SEAMSTRESSES, id, data);
 
     addActivityLog({
       actionType: 'update',
@@ -1382,10 +1202,9 @@ export default function App() {
       onConfirm: () => {
         setSeamstresses(prev => {
           const next = prev.filter(s => s.id !== id);
-          saveToStorage(STORAGE_KEYS.SEAMSTRESSES, next, true);
+          saveToStorage(STORAGE_KEYS.SEAMSTRESSES, next);
           return next;
         });
-        deleteItemFromFirebase(FIREBASE_COLLECTIONS.SEAMSTRESSES, id);
 
         addActivityLog({
           actionType: 'delete',
@@ -1402,7 +1221,6 @@ export default function App() {
 
   const handleAddRawMaterial = useCallback((mat: RawMaterial) => {
     setRawMaterials(prev => [mat, ...prev]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, mat);
 
     addActivityLog({
       actionType: 'create',
@@ -1417,7 +1235,6 @@ export default function App() {
 
   const handleUpdateRawMaterial = useCallback((id: string, data: Partial<RawMaterial>) => {
     setRawMaterials(prev => prev.map(m => m.id === id ? { ...m, ...data, updatedAt: new Date().toISOString() } : m));
-    updateItemInFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, id, { ...data, updatedAt: new Date().toISOString() });
 
     addActivityLog({
       actionType: 'update',
@@ -1435,7 +1252,6 @@ export default function App() {
       message: 'هل أنت متأكد من حذف هذا القماش من سجل المخزن؟',
       onConfirm: () => {
         setRawMaterials(prev => prev.filter(m => m.id !== id));
-        deleteItemFromFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, id);
 
         addActivityLog({
           actionType: 'delete',
@@ -1453,7 +1269,6 @@ export default function App() {
   const handleAddCredit = useCallback((credData: any) => {
     const newCred: Credit = { ...credData, id: generateId() };
     setCredits(prev => [newCred, ...prev]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCred);
 
     addActivityLog({
       actionType: 'create',
@@ -1475,23 +1290,16 @@ export default function App() {
           if (exp.id === cred.relatedExpenseId) {
             const currentPaid = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
             const newPaid = currentPaid + cred.amount;
-            const updated = {
+            return {
               ...exp,
               paidAmount: newPaid,
               amount: newPaid,
               creditAmount: 0
             };
-            updateItemInFirebase(FIREBASE_COLLECTIONS.EXPENSES, cred.relatedExpenseId!, {
-              paidAmount: newPaid,
-              amount: newPaid,
-              creditAmount: 0
-            });
-            return updated;
           }
           return exp;
         }));
       }
-      deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, id);
       return currentCredits.filter(c => c.id !== id);
     });
 
@@ -1507,7 +1315,6 @@ export default function App() {
 
   const handleDeleteCredit = useCallback((id: string) => {
     setCredits(prev => prev.filter(c => c.id !== id));
-    deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, id);
 
     addActivityLog({
       actionType: 'delete',
@@ -1527,7 +1334,6 @@ export default function App() {
       const filtered = prev.filter(c => c.date !== closure.date);
       return [closure, ...filtered];
     });
-    saveItemToFirebase(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, closure);
 
     addActivityLog({
       actionType: 'closure',
@@ -1546,7 +1352,6 @@ export default function App() {
       message: 'هل أنت متأكد من حذف هذا السجل لصندوق اليومية؟',
       onConfirm: () => {
         setCaisseClosures(prev => prev.filter(c => c.id !== id));
-        deleteItemFromFirebase(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, id);
 
         addActivityLog({
           actionType: 'delete',
@@ -1568,15 +1373,12 @@ export default function App() {
     const payoutId = generateId();
     const newPayout: StaffPayout = { ...data, id: payoutId };
     setStaffPayouts(prev => [newPayout, ...prev]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, newPayout);
 
     // If absences were deducted in this payout, mark them as deducted
     if (deductedAbsenceIds && deductedAbsenceIds.length > 0) {
       setStaffAbsences(prev => prev.map(a => {
         if (deductedAbsenceIds.includes(a.id)) {
-          const updated = { ...a, isDeducted: true, payoutId };
-          updateItemInFirebase(FIREBASE_COLLECTIONS.STAFF_ABSENCES, a.id, { isDeducted: true, payoutId });
-          return updated;
+          return { ...a, isDeducted: true, payoutId };
         }
         return a;
       }));
@@ -1595,11 +1397,9 @@ export default function App() {
 
   const handleDeleteStaffPayout = useCallback((id: string) => {
     setStaffPayouts(prev => prev.filter(p => p.id !== id));
-    deleteItemFromFirebase(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, id);
     // Restore deducted status if payout is deleted
     setStaffAbsences(prev => prev.map(a => {
       if (a.payoutId === id) {
-        updateItemInFirebase(FIREBASE_COLLECTIONS.STAFF_ABSENCES, a.id, { isDeducted: false, payoutId: null });
         return { ...a, isDeducted: false, payoutId: undefined };
       }
       return a;
@@ -1618,7 +1418,6 @@ export default function App() {
   const handleAddStaffMember = useCallback((data: any) => {
     const newMember: StaffMember = { ...data, id: generateId() };
     setStaffMembers(prev => [...prev, newMember]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.STAFF_MEMBERS, newMember);
 
     addActivityLog({
       actionType: 'create',
@@ -1633,7 +1432,6 @@ export default function App() {
 
   const handleUpdateStaffMember = useCallback((id: string, data: any) => {
     setStaffMembers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
-    updateItemInFirebase(FIREBASE_COLLECTIONS.STAFF_MEMBERS, id, data);
 
     addActivityLog({
       actionType: 'update',
@@ -1651,7 +1449,6 @@ export default function App() {
       message: 'هل تريد حذف هذا العامل من النظام؟',
       onConfirm: () => {
         setStaffMembers(prev => prev.filter(s => s.id !== id));
-        deleteItemFromFirebase(FIREBASE_COLLECTIONS.STAFF_MEMBERS, id);
 
         addActivityLog({
           actionType: 'delete',
@@ -1669,7 +1466,6 @@ export default function App() {
   const handleAddAbsence = useCallback((data: any) => {
     const newAbsence: StaffAbsence = { ...data, id: generateId() };
     setStaffAbsences(prev => [newAbsence, ...prev]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.STAFF_ABSENCES, newAbsence);
 
     addActivityLog({
       actionType: 'create',
@@ -1684,7 +1480,6 @@ export default function App() {
 
   const handleDeleteAbsence = useCallback((id: string) => {
     setStaffAbsences(prev => prev.filter(a => a.id !== id));
-    deleteItemFromFirebase(FIREBASE_COLLECTIONS.STAFF_ABSENCES, id);
 
     addActivityLog({
       actionType: 'delete',
@@ -1724,7 +1519,6 @@ export default function App() {
     };
 
     setMaintenanceOrders(prev => [newOrder, ...prev]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, newOrder);
 
     if (newOrder.remainingAmount > 0 && newOrder.customerName) {
       const newCredit: Credit = {
@@ -1737,7 +1531,6 @@ export default function App() {
         date: new Date().toISOString()
       };
       setCredits(prev => [newCredit, ...prev]);
-      saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCredit);
     }
 
     addActivityLog({
@@ -1754,7 +1547,6 @@ export default function App() {
 
   const handleUpdateTailoringOrder = useCallback((id: string, data: Partial<MaintenanceOrder>) => {
     setMaintenanceOrders(prev => prev.map(o => o.id === id ? { ...o, ...data } : o));
-    updateItemInFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, id, data);
 
     addActivityLog({
       actionType: 'update',
@@ -1781,7 +1573,6 @@ export default function App() {
       }
       return o;
     }));
-    updateItemInFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, id, updates);
 
     addActivityLog({
       actionType: 'update',
@@ -1799,7 +1590,6 @@ export default function App() {
       message: 'هل أنت متأكد من حذف هذا الطلب من سجل الخياطة؟',
       onConfirm: () => {
         setMaintenanceOrders(prev => prev.filter(o => o.id !== id));
-        deleteItemFromFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, id);
 
         addActivityLog({
           actionType: 'delete',
@@ -1929,6 +1719,9 @@ export default function App() {
         openFullReportModal={openFullReportModal}
         openAddRentalModal={openAddRentalModal}
         openStaffPayoutsModal={openStaffPayoutsModal}
+        isFirebaseConnected={isFirebaseConnected}
+        isCloudSyncing={isCloudSyncing}
+        openCloudSyncModal={() => setActiveModal('cloudSync')}
         rentals={rentals}
         clothes={clothes}
         sales={sales}
@@ -2166,81 +1959,6 @@ export default function App() {
         </Modal>
       )}
 
-      {/* Firebase Cloud Sync Modal */}
-      {activeModal === 'cloudSyncModal' && (
-        <Modal title="المزامنة السحابية والمزامنة عبر الأجهزة (Firebase)" onClose={() => setActiveModal(null)} wide>
-          <div className="space-y-4 py-1" dir="rtl">
-            {/* Connection Status Card */}
-            <div className="p-4 bg-blue-900 text-white rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-800/80 text-blue-200 border border-blue-700 flex items-center justify-center shrink-0">
-                  <Cloud className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse" />
-                    <h4 className="font-black text-sm text-white">الربط السحابي مع Firebase مفعل ونشط</h4>
-                  </div>
-                  <p className="text-[11px] text-blue-200 mt-0.5">
-                    معرف المشروع: <span className="font-mono text-white font-bold">{firebaseConfig.projectId}</span>
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={handleManualFullSync}
-                disabled={isCloudSyncing}
-                className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isCloudSyncing ? 'animate-spin' : ''}`} />
-                <span>{isCloudSyncing ? 'جاري المزامنة...' : 'مزامنة سحابية الآن'}</span>
-              </button>
-            </div>
-
-            {/* Cross Device Banner */}
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
-              <div className="flex items-center gap-2 mb-2">
-                <Smartphone className="w-4 h-4 text-slate-700" />
-                <Laptop className="w-4 h-4 text-slate-700" />
-                <h4 className="font-bold text-xs text-slate-900">مزامنة فورية على كل الأجهزة دون الحاجة لإعادة التحميل</h4>
-              </div>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                أي تعديل، إضافة فستان، حجز كراء، أو تسجيل بيع تقوم به من الهاتف أو التابلت أو الحاسوب يُحفظ فوراً في قاعدة بيانات Firebase السحابية ويظهر في نفس الثانية على جميع الأجهزة الأخرى المتصلة.
-              </p>
-            </div>
-
-            {/* Live Database Sync Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-[10px] text-slate-500 font-bold block">فساتين المخزن</span>
-                <span className="text-base font-black text-slate-900">{clothes.length}</span>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-[10px] text-slate-500 font-bold block">عمليات الكراء</span>
-                <span className="text-base font-black text-slate-900">{rentals.length}</span>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-[10px] text-slate-500 font-bold block">المبيعات</span>
-                <span className="text-base font-black text-slate-900">{sales.length}</span>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-[10px] text-slate-500 font-bold block">المصاريف والديون</span>
-                <span className="text-base font-black text-slate-900">{expenses.length + credits.length}</span>
-              </div>
-            </div>
-
-            {/* Last Sync Info & Safety Notice */}
-            <div className="flex items-center justify-between text-[11px] text-slate-500 px-1 pt-1">
-              <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-                <span>آخر مزامنة ناجحة: {lastCloudSyncTime.toLocaleTimeString('ar-DZ')}</span>
-              </div>
-              <span className="text-slate-400">حفظ تلقائي مع دعم العمل بدون إنترنت (Offline-First)</span>
-            </div>
-          </div>
-        </Modal>
-      )}
-
       {/* Backup & Restore Modal */}
       {activeModal === 'backupModal' && (
         <Modal title="النسخ الاحتياطي واستعادة البيانات" onClose={() => setActiveModal(null)}>
@@ -2283,6 +2001,88 @@ export default function App() {
                 <input type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
               </label>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Firebase Cloud Sync Modal */}
+      {activeModal === 'cloudSync' && (
+        <Modal title="مزامنة وسحابة Firebase" onClose={() => setActiveModal(null)}>
+          <div className="space-y-4">
+            {/* Status Card */}
+            <div className={`p-4 rounded-2xl border ${
+              isFirebaseConnected 
+                ? 'bg-emerald-50/70 border-emerald-200' 
+                : 'bg-amber-50/70 border-amber-200'
+            }`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className={`w-3 h-3 rounded-full ${
+                    isCloudSyncing ? 'bg-blue-500 animate-ping' : isFirebaseConnected ? 'bg-emerald-500' : 'bg-amber-500'
+                  }`} />
+                  <span className="font-black text-sm text-slate-900">
+                    {isCloudSyncing ? 'جاري رفع ومزامنة البيانات...' : isFirebaseConnected ? 'متصل بسحابة Firebase بنجاح' : 'جاري الاتصال بقاعدة البيانات'}
+                  </span>
+                </div>
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                  isFirebaseConnected ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {isFirebaseConnected ? 'أونلاين (Online)' : 'أوفلاين (Offline)'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                قاعدة البيانات السحابية تضمن حفظ ومزامنة كافة عمليات الكراء، المبيعات، ومخزون الفساتين تلقائياً وفورياً بين الهواتف والأجهزة المختلفة.
+              </p>
+              {lastCloudSyncTime && (
+                <p className="text-[11px] text-emerald-700 font-bold mt-2">
+                  ✓ آخر مزامنة مكتملة: {lastCloudSyncTime}
+                </p>
+              )}
+            </div>
+
+            {/* Cloud Config Details */}
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-bold">معرف المشروع:</span>
+                <span className="font-mono text-slate-800 font-bold">{firebaseConfig.projectId}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-bold">قاعدة البيانات:</span>
+                <span className="font-mono text-slate-800 font-bold text-[10px] truncate max-w-[200px]" title={firebaseConfig.databaseURL}>
+                  {firebaseConfig.databaseURL}
+                </span>
+              </div>
+            </div>
+
+            {/* Collection Records Summary */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                <span className="text-slate-600 font-medium">الفساتين والمخزون</span>
+                <span className="font-black text-blue-900">{clothes.length}</span>
+              </div>
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                <span className="text-slate-600 font-medium">عمليات الكراء</span>
+                <span className="font-black text-blue-900">{rentals.length}</span>
+              </div>
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                <span className="text-slate-600 font-medium">فواتير البيع</span>
+                <span className="font-black text-blue-900">{sales.length}</span>
+              </div>
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                <span className="text-slate-600 font-medium">المصاريف والمشتريات</span>
+                <span className="font-black text-blue-900">{expenses.length}</span>
+              </div>
+            </div>
+
+            {/* Manual Sync Button */}
+            <button
+              onClick={handleSyncAllToCloud}
+              disabled={isCloudSyncing}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 shadow-xs active:scale-95"
+            >
+              <RefreshCw className={`w-4 h-4 ${isCloudSyncing ? 'animate-spin' : ''}`} />
+              <span>{isCloudSyncing ? 'جاري المزامنة مع السحابة...' : 'مزامنة ورفع جميع البيانات إلى Firebase الآن'}</span>
+            </button>
           </div>
         </Modal>
       )}

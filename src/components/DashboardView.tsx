@@ -54,7 +54,6 @@ import {
 } from '../types';
 import { StatCard, Modal } from './Shared';
 import { useDashboardStats } from '../hooks/dashboardStatsHook';
-import { clearAllFirebaseData } from '../firebase';
 
 interface DashboardViewProps {
   stats?: ReturnType<typeof useDashboardStats>;
@@ -143,8 +142,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   }, []);
 
   const handleClearAllData = async () => {
-    if (window.confirm('⚠️ تحذير: هل أنت متأكد من تفريغ جميع البيانات وحذف كل محتويات المخزون والعمليات من سحابة فايرباس والموقع نهائياً؟')) {
-      await clearAllFirebaseData();
+    if (window.confirm('⚠️ تحذير: هل أنت متأكد من تفريغ جميع البيانات وحذف كل محتويات المخزون والعمليات من الموقع نهائياً؟')) {
+      localStorage.clear();
       window.location.reload();
     }
   };

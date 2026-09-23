@@ -1,5 +1,3 @@
-import { SubscriptionManager } from '../firebase';
-
 export interface PerformanceMetrics {
   startupTimeMs: number;
   timeToFirstUsableUIMs: number;
@@ -8,7 +6,6 @@ export interface PerformanceMetrics {
   viewRenderCounts: Record<string, number>;
   navigationLatencies: { from: string; to: string; latencyMs: number }[];
   lastNavigationLatencyMs: number;
-  activeFirebaseListeners: number;
   localStorageReads: number;
   localStorageWrites: number;
   startupCollectionsLoaded: string[];
@@ -96,7 +93,6 @@ class PerformanceMonitorService {
       viewRenderCounts: { ...this.viewRenderCounts },
       navigationLatencies: [...this.navigationLatencies],
       lastNavigationLatencyMs: this.lastNavigationLatencyMs,
-      activeFirebaseListeners: SubscriptionManager.getActiveListenerCount(),
       localStorageReads: this.localStorageReads,
       localStorageWrites: this.localStorageWrites,
       startupCollectionsLoaded: [...this.startupCollections],
@@ -110,7 +106,6 @@ class PerformanceMonitorService {
       'Startup Time to UI': `${m.timeToFirstUsableUIMs.toFixed(1)} ms`,
       'App Render Count': m.appRenderCount,
       'AppNav Render Count': m.appNavRenderCount,
-      'Active Firebase Listeners': m.activeFirebaseListeners,
       'LocalStorage Reads': m.localStorageReads,
       'LocalStorage Writes': m.localStorageWrites,
       'Startup Collections Loaded': m.startupCollectionsLoaded.join(', '),

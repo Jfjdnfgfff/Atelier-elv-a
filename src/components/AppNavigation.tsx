@@ -19,7 +19,6 @@ import { NavButton } from './Shared';
 import { ViewRenderer } from './ViewRenderer';
 import { Scale, Plus } from 'lucide-react';
 import { perfMonitor } from '../utils/performanceMonitor';
-import { onSyncStatusChange, SyncStatus } from '../firebase';
 
 export interface AppNavigationProps {
   onInitNav?: (navFn: (view: ViewType) => void, getViewFn: () => ViewType) => void;
@@ -93,6 +92,11 @@ export interface AppNavigationProps {
   onAddSeamstress: (seam: Seamstress) => void;
   onUpdateSeamstress: (id: string, data: Partial<Seamstress>) => void;
   onDeleteSeamstress: (id: string) => void;
+
+  // Firebase Cloud Sync
+  isFirebaseConnected?: boolean;
+  isCloudSyncing?: boolean;
+  openCloudSyncModal?: () => void;
 }
 
 export const AppNavigation: React.FC<AppNavigationProps> = memo(({
@@ -105,6 +109,9 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
   openFullReportModal,
   openAddRentalModal,
   openStaffPayoutsModal,
+  isFirebaseConnected,
+  isCloudSyncing,
+  openCloudSyncModal,
   rentals,
   clothes,
   sales,
@@ -166,20 +173,6 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const currentViewRef = React.useRef(currentView);
   currentViewRef.current = currentView;
-
-  // Real-time Database Synchronization Status
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>('connected');
-  const [lastSynced, setLastSynced] = useState<Date | undefined>();
-  const [syncError, setSyncError] = useState<string | undefined>();
-
-  React.useEffect(() => {
-    const unsubscribeStatus = onSyncStatusChange((status, lastSyncedTime, errorMsg) => {
-      setSyncStatus(status);
-      setLastSynced(lastSyncedTime);
-      setSyncError(errorMsg);
-    });
-    return unsubscribeStatus;
-  }, []);
 
   // Local navigation state only - does NOT trigger App.tsx re-renders
   const navigateTo = useCallback((view: ViewType) => {
@@ -292,41 +285,28 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
               </button>
             </div>
 
-            {/* Sync status & Primary Add Button */}
+            {/* Firebase Cloud Sync & Primary Add Button */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              {/* Live Firebase Sync Status Pill */}
-              <div 
-                title={syncError ? `تفاصيل الخطأ: ${syncError}` : lastSynced ? `آخر مزامنة ناجحة: ${lastSynced.toLocaleTimeString('ar-EG')}` : "حالة الاتصال السحابي مع Firebase"}
-                className={`h-7 sm:h-9 px-2 sm:px-3 rounded-lg sm:rounded-xl flex items-center gap-1.5 border transition-all text-[11px] sm:text-xs font-bold select-none ${
-                  syncStatus === 'connected' 
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
-                    : syncStatus === 'syncing'
-                    ? 'bg-blue-50 border-blue-200 text-blue-800'
-                    : syncStatus === 'offline'
-                    ? 'bg-slate-50 border-slate-200 text-slate-700'
-                    : 'bg-rose-50 border-rose-200 text-rose-800 animate-pulse'
+              {/* Firebase Cloud Status Pill / Button */}
+              <button 
+                onClick={openCloudSyncModal}
+                title={isFirebaseConnected ? "متصل بسحابة Firebase (Realtime Database) - انقر لإدارة المزامنة" : "جاري الاتصال بـ Firebase أو العمل في الوضع المحلي"}
+                className={`h-7 sm:h-9 px-2 sm:px-3 rounded-lg sm:rounded-xl flex items-center gap-1.5 border transition-all text-[11px] sm:text-xs font-bold active:scale-95 ${
+                  isFirebaseConnected 
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-300' 
+                    : 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-300'
                 }`}
               >
                 <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
-                  syncStatus === 'connected' 
-                    ? 'bg-emerald-500' 
-                    : syncStatus === 'syncing'
-                    ? 'bg-blue-500 animate-pulse'
-                    : syncStatus === 'offline'
-                    ? 'bg-slate-400'
-                    : 'bg-rose-500'
+                  isCloudSyncing ? 'bg-blue-500 animate-ping' : isFirebaseConnected ? 'bg-emerald-500' : 'bg-amber-500'
                 }`} />
                 <span className="hidden md:inline">
-                  {syncStatus === 'connected' ? 'متصل سحابياً' : 
-                   syncStatus === 'syncing' ? 'جاري الحفظ...' : 
-                   syncStatus === 'offline' ? 'وضع أوفلاين' : 'خطأ في الحفظ'}
+                  {isCloudSyncing ? 'جاري المزامنة...' : isFirebaseConnected ? 'سحابي Firebase' : 'محلي / غير متصل'}
                 </span>
                 <span className="md:hidden text-[10px]">
-                  {syncStatus === 'connected' ? 'متصل' : 
-                   syncStatus === 'syncing' ? 'مزامنة' : 
-                   syncStatus === 'offline' ? 'أوفلاين' : 'خطأ'}
+                  {isCloudSyncing ? 'مزامنة...' : isFirebaseConnected ? 'Firebase' : 'محلي'}
                 </span>
-              </div>
+              </button>
 
               <button
                 onClick={openAddRentalModal}
