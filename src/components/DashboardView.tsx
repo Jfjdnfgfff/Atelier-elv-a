@@ -141,13 +141,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
     return localStorage.getItem('bm_security_pin') || '9296';
   }, []);
 
-  const handleClearAllData = async () => {
-    if (window.confirm('⚠️ تحذير: هل أنت متأكد من تفريغ جميع البيانات وحذف كل محتويات المخزون والعمليات من الموقع نهائياً؟')) {
-      localStorage.clear();
-      window.location.reload();
-    }
-  };
-
   const handleVerifyPinAndExecute = useCallback(() => {
     const validPin = getStoredPin();
     if (enteredPin === validPin) {
@@ -437,15 +430,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           >
             <Plus className="w-3.5 h-3.5" />
             <span>كراء جديد</span>
-          </button>
-
-          <button
-            onClick={handleClearAllData}
-            className="flex items-center justify-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-2 rounded-xl text-xs font-bold transition-all border border-rose-200 shadow-2xs min-h-[36px] active:scale-95"
-            title="تفريغ جميع البيانات من الموقع وفايرباس"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>تفريغ جميع البيانات</span>
           </button>
         </div>
       </div>
@@ -1153,22 +1137,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
               <span>إضافة ملاحظة / قيد</span>
             </button>
 
-            {activityLogs.length > 0 && (
-              <button
-                onClick={() => {
-                  setEnteredPin('');
-                  setPinError('');
-                  setPinModalOpen({ type: 'all' });
-                }}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-1.5 rounded-xl transition-all shadow-2xs"
-                title="مسح كل السجلات (يتطلب كلمة المرور)"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <Lock className="w-3 h-3 text-rose-500" />
-                <span>تفريغ السجل</span>
-              </button>
-            )}
-
             <button
               onClick={() => onNavigate('logs')}
               className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-all"
@@ -1391,7 +1359,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
                     }
                   }}
                   autoFocus
-                  placeholder="كلمة المرور (الافتراضية: 9296)"
+                  placeholder="أدخل كلمة المرور"
                   className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-500 focus:bg-white transition-all text-center tracking-widest font-mono"
                 />
                 <button
@@ -1461,7 +1429,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
                 required
                 value={currentPinInput}
                 onChange={e => setCurrentPinInput(e.target.value)}
-                placeholder="كلمة المرور الحالية (الافتراضية: 9296)"
+                placeholder="أدخل كلمة المرور الحالية"
                 className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white"
               />
             </div>

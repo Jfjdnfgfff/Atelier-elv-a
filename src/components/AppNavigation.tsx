@@ -285,29 +285,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
               </button>
             </div>
 
-            {/* Firebase Cloud Sync & Primary Add Button */}
+            {/* Primary Add Button */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              {/* Firebase Cloud Status Pill / Button */}
-              <button 
-                onClick={openCloudSyncModal}
-                title={isFirebaseConnected ? "متصل بسحابة Firebase (Realtime Database) - انقر لإدارة المزامنة" : "جاري الاتصال بـ Firebase أو العمل في الوضع المحلي"}
-                className={`h-7 sm:h-9 px-2 sm:px-3 rounded-lg sm:rounded-xl flex items-center gap-1.5 border transition-all text-[11px] sm:text-xs font-bold active:scale-95 ${
-                  isFirebaseConnected 
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-300' 
-                    : 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-300'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
-                  isCloudSyncing ? 'bg-blue-500 animate-ping' : isFirebaseConnected ? 'bg-emerald-500' : 'bg-amber-500'
-                }`} />
-                <span className="hidden md:inline">
-                  {isCloudSyncing ? 'جاري المزامنة...' : isFirebaseConnected ? 'سحابي Firebase' : 'محلي / غير متصل'}
-                </span>
-                <span className="md:hidden text-[10px]">
-                  {isCloudSyncing ? 'مزامنة...' : isFirebaseConnected ? 'Firebase' : 'محلي'}
-                </span>
-              </button>
-
               <button
                 onClick={openAddRentalModal}
                 className="h-7 sm:h-9 px-2.5 sm:px-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs flex items-center gap-1 sm:gap-1.5 shadow-xs shrink-0 transition-all hover:shadow-md hover:shadow-blue-500/20"

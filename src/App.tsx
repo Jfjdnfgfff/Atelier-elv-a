@@ -2671,24 +2671,6 @@ export default function App() {
                 </div>
               </div>
             </button>
-
-            <button
-              onClick={() => {
-                handleLoad50BenchmarkData();
-                setActiveModal(null);
-              }}
-              className="p-4 bg-emerald-50 hover:bg-emerald-100/70 rounded-2xl border border-emerald-200 text-right transition-all flex flex-col justify-between active:scale-95 col-span-2 group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <Sparkles className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h4 className="font-black text-emerald-950 text-xs">توليد 50 عنصراً في كل قسم (اختبار السرعة والتحمل)</h4>
-                  <p className="text-[10px] text-emerald-700 mt-0.5">شحن كافة الأقسام بـ 50 بياناً لاختبار خفة واستجابة النظام</p>
-                </div>
-              </div>
-            </button>
           </div>
         </Modal>
       )}

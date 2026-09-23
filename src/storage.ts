@@ -38,23 +38,20 @@ export const STORAGE_KEYS = {
   STORE_CONFIG: 'boutique_store_config'
 };
 
-// 50 benchmark items per section dataset
-const benchmarkDataset = generateFullDataset();
-
-export const DEFAULT_ACTIVITY_LOGS: ActivityLog[] = benchmarkDataset.activityLogs;
-export const DEFAULT_RAW_MATERIALS: RawMaterial[] = benchmarkDataset.rawMaterials;
-export const DEFAULT_SEAMSTRESSES: Seamstress[] = benchmarkDataset.seamstresses;
-export const DEFAULT_SUPPLIERS: Supplier[] = benchmarkDataset.suppliers;
-export const DEFAULT_MAINTENANCE: MaintenanceOrder[] = benchmarkDataset.maintenanceOrders;
-export const DEFAULT_STAFF: StaffMember[] = benchmarkDataset.staffMembers;
-export const DEFAULT_STAFF_PAYOUTS: StaffPayout[] = benchmarkDataset.staffPayouts;
-export const DEFAULT_STAFF_ABSENCES: StaffAbsence[] = benchmarkDataset.staffAbsences;
-export const DEFAULT_CLOTHES: ClothItem[] = benchmarkDataset.clothes;
-export const DEFAULT_RENTALS: Rental[] = benchmarkDataset.rentals;
-export const DEFAULT_SALES: Sale[] = benchmarkDataset.sales;
-export const DEFAULT_EXPENSES: Expense[] = benchmarkDataset.expenses;
-export const DEFAULT_CREDITS: Credit[] = benchmarkDataset.credits;
-export const DEFAULT_CAISSE_CLOSURES: DailyCaisseClosure[] = benchmarkDataset.caisseClosures;
+export const DEFAULT_ACTIVITY_LOGS: ActivityLog[] = [];
+export const DEFAULT_RAW_MATERIALS: RawMaterial[] = [];
+export const DEFAULT_SEAMSTRESSES: Seamstress[] = [];
+export const DEFAULT_SUPPLIERS: Supplier[] = [];
+export const DEFAULT_MAINTENANCE: MaintenanceOrder[] = [];
+export const DEFAULT_STAFF: StaffMember[] = [];
+export const DEFAULT_STAFF_PAYOUTS: StaffPayout[] = [];
+export const DEFAULT_STAFF_ABSENCES: StaffAbsence[] = [];
+export const DEFAULT_CLOTHES: ClothItem[] = [];
+export const DEFAULT_RENTALS: Rental[] = [];
+export const DEFAULT_SALES: Sale[] = [];
+export const DEFAULT_EXPENSES: Expense[] = [];
+export const DEFAULT_CREDITS: Credit[] = [];
+export const DEFAULT_CAISSE_CLOSURES: DailyCaisseClosure[] = [];
 
 // In-memory cache for fast, synchronous lookups without reading localStorage repeatedly
 const memoryStore = new Map<string, any>();
@@ -264,25 +261,40 @@ export const generateId = (): string => {
 };
 
 /**
- * Initializes Core Data collections at startup with 50 benchmark items per section.
+ * Wipes all stored collections cleanly to empty arrays.
+ */
+export const clearAllStorage = () => {
+  const collections = [
+    STORAGE_KEYS.CLOTHES,
+    STORAGE_KEYS.RENTALS,
+    STORAGE_KEYS.SALES,
+    STORAGE_KEYS.EXPENSES,
+    STORAGE_KEYS.CREDITS,
+    STORAGE_KEYS.RAW_MATERIALS,
+    STORAGE_KEYS.MAINTENANCE,
+    STORAGE_KEYS.SUPPLIERS,
+    STORAGE_KEYS.SEAMSTRESSES,
+    STORAGE_KEYS.STAFF_MEMBERS,
+    STORAGE_KEYS.STAFF_PAYOUTS,
+    STORAGE_KEYS.STAFF_ABSENCES,
+    STORAGE_KEYS.CAISSE_CLOSURES,
+    STORAGE_KEYS.ACTIVITY_LOGS
+  ];
+
+  collections.forEach(key => {
+    localStorage.setItem(key, JSON.stringify({ data: [], timestamp: Date.now(), version: 1 }));
+    memoryStore.set(key, []);
+    lastWrittenRef.set(key, []);
+  });
+};
+
+/**
+ * Initializes Core Data collections cleanly as empty sets.
  */
 export const initializeStorage = () => {
-  const clothesRaw = localStorage.getItem(STORAGE_KEYS.CLOTHES);
-  if (!clothesRaw || clothesRaw === '[]' || clothesRaw.includes('"data":[]')) {
-    saveToStorage(STORAGE_KEYS.CLOTHES, DEFAULT_CLOTHES);
-    saveToStorage(STORAGE_KEYS.RENTALS, DEFAULT_RENTALS);
-    saveToStorage(STORAGE_KEYS.SALES, DEFAULT_SALES);
-    saveToStorage(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES);
-    saveToStorage(STORAGE_KEYS.CREDITS, DEFAULT_CREDITS);
-    saveToStorage(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS);
-    saveToStorage(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE);
-    saveToStorage(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS);
-    saveToStorage(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES);
-    saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF);
-    saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, DEFAULT_STAFF_PAYOUTS);
-    saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, DEFAULT_STAFF_ABSENCES);
-    saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES);
-    saveToStorage(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS);
-    flushPendingStorageSynchronously();
+  const RESET_VERSION = 'boutique_wipe_empty_v1';
+  if (localStorage.getItem('boutique_empty_data_flag') !== RESET_VERSION) {
+    clearAllStorage();
+    localStorage.setItem('boutique_empty_data_flag', RESET_VERSION);
   }
 };
