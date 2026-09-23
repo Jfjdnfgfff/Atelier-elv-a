@@ -6,7 +6,7 @@ import { RawMaterialsSection } from './RawMaterialsSection';
 import { ProductVariantsModal } from './ProductVariantsModal';
 import { SecurityPasswordModal, checkSecurityPin } from './SecurityPasswordModal';
 import { isValidImageFileType, generateSecureImageFilename, sanitizeText, sanitizeNumericAmount } from '../utils/security';
-import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap, ChevronLeft, ChevronRight, Search, Loader2 } from 'lucide-react';
 
 export const STANDARD_SIZES = [
   '34', '36', '38', '40', '42', '44', '46', '48', '50', '52', '54',
@@ -523,7 +523,15 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   }, [clothes, filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search]);
 
   const [visibleCount, setVisibleCount] = useState(5);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const BATCH_SIZE = 5;
+
+  useEffect(() => {
+    setIsInitialLoading(true);
+    const timer = setTimeout(() => setIsInitialLoading(false), 300);
+    return () => clearTimeout(timer);
+  }, [inventoryTab]);
 
   useEffect(() => {
     setVisibleCount(5);
@@ -535,6 +543,14 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
 
   return (
     <div className="space-y-4 sm:space-y-5 p-3 sm:p-6" dir="rtl">
+      {/* Initial Section Loading Banner */}
+      {isInitialLoading && (
+        <div className="p-3 bg-indigo-50/90 border border-indigo-200/80 rounded-2xl flex items-center justify-center gap-2.5 text-indigo-900 text-xs font-bold shadow-2xs animate-in fade-in">
+          <Loader2 className="w-4 h-4 text-indigo-600 animate-spin shrink-0" />
+          <span>جاري تحميل بيانات قسم المخزون...</span>
+        </div>
+      )}
+
       {/* Top Header & Tab Switcher */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-indigo-50/70 via-white to-purple-50/70 p-4 sm:p-5 rounded-2xl border border-indigo-100 shadow-2xs">
         <div>
@@ -1137,11 +1153,27 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         {visibleCount < filteredClothes.length ? (
           <button
             type="button"
-            onClick={() => setVisibleCount(prev => Math.min(prev + BATCH_SIZE, filteredClothes.length))}
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 active:scale-95 cursor-pointer"
+            disabled={isLoadingMore}
+            onClick={() => {
+              setIsLoadingMore(true);
+              setTimeout(() => {
+                setVisibleCount(prev => Math.min(prev + BATCH_SIZE, filteredClothes.length));
+                setIsLoadingMore(false);
+              }, 250);
+            }}
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-80 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 active:scale-95 cursor-pointer"
           >
-            <span>عرض 5 قطع إضافية (+5)</span>
-            <ChevronLeft className="w-4 h-4" />
+            {isLoadingMore ? (
+              <>
+                <Loader2 className="w-4 h-4 text-white animate-spin shrink-0" />
+                <span>جاري التحميل...</span>
+              </>
+            ) : (
+              <>
+                <span>عرض 5 قطع إضافية (+5)</span>
+                <ChevronLeft className="w-4 h-4" />
+              </>
+            )}
           </button>
         ) : (
           <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-3 py-1.5 rounded-xl font-medium">

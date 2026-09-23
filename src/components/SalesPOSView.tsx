@@ -23,7 +23,8 @@ import {
   Camera,
   Barcode,
   Plus,
-  Minus
+  Minus,
+  Loader2
 } from 'lucide-react';
 
 interface SalesPOSViewProps {
@@ -421,6 +422,15 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
 
   // Progressive display for products (5 items at a time)
   const [visibleProductCount, setVisibleProductCount] = useState(5);
+  const [isLoadingMoreProducts, setIsLoadingMoreProducts] = useState(false);
+  const [isLoadingMoreSales, setIsLoadingMoreSales] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+
+  useEffect(() => {
+    setIsInitialLoading(true);
+    const timer = setTimeout(() => setIsInitialLoading(false), 300);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     setVisibleProductCount(5);
@@ -439,6 +449,14 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
 
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6" dir="rtl">
+      {/* Initial Section Loading Banner */}
+      {isInitialLoading && (
+        <div className="p-3 bg-blue-50/90 border border-blue-200/80 rounded-2xl flex items-center justify-center gap-2.5 text-blue-900 text-xs font-bold shadow-2xs animate-in fade-in">
+          <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0" />
+          <span>جاري تحميل بيانات قسم المبيعات والمنتجات...</span>
+        </div>
+      )}
+
       {/* Top Split Layout: POS Selector and Cart */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
         {/* Mobile Cart Summary Sticky Pill */}
@@ -733,11 +751,27 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               <div className="col-span-2 sm:col-span-3 py-2 text-center">
                 <button
                   type="button"
-                  onClick={() => setVisibleProductCount(prev => Math.min(prev + 5, filteredClothes.length))}
-                  className="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all border border-blue-200 active:scale-95 flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                  disabled={isLoadingMoreProducts}
+                  onClick={() => {
+                    setIsLoadingMoreProducts(true);
+                    setTimeout(() => {
+                      setVisibleProductCount(prev => Math.min(prev + 5, filteredClothes.length));
+                      setIsLoadingMoreProducts(false);
+                    }, 250);
+                  }}
+                  className="w-full py-2.5 bg-blue-50 hover:bg-blue-100 disabled:opacity-80 text-blue-700 rounded-xl text-xs font-bold transition-all border border-blue-200 active:scale-95 flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
                 >
-                  <span>عرض 5 سلع إضافية (+5)</span>
-                  <span className="text-[11px] font-normal opacity-75">({visibleClothes.length} من {filteredClothes.length})</span>
+                  {isLoadingMoreProducts ? (
+                    <>
+                      <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0" />
+                      <span>جاري التحميل...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>عرض 5 سلع إضافية (+5)</span>
+                      <span className="text-[11px] font-normal opacity-75">({visibleClothes.length} من {filteredClothes.length})</span>
+                    </>
+                  )}
                 </button>
               </div>
             )}
@@ -1261,11 +1295,27 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               {visibleSalesCount < sales.length ? (
                 <button
                   type="button"
-                  onClick={() => setVisibleSalesCount(prev => Math.min(prev + 5, sales.length))}
-                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold transition-all border border-slate-200 text-center active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                  disabled={isLoadingMoreSales}
+                  onClick={() => {
+                    setIsLoadingMoreSales(true);
+                    setTimeout(() => {
+                      setVisibleSalesCount(prev => Math.min(prev + 5, sales.length));
+                      setIsLoadingMoreSales(false);
+                    }, 250);
+                  }}
+                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-80 text-slate-800 rounded-xl font-bold transition-all border border-slate-200 text-center active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <span>عرض 5 عمليات بيع أخرى (+5)</span>
-                  <span className="text-[11px] font-normal text-slate-500">(عرض {visibleSales.length} من إجمالي {sales.length})</span>
+                  {isLoadingMoreSales ? (
+                    <>
+                      <Loader2 className="w-4 h-4 text-slate-700 animate-spin shrink-0" />
+                      <span>جاري التحميل...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>عرض 5 عمليات بيع أخرى (+5)</span>
+                      <span className="text-[11px] font-normal text-slate-500">(عرض {visibleSales.length} من إجمالي {sales.length})</span>
+                    </>
+                  )}
                 </button>
               ) : (
                 <div className="w-full text-center text-emerald-700 bg-emerald-50 border border-emerald-200/80 py-2 rounded-xl font-medium">
