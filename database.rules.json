@@ -1,6 +1,27 @@
 {
   "rules": {
     ".read": true,
-    ".write": true
+    ".write": true,
+    "activityLogs": {
+      ".indexOn": ["timestamp", "category"]
+    },
+    "sales": {
+      ".indexOn": ["date", "timestamp"]
+    },
+    "rentals": {
+      ".indexOn": ["status", "startDate", "expectedReturnDate"]
+    },
+    "expenses": {
+      ".indexOn": ["date"]
+    },
+    "clothes": {
+      ".indexOn": ["barcode", "category"]
+    },
+    "maintenanceOrders": {
+      ".indexOn": ["status"]
+    },
+    "caisseClosures": {
+      ".indexOn": ["date"]
+    }
   }
 }
