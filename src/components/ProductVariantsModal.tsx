@@ -21,7 +21,7 @@ import {
   ArrowUpDown
 } from 'lucide-react';
 import { getColorHex, POPULAR_COLORS } from './InventoryView';
-import { getListImage } from '../utils/imageUtils';
+import { getListImage, openFullImagePreview } from '../utils/imageUtils';
 import { AsyncProductImage } from './AsyncProductImage';
 import { imageStore } from '../utils/imageStore';
 
@@ -249,14 +249,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
 
   const handleOpenFullImage = async () => {
     if (!onOpenFullImage) return;
-    const initialUrl = getListImage(item) || item.imageUrl || '';
-    onOpenFullImage(initialUrl, item.name);
-    if (item.hasFullImage && item.id) {
-      const full = await imageStore.loadFull(item.id);
-      if (full) {
-        onOpenFullImage(full, item.name);
-      }
-    }
+    openFullImagePreview(item, onOpenFullImage);
   };
 
   return (

@@ -1,4 +1,5 @@
 import { ClothItem } from '../types';
+import { imageStore } from './imageStore';
 
 /**
  * Returns the small list/card image url for a cloth item.
@@ -7,6 +8,25 @@ import { ClothItem } from '../types';
 export function getListImage(item?: ClothItem | null): string {
   if (!item) return '';
   return item.thumbUrl || item.imageUrl || '';
+}
+
+/**
+ * Shared helper to open image preview with thumbnail immediately,
+ * and asynchronously update with the high-res full image when loaded.
+ */
+export async function openFullImagePreview(
+  item: ClothItem,
+  onOpenPreview: (url: string, title: string) => void
+): Promise<void> {
+  if (!item || !onOpenPreview) return;
+  const initialUrl = getListImage(item) || item.imageUrl || '';
+  onOpenPreview(initialUrl, item.name);
+  if (item.hasFullImage && item.id) {
+    const full = await imageStore.loadFull(item.id);
+    if (full) {
+      onOpenPreview(full, item.name);
+    }
+  }
 }
 
 /**
@@ -20,13 +40,16 @@ export interface ImageVariants {
   fullUrl: string;
 }
 
+export const THUMB_MAX_DIM = 200;
+export const THUMB_QUALITY = 0.6;
+
 export function processImageToVariants(input: File | string): Promise<ImageVariants> {
   return new Promise((resolve, reject) => {
     const img = new Image();
 
     const processLoadedImage = () => {
       try {
-        const thumbUrl = compressCanvas(img, 140, 0.55);
+        const thumbUrl = compressCanvas(img, THUMB_MAX_DIM, THUMB_QUALITY);
         const fullUrl = compressCanvas(img, 1200, 0.8);
         resolve({ thumbUrl, fullUrl });
       } catch (err) {

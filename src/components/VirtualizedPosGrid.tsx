@@ -1,7 +1,7 @@
 import React, { useRef, useMemo, useEffect, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ClothItem, SaleItem } from '../types';
-import { getListImage } from '../utils/imageUtils';
+import { getListImage, openFullImagePreview } from '../utils/imageUtils';
 import { Package, ZoomIn } from 'lucide-react';
 
 interface VirtualizedPosGridProps {
@@ -161,7 +161,7 @@ export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onOpenPreview(imgUrl, item.name);
+                              openFullImagePreview(item, onOpenPreview);
                             }}
                             className="absolute bottom-1.5 left-1.5 bg-slate-900/80 hover:bg-slate-900 text-white p-1 rounded-lg text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow-2xs"
                             title="تكبير الصورة"

@@ -412,7 +412,23 @@ export default function App() {
 
   // Firebase Realtime Database: Connection Status Listener & IndexedDB Async Hydration
   useEffect(() => {
-    hydrateFromIndexedDB().catch(err => console.warn('Hydration error:', err));
+    hydrateFromIndexedDB().then(() => {
+      setClothes(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.CLOTHES, DEFAULT_CLOTHES) : prev));
+      setRentals(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.RENTALS, DEFAULT_RENTALS) : prev));
+      setSales(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.SALES, DEFAULT_SALES) : prev));
+      setExpenses(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES) : prev));
+      setCredits(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.CREDITS, DEFAULT_CREDITS) : prev));
+      setStaffPayouts(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.STAFF_PAYOUTS, DEFAULT_STAFF_PAYOUTS) : prev));
+      setStaffMembers(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF) : prev));
+      setStaffAbsences(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.STAFF_ABSENCES, DEFAULT_STAFF_ABSENCES) : prev));
+      setMaintenanceOrders(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE) : prev));
+      setSuppliers(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS) : prev));
+      setSeamstresses(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES) : prev));
+      setRawMaterials(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS) : prev));
+      setCaisseClosures(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES) : prev));
+      setActivityLogs(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS) : prev));
+    }).catch(err => console.warn('Hydration error:', err));
+
     const unsub = SubscriptionManager.onConnectionStatus(connected => {
       setIsFirebaseConnected(connected);
     });
@@ -2547,6 +2563,7 @@ export default function App() {
       {activeModal === 'imageMigration' && (
         <ImageMigrationModal
           clothes={clothes}
+          sales={sales}
           onClose={() => setActiveModal(null)}
           showToast={showToast}
         />
