@@ -59,6 +59,27 @@ const lastWrittenRef = new Map<string, any>();
 const dirtyKeys = new Set<string>();
 let idleFlushScheduled = false;
 
+// Until IndexedDB hydration has finished, an empty in-memory collection may simply mean "not loaded yet":
+// it must never overwrite the (possibly large) copy persisted in IndexedDB.
+let indexedDbHydrated = false;
+
+// Collections bigger than this live in IndexedDB only (localStorage is small, synchronous and blocks the UI).
+const LOCAL_STORAGE_MAX_CHARS = 1024 * 1024;
+const INDEXEDDB_ONLY_PLACEHOLDER = JSON.stringify({ data: [], timestamp: 0, version: 1, storedIn: 'indexeddb' });
+
+/**
+ * Replaces an outdated localStorage snapshot by a tiny placeholder when a collection can no longer be stored
+ * there. Previously the old snapshot stayed in place and was loaded at the next start instead of the newer
+ * IndexedDB copy (hydration only fills empty collections), showing stale stock/sales until Firebase answered.
+ */
+function markStoredInIndexedDbOnly(key: string) {
+  try {
+    localStorage.setItem(key, INDEXEDDB_ONLY_PLACEHOLDER);
+  } catch {
+    try { localStorage.removeItem(key); } catch { /* ignore */ }
+  }
+}
+
 export interface CacheMeta {
   timestamp: number;
   version: number;
@@ -136,6 +157,12 @@ export function flushPendingStorageSynchronously(): void {
     const dataToPersist = memoryStore.get(key);
     if (dataToPersist === undefined) continue;
 
+    if (!indexedDbHydrated && Array.isArray(dataToPersist) && dataToPersist.length === 0) {
+      // Keep it pending: it is re-evaluated right after hydration (see hydrateFromIndexedDB)
+      dirtyKeys.add(key);
+      continue;
+    }
+
     const meta = cacheMetaStore.get(key) || { timestamp: Date.now(), version: 1 };
     const cacheEnvelope = {
       data: dataToPersist,
@@ -167,15 +194,19 @@ export function flushPendingStorageSynchronously(): void {
         version: meta.version
       });
 
-      // Disable localStorage write for clothes completely if size > 1MB
-      if (key === STORAGE_KEYS.CLOTHES && payloadStr.length > 1024 * 1024) {
-        console.warn(`[localStorage] Skipped writing clothes to localStorage (size: ${(payloadStr.length / (1024 * 1024)).toFixed(2)} MB > 1MB limit). Preserved safely in IndexedDB.`);
+      // Large collections (> 1MB) are kept in IndexedDB only
+      if (payloadStr.length > LOCAL_STORAGE_MAX_CHARS) {
+        if ((import.meta as any).env?.DEV) {
+          console.warn(`[localStorage] ${key} is ${(payloadStr.length / (1024 * 1024)).toFixed(2)} MB (> 1MB): stored in IndexedDB only.`);
+        }
+        markStoredInIndexedDbOnly(key);
       } else {
         localStorage.setItem(key, payloadStr);
       }
     } catch (e: any) {
       if (e?.name === 'QuotaExceededError' || e?.code === 22) {
         console.warn(`[localStorage quota exceeded for ${key}]. Skipping localStorage write (data is saved in IndexedDB).`);
+        markStoredInIndexedDbOnly(key);
       } else {
         console.error(`Error flushing key ${key} to localStorage:`, e);
       }
@@ -334,6 +365,16 @@ export const initializeStorage = () => {
  * Asynchronously reads all collections from IndexedDB into memoryStore before initial cloud subscription (stale-while-revalidate pattern).
  */
 export async function hydrateFromIndexedDB(): Promise<void> {
+  try {
+    await hydrateAllKeysFromIndexedDB();
+  } finally {
+    indexedDbHydrated = true;
+    // Flush writes that were held back while hydration was running
+    if (dirtyKeys.size > 0) scheduleIdleStorageFlush();
+  }
+}
+
+async function hydrateAllKeysFromIndexedDB(): Promise<void> {
   const keys = Object.values(STORAGE_KEYS);
   for (const key of keys) {
     try {

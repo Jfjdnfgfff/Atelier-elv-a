@@ -33,10 +33,12 @@ jobs:
           cache: npm
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Build Single HTML Bundle
-        run: npm run build
+      # Static front-end only: `npm run build` also bundles the Express server into dist/server.cjs,
+      # which must not be published on GitHub Pages.
+      - name: Build Static Site
+        run: npx vite build
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v4

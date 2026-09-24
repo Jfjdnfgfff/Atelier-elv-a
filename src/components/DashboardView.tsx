@@ -298,6 +298,19 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   }, [maintenanceOrders, today]);
 
   const activeRentals = useMemo(() => rentals.filter(r => r.status === 'active'), [rentals]);
+
+  // O(1) item lookups instead of clothes.find() for every alert row
+  const clothesById = useMemo(() => {
+    const map = new Map<string, ClothItem>();
+    for (const c of clothes) map.set(c.id, c);
+    return map;
+  }, [clothes]);
+
+  // Alert lists are capped (+ "show more"): overdue rentals / tailoring orders that are never closed
+  // accumulate, and rendering all of them made the dashboard heavy (54k DOM nodes with a large dataset).
+  const ALERTS_PAGE_SIZE = 8;
+  const [urgentRentalsVisible, setUrgentRentalsVisible] = useState(ALERTS_PAGE_SIZE);
+  const [urgentTailoringVisible, setUrgentTailoringVisible] = useState(ALERTS_PAGE_SIZE);
   const reservedRentals = useMemo(() => rentals.filter(r => r.status === 'reserved'), [rentals]);
 
   // Values based on selected period
@@ -898,10 +911,10 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
-            {urgentRentals.map(rental => {
+            {urgentRentals.slice(0, urgentRentalsVisible).map(rental => {
               const diff = calculateDaysDiff(rental.expectedReturnDate);
               const isOverdue = diff < 0;
-              const cloth = clothes.find(c => c.id === rental.itemId);
+              const cloth = clothesById.get(rental.itemId);
 
               return (
                 <div key={rental.id} className="bg-white p-3.5 rounded-xl border border-slate-200/90 flex justify-between items-center text-xs gap-2 shadow-2xs">
@@ -954,6 +967,15 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
               );
             })}
           </div>
+          {urgentRentalsVisible < urgentRentals.length && (
+            <button
+              type="button"
+              onClick={() => setUrgentRentalsVisible(v => v + 20)}
+              className="w-full text-xs font-semibold text-amber-900 bg-white border border-amber-300 hover:bg-amber-50 py-2 rounded-xl transition-all"
+            >
+              عرض المزيد ({urgentRentalsVisible} من {urgentRentals.length})
+            </button>
+          )}
         </div>
       )}
 
@@ -983,7 +1005,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
-            {urgentTailoringOrders.map(order => {
+            {urgentTailoringOrders.slice(0, urgentTailoringVisible).map(order => {
               const diff = calculateDaysDiff(order.expectedDeliveryDate);
               const isOverdue = diff < 0;
 
@@ -1025,6 +1047,15 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
               );
             })}
           </div>
+          {urgentTailoringVisible < urgentTailoringOrders.length && (
+            <button
+              type="button"
+              onClick={() => setUrgentTailoringVisible(v => v + 20)}
+              className="w-full text-xs font-semibold text-sky-900 bg-white border border-sky-200 hover:bg-sky-50 py-2 rounded-xl transition-all"
+            >
+              عرض المزيد ({urgentTailoringVisible} من {urgentTailoringOrders.length})
+            </button>
+          )}
         </div>
       )}
 
@@ -1050,7 +1081,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         ) : (
           <div className="divide-y divide-slate-100">
             {activeRentals.slice(0, 5).map(rental => {
-              const cloth = clothes.find(c => c.id === rental.itemId);
+              const cloth = clothesById.get(rental.itemId);
               return (
                 <div key={rental.id} className="py-3 flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-xs">
                   <div className="flex items-center gap-2.5 min-w-0">

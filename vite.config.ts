@@ -5,6 +5,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig(() => {
   return {
+    // Relative asset URLs: the same build works at the domain root (Express / Cloud Run) and under a
+    // sub-path such as https://<user>.github.io/Atelier-elv-a/ (absolute /assets/... gave a blank page there).
+    base: './',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

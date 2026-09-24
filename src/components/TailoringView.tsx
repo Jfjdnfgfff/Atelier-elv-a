@@ -1,4 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+
+// Orders are rendered page by page: each card is ~70 DOM nodes, so rendering thousands of orders at once
+// froze the page (3,000 orders = 211k nodes / ~4 s on a phone-class CPU).
+const TAILORING_PAGE_SIZE = 30;
 import { MaintenanceOrder, MaintenanceStatus, MaintenanceTargetType, ClothItem } from '../types';
 import { Plus, AlertTriangle, AlertCircle, MessageSquare, Mail, Phone, Trash2, FileText, Edit3 } from 'lucide-react';
 
@@ -23,6 +27,12 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
 }) => {
   const [filter, setFilter] = useState<'all' | 'due_soon' | 'pending' | 'in_progress' | 'ready' | 'delivered'>('all');
   const [search, setSearch] = useState('');
+  const [visibleCount, setVisibleCount] = useState(TAILORING_PAGE_SIZE);
+
+  // Back to the first page whenever the filter or the search changes
+  useEffect(() => {
+    setVisibleCount(TAILORING_PAGE_SIZE);
+  }, [filter, search]);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -209,8 +219,9 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
           <p className="text-xs font-medium text-slate-500">لا توجد طلبات خياطة مسجلة</p>
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {filteredOrders.map(order => {
+          {filteredOrders.slice(0, visibleCount).map(order => {
             const daysLeft = getDaysDiffFromToday(order.expectedDeliveryDate);
             const isDelivered = order.status === 'delivered';
             const isOverdue = !isDelivered && daysLeft < 0;
@@ -382,6 +393,18 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
             );
           })}
         </div>
+        {visibleCount < filteredOrders.length && (
+          <div className="flex justify-center pt-1">
+            <button
+              type="button"
+              onClick={() => setVisibleCount(prev => prev + TAILORING_PAGE_SIZE)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-2xl text-xs font-bold shadow-md transition-all active:scale-95"
+            >
+              عرض المزيد ({Math.min(visibleCount, filteredOrders.length)} من {filteredOrders.length})
+            </button>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

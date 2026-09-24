@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ClothItem, ClothVariant, PurposeType, RawMaterial, Supplier } from '../types';
-import { BarcodeScanner } from './BarcodeScanner';
+// Lazy: keeps the ~450 KB barcode library out of the startup bundle (loaded only when the camera opens)
+const BarcodeScanner = React.lazy(() => import('./BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
 import { LettersInput, NumbersInput } from './Shared';
 import { RawMaterialsSection } from './RawMaterialsSection';
 import { ProductVariantsModal } from './ProductVariantsModal';
@@ -10,6 +11,7 @@ import { isValidImageFileType, generateSecureImageFilename, sanitizeText, saniti
 import { processImageToVariants, getListImage } from '../utils/imageUtils';
 import { imageStore } from '../utils/imageStore';
 import { AsyncProductImage } from './AsyncProductImage';
+import { distributeEvenly } from '../utils/stockUpdates';
 import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap, ChevronLeft, ChevronRight, Search, Loader2 } from 'lucide-react';
 
 export const STANDARD_SIZES = [
@@ -1031,11 +1033,13 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
 
       {/* Embedded Barcode Scanner Camera for Adding Stock */}
       {showScannerModal && (
-        <BarcodeScanner
-          title="مسح باركود لإضافة المخزون"
-          onScan={(code) => handleProcessBarcode(code)}
-          onClose={() => setShowScannerModal(false)}
-        />
+        <React.Suspense fallback={null}>
+          <BarcodeScanner
+            title="مسح باركود لإضافة المخزون"
+            onScan={(code) => handleProcessBarcode(code)}
+            onClose={() => setShowScannerModal(false)}
+          />
+        </React.Suspense>
       )}
 
       {/* Security Password Prompt Modal */}
@@ -1568,8 +1572,10 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
     sizes.forEach((sz, sIdx) => {
       colors.forEach((col, cIdx) => {
         const vId = `${Date.now()}_${sIdx}_${cIdx}_${Math.random().toString(36).substring(2, 6)}`;
-        const allocatedS1 = count === 1 ? s1 : Math.max(0, Math.floor(s1 / count) || (sIdx === 0 && cIdx === 0 ? s1 : 0));
-        const allocatedS2 = count === 1 ? s2 : Math.max(0, Math.floor(s2 / count) || (sIdx === 0 && cIdx === 0 ? s2 : 0));
+        // Exact split (floor() used to drop the remainder: 5 pieces over 2 variants became 2 + 2)
+        const flatIndex = sIdx * colors.length + cIdx;
+        const allocatedS1 = distributeEvenly(s1, count, flatIndex);
+        const allocatedS2 = distributeEvenly(s2, count, flatIndex);
         initialList.push({
           id: vId,
           code: item?.barcode ? `${item.barcode}-${sIdx + 1}` : '',
@@ -2584,14 +2590,16 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
       </div>
 
       {showInFormScanner && (
-        <BarcodeScanner
-          title="مسح باركود القطعة"
-          onScan={(code) => {
-            setBarcode(code.trim());
-            setShowInFormScanner(false);
-          }}
-          onClose={() => setShowInFormScanner(false)}
-        />
+        <React.Suspense fallback={null}>
+          <BarcodeScanner
+            title="مسح باركود القطعة"
+            onScan={(code) => {
+              setBarcode(code.trim());
+              setShowInFormScanner(false);
+            }}
+            onClose={() => setShowInFormScanner(false)}
+          />
+        </React.Suspense>
       )}
     </div>
   );

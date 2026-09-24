@@ -18,6 +18,7 @@ import {
   onChildAdded,
   onChildChanged,
   onChildRemoved,
+  increment,
   Query
 } from 'firebase/database';
 
@@ -130,7 +131,9 @@ export function sanitizeForFirebase<T>(data: T): T {
 export async function saveItemToFirebase<T extends { id: string }>(collectionKey: string, item: T): Promise<void> {
   if (!item || !item.id) return;
   try {
-    const itemWithTs = { ...item, updatedAt: (item as any).updatedAt || new Date().toISOString() };
+    // Always stamp a fresh updatedAt: other devices (areArraysEqual) rely on it to detect that a record changed.
+    // Re-using the old value made edits of existing records invisible to other devices.
+    const itemWithTs = { ...item, updatedAt: new Date().toISOString() };
     const cleanItem = sanitizeForFirebase(itemWithTs);
     const collectionRef = ref(rtdb, collectionKey);
     await update(collectionRef, { [cleanItem.id]: cleanItem });
@@ -151,7 +154,7 @@ export async function pushItemToFirebase<T extends { id?: string }>(
 ): Promise<string | null> {
   if (!item) return null;
   try {
-    const itemWithTs = { ...item, updatedAt: (item as any).updatedAt || new Date().toISOString() };
+    const itemWithTs = { ...item, updatedAt: new Date().toISOString() };
     const cleanItem = sanitizeForFirebase(itemWithTs);
     if (cleanItem.id) {
       await update(ref(rtdb, collectionKey), { [cleanItem.id]: cleanItem });
@@ -180,6 +183,42 @@ export async function updateItemInFirebase(
     return true;
   } catch (error) {
     console.warn(`[Firebase RTDB] Failed to update targeted item ${collectionKey}/${itemId}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Atomic item update for counters (stock, rentedCount, ...):
+ * - `set`: absolute values (used for legacy records where the counter field does not exist yet)
+ * - `add`: server-side increments (Firebase `increment()`), so two devices selling/renting at the
+ *   same time can never overwrite each other's stock changes (no lost updates, works offline too).
+ * Keys may be nested paths such as `variants/0/stock1`.
+ */
+export async function applyAtomicItemUpdate(
+  collectionKey: string,
+  itemId: string,
+  write: { set?: Record<string, any>; add?: Record<string, number> }
+): Promise<boolean> {
+  const updates: Record<string, any> = { ...(write.set || {}) };
+  for (const [path, delta] of Object.entries(write.add || {})) {
+    if (typeof delta === 'number' && delta !== 0 && Number.isFinite(delta)) {
+      updates[path] = increment(delta);
+    }
+  }
+  if (Object.keys(updates).length === 0) return true;
+  return updateItemInFirebase(collectionKey, itemId, updates);
+}
+
+/**
+ * Removes a whole collection node (used by the password-protected "clear all activity logs" action).
+ * `syncCollectionToCloud(key, [])` intentionally ignores empty arrays, so it can't be used for this.
+ */
+export async function clearCollectionInFirebase(collectionKey: string): Promise<boolean> {
+  try {
+    await remove(ref(rtdb, collectionKey));
+    return true;
+  } catch (error) {
+    console.warn(`[Firebase RTDB] Failed to clear collection ${collectionKey}:`, error);
     return false;
   }
 }
@@ -448,10 +487,11 @@ export async function syncCollectionToCloud<T extends { id?: string }>(
   try {
     const colRef = ref(rtdb, collectionKey);
     const mapObj: Record<string, T> = {};
+    const syncStamp = new Date().toISOString();
     items.forEach((item, idx) => {
       if (item && typeof item === 'object') {
         const key = item.id || `idx_${idx}`;
-        mapObj[key] = sanitizeForFirebase({ ...item, updatedAt: (item as any).updatedAt || new Date().toISOString() });
+        mapObj[key] = sanitizeForFirebase({ ...item, updatedAt: syncStamp });
       }
     });
     // Non-destructive merge update
@@ -557,6 +597,37 @@ interface ActiveSubscriptionEntry<T = any> {
   lastData: T[] | null;
 }
 
+const recordTime = (r: any): string => {
+  const t = r?.createdAt || r?.timestamp || r?.date || '';
+  return typeof t === 'string' ? t : String(t);
+};
+
+/** Newest first. Plain comparison is chronological for ISO-8601 strings and much cheaper than localeCompare on large lists. */
+export function compareNewestFirst(a: any, b: any): number {
+  const timeA = recordTime(a);
+  const timeB = recordTime(b);
+  if (!timeA || !timeB || timeA === timeB) return 0;
+  return timeA < timeB ? 1 : -1;
+}
+
+/**
+ * Start of the history window used for sales & expenses subscriptions: first day of the month,
+ * `months` months ago (default: the current month + the previous 12 months).
+ * Monthly / yearly figures stay exact while the download stays bounded as years of history pile up.
+ */
+export function historyWindowStart(months = 12, now: Date = new Date()): string {
+  const start = new Date(now.getFullYear(), now.getMonth() - months, 1);
+  return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
+export interface SubscribeOptions {
+  limit?: number;
+  sort?: boolean;
+  /** Server-side range query: only records whose `orderBy` child is >= `startAt` (e.g. date window). */
+  orderBy?: string;
+  startAt?: string;
+}
+
 /**
  * Unified Subscription Manager with Reference Counting and Deduplication:
  * - Guarantees strictly ONE active Firebase listener (onValue) per subKey.
@@ -575,9 +646,11 @@ export class SubscriptionManager {
   static subscribe<T extends { id?: string }>(
     collectionKey: string,
     callback: (items: T[]) => void,
-    options?: { limit?: number; sort?: boolean }
+    options?: SubscribeOptions
   ): () => void {
-    const subKey = options?.limit && options.limit > 0 ? `${collectionKey}_limit_${options.limit}` : collectionKey;
+    const hasRange = Boolean(options?.orderBy && options?.startAt);
+    let subKey = options?.limit && options.limit > 0 ? `${collectionKey}_limit_${options.limit}` : collectionKey;
+    if (hasRange) subKey += `_${options!.orderBy}_from_${options!.startAt}`;
     let entry = this.activeSubscriptions.get(subKey);
 
     if (entry) {
@@ -598,7 +671,10 @@ export class SubscriptionManager {
       callbacks.add(callback);
 
       let targetRef: Query = ref(rtdb, collectionKey);
-      if (options?.limit && options.limit > 0) {
+      if (hasRange) {
+        // e.g. sales of the last 12 months: bounded download that grows with activity, not with shop age
+        targetRef = query(ref(rtdb, collectionKey), orderByChild(options!.orderBy!), startAt(options!.startAt!));
+      } else if (options?.limit && options.limit > 0) {
         targetRef = query(ref(rtdb, collectionKey), limitToLast(options.limit));
       }
 
@@ -622,14 +698,7 @@ export class SubscriptionManager {
 
           // Sort items if sort option is not explicitly false
           if (options?.sort !== false) {
-            items.sort((a: any, b: any) => {
-              const timeA = a.createdAt || a.timestamp || a.date || '';
-              const timeB = b.createdAt || b.timestamp || b.date || '';
-              if (timeA && timeB) {
-                return timeB.localeCompare(timeA);
-              }
-              return 0;
-            });
+            items.sort(compareNewestFirst);
           }
         }
 
@@ -778,12 +847,7 @@ export class SubscriptionManager {
         }
         let items = Array.from(itemsMap.values());
         if (options?.sort !== false) {
-          items.sort((a: any, b: any) => {
-            const timeA = (a as any).createdAt || (a as any).timestamp || (a as any).date || '';
-            const timeB = (b as any).createdAt || (b as any).timestamp || (b as any).date || '';
-            if (timeA && timeB) return timeB.localeCompare(timeA);
-            return 0;
-          });
+          items.sort(compareNewestFirst);
         }
         const cur = SubscriptionManager.activeSubscriptions.get(subKey);
         if (cur) {

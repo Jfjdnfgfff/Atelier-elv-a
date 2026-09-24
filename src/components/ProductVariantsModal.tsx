@@ -24,6 +24,7 @@ import { getColorHex, POPULAR_COLORS } from './InventoryView';
 import { getListImage, openFullImagePreview } from '../utils/imageUtils';
 import { AsyncProductImage } from './AsyncProductImage';
 import { imageStore } from '../utils/imageStore';
+import { distributeEvenly } from '../utils/stockUpdates';
 
 interface ProductVariantsModalProps {
   item: ClothItem;
@@ -81,9 +82,8 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
     const itemStock1 = item.stock1 !== undefined ? item.stock1 : (item.stock || 0);
     const itemStock2 = item.stock2 !== undefined ? item.stock2 : 0;
     
-    // Per variant stock fallback (e.g. 4 as seen in photo or divided stock)
-    const perVarStock1 = Math.max(1, Math.round(itemStock1 / totalCount)) || 2;
-    const perVarStock2 = Math.max(0, Math.round(itemStock2 / totalCount)) || 2;
+    // Split the real stock exactly across the generated variants. The old formula invented pieces
+    // (at least 1 per variant in the shop and "|| 2" in the warehouse), which were saved on the first +/- tap.
 
     const generated: ClothVariant[] = [];
     let idx = 0;
@@ -104,9 +104,9 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
           code: code,
           size: sz,
           color: col,
-          stock1: perVarStock1,
-          stock2: perVarStock2,
-          stock: perVarStock1 + perVarStock2,
+          stock1: distributeEvenly(itemStock1, totalCount, idx),
+          stock2: distributeEvenly(itemStock2, totalCount, idx),
+          stock: distributeEvenly(itemStock1, totalCount, idx) + distributeEvenly(itemStock2, totalCount, idx),
           price: item.sellPrice || item.rentPrice || 7200,
           rentPrice: item.rentPrice || undefined,
           imageUrl: getListImage(item) || item.imageUrl

@@ -51,8 +51,12 @@ import {
   SubscriptionManager, 
   areArraysEqual,
   firebaseConfig,
-  downloadFullFirebaseBackupDirect
+  downloadFullFirebaseBackupDirect,
+  applyAtomicItemUpdate,
+  clearCollectionInFirebase,
+  historyWindowStart
 } from './firebase';
+import { applyStockLines, applyCounterDeltas, groupStockLinesByItem, AtomicWrite } from './utils/stockUpdates';
 
 // Components
 import { Modal } from './components/Shared';
@@ -126,6 +130,26 @@ export default function App() {
   const [sales, setSales] = useState<Sale[]>(() => loadFromStorage(STORAGE_KEYS.SALES, DEFAULT_SALES));
   const [expenses, setExpenses] = useState<Expense[]>(() => loadFromStorage(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES));
   const [credits, setCredits] = useState<Credit[]>(() => loadFromStorage(STORAGE_KEYS.CREDITS, DEFAULT_CREDITS));
+
+  // Latest-state mirrors: handlers read current data here instead of running side effects
+  // (Firebase writes, id generation, nested setState) inside state updaters, which React may call twice.
+  const clothesRef = useRef(clothes);
+  clothesRef.current = clothes;
+  const rentalsRef = useRef(rentals);
+  rentalsRef.current = rentals;
+  const creditsRef = useRef(credits);
+  creditsRef.current = credits;
+  const expensesRef = useRef(expenses);
+  expensesRef.current = expenses;
+
+  // Applies a pure stock/counter transform to one item: locally (pure updater) and in Firebase (once, atomic increments)
+  const commitClothChange = useCallback((itemId: string, transform: (item: ClothItem) => { next: ClothItem; write: AtomicWrite }) => {
+    const current = clothesRef.current.find(c => c.id === itemId);
+    if (!current) return;
+    const { write } = transform(current);
+    setClothes(prev => prev.map(c => (c.id === itemId ? transform(c).next : c)));
+    applyAtomicItemUpdate(FIREBASE_COLLECTIONS.CLOTHES, itemId, write);
+  }, []);
 
   // Secondary Collections: Lazy-loaded from browser storage cache on-demand when view/modal opens!
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
@@ -282,7 +306,10 @@ export default function App() {
   const handleClearAllLogs = useCallback((passwordVerified: boolean) => {
     if (!passwordVerified) return;
     setActivityLogs([]);
-    syncCollectionToCloud(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, []);
+    // syncCollectionToCloud() ignores empty arrays, so the logs used to come back after a reload
+    clearCollectionInFirebase(FIREBASE_COLLECTIONS.ACTIVITY_LOGS).then(ok => {
+      if (!ok) showToast('تعذر مسح السجلات من قاعدة البيانات السحابية', 'error');
+    });
     showToast('تم مسح جميع سجلات العمليات بنجاح');
   }, [showToast]);
 
@@ -450,12 +477,14 @@ export default function App() {
           { sort: false }
         );
       case FIREBASE_COLLECTIONS.RENTALS:
+        // No "last 150" limit: an old reservation or a dress that was never returned must never vanish
+        // from the lists, the overdue alerts or the statistics.
         return SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.RENTALS);
             setRentals(prev => areArraysEqual(prev, items) ? prev : items);
           }
-        }, { limit: 150, ...options });
+        });
       case FIREBASE_COLLECTIONS.CAISSE_CLOSURES:
         return SubscriptionManager.subscribe<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
           if (Array.isArray(items)) {
@@ -464,24 +493,17 @@ export default function App() {
           }
         }, { limit: 90, ...options });
       case FIREBASE_COLLECTIONS.SALES:
+        // Date window (current month + previous 12) instead of "last 150 sales": monthly/yearly totals,
+        // the caisse and the full report stay exact, and the download doesn't grow with the shop's age.
         return SubscriptionManager.subscribe<Sale>(
           FIREBASE_COLLECTIONS.SALES, 
           (items) => {
             if (Array.isArray(items)) {
               loadedCollectionsRef.current.add(STORAGE_KEYS.SALES);
-              setSales(prev => {
-                if (options?.limit && prev.length > items.length) {
-                  const map = new Map<string, Sale>();
-                  prev.forEach(s => map.set(s.id, s));
-                  items.forEach(s => map.set(s.id, s));
-                  const merged = Array.from(map.values()).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-                  return areArraysEqual(prev, merged) ? prev : merged;
-                }
-                return areArraysEqual(prev, items) ? prev : items;
-              });
+              setSales(prev => areArraysEqual(prev, items) ? prev : items);
             }
           },
-          { limit: 150, ...options }
+          { orderBy: 'date', startAt: historyWindowStart() }
         );
       case FIREBASE_COLLECTIONS.EXPENSES:
         return SubscriptionManager.subscribe<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
@@ -489,14 +511,15 @@ export default function App() {
             loadedCollectionsRef.current.add(STORAGE_KEYS.EXPENSES);
             setExpenses(prev => areArraysEqual(prev, items) ? prev : items);
           }
-        }, { limit: 150, ...options });
+        }, { orderBy: 'date', startAt: historyWindowStart() });
       case FIREBASE_COLLECTIONS.CREDITS:
+        // Open debts only (settled ones are deleted): all of them must be visible, never just the last 150
         return SubscriptionManager.subscribe<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.CREDITS);
             setCredits(prev => areArraysEqual(prev, items) ? prev : items);
           }
-        }, { limit: 150, ...options });
+        });
       case FIREBASE_COLLECTIONS.STAFF_PAYOUTS:
         return SubscriptionManager.subscribe<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
           if (Array.isArray(items)) {
@@ -568,7 +591,12 @@ export default function App() {
       STORAGE_KEYS.CLOTHES, 
       STORAGE_KEYS.RENTALS, 
       STORAGE_KEYS.CAISSE_CLOSURES,
-      STORAGE_KEYS.ACTIVITY_LOGS
+      STORAGE_KEYS.ACTIVITY_LOGS,
+      STORAGE_KEYS.SALES,
+      STORAGE_KEYS.EXPENSES,
+      STORAGE_KEYS.CREDITS,
+      STORAGE_KEYS.STAFF_PAYOUTS,
+      STORAGE_KEYS.MAINTENANCE
     ],
     rentals: [
       STORAGE_KEYS.RENTALS, 
@@ -620,11 +648,18 @@ export default function App() {
 
   // Precise mapping of required Firebase collections per view
   const VIEW_COLLECTIONS_MAP: Record<ViewType, readonly string[]> = {
+    // The dashboard's monthly/yearly cards use sales, expenses, credits, payouts and tailoring too:
+    // without live subscriptions they showed whatever was cached (0 on a new device).
     dashboard: [
       FIREBASE_COLLECTIONS.CLOTHES, 
       FIREBASE_COLLECTIONS.RENTALS, 
       FIREBASE_COLLECTIONS.CAISSE_CLOSURES,
-      FIREBASE_COLLECTIONS.ACTIVITY_LOGS
+      FIREBASE_COLLECTIONS.ACTIVITY_LOGS,
+      FIREBASE_COLLECTIONS.SALES,
+      FIREBASE_COLLECTIONS.EXPENSES,
+      FIREBASE_COLLECTIONS.CREDITS,
+      FIREBASE_COLLECTIONS.STAFF_PAYOUTS,
+      FIREBASE_COLLECTIONS.MAINTENANCE
     ],
     rentals: [
       FIREBASE_COLLECTIONS.RENTALS, 
@@ -716,9 +751,7 @@ export default function App() {
     // Subscribe ONLY to newly needed collections for active view
     for (const col of neededCollections) {
       if (!activeMap.has(col)) {
-        // Apply limit: 100 specifically for Sales POS view to avoid downloading entire sales history
-        const options = (col === FIREBASE_COLLECTIONS.SALES && view === 'sales') ? { limit: 100 } : undefined;
-        const unsub = subscribeToCollection(col, options);
+        const unsub = subscribeToCollection(col);
         activeMap.set(col, unsub);
       }
     }
@@ -958,14 +991,7 @@ export default function App() {
 
     // If active, increment rented count. If reserved (future booking), DO NOT deduct stock until handover/deal finalization!
     if (newRental.status === 'active') {
-      setClothes(prev => prev.map(c => {
-        if (c.id === rentalData.itemId) {
-          const updatedCount = (c.rentedCount || 0) + (rentalData.qty || 1);
-          updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
-          return { ...c, rentedCount: updatedCount };
-        }
-        return c;
-      }));
+      commitClothChange(rentalData.itemId, item => applyCounterDeltas(item, { rentedCount: rentalData.qty || 1 }));
       showToast('تم تسجيل الكراء الفوري بنجاح');
     } else {
       showToast('تم تسجيل حجز الفستان مستقبلاً بنجاح (سيدخل في الكراء عند إتمام الصفقة وتسليمه)');
@@ -1017,39 +1043,28 @@ export default function App() {
     updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, rental.id, rentalUpdates);
 
     // 2. DEDUCT INVENTORY: Increment rented count upon deal finalization/handover!
-    setClothes(prev => prev.map(c => {
-      if (c.id === rental.itemId) {
-        const updatedCount = (c.rentedCount || 0) + (rental.qty || 1);
-        updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
-        return { ...c, rentedCount: updatedCount };
-      }
-      return c;
-    }));
+    commitClothChange(rental.itemId, item => applyCounterDeltas(item, { rentedCount: rental.qty || 1 }));
 
-    // 3. Update or clear credit
+    // 3. Update or clear credit (computed outside the state updater: a StrictMode double call used to save two debts)
+    creditsRef.current
+      .filter(c => c.relatedRentalId === rental.id)
+      .forEach(c => deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id));
+    const updatedCredit: Credit | null = newRemaining > 0 ? {
+      id: generateId(),
+      name: rental.customerName,
+      phone: rental.customerPhone,
+      type: 'دين كراء فستان',
+      desc: `متبقي كراء: ${rental.itemName}`,
+      amount: newRemaining,
+      date: new Date().toISOString(),
+      relatedRentalId: rental.id
+    } : null;
+    if (updatedCredit) {
+      saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, updatedCredit);
+    }
     setCredits(prev => {
-      const filtered = prev.filter(c => {
-        if (c.relatedRentalId === rental.id) {
-          deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id);
-          return false;
-        }
-        return true;
-      });
-      if (newRemaining > 0) {
-        const updatedCredit: Credit = {
-          id: generateId(),
-          name: rental.customerName,
-          phone: rental.customerPhone,
-          type: 'دين كراء فستان',
-          desc: `متبقي كراء: ${rental.itemName}`,
-          amount: newRemaining,
-          date: new Date().toISOString(),
-          relatedRentalId: rental.id
-        };
-        saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, updatedCredit);
-        return [updatedCredit, ...filtered];
-      }
-      return filtered;
+      const filtered = prev.filter(c => c.relatedRentalId !== rental.id);
+      return updatedCredit ? [updatedCredit, ...filtered] : filtered;
     });
 
     addActivityLog({
@@ -1070,36 +1085,30 @@ export default function App() {
       title: 'تعديل بيانات كراء فستان',
       details: `تحديث بيانات الكراء للقطعة أو الحجز`
     });
-    setRentals(prev => {
-      const prevRental = prev.find(r => r.id === id);
-      if (prevRental) {
-        const wasActive = prevRental.status === 'active';
-        const isNowActive = updatedData.status === 'active';
-        
-        if (!wasActive && isNowActive) {
-          // Transitioned to active -> increment item rentedCount
-          setClothes(clothesPrev => clothesPrev.map(c => {
-            if (c.id === updatedData.itemId) {
-              const updatedCount = (c.rentedCount || 0) + (updatedData.qty || 1);
-              updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
-              return { ...c, rentedCount: updatedCount };
-            }
-            return c;
-          }));
-        } else if (wasActive && !isNowActive) {
-          // Transitioned from active to reserved or returned -> decrement item rentedCount
-          setClothes(clothesPrev => clothesPrev.map(c => {
-            if (c.id === prevRental.itemId) {
-              const updatedCount = Math.max(0, (c.rentedCount || 0) - (prevRental.qty || 1));
-              updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
-              return { ...c, rentedCount: updatedCount };
-            }
-            return c;
-          }));
+    // Inventory adjustments are computed once, outside the state updater (a nested setClothes inside
+    // setRentals ran twice under StrictMode and double-counted rentedCount).
+    const prevRental = rentalsRef.current.find(r => r.id === id);
+    if (prevRental) {
+      const wasActive = prevRental.status === 'active';
+      const isNowActive = (updatedData.status ?? prevRental.status) === 'active';
+      const oldItemId = prevRental.itemId;
+      const newItemId = updatedData.itemId || prevRental.itemId;
+      const oldCount = wasActive ? (prevRental.qty || 1) : 0;
+      const newCount = isNowActive ? (Number(updatedData.qty ?? prevRental.qty) || 1) : 0;
+
+      if (oldItemId === newItemId) {
+        // activation (+), back to reserved/returned (-), or a quantity change while active
+        const delta = newCount - oldCount;
+        if (delta !== 0) {
+          commitClothChange(newItemId, item => applyCounterDeltas(item, { rentedCount: delta }));
         }
+      } else {
+        // the rented dress was swapped: release the old one, count the new one
+        if (oldCount) commitClothChange(oldItemId, item => applyCounterDeltas(item, { rentedCount: -oldCount }));
+        if (newCount) commitClothChange(newItemId, item => applyCounterDeltas(item, { rentedCount: newCount }));
       }
-      return prev.map(r => r.id === id ? { ...r, ...updatedData } : r);
-    });
+    }
+    setRentals(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
     updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, id, updatedData);
 
     showToast('تم تحديث بيانات الكراء');
@@ -1107,101 +1116,84 @@ export default function App() {
   }, []);
 
   const handleDeleteRental = useCallback((id: string) => {
-    setRentals(currentRentals => {
-      const target = currentRentals.find(r => r.id === id);
-      if (!target) return currentRentals;
+    const target = rentalsRef.current.find(r => r.id === id);
+    if (!target) return;
 
-      setConfirmDelete({
-        title: target.status === 'reserved' ? 'إلغاء حجز الفستان' : 'حذف عملية الكراء',
-        message: target.status === 'reserved'
-          ? 'هل أنت متأكد من إلغاء وحذف حجز الفستان المستقبلي؟'
-          : 'هل أنت متأكد من حذف عملية الكراء؟ سيتم استرجاع القطعة إلى المخزن.',
-        onConfirm: () => {
-          if (target.status === 'active' || target.status === 'overdue') {
-            // Return item count to inventory only if it was active
-            setClothes(prev => prev.map(c => {
-              if (c.id === target.itemId) {
-                const updatedCount = Math.max(0, (c.rentedCount || 0) - (target.qty || 1));
-                updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, { rentedCount: updatedCount });
-                return { ...c, rentedCount: updatedCount };
-              }
-              return c;
-            }));
-          }
-          setRentals(prev => prev.filter(r => r.id !== id));
-          deleteItemFromFirebase(FIREBASE_COLLECTIONS.RENTALS, id);
-
-          addActivityLog({
-            actionType: 'delete',
-            category: 'rentals',
-            title: target.status === 'reserved' ? 'إلغاء حجز فستان' : 'حذف عملية كراء فستان',
-            details: `حذف كراء أو حجز القطعة ${target.itemName} للزبونة ${target.customerName}`
-          });
-          setCredits(prev => {
-            prev.filter(c => c.relatedRentalId === id).forEach(c => deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id));
-            return prev.filter(c => c.relatedRentalId !== id);
-          });
-          showToast(target.status === 'reserved' ? 'تم إلغاء الحجز بنجاح' : 'تم حذف عملية الكراء بنجاح');
-          setConfirmDelete(null);
+    setConfirmDelete({
+      title: target.status === 'reserved' ? 'إلغاء حجز الفستان' : 'حذف عملية الكراء',
+      message: target.status === 'reserved'
+        ? 'هل أنت متأكد من إلغاء وحذف حجز الفستان المستقبلي؟'
+        : 'هل أنت متأكد من حذف عملية الكراء؟ سيتم استرجاع القطعة إلى المخزن.',
+      onConfirm: () => {
+        if (target.status === 'active' || target.status === 'overdue') {
+          // Return item count to inventory only if it was active
+          commitClothChange(target.itemId, item => applyCounterDeltas(item, { rentedCount: -(target.qty || 1) }));
         }
-      });
-      return currentRentals;
+        setRentals(prev => prev.filter(r => r.id !== id));
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.RENTALS, id);
+
+        addActivityLog({
+          actionType: 'delete',
+          category: 'rentals',
+          title: target.status === 'reserved' ? 'إلغاء حجز فستان' : 'حذف عملية كراء فستان',
+          details: `حذف كراء أو حجز القطعة ${target.itemName} للزبونة ${target.customerName}`
+        });
+        creditsRef.current
+          .filter(c => c.relatedRentalId === id)
+          .forEach(c => deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id));
+        setCredits(prev => prev.filter(c => c.relatedRentalId !== id));
+        showToast(target.status === 'reserved' ? 'تم إلغاء الحجز بنجاح' : 'تم حذف عملية الكراء بنجاح');
+        setConfirmDelete(null);
+      }
     });
   }, []);
 
   const handleConfirmReturn = useCallback((rentalId: string, returnData: any) => {
-    setRentals(currentRentals => {
-      const target = currentRentals.find(r => r.id === rentalId);
-      if (!target) return currentRentals;
+    // Everything is computed once from the latest state; the old version ran setClothes/setCredits and
+    // Firebase writes inside the setRentals updater (StrictMode called it twice -> rentedCount decremented twice).
+    const target = rentalsRef.current.find(r => r.id === rentalId);
+    if (!target) {
+      setActiveModal(null);
+      return;
+    }
+    const returnUpdates = {
+      status: 'returned' as const,
+      actualReturnDate: new Date().toISOString().split('T')[0],
+      conditionOnReturn: returnData.condition,
+      cautionStatus: (returnData.cautionAction === 'refund' ? 'refunded' : 'deducted') as ('refunded' | 'deducted'),
+      penaltyAmount: returnData.penaltyAmount,
+      paidAmount: target.paidAmount + (returnData.collectedRemaining || 0),
+      remainingAmount: Math.max(0, (target.remainingAmount || 0) - (returnData.collectedRemaining || 0)),
+      notes: returnData.notes ? `${target.notes ? target.notes + ' | ' : ''}إرجاع: ${returnData.notes}` : target.notes
+    };
 
-      const returnUpdates = {
-        status: 'returned' as const,
-        actualReturnDate: new Date().toISOString().split('T')[0],
-        conditionOnReturn: returnData.condition,
-        cautionStatus: (returnData.cautionAction === 'refund' ? 'refunded' : 'deducted') as ('refunded' | 'deducted'),
-        penaltyAmount: returnData.penaltyAmount,
-        paidAmount: target.paidAmount + (returnData.collectedRemaining || 0),
-        remainingAmount: Math.max(0, (target.remainingAmount || 0) - (returnData.collectedRemaining || 0)),
-        notes: returnData.notes ? `${target.notes ? target.notes + ' | ' : ''}إرجاع: ${returnData.notes}` : target.notes
-      };
+    setRentals(prev => prev.map(r => r.id === rentalId ? { ...r, ...returnUpdates } : r));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, rentalId, returnUpdates);
 
-      updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, rentalId, returnUpdates);
-
-      // Update inventory: decrease rentedCount, add to inCleaningCount if requested
-      setClothes(prev => prev.map(c => {
-        if (c.id === target.itemId) {
-          const newRented = Math.max(0, (c.rentedCount || 0) - (target.qty || 1));
-          const newCleaning = returnData.sendToCleaning ? (c.inCleaningCount || 0) + (target.qty || 1) : (c.inCleaningCount || 0);
-          updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, {
-            rentedCount: newRented,
-            inCleaningCount: newCleaning
-          });
-          return {
-            ...c,
-            rentedCount: newRented,
-            inCleaningCount: newCleaning
-          };
-        }
-        return c;
+    // Update inventory: decrease rentedCount, add to inCleaningCount if requested.
+    // Guard: a reserved (never handed over) or already returned rental is not counted in rentedCount.
+    if (target.status !== 'reserved' && target.status !== 'returned') {
+      const qty = target.qty || 1;
+      commitClothChange(target.itemId, item => applyCounterDeltas(item, {
+        rentedCount: -qty,
+        ...(returnData.sendToCleaning ? { inCleaningCount: qty } : {})
       }));
+    }
 
-      // If penalty was deducted or caution kept as revenue/compensation
-      if (returnData.penaltyAmount > 0) {
-        showToast(`تم استرجاع الفستان وخصم غرامة بقيمة ${returnData.penaltyAmount} دج`);
-      } else {
-        showToast('تم تأكيد استرجاع الفستان وتسوية الحساب بنجاح');
-      }
+    // If penalty was deducted or caution kept as revenue/compensation
+    if (returnData.penaltyAmount > 0) {
+      showToast(`تم استرجاع الفستان وخصم غرامة بقيمة ${returnData.penaltyAmount} دج`);
+    } else {
+      showToast('تم تأكيد استرجاع الفستان وتسوية الحساب بنجاح');
+    }
 
-      // Auto clear linked credit if collected
-      if (returnData.collectedRemaining > 0) {
-        setCredits(prev => {
-          prev.filter(c => c.relatedRentalId === rentalId).forEach(c => deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id));
-          return prev.filter(c => c.relatedRentalId !== rentalId);
-        });
-      }
-
-      return currentRentals.map(r => r.id === rentalId ? { ...r, ...returnUpdates } : r);
-    });
+    // Auto clear linked credit if collected
+    if (returnData.collectedRemaining > 0) {
+      creditsRef.current
+        .filter(c => c.relatedRentalId === rentalId)
+        .forEach(c => deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id));
+      setCredits(prev => prev.filter(c => c.relatedRentalId !== rentalId));
+    }
 
     addActivityLog({
       actionType: 'return',
@@ -1300,36 +1292,10 @@ export default function App() {
       amount: saleData.totalAmount
     });
 
-    // Decrease inventory stock accurately from stock1 or stock2
-    saleData.items.forEach((item: any) => {
-      setClothes(prev => prev.map(c => {
-        if (c.id === item.itemId) {
-          const s1 = c.stock1 !== undefined ? c.stock1 : c.stock;
-          const s2 = c.stock2 !== undefined ? c.stock2 : 0;
-          let newS1 = s1;
-          let newS2 = s2;
-
-          if (item.stockSource === 'stock2') {
-            newS2 = Math.max(0, s2 - item.qty);
-          } else {
-            newS1 = Math.max(0, s1 - item.qty);
-          }
-
-          const updatedCloth = { 
-            ...c, 
-            stock1: newS1,
-            stock2: newS2,
-            stock: newS1 + newS2 
-          };
-          updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, {
-            stock1: newS1,
-            stock2: newS2,
-            stock: newS1 + newS2
-          });
-          return updatedCloth;
-        }
-        return c;
-      }));
+    // Decrease inventory stock from stock1 or stock2 AND from the sold size/color variant.
+    // Firebase gets atomic increments, so two devices selling at the same time can't overwrite each other.
+    groupStockLinesByItem(saleData.items).forEach((lines, itemId) => {
+      commitClothChange(itemId, item => applyStockLines(item, lines, -1));
     });
 
     // If debt exists, add to credits
@@ -1365,35 +1331,9 @@ export default function App() {
           details: `إلغاء فاتورة بيع للزبون ${sale.customerName || 'عام'} واسترجاع القطع للمخزن`,
           amount: sale.totalAmount
         });
-        sale.items.forEach(item => {
-          setClothes(prev => prev.map(c => {
-            if (c.id === item.itemId) {
-              const s1 = c.stock1 !== undefined ? c.stock1 : c.stock;
-              const s2 = c.stock2 !== undefined ? c.stock2 : 0;
-              let newS1 = s1;
-              let newS2 = s2;
-
-              if (item.stockSource === 'stock2') {
-                newS2 = s2 + item.qty;
-              } else {
-                newS1 = s1 + item.qty;
-              }
-
-              const updatedCloth = { 
-                ...c, 
-                stock1: newS1,
-                stock2: newS2,
-                stock: newS1 + newS2 
-              };
-              updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, c.id, {
-                stock1: newS1,
-                stock2: newS2,
-                stock: newS1 + newS2
-              });
-              return updatedCloth;
-            }
-            return c;
-          }));
+        // Put the pieces back (item totals + the sold size/color variant), atomically in Firebase
+        groupStockLinesByItem(sale.items).forEach((lines, itemId) => {
+          commitClothChange(itemId, item => applyStockLines(item, lines, 1));
         });
         showToast('تم إلغاء البيع واسترجاع المخزون');
         setConfirmDelete(null);
@@ -1690,31 +1630,26 @@ export default function App() {
   }, []);
 
   const handleSettleCredit = useCallback((id: string) => {
-    setCredits(currentCredits => {
-      const cred = currentCredits.find(c => c.id === id);
-      if (cred && cred.relatedExpenseId) {
-        // Also update linked expense when settled from credits view
-        setExpenses(prev => prev.map(exp => {
-          if (exp.id === cred.relatedExpenseId) {
-            const currentPaid = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
-            const newPaid = currentPaid + cred.amount;
-            const updates = {
-              paidAmount: newPaid,
-              amount: newPaid,
-              creditAmount: 0
-            };
-            updateItemInFirebase(FIREBASE_COLLECTIONS.EXPENSES, exp.id, updates);
-            return {
-              ...exp,
-              ...updates
-            };
-          }
-          return exp;
-        }));
+    // Computed once outside the updaters (a nested setExpenses inside setCredits ran twice under
+    // StrictMode and added the settled amount to the supplier purchase twice).
+    const cred = creditsRef.current.find(c => c.id === id);
+    if (cred && cred.relatedExpenseId) {
+      // Also update linked expense when settled from credits view
+      const exp = expensesRef.current.find(e => e.id === cred.relatedExpenseId);
+      if (exp) {
+        const currentPaid = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
+        const newPaid = currentPaid + cred.amount;
+        const updates = {
+          paidAmount: newPaid,
+          amount: newPaid,
+          creditAmount: 0
+        };
+        updateItemInFirebase(FIREBASE_COLLECTIONS.EXPENSES, exp.id, updates);
+        setExpenses(prev => prev.map(e => (e.id === exp.id ? { ...e, ...updates } : e)));
       }
-      deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, id);
-      return currentCredits.filter(c => c.id !== id);
-    });
+    }
+    deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, id);
+    setCredits(prev => prev.filter(c => c.id !== id));
 
     addActivityLog({
       actionType: 'payment',
