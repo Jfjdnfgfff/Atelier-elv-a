@@ -703,3 +703,112 @@ export const generateFullDataset = () => {
     activityLogs
   };
 };
+
+/**
+ * Generates a large-scale test dataset (5000 clothes, 20000 sales, 5000 rentals)
+ * strictly in-memory for local performance benchmarking. Does NOT write to database.
+ */
+export const generateLargeScaleMockDataset = (
+  clothesCount = 5000,
+  salesCount = 20000,
+  rentalsCount = 5000
+) => {
+  const categories = [
+    'فساتين سهرة', 'قفاطين تقليدية', 'فساتين زفاف', 'كاراكو عاصمي',
+    'جبة قسنطينية', 'برنوس وملحقات', 'بدلات سهرة نسائية', 'بلوزة وهرانية'
+  ];
+  const colors = ['أزرق ملكي', 'أحمر زمردي', 'ذهبي', 'أسود ملكي', 'عنابي', 'وردي بودري', 'أبيض لؤلؤي'];
+  const sizes = ['38', '40', '42', '44', '46'];
+
+  const clothes: ClothItem[] = Array.from({ length: clothesCount }, (_, i) => {
+    const cat = categories[i % categories.length];
+    const buyCost = 15000 + (i * 35) % 50000;
+    const sellPrice = Math.round(buyCost * 1.8 / 500) * 500;
+    const rentPrice = Math.round(buyCost * 0.35 / 500) * 500;
+    const sz = [sizes[i % sizes.length], sizes[(i + 1) % sizes.length]];
+    const col = [colors[i % colors.length], colors[(i + 2) % colors.length]];
+
+    return {
+      id: `cloth_perf_${i + 1}`,
+      name: `فستان سهرة كلاسيكي رقم ${i + 1} - ${cat}`,
+      barcode: `DZ-${String(10000 + i).padStart(6, '0')}`,
+      category: cat,
+      purpose: i % 3 === 0 ? 'both' : i % 3 === 1 ? 'rent' : 'sell',
+      buyCost,
+      sellPrice,
+      rentPrice,
+      cautionAmount: Math.round(rentPrice * 1.2 / 500) * 500,
+      size: sz.join(', '),
+      sizes: sz,
+      color: col.join(' - '),
+      colors: col,
+      stock: 4 + (i % 5),
+      stock1: 2 + (i % 3),
+      stock2: 2 + (i % 2),
+      rentedCount: i % 5 === 0 ? 1 : 0,
+      inCleaningCount: i % 10 === 0 ? 1 : 0,
+      description: 'قطعة اختبار لأداء السكرول والتحميل السريع'
+    };
+  });
+
+  const sales: Sale[] = Array.from({ length: salesCount }, (_, i) => {
+    const cloth = clothes[i % clothes.length];
+    const price = cloth.sellPrice || 35000;
+    const cost = cloth.buyCost || 20000;
+
+    return {
+      id: `sale_perf_${i + 1}`,
+      customerName: `زبونة اختبار ${i + 1}`,
+      customerPhone: `066${String(1000000 + (i * 37) % 8999999)}`,
+      items: [{
+        itemId: cloth.id,
+        name: cloth.name,
+        size: '40',
+        color: 'أسود',
+        qty: 1,
+        stockSource: 'stock1',
+        price,
+        cost,
+        total: price
+      }],
+      totalAmount: price,
+      paidAmount: price,
+      debtAmount: 0,
+      profit: price - cost,
+      date: getPastDate((i * 0.05) % 365),
+      notes: 'عملية زبونة مسجلة في النظام'
+    };
+  });
+
+  const rentals: Rental[] = Array.from({ length: rentalsCount }, (_, i) => {
+    const cloth = clothes[i % clothes.length];
+    const dressRentPrice = cloth.rentPrice || 6000;
+    const daysOffset = (i % 90);
+
+    return {
+      id: `rental_perf_${i + 1}`,
+      customerName: `زبونة كراء اختبار ${i + 1}`,
+      customerPhone: `055${String(1000000 + (i * 41) % 8999999)}`,
+      itemId: cloth.id,
+      itemName: cloth.name,
+      itemSize: '40',
+      itemColor: 'ذهبي',
+      qty: 1,
+      stockSource: 'stock1',
+      startDate: getPastDate(90 - daysOffset),
+      expectedReturnDate: getFutureDate(5),
+      dressRentPrice,
+      hasAccessories: false,
+      rentPrice: dressRentPrice,
+      paidAmount: dressRentPrice,
+      remainingAmount: 0,
+      cautionAmount: cloth.cautionAmount || 8000,
+      cautionStatus: i % 3 === 0 ? 'refunded' : 'held',
+      status: i % 4 === 0 ? 'returned' : i % 4 === 1 ? 'reserved' : 'active',
+      bookingDate: getPastDate(100 - daysOffset),
+      createdAt: new Date(Date.now() - (100 - daysOffset) * 86400000).toISOString()
+    };
+  });
+
+  return { clothes, sales, rentals };
+};
