@@ -627,10 +627,10 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       return;
     }
 
-    // 1. Delete existing closure if any
-    if (existingClosure) {
-      onDeleteClosure(existingClosure.id);
-    }
+    // 1. Delete all caisse closures so monthly and yearly caisse differences are also cleared/reset to 0
+    caisseClosures.forEach(c => {
+      onDeleteClosure(c.id);
+    });
 
     // 2. Delete today's transactions if requested
     if (clearOption === 'delete_today_txs') {
@@ -656,7 +656,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
     setShowClearConfirmModal(false);
     setClearPinInput('');
     setClearPinError(false);
-    alert('تم تفريغ وتصفير الصندوق بنجاح، ويبدو الصندوق الآن فارغاً (0 دج)');
+    alert('تم تفريغ وتصفير الصندوق وتصفير فارق الشهر والسنة بنجاح (0 دج)');
   };
 
   if (!isUnlocked) {
