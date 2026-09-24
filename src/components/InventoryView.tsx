@@ -518,6 +518,16 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
     });
   }, [clothes, filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search]);
 
+  const [visibleCount, setVisibleCount] = useState<number>(5);
+
+  useEffect(() => {
+    setVisibleCount(5);
+  }, [filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search, inventoryTab]);
+
+  const displayedClothes = useMemo(() => {
+    return filteredClothes.slice(0, visibleCount);
+  }, [filteredClothes, visibleCount]);
+
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {
@@ -898,7 +908,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
       </div>
 
       <VirtualizedClothGrid
-        clothes={filteredClothes}
+        clothes={displayedClothes}
         highlightedBarcode={search}
         getItemStock1={getItemStock1}
         getItemStock2={getItemStock2}
@@ -910,6 +920,18 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           if (item) handleInitiateDeleteCloth(item);
         }}
       />
+
+      {visibleCount < filteredClothes.length && (
+        <div className="flex justify-center my-6">
+          <button
+            onClick={() => setVisibleCount(prev => prev + 5)}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>تحميل 5 منتجات أخرى (عرض {displayedClothes.length} من {filteredClothes.length})</span>
+          </button>
+        </div>
+      )}
 
       {/* Image Preview Modal */}
       {previewImage && (
