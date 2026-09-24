@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import { Rental, ClothItem } from '../types';
 import { 
   Shirt, 
@@ -118,6 +118,8 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [rentClothesBarcodeMap, onAddRental]);
 
+  const deferredSearch = useDeferredValue(search);
+
   // Status classification with memoization
   const { reservedRentals, activeRentalsList, overdueRentalsList, returnedRentalsList, filteredRentals } = useMemo(() => {
     const todayDate = new Date(today);
@@ -137,8 +139,8 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
       if (filter === 'overdue' && !isOverdue) return false;
       if (filter === 'returned' && !isReturned) return false;
 
-      if (search.trim()) {
-        const q = search.toLowerCase();
+      if (deferredSearch.trim()) {
+        const q = deferredSearch.toLowerCase();
         return (
           r.customerName.toLowerCase().includes(q) ||
           r.customerPhone.includes(q) ||
@@ -156,7 +158,7 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
       returnedRentalsList: returnedList,
       filteredRentals: filtered
     };
-  }, [rentals, filter, search, today]);
+  }, [rentals, filter, deferredSearch, today]);
 
   return (
     <div className="space-y-4 sm:space-y-5 p-3 sm:p-6" dir="rtl">

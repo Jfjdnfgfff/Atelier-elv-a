@@ -4,6 +4,7 @@ import { BarcodeScanner } from './BarcodeScanner';
 import { LettersInput, NumbersInput } from './Shared';
 import { RawMaterialsSection } from './RawMaterialsSection';
 import { ProductVariantsModal } from './ProductVariantsModal';
+import { VirtualizedClothGrid } from './VirtualizedClothGrid';
 import { SecurityPasswordModal, checkSecurityPin } from './SecurityPasswordModal';
 import { isValidImageFileType, generateSecureImageFilename, sanitizeText, sanitizeNumericAmount } from '../utils/security';
 import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap, ChevronLeft, ChevronRight, Search, Loader2 } from 'lucide-react';
@@ -911,7 +912,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* Grid of Clothes Items with Images and Stock 1 / Stock 2 Badges */}
+      {/* Grid of Clothes Items using VirtualizedClothGrid for 60fps scrolling */}
       <div className="flex items-center justify-between gap-2.5 pt-1 pb-2">
         <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
           <Shirt className="w-4 h-4 text-blue-900" />
@@ -919,276 +920,18 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         </span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {visibleClothes.map(item => {
-          const s1 = getItemStock1(item);
-          const s2 = getItemStock2(item);
-          const totalStock = s1 + s2;
-          const availableStock = Math.max(0, totalStock - (item.rentedCount || 0));
-
-          const itemSizesList = item.sizes && item.sizes.length > 0
-            ? item.sizes
-            : (item.size ? item.size.split(/[,،+/]/).map(s => s.trim()).filter(Boolean) : []);
-
-          const itemColorsList = item.colors && item.colors.length > 0
-            ? item.colors
-            : (item.color ? item.color.split(/[,،+/]/).map(c => c.trim()).filter(Boolean) : []);
-
-          return (
-            <div
-              key={item.id}
-              className="bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all duration-200 flex flex-col justify-between group cv-auto"
-            >
-              {/* Product Image Box - Takes 100% of card width & vertical height with 100% fill */}
-              <div 
-                onClick={() => setVariantsModalItem(item)}
-                className="relative bg-slate-900/5 overflow-hidden cursor-pointer flex items-center justify-center group w-full aspect-[3/4]"
-                title="اضغط لعرض الألوان والمقاسات (Déclinaisons)"
-              >
-                {item.imageUrl ? (
-                  <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
-                    {/* Main dress image: spans 100% of card space with full 100% fill */}
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      decoding="async"
-                      className="relative z-1 w-full h-full object-fill transition-transform duration-300 group-hover:scale-103 select-none"
-                      loading="lazy"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center text-slate-400 gap-2 p-4">
-                    <Shirt className="w-10 h-10 text-slate-300" />
-                    <span className="text-xs font-bold text-slate-400">بدون صورة</span>
-                  </div>
-                )}
-
-                {/* Purpose Badge on Top Left */}
-                <div className="absolute top-2.5 left-2.5 flex items-center gap-1">
-                  {item.purpose === 'both' && (
-                    <span className="bg-slate-900/90 text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-lg shadow-2xs">
-                      بيع + كراء
-                    </span>
-                  )}
-                  {item.purpose === 'rent' && (
-                    <span className="bg-slate-900/90 text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-lg shadow-2xs flex items-center gap-1">
-                      <Shirt className="w-3 h-3" />
-                      <span>كراء</span>
-                    </span>
-                  )}
-                  {item.purpose === 'sell' && (
-                    <span className="bg-slate-900/90 text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-lg shadow-2xs flex items-center gap-1">
-                      <Tag className="w-3 h-3" />
-                      <span>بيع</span>
-                    </span>
-                  )}
-                </div>
-
-                {/* Category Badge on Top Right */}
-                <div className="absolute top-2.5 right-2.5">
-                  <span className="bg-slate-900/80 text-white text-[10px] font-medium px-2 py-0.5 rounded-lg">
-                    {item.category}
-                  </span>
-                </div>
-
-                {/* Colors & Sizes Badge Prompt on Image */}
-                <div className="absolute bottom-2.5 left-2.5 bg-slate-900/85 hover:bg-slate-900 text-white text-[10px] font-medium px-2 py-0.5 rounded-lg shadow-2xs flex items-center gap-1 transition-all">
-                  <Sparkles className="w-3 h-3" />
-                  <span>الألوان والمقاسات ({itemSizesList.length || 1})</span>
-                </div>
-
-                {/* Direct Image Zoom Button */}
-                {item.imageUrl && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPreviewImage({ url: item.imageUrl!, title: item.name });
-                    }}
-                    className="absolute bottom-2.5 right-2.5 w-7 h-7 rounded-lg bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-2xs"
-                    title="تكبير الصورة كاملة"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              <div className="p-4 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-start gap-2">
-                    <h3 className="font-bold text-slate-900 text-base leading-tight line-clamp-2">{item.name}</h3>
-                    {item.barcode && (
-                      <span className="text-[10px] text-slate-500 font-mono font-medium bg-slate-100 px-1.5 py-0.5 rounded-md shrink-0 border border-slate-200/60">
-                        #{item.barcode}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Available Sizes Badges - Click to open variants */}
-                  <div 
-                    onClick={() => setVariantsModalItem(item)}
-                    className="mt-2 space-y-1.5 cursor-pointer hover:opacity-90 transition-opacity"
-                    title="انقر لعرض تفاصيل المقاسات والألوان (لطاي)"
-                  >
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <span className="text-[10px] font-medium text-slate-500 flex items-center gap-0.5">
-                        <Ruler className="w-3 h-3 text-slate-400" />
-                        <span>لطاي:</span>
-                      </span>
-                      {itemSizesList.length > 0 ? (
-                        itemSizesList.map(sz => (
-                          <span
-                            key={sz}
-                            className="bg-slate-100 text-slate-800 border border-slate-200 px-1.5 py-0.5 rounded-md text-[10px] font-semibold"
-                          >
-                            {sz}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-[10px] text-slate-600 font-medium">{item.size || '38'}</span>
-                      )}
-                    </div>
-
-                    {/* Available Colors Badges with Dots */}
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <span className="text-[10px] font-medium text-slate-500 flex items-center gap-0.5">
-                        <Palette className="w-3 h-3 text-slate-400" />
-                        <span>الألوان:</span>
-                      </span>
-                      {itemColorsList.length > 0 ? (
-                        itemColorsList.map(col => (
-                          <span
-                            key={col}
-                            className="bg-slate-50 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded-md text-[10px] font-medium inline-flex items-center gap-1"
-                          >
-                            <span
-                              className="w-2 h-2 rounded-full border border-slate-300"
-                              style={{ backgroundColor: getColorHex(col) }}
-                            />
-                            <span>{col}</span>
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-[10px] text-slate-600 font-medium">{item.color || 'أسود'}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Pricing & Stock Card Breakdown */}
-                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-2 text-xs">
-                  {/* Prices */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] text-slate-500 font-medium block">
-                        {item.purpose === 'sell' ? 'سعر البيع' : 'سعر الكراء'}
-                      </span>
-                      <span className="text-slate-900 font-bold text-sm font-mono">
-                        {(item.purpose === 'sell' ? item.sellPrice : item.rentPrice).toLocaleString()} دج
-                      </span>
-                    </div>
-
-                    <div className="text-left">
-                      <span className="text-[10px] text-slate-500 font-medium block">المتوفر الإجمالي</span>
-                      <span className={`font-bold text-sm font-mono ${availableStock <= 0 ? 'text-rose-600' : 'text-slate-900'}`}>
-                        {availableStock} / {totalStock} قطعة
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Stock 1 and Stock 2 Breakdown Badges */}
-                  <div className="pt-2 border-t border-slate-200/80 grid grid-cols-2 gap-2 text-[11px]">
-                    <div className="bg-white border border-slate-200/80 rounded-lg p-1.5 flex items-center justify-between">
-                      <span className="font-medium text-slate-600 flex items-center gap-1">
-                        <Store className="w-3.5 h-3.5 text-slate-500" />
-                        <span>مخزون 1:</span>
-                      </span>
-                      <span className={`font-bold font-mono ${s1 <= 0 ? 'text-slate-400' : 'text-slate-900'}`}>{s1} قطعة</span>
-                    </div>
-                    <div className="bg-white border border-slate-200/80 rounded-lg p-1.5 flex items-center justify-between">
-                      <span className="font-medium text-slate-600 flex items-center gap-1">
-                        <Warehouse className="w-3.5 h-3.5 text-slate-500" />
-                        <span>مخزون 2:</span>
-                      </span>
-                      <span className={`font-bold font-mono ${s2 <= 0 ? 'text-slate-400' : 'text-slate-900'}`}>{s2} قطعة</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card Actions */}
-                <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-1.5">
-                  <button
-                    onClick={() => handleInitiateAddStock(item)}
-                    className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 active:scale-95 shadow-2xs"
-                    title="تعديل أو زيادة كمية المخزون 1 أو 2 (يتطلب كلمة المرور)"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>إضافة مخزون</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleInitiateTransfer(item)}
-                    className="py-1.5 px-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1 active:scale-95 shadow-2xs"
-                    title="تحويل كميات بين مخزون 1 ومخزون 2 (يتطلب كلمة المرور)"
-                  >
-                    <ArrowLeftRight className="w-3.5 h-3.5 text-slate-500" />
-                    <span>تحويل</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleInitiateEditCloth(item)}
-                    className="py-1.5 px-2 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-xl text-xs font-medium transition-all active:scale-95 shadow-2xs"
-                    title="تعديل بيانات وصورة القطعة (يتطلب كلمة المرور)"
-                  >
-                    <Pencil className="w-3.5 h-3.5 text-slate-500" />
-                  </button>
-
-                  <button
-                    onClick={() => handleInitiateDeleteCloth(item)}
-                    className="p-2 bg-white hover:bg-red-50 hover:text-red-600 text-slate-400 hover:border-red-200 rounded-xl text-xs font-bold transition-all active:scale-95 border border-slate-200 shadow-2xs"
-                    title="حذف القطعة (يتطلب كلمة المرور)"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Infinite Scroll Sentinel */}
-      <div ref={sentinelRef} className="h-4 w-full" />
-
-      {/* Bottom Progressive Load Button & Counter */}
-      <div className="py-3 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-        <div className="text-xs text-slate-600 font-medium flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-indigo-600" />
-          <span>
-            عرض <span className="font-bold text-slate-900 font-mono">{visibleClothes.length}</span> من إجمالي <span className="font-bold text-slate-900 font-mono">{filteredClothes.length}</span> قطعة
-          </span>
-        </div>
-
-        {visibleCount < filteredClothes.length ? (
-          <button
-            type="button"
-            onClick={() => {
-              setVisibleCount(prev => Math.min(prev + BATCH_SIZE, filteredClothes.length));
-            }}
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 active:scale-95 cursor-pointer"
-          >
-            <span>عرض 5 قطع إضافية (+5)</span>
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-        ) : (
-          <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-3 py-1.5 rounded-xl font-medium">
-            ✓ تم عرض كامل قائمة القطع بالمخزن ({filteredClothes.length})
-          </div>
-        )}
-      </div>
+      <VirtualizedClothGrid
+        clothes={filteredClothes}
+        getItemStock1={getItemStock1}
+        getItemStock2={getItemStock2}
+        onOpenVariantsModal={setVariantsModalItem}
+        onOpenQuickTransferModal={handleInitiateTransfer}
+        onOpenEditModal={handleInitiateEditCloth}
+        onOpenDeleteModal={(id) => {
+          const item = clothes.find(c => c.id === id);
+          if (item) handleInitiateDeleteCloth(item);
+        }}
+      />
 
       {/* Image Preview Modal */}
       {previewImage && (

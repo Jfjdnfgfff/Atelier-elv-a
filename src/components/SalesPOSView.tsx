@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
 import { ClothItem, Sale, SaleItem } from '../types';
 import { fetchClothByBarcode } from '../firebase';
 import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
@@ -420,16 +420,18 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
     setSaleDate(getTodayDateString());
   };
 
+  const deferredSearch = useDeferredValue(search);
+
   const filteredClothes = useMemo(() => {
     return sellableClothes.filter(c => {
       if (selectedCategory !== 'الكل' && c.category !== selectedCategory) {
         return false;
       }
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
+      if (!deferredSearch.trim()) return true;
+      const q = deferredSearch.toLowerCase();
       return c.name.toLowerCase().includes(q) || c.barcode.includes(q) || c.color.toLowerCase().includes(q) || c.size.toLowerCase().includes(q);
     });
-  }, [sellableClothes, selectedCategory, search]);
+  }, [sellableClothes, selectedCategory, deferredSearch]);
 
   // Progressive display for products (5 items at a time)
   const [visibleProductCount, setVisibleProductCount] = useState(5);
@@ -672,7 +674,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                     )}
 
                     {/* Stock Tag on Top Right */}
-                    <span className="absolute top-2 right-2 text-[9px] font-medium px-1.5 py-0.5 rounded-md backdrop-blur-xs bg-slate-900/80 text-white">
+                    <span className="absolute top-2 right-2 text-[9px] font-medium px-1.5 py-0.5 rounded-md bg-slate-900/90 text-white">
                       {totalStock} بالمخزنين
                     </span>
 

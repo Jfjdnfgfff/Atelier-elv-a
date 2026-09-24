@@ -39,7 +39,6 @@ import {
   initializeStorage,
   getCachedCollection
 } from './storage';
-import { generateFullDataset } from './utils/mockDataGenerator';
 import { perfMonitor } from './utils/performanceMonitor';
 import { 
   FIREBASE_COLLECTIONS, 
@@ -57,6 +56,7 @@ import {
 // Components
 import { Modal } from './components/Shared';
 import AppNavigation from './components/AppNavigation';
+import { TrashModal } from './components/TrashModal';
 
 // Lazy-loaded Modals with idle background preloading
 const BarcodeScanner = React.lazy(() => import('./components/BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
@@ -285,7 +285,8 @@ export default function App() {
     addActivityLog(log);
   }, [addActivityLog]);
 
-  const handleLoad50BenchmarkData = useCallback(() => {
+  const handleLoad50BenchmarkData = useCallback(async () => {
+    const { generateFullDataset } = await import('./utils/mockDataGenerator');
     const dataset = generateFullDataset();
     setClothes(dataset.clothes);
     setRentals(dataset.rentals);
@@ -2048,25 +2049,50 @@ export default function App() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       const reader = new FileReader();
-      reader.onload = (ev) => {
+      reader.onload = async (ev) => {
         try {
           const parsed = JSON.parse(ev.target?.result as string);
-          if (parsed.clothes) { setClothes(parsed.clothes); syncCollectionToCloud(FIREBASE_COLLECTIONS.CLOTHES, parsed.clothes); }
-          if (parsed.rentals) { setRentals(parsed.rentals); syncCollectionToCloud(FIREBASE_COLLECTIONS.RENTALS, parsed.rentals); }
-          if (parsed.sales) { setSales(parsed.sales); syncCollectionToCloud(FIREBASE_COLLECTIONS.SALES, parsed.sales); }
-          if (parsed.expenses) { setExpenses(parsed.expenses); syncCollectionToCloud(FIREBASE_COLLECTIONS.EXPENSES, parsed.expenses); }
-          if (parsed.credits) { setCredits(parsed.credits); syncCollectionToCloud(FIREBASE_COLLECTIONS.CREDITS, parsed.credits); }
-          if (parsed.staffPayouts) { setStaffPayouts(parsed.staffPayouts); syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, parsed.staffPayouts); }
-          if (parsed.staffMembers) { setStaffMembers(parsed.staffMembers); syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_MEMBERS, parsed.staffMembers); }
-          if (parsed.staffAbsences) { setStaffAbsences(parsed.staffAbsences); syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_ABSENCES, parsed.staffAbsences); }
-          if (parsed.maintenanceOrders) { setMaintenanceOrders(parsed.maintenanceOrders); syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, parsed.maintenanceOrders); }
-          if (parsed.suppliers) { setSuppliers(parsed.suppliers); syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, parsed.suppliers); }
-          if (parsed.seamstresses) { setSeamstresses(parsed.seamstresses); syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, parsed.seamstresses); }
-          if (parsed.rawMaterials) { setRawMaterials(parsed.rawMaterials); syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, parsed.rawMaterials); }
-          if (parsed.caisseClosures) { setCaisseClosures(parsed.caisseClosures); syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, parsed.caisseClosures); }
-          showToast('تمت استعادة البيانات بنجاح!');
+          // Support both direct root format and wrapped report.data format
+          const raw = parsed.data || parsed;
+          const collectionsToMerge: { key: string; name: string; items: any[] }[] = [];
+
+          if (Array.isArray(raw.clothes) && raw.clothes.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.CLOTHES, name: 'الملابس والمخزون', items: raw.clothes });
+          if (Array.isArray(raw.rentals) && raw.rentals.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.RENTALS, name: 'الكراء والإيجار', items: raw.rentals });
+          if (Array.isArray(raw.sales) && raw.sales.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.SALES, name: 'المبيعات', items: raw.sales });
+          if (Array.isArray(raw.expenses) && raw.expenses.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.EXPENSES, name: 'المصاريف', items: raw.expenses });
+          if (Array.isArray(raw.credits) && raw.credits.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.CREDITS, name: 'الديون والمستحقات', items: raw.credits });
+          if (Array.isArray(raw.staffPayouts) && raw.staffPayouts.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.STAFF_PAYOUTS, name: 'رواتب الموظفين', items: raw.staffPayouts });
+          if (Array.isArray(raw.staffMembers) && raw.staffMembers.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.STAFF_MEMBERS, name: 'الموظفين', items: raw.staffMembers });
+          if (Array.isArray(raw.staffAbsences) && raw.staffAbsences.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.STAFF_ABSENCES, name: 'غيابات الموظفين', items: raw.staffAbsences });
+          if (Array.isArray(raw.maintenanceOrders) && raw.maintenanceOrders.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.MAINTENANCE, name: 'طلبات الخياطة والتعديل', items: raw.maintenanceOrders });
+          if (Array.isArray(raw.suppliers) && raw.suppliers.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.SUPPLIERS, name: 'الموردين', items: raw.suppliers });
+          if (Array.isArray(raw.seamstresses) && raw.seamstresses.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.SEAMSTRESSES, name: 'الخياطات', items: raw.seamstresses });
+          if (Array.isArray(raw.rawMaterials) && raw.rawMaterials.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.RAW_MATERIALS, name: 'الأقمشة والمواد الخام', items: raw.rawMaterials });
+          if (Array.isArray(raw.caisseClosures) && raw.caisseClosures.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.CAISSE_CLOSURES, name: 'إغلاقات الصندوق', items: raw.caisseClosures });
+
+          if (collectionsToMerge.length === 0) {
+            showToast('الملف لا يحتوي على سجلات قابلة للدمج!', 'error');
+            return;
+          }
+
+          const summaryText = collectionsToMerge.map(c => `• ${c.name}: ${c.items.length} سجل`).join('\n');
+          const confirmed = window.confirm(
+            `تأكيد الدمج الآمن السحابي:\n\nسيتم دمج السجلات التالية في قاعدة البيانات السحابية دون حذف السجلات الحالية:\n\n${summaryText}\n\nهل تريد المتابعة؟`
+          );
+
+          if (!confirmed) {
+            showToast('تم إلغاء عملية الاستعادة');
+            return;
+          }
+
+          for (const col of collectionsToMerge) {
+            await syncCollectionToCloud(col.key, col.items);
+          }
+
+          showToast('تم دمج البيانات السحابية بنجاح دون حذف السجلات القديمة!', 'success');
           setActiveModal(null);
         } catch (err) {
+          console.error(err);
           showToast('ملف غير صالح!', 'error');
         }
       };
@@ -2386,8 +2412,30 @@ export default function App() {
                 <input type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
               </label>
             </div>
+
+            <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-2xl">
+              <h4 className="font-bold text-sm text-amber-900 mb-1">سلة المهملات والمحذوفات</h4>
+              <p className="text-xs text-amber-700 mb-3">العناصر المحذوفة محفوظة مؤقتاً ويمكنك استعراضها وإعادتها فوراً.</p>
+              <button
+                type="button"
+                onClick={() => setActiveModal('trash')}
+                className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+              >
+                فتح سلة المحذوفات لاسترجاع البيانات
+              </button>
+            </div>
           </div>
         </Modal>
+      )}
+
+      {/* Trash Soft Delete Modal */}
+      {activeModal === 'trash' && (
+        <TrashModal 
+          onClose={() => setActiveModal(null)} 
+          onRestored={() => {
+            showToast('تم استرجاع السجل المختار بنجاح!', 'success');
+          }} 
+        />
       )}
 
       {/* Firebase Cloud Sync Modal */}

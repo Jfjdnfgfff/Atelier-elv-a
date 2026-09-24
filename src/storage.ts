@@ -17,7 +17,6 @@ import {
   ActivityLog
 } from './types';
 import { perfMonitor } from './utils/performanceMonitor';
-import { generateFullDataset } from './utils/mockDataGenerator';
 
 export const STORAGE_KEYS = {
   CLOTHES: 'boutique_clothes',
@@ -265,11 +264,13 @@ export const saveToStorage = <T>(key: string, data: T): void => {
   if (lastWrittenRef.get(key) === data) {
     return;
   }
-  console.log(`[Storage Write] Saving collection / key: "${key}"`, { 
-    itemCount: Array.isArray(data) ? data.length : 'non-array',
-    timestamp: new Date().toISOString(),
-    sampleIds: Array.isArray(data) ? data.slice(0, 3).map((item: any) => item?.id || 'no-id') : []
-  });
+  if ((import.meta as any).env?.DEV) {
+    console.log(`[Storage Write] Saving collection / key: "${key}"`, { 
+      itemCount: Array.isArray(data) ? data.length : 'non-array',
+      timestamp: new Date().toISOString(),
+      sampleIds: Array.isArray(data) ? data.slice(0, 3).map((item: any) => item?.id || 'no-id') : []
+    });
+  }
   lastWrittenRef.set(key, data);
   cacheMetaStore.set(key, { timestamp: Date.now(), version: 1, updatedAt: new Date().toISOString() });
 

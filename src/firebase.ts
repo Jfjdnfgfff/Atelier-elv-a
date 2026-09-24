@@ -76,7 +76,7 @@ export function areArraysEqual<T extends { id?: string; updatedAt?: string | num
   const lastB: any = b[b.length - 1];
   if (lastA?.id !== lastB?.id) return false;
 
-  // Compare ID and mutable fields sequentially
+  // Compare ID and updatedAt field (with image fallbacks)
   for (let i = 0; i < a.length; i++) {
     const itemA: any = a[i];
     const itemB: any = b[i];
@@ -84,24 +84,11 @@ export function areArraysEqual<T extends { id?: string; updatedAt?: string | num
     if (!itemA || !itemB) return false;
     if (itemA.id !== itemB.id) return false;
 
-    // Fast check on core business fields that might change on updates
     if (itemA.updatedAt !== itemB.updatedAt) return false;
-    if (itemA.status !== itemB.status) return false;
-    if (itemA.name !== itemB.name) return false;
+    if (itemA.imageUrl !== itemB.imageUrl) return false;
+    if (itemA.thumbUrl !== itemB.thumbUrl) return false;
     if (itemA.stock !== itemB.stock) return false;
-    if (itemA.stock1 !== itemB.stock1) return false;
-    if (itemA.stock2 !== itemB.stock2) return false;
-    if (itemA.rentedCount !== itemB.rentedCount) return false;
-    if (itemA.inCleaningCount !== itemB.inCleaningCount) return false;
-    if (itemA.paidAmount !== itemB.paidAmount) return false;
-    if (itemA.remainingAmount !== itemB.remainingAmount) return false;
-    if (itemA.amount !== itemB.amount) return false;
-    if (itemA.totalAmount !== itemB.totalAmount) return false;
-    if (itemA.isDeducted !== itemB.isDeducted) return false;
-    if (itemA.barcode !== itemB.barcode) return false;
-    if (itemA.sellPrice !== itemB.sellPrice) return false;
-    if (itemA.rentPrice !== itemB.rentPrice) return false;
-    if (itemA.buyCost !== itemB.buyCost) return false;
+    if (itemA.status !== itemB.status) return false;
   }
 
   return true;
@@ -136,26 +123,23 @@ export function sanitizeForFirebase<T>(data: T): T {
 export async function saveItemToFirebase<T extends { id: string }>(collectionKey: string, item: T): Promise<void> {
   if (!item || !item.id) return;
   try {
-    const cleanItem = sanitizeForFirebase(item);
+    const itemWithTs = { ...item, updatedAt: (item as any).updatedAt || new Date().toISOString() };
+    const cleanItem = sanitizeForFirebase(itemWithTs);
     const collectionRef = ref(rtdb, collectionKey);
-    // update({ [id]: item }) preserves all existing items in collectionKey without wiping
     await update(collectionRef, { [cleanItem.id]: cleanItem });
   } catch (error) {
     console.warn(`[Firebase RTDB] Failed to save targeted item ${collectionKey}/${item.id}:`, error);
   }
 }
 
-/**
- * Push or Update Item in Firebase Realtime Database:
- * Guarantees that data is never wiped or overwritten.
- */
 export async function pushItemToFirebase<T extends { id?: string }>(
   collectionKey: string, 
   item: T
 ): Promise<string | null> {
   if (!item) return null;
   try {
-    const cleanItem = sanitizeForFirebase(item);
+    const itemWithTs = { ...item, updatedAt: (item as any).updatedAt || new Date().toISOString() };
+    const cleanItem = sanitizeForFirebase(itemWithTs);
     if (cleanItem.id) {
       await update(ref(rtdb, collectionKey), { [cleanItem.id]: cleanItem });
       return cleanItem.id;
@@ -169,11 +153,6 @@ export async function pushItemToFirebase<T extends { id?: string }>(
   }
 }
 
-/**
- * Targeted Item-Level Update:
- * Updates specific fields for a single document at `/collectionKey/itemId`.
- * 1 item = 1 targeted update using `update()`. Existing unmentioned fields remain intact.
- */
 export async function updateItemInFirebase(
   collectionKey: string, 
   itemId: string, 
@@ -181,7 +160,8 @@ export async function updateItemInFirebase(
 ): Promise<void> {
   if (!itemId || !updates) return;
   try {
-    const cleanUpdates = sanitizeForFirebase(updates);
+    const updatesWithTs = { ...updates, updatedAt: updates.updatedAt || new Date().toISOString() };
+    const cleanUpdates = sanitizeForFirebase(updatesWithTs);
     const itemRef = ref(rtdb, `${collectionKey}/${itemId}`);
     await update(itemRef, cleanUpdates);
   } catch (error) {
@@ -359,23 +339,82 @@ export async function fetchClothByBarcode(barcode: string): Promise<any | null> 
 
 /**
  * STRICTLY FOR MANUAL BACKUP / RESTORE / FULL SYNC:
- * Synchronizes an entire collection map to Firebase Realtime Database.
- * WARNING: NEVER call this in automated CRUD handlers or useEffects!
+ * Merges collection items into Firebase Realtime Database using update().
+ * Ignores empty arrays to prevent wiping cloud data.
  */
 export async function syncCollectionToCloud<T extends { id?: string }>(
   collectionKey: string, 
   items: T[]
 ): Promise<void> {
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    console.log(`[Firebase RTDB] Ignoring empty array sync for ${collectionKey}`);
+    return;
+  }
   try {
     const colRef = ref(rtdb, collectionKey);
     const mapObj: Record<string, T> = {};
     items.forEach((item, idx) => {
-      const key = item.id || `idx_${idx}`;
-      mapObj[key] = item;
+      if (item && typeof item === 'object') {
+        const key = item.id || `idx_${idx}`;
+        mapObj[key] = sanitizeForFirebase({ ...item, updatedAt: (item as any).updatedAt || new Date().toISOString() });
+      }
     });
-    await set(colRef, mapObj);
+    // Non-destructive merge update
+    await update(colRef, mapObj);
   } catch (error) {
-    console.warn(`[Firebase RTDB] Failed to sync collection ${collectionKey}:`, error);
+    console.warn(`[Firebase RTDB] Failed to merge sync collection ${collectionKey}:`, error);
+  }
+}
+
+/**
+ * Fetch all items currently in soft-delete trash (/trash)
+ */
+export async function fetchTrashItems(): Promise<any[]> {
+  try {
+    const trashRef = ref(rtdb, 'trash');
+    const snapshot = await get(trashRef);
+    if (!snapshot.exists()) return [];
+    const val = snapshot.val();
+    const items: any[] = [];
+    Object.keys(val).forEach(col => {
+      const colObj = val[col];
+      if (colObj && typeof colObj === 'object') {
+        Object.keys(colObj).forEach(id => {
+          const item = colObj[id];
+          if (item && typeof item === 'object') {
+            items.push({ ...item, id, collection: col });
+          }
+        });
+      }
+    });
+    return items;
+  } catch (err) {
+    console.warn('Failed to fetch trash items:', err);
+    return [];
+  }
+}
+
+/**
+ * Restore an item from /trash/{collectionKey}/{itemId} back to /{collectionKey}/{itemId}
+ */
+export async function restoreItemFromTrash(collectionKey: string, itemId: string): Promise<boolean> {
+  try {
+    const trashItemRef = ref(rtdb, `trash/${collectionKey}/${itemId}`);
+    const snapshot = await get(trashItemRef);
+    if (!snapshot.exists()) return false;
+    const itemData = snapshot.val();
+    const { originalCollection, deletedAt, ...restoredData } = itemData;
+
+    // Restore back to active collection
+    const targetCollectionRef = ref(rtdb, collectionKey);
+    await update(targetCollectionRef, { [itemId]: sanitizeForFirebase({ ...restoredData, updatedAt: new Date().toISOString() }) });
+
+    // Remove from trash
+    await remove(trashItemRef);
+    return true;
+  } catch (err) {
+    console.error('Failed to restore item from trash:', err);
+    return false;
   }
 }
 
@@ -465,8 +504,10 @@ export class SubscriptionManager {
           }
         }
 
-        const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startMs;
-        console.log(`⚡ [Firebase RTDB] ${subKey} payload received: ${items.length} records in ${durationMs.toFixed(1)}ms`);
+        if ((import.meta as any).env?.DEV) {
+          const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startMs;
+          console.log(`⚡ [Firebase RTDB] ${subKey} payload received: ${items.length} records in ${durationMs.toFixed(1)}ms`);
+        }
 
         const currentEntry = SubscriptionManager.activeSubscriptions.get(subKey);
         if (currentEntry) {
