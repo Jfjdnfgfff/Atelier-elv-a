@@ -56,6 +56,7 @@ import {
 } from '../types';
 import { StatCard, Modal } from './Shared';
 import { useDashboardStats } from '../hooks/dashboardStatsHook';
+import { verifyAdminPin, getAdminPin, setAdminPin } from '../utils/security';
 
 interface DashboardViewProps {
   stats?: ReturnType<typeof useDashboardStats>;
@@ -139,13 +140,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   const [manualActionType, setManualActionType] = useState<ActivityActionType>('create');
   const [manualAmount, setManualAmount] = useState<number | undefined>(undefined);
 
-  const getStoredPin = useCallback(() => {
-    return localStorage.getItem('bm_security_pin') || '9296';
-  }, []);
-
   const handleVerifyPinAndExecute = useCallback(() => {
-    const validPin = getStoredPin();
-    if (enteredPin === validPin) {
+    if (verifyAdminPin(enteredPin)) {
       if (pinModalOpen?.type === 'single' && pinModalOpen.targetId) {
         onDeleteLog?.(pinModalOpen.targetId, true);
       } else if (pinModalOpen?.type === 'all') {
@@ -157,15 +153,14 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
     } else {
       setPinError('كلمة المرور غير صحيحة! يرجى إدخال كلمة المرور الصحيحة لحذف السجل.');
     }
-  }, [enteredPin, getStoredPin, pinModalOpen, onDeleteLog, onClearAllLogs]);
+  }, [enteredPin, pinModalOpen, onDeleteLog, onClearAllLogs]);
 
   const handleChangePinSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     setChangePinError('');
     setChangePinSuccess('');
 
-    const validPin = getStoredPin();
-    if (currentPinInput !== validPin) {
+    if (!verifyAdminPin(currentPinInput)) {
       setChangePinError('كلمة المرور الحالية غير صحيحة');
       return;
     }
@@ -178,7 +173,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
       return;
     }
 
-    localStorage.setItem('bm_security_pin', newPinInput);
+    setAdminPin(newPinInput);
     setChangePinSuccess('تم تغيير كلمة المرور بنجاح');
     setTimeout(() => {
       setIsChangePinOpen(false);
@@ -187,7 +182,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
       setConfirmNewPinInput('');
       setChangePinSuccess('');
     }, 1200);
-  }, [currentPinInput, newPinInput, confirmNewPinInput, getStoredPin]);
+  }, [currentPinInput, newPinInput, confirmNewPinInput]);
 
   const handleSaveManualLog = useCallback((e: React.FormEvent) => {
     e.preventDefault();

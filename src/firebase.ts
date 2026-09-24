@@ -13,6 +13,11 @@ import {
   get,
   orderByChild,
   equalTo,
+  startAt,
+  endAt,
+  onChildAdded,
+  onChildChanged,
+  onChildRemoved,
   Query
 } from 'firebase/database';
 
@@ -48,7 +53,9 @@ export const FIREBASE_COLLECTIONS = {
   SEAMSTRESSES: 'seamstresses',
   RAW_MATERIALS: 'rawMaterials',
   CAISSE_CLOSURES: 'caisseClosures',
-  ACTIVITY_LOGS: 'activityLogs'
+  ACTIVITY_LOGS: 'activityLogs',
+  CLOTH_THUMBS: 'clothThumbs',
+  CLOTH_IMAGES: 'clothImages'
 } as const;
 
 export type FirebaseCollectionKey = typeof FIREBASE_COLLECTIONS[keyof typeof FIREBASE_COLLECTIONS];
@@ -264,6 +271,20 @@ export async function downloadFullFirebaseBackupDirect(): Promise<FirebaseBackup
     console.warn('Failed to fetch trash for backup:', e);
   }
 
+  try {
+    const clothThumbsSnap = await get(ref(rtdb, 'clothThumbs'));
+    if (clothThumbsSnap.exists()) {
+      const val = clothThumbsSnap.val();
+      backupData['clothThumbs'] = val;
+      counts['clothThumbs'] = typeof val === 'object' && val ? Object.keys(val).length : 0;
+    } else {
+      backupData['clothThumbs'] = {};
+      counts['clothThumbs'] = 0;
+    }
+  } catch (e) {
+    console.warn('Failed to fetch clothThumbs for backup:', e);
+  }
+
   let verified = true;
   for (const col of collections) {
     const checkSnap = await get(ref(rtdb, col));
@@ -378,6 +399,37 @@ export async function fetchClothByBarcode(barcode: string): Promise<any | null> 
     console.warn(`[Firebase RTDB] Targeted barcode lookup error for ${barcode}:`, error);
   }
   return null;
+}
+
+/**
+ * Targeted Name Search with Index:
+ * Searches clothes collection using Firebase orderByChild('name') with startAt and endAt.
+ */
+export async function searchClothesByName(term: string, maxResults = 50): Promise<any[]> {
+  if (!term || !term.trim()) return [];
+  const cleanTerm = term.trim();
+  try {
+    const nameQuery = query(
+      ref(rtdb, FIREBASE_COLLECTIONS.CLOTHES),
+      orderByChild('name'),
+      startAt(cleanTerm),
+      endAt(cleanTerm + '\uf8ff'),
+      limitToLast(maxResults)
+    );
+    const snapshot = await get(nameQuery);
+    if (!snapshot.exists()) return [];
+    const val = snapshot.val();
+    if (typeof val === 'object' && val !== null) {
+      return Object.keys(val).map(k => {
+        const item = val[k];
+        return { ...item, id: item.id || k };
+      });
+    }
+    return [];
+  } catch (error) {
+    console.warn(`[Firebase RTDB] Name search query error for "${term}":`, error);
+    return [];
+  }
 }
 
 /**
@@ -636,6 +688,181 @@ export class SubscriptionManager {
         } catch (e) {}
         try {
           off(activeEntry.targetRef, 'value', activeEntry.listener);
+        } catch (e) {}
+        SubscriptionManager.activeSubscriptions.delete(subKey);
+      }
+    };
+  }
+
+  /**
+   * Subscribe to granular child events (onChildAdded, onChildChanged, onChildRemoved)
+   * for massive collections like inventory clothes to stream updates with minimal network overhead.
+   */
+  static subscribeChildren<T extends { id?: string }>(
+    collectionKey: string,
+    handlers: {
+      onAdded?: (item: T) => void;
+      onChanged?: (item: T) => void;
+      onRemoved?: (id: string) => void;
+    }
+  ): () => void {
+    const colRef = ref(rtdb, collectionKey);
+
+    const parseItem = (snap: any): T => {
+      const val = snap.val() || {};
+      if (!val.id) val.id = snap.key;
+      return val as T;
+    };
+
+    const unsubAdded = onChildAdded(colRef, (snap) => {
+      if (snap.exists() && handlers.onAdded) {
+        handlers.onAdded(parseItem(snap));
+      }
+    });
+
+    const unsubChanged = onChildChanged(colRef, (snap) => {
+      if (snap.exists() && handlers.onChanged) {
+        handlers.onChanged(parseItem(snap));
+      }
+    });
+
+    const unsubRemoved = onChildRemoved(colRef, (snap) => {
+      if (handlers.onRemoved) {
+        handlers.onRemoved(snap.key as string);
+      }
+    });
+
+    let unsubscribed = false;
+    return () => {
+      if (unsubscribed) return;
+      unsubscribed = true;
+      try { unsubAdded(); } catch {}
+      try { unsubChanged(); } catch {}
+      try { unsubRemoved(); } catch {}
+    };
+  }
+
+  /**
+   * Granular child listeners (onChildAdded, onChildChanged, onChildRemoved):
+   * Avoids re-downloading entire collection array on single item change.
+   */
+  static subscribeGranular<T extends { id?: string }>(
+    collectionKey: string,
+    callback: (items: T[]) => void,
+    options?: { sort?: boolean }
+  ): () => void {
+    const subKey = `${collectionKey}_granular`;
+    let entry = this.activeSubscriptions.get(subKey);
+
+    if (entry) {
+      entry.callbacks.add(callback);
+      if (entry.lastData !== null) {
+        try {
+          callback(entry.lastData);
+        } catch (err) {
+          console.error(`[SubscriptionManager] Granular callback error on ${subKey}:`, err);
+        }
+      }
+    } else {
+      const callbacks = new Set<(items: any[]) => void>();
+      callbacks.add(callback);
+
+      const targetRef = ref(rtdb, collectionKey);
+      const itemsMap = new Map<string, T>();
+      let emitTimer: any = null;
+
+      const emitBatch = () => {
+        if (emitTimer) {
+          clearTimeout(emitTimer);
+          emitTimer = null;
+        }
+        let items = Array.from(itemsMap.values());
+        if (options?.sort !== false) {
+          items.sort((a: any, b: any) => {
+            const timeA = (a as any).createdAt || (a as any).timestamp || (a as any).date || '';
+            const timeB = (b as any).createdAt || (b as any).timestamp || (b as any).date || '';
+            if (timeA && timeB) return timeB.localeCompare(timeA);
+            return 0;
+          });
+        }
+        const cur = SubscriptionManager.activeSubscriptions.get(subKey);
+        if (cur) {
+          cur.lastData = items;
+          cur.callbacks.forEach(cb => {
+            try {
+              cb(items);
+            } catch (err) {
+              console.error(`[SubscriptionManager] Granular cb error on ${subKey}:`, err);
+            }
+          });
+        }
+      };
+
+      const scheduleEmit = () => {
+        if (!emitTimer) {
+          emitTimer = setTimeout(emitBatch, 35);
+        }
+      };
+
+      const unsubAdd = onChildAdded(targetRef, (snapshot) => {
+        const item = snapshot.val();
+        if (item && typeof item === 'object') {
+          const id = item.id || snapshot.key;
+          itemsMap.set(id, { ...item, id });
+          scheduleEmit();
+        }
+      });
+
+      const unsubChange = onChildChanged(targetRef, (snapshot) => {
+        const item = snapshot.val();
+        if (item && typeof item === 'object') {
+          const id = item.id || snapshot.key;
+          itemsMap.set(id, { ...item, id });
+          scheduleEmit();
+        }
+      });
+
+      const unsubRemove = onChildRemoved(targetRef, (snapshot) => {
+        const key = snapshot.key;
+        if (key) {
+          itemsMap.delete(key);
+          scheduleEmit();
+        }
+      });
+
+      const unsubFirebase = () => {
+        if (emitTimer) clearTimeout(emitTimer);
+        try { unsubAdd(); } catch (e) {}
+        try { unsubChange(); } catch (e) {}
+        try { unsubRemove(); } catch (e) {}
+      };
+
+      entry = {
+        collectionKey,
+        subKey,
+        targetRef,
+        listener: emitBatch,
+        unsubFirebase,
+        callbacks,
+        lastData: null
+      };
+
+      this.activeSubscriptions.set(subKey, entry);
+    }
+
+    let isUnsubscribed = false;
+    return () => {
+      if (isUnsubscribed) return;
+      isUnsubscribed = true;
+
+      const activeEntry = SubscriptionManager.activeSubscriptions.get(subKey);
+      if (!activeEntry) return;
+
+      activeEntry.callbacks.delete(callback);
+
+      if (activeEntry.callbacks.size === 0) {
+        try {
+          activeEntry.unsubFirebase();
         } catch (e) {}
         SubscriptionManager.activeSubscriptions.delete(subKey);
       }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ClothItem } from '../types';
 import { getListImage } from '../utils/imageUtils';
 import { imageStore } from '../utils/imageStore';
+import { thumbStore } from '../utils/thumbStore';
 import { Loader2 } from 'lucide-react';
 
 interface AsyncProductImageProps {
@@ -19,10 +20,34 @@ export const AsyncProductImage: React.FC<AsyncProductImageProps> = ({
   imageDisplayMode = 'contain',
   mode = 'full'
 }) => {
-  const thumb = getListImage(item);
+  const fallbackThumb = getListImage(item);
+  const [thumbSrc, setThumbSrc] = useState<string | null>(() => {
+    return thumbStore.getThumbSync(item.id) || fallbackThumb || item.imageUrl || null;
+  });
   const [fullSrc, setFullSrc] = useState<string | null>(null);
   const [isLoadingFull, setIsLoadingFull] = useState<boolean>(false);
 
+  // Load thumbnail if not already present
+  useEffect(() => {
+    let isMounted = true;
+    const syncVal = thumbStore.getThumbSync(item.id);
+    if (syncVal) {
+      setThumbSrc(syncVal);
+    } else if (item.id) {
+      thumbStore.getThumb(item.id, fallbackThumb).then(res => {
+        if (isMounted && res) {
+          setThumbSrc(res);
+        }
+      });
+    } else {
+      setThumbSrc(fallbackThumb || item.imageUrl || null);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [item.id, item.thumbUrl, item.imageUrl, item.updatedAt]);
+
+  // Load full image if mode === 'full'
   useEffect(() => {
     let isMounted = true;
 
@@ -48,7 +73,9 @@ export const AsyncProductImage: React.FC<AsyncProductImageProps> = ({
     };
   }, [item.id, item.hasFullImage, item.updatedAt, mode]);
 
-  const activeSrc = mode === 'thumb' ? (thumb || item.imageUrl) : (fullSrc || item.imageUrl || thumb);
+  const activeSrc = mode === 'thumb' 
+    ? (thumbSrc || fallbackThumb || item.imageUrl) 
+    : (fullSrc || thumbSrc || item.imageUrl || fallbackThumb);
   const fitClass = imageDisplayMode === 'fill' ? 'object-fill' : imageDisplayMode === 'cover' ? 'object-cover' : 'object-contain';
 
   return (

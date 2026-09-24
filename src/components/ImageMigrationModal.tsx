@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { ClothItem, Sale } from '../types';
 import { processImageToVariants, getListImage, THUMB_MAX_DIM, THUMB_QUALITY } from '../utils/imageUtils';
 import { imageStore } from '../utils/imageStore';
+import { thumbStore } from '../utils/thumbStore';
 import { updateItemInFirebase, FIREBASE_COLLECTIONS } from '../firebase';
 import { Modal } from './Shared';
 import { 
@@ -140,16 +141,28 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
           // (a) Generate thumb and full
           const variants = await processImageToVariants(item.imageUrl);
 
-          // (b) Write clothImages/{id} and verify read back
+          // (b) Write clothImages/{id} and clothThumbs/{id}, then verify read back
           const savedFull = await imageStore.saveFull(item.id, variants.fullUrl);
           if (!savedFull) {
             appendLog(`❌ [فشل] ${item.name} (#${item.barcode}): فشل حفظ الصورة الكاملة.`);
             continue;
           }
 
-          const verifyRead = await imageStore.loadFull(item.id, true);
-          if (!verifyRead || verifyRead.length !== variants.fullUrl.length) {
+          const savedThumb = await thumbStore.saveThumb(item.id, variants.thumbUrl);
+          if (!savedThumb) {
+            appendLog(`❌ [فشل] ${item.name} (#${item.barcode}): فشل حفظ المصغّرة في clothThumbs.`);
+            continue;
+          }
+
+          const verifyReadFull = await imageStore.loadFull(item.id, true);
+          if (!verifyReadFull || verifyReadFull.length !== variants.fullUrl.length) {
             appendLog(`❌ [فشل التحقق] ${item.name} (#${item.barcode}): عدم تطابقة الصورة المرفوعة مع المقروءة.`);
+            continue;
+          }
+
+          const verifyReadThumb = await thumbStore.getThumb(item.id, undefined, true);
+          if (!verifyReadThumb || verifyReadThumb.length !== variants.thumbUrl.length) {
+            appendLog(`❌ [فشل التحقق] ${item.name} (#${item.barcode}): عدم تطابق المصغّرة في clothThumbs.`);
             continue;
           }
 
@@ -244,6 +257,45 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
 
     setIsRunning(false);
     showToast(`تم تنظيف ${cleaned} صورة قديمة بنجاح وتوفير مساحة الذاكرة!`, 'success');
+  };
+
+  const handlePurgeThumbnails = async () => {
+    const itemsWithThumb = clothes.filter(c => typeof c.thumbUrl === 'string' && c.thumbUrl.length > 50);
+    if (itemsWithThumb.length === 0) {
+      showToast('سجلات المنتجات لا تحتوي على thumbUrl مدمج (جميعها مفصولة في clothThumbs)!', 'info');
+      return;
+    }
+
+    setIsRunning(true);
+    isCancelledRef.current = false;
+    appendLog(`🧹 بدء فحص وتفريغ حقول thumbUrl من ${itemsWithThumb.length} منتج بعد التحقق من clothThumbs...`);
+
+    let cleaned = 0;
+    for (const item of itemsWithThumb) {
+      if (isCancelledRef.current) break;
+      try {
+        const hasRemote = await thumbStore.hasRemoteThumb(item.id);
+        if (!hasRemote) {
+          appendLog(`⚠️ [تخطي] ${item.name}: لم يتم العثور على المصغّرة في clothThumbs/${item.id} (تم إلغاء الحذف للحماية).`);
+          continue;
+        }
+
+        const purgeOk = await updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, item.id, {
+          thumbUrl: null,
+          updatedAt: new Date().toISOString()
+        });
+
+        if (purgeOk) {
+          cleaned++;
+          appendLog(`✨ [فصل المصغّرة] ${item.name} (#${item.barcode}): تم تفريغ thumbUrl المدمج والاعتماد على clothThumbs.`);
+        }
+      } catch (err) {
+        appendLog(`❌ [خطأ تنظيف مصغّرة] ${item.name}: ${err}`);
+      }
+    }
+
+    setIsRunning(false);
+    showToast(`تم تفريغ المصغّرات المدمجة لـ ${cleaned} منتج بنجاح!`, 'success');
   };
 
   const handleDryRunSales = () => {
@@ -426,7 +478,18 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
             title={!isPurgeEligible ? 'ينشط فقط بعد ترحيل جميع الصور بنجاح والتحقق منها' : 'تفريغ الصور القديمة الثقيلة'}
           >
             <Trash2 className="w-4 h-4" />
-            <span>تنظيف الصور القديمة (Purge)</span>
+            <span>تنظيف الصور القديمة (Purge Legacy)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handlePurgeThumbnails}
+            disabled={isRunning}
+            className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs rounded-xl transition-all flex items-center justify-center gap-2 border border-slate-200 disabled:opacity-50"
+            title="فصل المصغّرات المدمجة إلى المسار المنفصل clothThumbs"
+          >
+            <Sparkles className="w-4 h-4 text-purple-600" />
+            <span>فصل المصغّرات المدمجة (clothThumbs)</span>
           </button>
         </div>
 

@@ -439,7 +439,7 @@ export default function App() {
   const subscribeToCollection = useCallback((collection: string, options?: { limit?: number }): () => void => {
     switch (collection) {
       case FIREBASE_COLLECTIONS.CLOTHES:
-        return SubscriptionManager.subscribe<ClothItem>(
+        return SubscriptionManager.subscribeGranular<ClothItem>(
           FIREBASE_COLLECTIONS.CLOTHES, 
           (items) => {
             if (Array.isArray(items)) {
@@ -447,7 +447,7 @@ export default function App() {
               setClothes(prev => areArraysEqual(prev, items) ? prev : items);
             }
           }, 
-          { sort: false, ...options }
+          { sort: false }
         );
       case FIREBASE_COLLECTIONS.RENTALS:
         return SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
@@ -455,14 +455,14 @@ export default function App() {
             loadedCollectionsRef.current.add(STORAGE_KEYS.RENTALS);
             setRentals(prev => areArraysEqual(prev, items) ? prev : items);
           }
-        }, options);
+        }, { limit: 150, ...options });
       case FIREBASE_COLLECTIONS.CAISSE_CLOSURES:
         return SubscriptionManager.subscribe<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.CAISSE_CLOSURES);
             setCaisseClosures(prev => areArraysEqual(prev, items) ? prev : items);
           }
-        }, options);
+        }, { limit: 90, ...options });
       case FIREBASE_COLLECTIONS.SALES:
         return SubscriptionManager.subscribe<Sale>(
           FIREBASE_COLLECTIONS.SALES, 
@@ -470,8 +470,6 @@ export default function App() {
             if (Array.isArray(items)) {
               loadedCollectionsRef.current.add(STORAGE_KEYS.SALES);
               setSales(prev => {
-                // If this is a limited subscription (e.g. POS view), merge received items into prev
-                // If it's a full subscription (no limit), items represents the full dataset
                 if (options?.limit && prev.length > items.length) {
                   const map = new Map<string, Sale>();
                   prev.forEach(s => map.set(s.id, s));
@@ -483,7 +481,7 @@ export default function App() {
               });
             }
           },
-          options
+          { limit: 150, ...options }
         );
       case FIREBASE_COLLECTIONS.EXPENSES:
         return SubscriptionManager.subscribe<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
@@ -491,14 +489,14 @@ export default function App() {
             loadedCollectionsRef.current.add(STORAGE_KEYS.EXPENSES);
             setExpenses(prev => areArraysEqual(prev, items) ? prev : items);
           }
-        });
+        }, { limit: 150, ...options });
       case FIREBASE_COLLECTIONS.CREDITS:
         return SubscriptionManager.subscribe<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.CREDITS);
             setCredits(prev => areArraysEqual(prev, items) ? prev : items);
           }
-        });
+        }, { limit: 150, ...options });
       case FIREBASE_COLLECTIONS.STAFF_PAYOUTS:
         return SubscriptionManager.subscribe<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
           if (Array.isArray(items)) {
@@ -1284,7 +1282,13 @@ export default function App() {
   // SALES HANDLERS
   // ==========================
   const handleCompleteSale = useCallback((saleData: any) => {
-    const newSale: Sale = { ...saleData, id: generateId() };
+    // Sanitize items so no heavy/redundant imageUrl is stored in the new sale record (Task 1)
+    const sanitizedItems = (saleData.items || []).map((item: any) => {
+      const { imageUrl, ...rest } = item;
+      return rest;
+    });
+
+    const newSale: Sale = { ...saleData, items: sanitizedItems, id: generateId() };
     setSales(prev => [newSale, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.SALES, newSale);
 
@@ -2688,8 +2692,7 @@ export default function App() {
                         stockSource: (item.stock1 && item.stock1 > 0) ? 'stock1' : 'stock2',
                         price: item.sellPrice,
                         cost: item.buyCost,
-                        total: item.sellPrice,
-                        imageUrl: getListImage(item) || item.imageUrl
+                        total: item.sellPrice
                       }],
                       totalAmount: item.sellPrice,
                       paidAmount: item.sellPrice,

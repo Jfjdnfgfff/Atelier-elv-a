@@ -210,8 +210,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
           stockSource,
           price: item.sellPrice,
           cost: item.buyCost,
-          total: qtyToAdd * item.sellPrice,
-          imageUrl: getListImage(item) || item.imageUrl
+          total: qtyToAdd * item.sellPrice
         }
       ]);
     }
@@ -269,8 +268,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
           stockSource: chosenStock,
           price: item.sellPrice,
           cost: item.buyCost,
-          total: item.sellPrice,
-          imageUrl: getListImage(item) || item.imageUrl
+          total: item.sellPrice
         }
       ]);
     }
@@ -667,14 +665,16 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1 hide-scrollbar">
                 {cart.map((item, idx) => {
                   const source = item.stockSource || 'stock1';
+                  const matchedCloth = item.itemId ? (clothesBarcodeMap.get(item.itemId.toLowerCase()) || clothes.find(c => c.id === item.itemId)) : null;
+                  const itemPhoto = getListImage(matchedCloth) || item.imageUrl;
 
                   return (
                     <div key={`${item.itemId}_${source}_${idx}`} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-xs space-y-2">
                       <div className="flex justify-between items-center gap-2">
                         {/* Item Photo / Icon */}
                         <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
-                          {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
+                          {itemPhoto ? (
+                            <img src={itemPhoto} alt={item.name} className="w-full h-full object-contain" />
                           ) : (
                             <Package className="w-4 h-4 text-slate-400" />
                           )}
@@ -1102,13 +1102,17 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                 ? saleDateObj.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })
                 : '';
 
+              const firstItem = sale.items?.[0];
+              const matchedCloth = firstItem?.itemId ? (clothesBarcodeMap.get(firstItem.itemId.toLowerCase()) || clothes.find(c => c.id === firstItem.itemId)) : null;
+              const itemPhoto = firstItem?.imageUrl || (matchedCloth ? getListImage(matchedCloth) : '');
+
               return (
                 <div key={sale.id} className="py-3 flex justify-between items-center text-xs gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     {/* First item photo thumbnail if available */}
                     <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
-                      {sale.items[0]?.imageUrl ? (
-                        <img src={sale.items[0].imageUrl} alt="صورة" className="w-full h-full object-contain" />
+                      {itemPhoto ? (
+                        <img src={itemPhoto} alt="صورة" className="w-full h-full object-contain" />
                       ) : (
                         <ShoppingBag className="w-4 h-4 text-slate-400" />
                       )}

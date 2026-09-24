@@ -3,25 +3,34 @@
     ".read": true,
     ".write": true,
     "activityLogs": {
-      ".indexOn": ["timestamp", "category"]
+      ".indexOn": ["timestamp", "category", "createdAt", "actionType"]
     },
     "sales": {
-      ".indexOn": ["date", "timestamp"]
+      ".indexOn": ["date", "createdAt", "timestamp"]
     },
     "rentals": {
-      ".indexOn": ["status", "startDate", "expectedReturnDate"]
+      ".indexOn": ["status", "startDate", "expectedReturnDate", "createdAt", "itemId"]
     },
     "expenses": {
-      ".indexOn": ["date"]
+      ".indexOn": ["date", "createdAt", "category"]
+    },
+    "credits": {
+      ".indexOn": ["date", "createdAt", "relatedRentalId", "relatedExpenseId"]
     },
     "clothes": {
-      ".indexOn": ["barcode", "category"]
+      ".indexOn": ["barcode", "category", "createdAt", "updatedAt", "purpose", "name"]
+    },
+    "clothThumbs": {
+      ".indexOn": ["updatedAt"]
+    },
+    "clothImages": {
+      ".indexOn": ["updatedAt"]
     },
     "maintenanceOrders": {
-      ".indexOn": ["status"]
+      ".indexOn": ["status", "createdAt", "receivedDate", "expectedDeliveryDate"]
     },
     "caisseClosures": {
-      ".indexOn": ["date"]
+      ".indexOn": ["date", "createdAt"]
     }
   }
 }
