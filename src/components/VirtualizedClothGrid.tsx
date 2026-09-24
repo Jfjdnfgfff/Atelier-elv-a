@@ -23,7 +23,14 @@ export const VirtualizedClothGrid: React.FC<VirtualizedClothGridProps> = ({
   onOpenDeleteModal
 }) => {
   const parentRef = useRef<HTMLDivElement>(null);
-  const [columnsCount, setColumnsCount] = useState<number>(3);
+  const [columnsCount, setColumnsCount] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const w = window.innerWidth;
+      if (w < 640) return 1;
+      if (w < 1024) return 2;
+    }
+    return 3;
+  });
 
   // Responsive column detection
   useEffect(() => {
@@ -67,8 +74,8 @@ export const VirtualizedClothGrid: React.FC<VirtualizedClothGridProps> = ({
   return (
     <div 
       ref={parentRef} 
-      className="max-h-[72vh] overflow-y-auto custom-scrollbar p-1"
-      style={{ contain: 'strict' }}
+      className="w-full h-[68vh] sm:h-[75vh] overflow-y-auto custom-scrollbar p-1"
+      style={{ contain: 'layout paint' }}
     >
       <div
         style={{
@@ -82,17 +89,18 @@ export const VirtualizedClothGrid: React.FC<VirtualizedClothGridProps> = ({
           return (
             <div
               key={virtualRow.key}
+              data-index={virtualRow.index}
+              ref={rowVirtualizer.measureElement}
               style={{
                 position: 'absolute',
                 top: 0,
                 left: 0,
                 width: '100%',
-                height: `${virtualRow.size}px`,
                 transform: `translateY(${virtualRow.start}px)`,
               }}
             >
               <div 
-                className={`grid gap-4 h-full pb-4 ${
+                className={`grid gap-4 pb-4 ${
                   columnsCount === 3 
                     ? 'grid-cols-3' 
                     : columnsCount === 2 

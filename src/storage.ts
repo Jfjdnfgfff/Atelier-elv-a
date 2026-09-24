@@ -138,14 +138,29 @@ export function flushPendingStorageSynchronously(): void {
 
     try {
       const meta = cacheMetaStore.get(key) || { timestamp: Date.now(), version: 1 };
+      
+      // For clothes collection, ensure localStorage payload strips heavy legacy imageUrl if thumbUrl exists
+      let storageData = dataToPersist;
+      if (key === STORAGE_KEYS.CLOTHES && Array.isArray(dataToPersist)) {
+        storageData = dataToPersist.map((item: any) => {
+          if (item && typeof item === 'object' && item.imageUrl && typeof item.imageUrl === 'string' && (item.thumbUrl || item.imageUrl.length > 20000)) {
+            const copy = { ...item };
+            delete copy.imageUrl;
+            return copy;
+          }
+          return item;
+        });
+      }
+
       const cacheEnvelope = {
-        data: dataToPersist,
+        data: storageData,
         timestamp: meta.timestamp,
         version: meta.version
       };
       localStorage.setItem(key, JSON.stringify(cacheEnvelope));
       // Save full envelope asynchronously to IndexedDB without quota limits
-      set(key, cacheEnvelope).catch(idbErr => console.warn(`[IndexedDB] Error setting ${key}:`, idbErr));
+      set(key, { data: dataToPersist, timestamp: meta.timestamp, version: meta.version })
+        .catch(idbErr => console.warn(`[IndexedDB] Error setting ${key}:`, idbErr));
     } catch (e: any) {
       if (e?.name === 'QuotaExceededError' || e?.code === 22) {
         console.warn(`[localStorage quota exceeded for ${key}]. Saving compact cache without giant image payloads...`);

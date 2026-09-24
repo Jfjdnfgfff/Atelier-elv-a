@@ -35,6 +35,9 @@ export interface ClothItem {
   rentedCount: number;
   inCleaningCount: number;
   imageUrl?: string;
+  thumbUrl?: string;
+  hasFullImage?: boolean;
+  updatedAt?: string;
   description?: string;
   variants?: ClothVariant[]; // تفاصيل كل مقاس ولون (لطاي والألوان)
 }

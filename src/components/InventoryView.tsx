@@ -7,6 +7,9 @@ import { ProductVariantsModal } from './ProductVariantsModal';
 import { VirtualizedClothGrid } from './VirtualizedClothGrid';
 import { SecurityPasswordModal, checkSecurityPin } from './SecurityPasswordModal';
 import { isValidImageFileType, generateSecureImageFilename, sanitizeText, sanitizeNumericAmount } from '../utils/security';
+import { processImageToVariants, getListImage } from '../utils/imageUtils';
+import { imageStore } from '../utils/imageStore';
+import { AsyncProductImage } from './AsyncProductImage';
 import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap, ChevronLeft, ChevronRight, Search, Loader2 } from 'lucide-react';
 
 export const STANDARD_SIZES = [
@@ -1593,6 +1596,8 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
   const [activeColorFilter, setActiveColorFilter] = useState<string>('all');
 
   const [imageUrl, setImageUrl] = useState(item?.imageUrl || '');
+  const [thumbUrl, setThumbUrl] = useState(item?.thumbUrl || '');
+  const [pendingFullUrl, setPendingFullUrl] = useState<string | null>(null);
   const [description, setDescription] = useState(item?.description || '');
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [showInFormScanner, setShowInFormScanner] = useState(false);
@@ -1762,8 +1767,8 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
   const totalStock2 = variants.reduce((sum, v) => sum + (Number(v.stock2) || 0), 0);
   const totalCalculatedStock = totalStock1 + totalStock2;
 
-  // Compress & convert file to Base64 with automatic downscaling and aspect ratio preservation so it displays completely
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Compress & convert file to Base64 (thumb ~200px and full ~1200px)
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -1773,53 +1778,17 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
       return;
     }
 
-    const { secureName } = generateSecureImageFilename(file.name, file.type);
-    console.log(`[Security] Image file verified: ${secureName}`);
-
-    setIsProcessingImage(true);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        // Optimized thumbnail dimension (480px) & 0.70 quality keeps images lightweight (~15KB) and prevents LocalStorage quota errors
-        const MAX_DIM = 480;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > MAX_DIM || height > MAX_DIM) {
-          if (width > height) {
-            height = Math.round((height * MAX_DIM) / width);
-            width = MAX_DIM;
-          } else {
-            width = Math.round((width * MAX_DIM) / height);
-            height = MAX_DIM;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(img, 0, 0, width, height);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.70);
-          setImageUrl(dataUrl);
-        }
-        setIsProcessingImage(false);
-      };
-      img.onerror = () => {
-        setIsProcessingImage(false);
-        alert('تعذر قراءة ملف الصورة، يرجى اختيار صورة أخرى');
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.onerror = () => {
+    try {
+      setIsProcessingImage(true);
+      const variants = await processImageToVariants(file);
+      setThumbUrl(variants.thumbUrl);
+      setPendingFullUrl(variants.fullUrl);
+      setImageUrl(''); // Clear old heavy imageUrl when a new image is uploaded
+    } catch (err) {
+      alert('حدث خطأ أثناء معالجة الملف');
+    } finally {
       setIsProcessingImage(false);
-      alert('حدث خطأ أثناء تحميل الملف');
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -1829,7 +1798,7 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
     const validSizes = selectedSizes.length > 0 ? selectedSizes : ['38'];
     const validColors = selectedColors.length > 0 ? selectedColors : ['أسود'];
 
-    onSubmit({
+    const clothPayload: any = {
       name: name.trim(),
       barcode: barcode.trim(),
       category,
@@ -1848,9 +1817,18 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
       variants: variants.length > 0 ? variants : undefined,
       rentedCount: item?.rentedCount || 0,
       inCleaningCount: item?.inCleaningCount || 0,
-      imageUrl: imageUrl.trim() || undefined,
-      description: description.trim()
-    });
+      description: description.trim(),
+      thumbUrl: thumbUrl.trim() || undefined,
+      hasFullImage: Boolean(pendingFullUrl || item?.hasFullImage),
+      updatedAt: new Date().toISOString()
+    };
+
+    // If legacy imageUrl was present and not overridden by new upload, preserve it
+    if (imageUrl && !pendingFullUrl) {
+      clothPayload.imageUrl = imageUrl;
+    }
+
+    onSubmit(clothPayload, pendingFullUrl || undefined);
   };
 
   // Group variants by color for clean display

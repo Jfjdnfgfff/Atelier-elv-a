@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
 import { ClothItem, Sale, SaleItem } from '../types';
+import { getListImage } from '../utils/imageUtils';
 import { fetchClothByBarcode } from '../firebase';
 import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
 import { BarcodeScanner } from './BarcodeScanner';
@@ -641,10 +642,10 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                     onClick={() => addToCart(item)}
                     className="relative aspect-[3/4] bg-slate-900/5 overflow-hidden flex items-center justify-center cursor-pointer group"
                   >
-                    {item.imageUrl ? (
+                    {getListImage(item) ? (
                       <div className="relative w-full h-full overflow-hidden flex items-center justify-center bg-slate-100">
                         <img
-                          src={item.imageUrl}
+                          src={getListImage(item)}
                           alt={item.name}
                           decoding="async"
                           className={`relative z-1 w-full h-full transition-transform duration-300 group-hover:scale-103 select-none ${

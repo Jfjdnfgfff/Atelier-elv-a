@@ -132,6 +132,12 @@ export async function saveItemToFirebase<T extends { id: string }>(collectionKey
   }
 }
 
+import { imageStore } from './utils/imageStore';
+
+export async function fetchFullImage(id: string): Promise<string | null> {
+  return imageStore.loadFull(id);
+}
+
 export async function pushItemToFirebase<T extends { id?: string }>(
   collectionKey: string, 
   item: T

@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
 import { ClothItem } from '../types';
+import { getListImage } from '../utils/imageUtils';
 import { Shirt, Tag, Sparkles, Store, Warehouse, ArrowLeftRight, Pencil, Trash2 } from 'lucide-react';
 
 interface ClothCardProps {
@@ -39,10 +40,10 @@ export const ClothCard = memo<ClothCardProps>(({
         className="relative bg-slate-900/5 overflow-hidden cursor-pointer flex items-center justify-center group w-full aspect-[3/4]"
         title="اضغط لعرض الألوان والمقاسات (Déclinaisons)"
       >
-        {item.imageUrl ? (
+        {getListImage(item) ? (
           <div className="relative w-full h-full overflow-hidden flex items-center justify-center bg-slate-100">
             <img
-              src={item.imageUrl}
+              src={getListImage(item)}
               alt={item.name}
               decoding="async"
               loading="lazy"

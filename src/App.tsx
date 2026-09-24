@@ -57,6 +57,8 @@ import {
 import { Modal } from './components/Shared';
 import AppNavigation from './components/AppNavigation';
 import { TrashModal } from './components/TrashModal';
+import { ImageMigrationModal } from './components/ImageMigrationModal';
+import { imageStore } from './utils/imageStore';
 
 // Lazy-loaded Modals with idle background preloading
 const BarcodeScanner = React.lazy(() => import('./components/BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
@@ -1196,10 +1198,14 @@ export default function App() {
   // ==========================
   // CLOTHES & INVENTORY HANDLERS
   // ==========================
-  const handleAddCloth = useCallback((itemData: any) => {
+  const handleAddCloth = useCallback((itemData: any, pendingFullUrl?: string) => {
     const newCloth: ClothItem = { ...itemData, id: generateId() };
     setClothes(prev => [newCloth, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.CLOTHES, newCloth);
+
+    if (pendingFullUrl) {
+      imageStore.saveFull(newCloth.id, pendingFullUrl);
+    }
 
     addActivityLog({
       actionType: 'create',
@@ -1213,9 +1219,13 @@ export default function App() {
     showToast('تمت إضافة قطعة الملابس للمخزن');
   }, []);
 
-  const handleUpdateCloth = useCallback((id: string, itemData: any) => {
+  const handleUpdateCloth = useCallback((id: string, itemData: any, pendingFullUrl?: string) => {
     setClothes(prev => prev.map(c => c.id === id ? { ...c, ...itemData } : c));
     updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, id, itemData);
+
+    if (pendingFullUrl) {
+      imageStore.saveFull(id, pendingFullUrl);
+    }
 
     addActivityLog({
       actionType: 'update',
@@ -2507,6 +2517,15 @@ export default function App() {
               </div>
             </div>
 
+            {/* Image Migration & Optimization Button */}
+            <button
+              onClick={() => setActiveModal('imageMigration')}
+              className="w-full py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 active:scale-95"
+            >
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <span>تحسين وترحيل صور المنتجات (إخراج الصور من السجلات)</span>
+            </button>
+
             {/* Manual Sync Button */}
             <button
               onClick={handleSyncAllToCloud}
@@ -2518,6 +2537,15 @@ export default function App() {
             </button>
           </div>
         </Modal>
+      )}
+
+      {/* Image Optimization & Migration Modal */}
+      {activeModal === 'imageMigration' && (
+        <ImageMigrationModal
+          clothes={clothes}
+          onClose={() => setActiveModal(null)}
+          showToast={showToast}
+        />
       )}
 
       {/* Full Financial Report */}
