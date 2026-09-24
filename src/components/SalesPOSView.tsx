@@ -82,6 +82,8 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
     item: ClothItem;
     qty: number;
     stockSource: 'stock1' | 'stock2';
+    selectedSize: string;
+    selectedColor: string;
   } | null>(null);
 
   const [paidAmount, setPaidAmount] = useState<number | ''>('');
@@ -128,30 +130,41 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
     'أخرى'
   ];
 
-  // Process barcode scan and open quantity modal
+  // Open item modal for selecting size (الطاي), color, stock source, and quantity
+  const openItemModal = (item: ClothItem, preferredSource?: 'stock1' | 'stock2') => {
+    const s1 = getItemStock1(item);
+    const s2 = getItemStock2(item);
+    const totalAvailable = s1 + s2 - (item.rentedCount || 0);
+
+    if (totalAvailable <= 0) {
+      playPosErrorBeep();
+      alert(`القطعة "${item.name}" نفدت من كلا المخزنين.`);
+      return;
+    }
+
+    playPosScannerBeep('classic');
+    const defaultSource = preferredSource || (s1 > 0 ? 'stock1' : 'stock2');
+    const defaultSize = (item.sizes && item.sizes.length > 0) ? item.sizes[0] : (item.size || '38');
+    const defaultColor = (item.colors && item.colors.length > 0) ? item.colors[0] : (item.color || 'عام');
+
+    setScannedItemModal({
+      item,
+      qty: 1,
+      stockSource: defaultSource,
+      selectedSize: defaultSize,
+      selectedColor: defaultColor
+    });
+  };
+
+  // Process barcode scan and open quantity / size / color modal
   const handleBarcodeCode = (rawCode: string) => {
     const validation = validateAndSanitizeBarcode(rawCode.trim());
     const code = validation.isValid ? validation.code : rawCode.trim();
     if (!code) return;
 
     const processMatchedItem = (matchedItem: ClothItem) => {
-      const s1 = getItemStock1(matchedItem);
-      const s2 = getItemStock2(matchedItem);
-      const totalAvailable = s1 + s2 - (matchedItem.rentedCount || 0);
-
-      if (totalAvailable <= 0) {
-        playPosErrorBeep();
-        alert(`القطعة "${matchedItem.name}" نفدت من كلا المخزنين.`);
-      } else {
-        playPosScannerBeep('classic');
-        const defaultSource = s1 > 0 ? 'stock1' : 'stock2';
-        setScannedItemModal({
-          item: matchedItem,
-          qty: 1,
-          stockSource: defaultSource
-        });
-        setBarcodeInput('');
-      }
+      openItemModal(matchedItem);
+      setBarcodeInput('');
     };
 
     const matched = clothesBarcodeMap.get(code.toLowerCase());
@@ -178,12 +191,12 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
     }
   }, [scannedCode]);
 
-  const addCustomQtyToCart = (item: ClothItem, qtyToAdd: number, stockSource: 'stock1' | 'stock2') => {
+  const addCustomQtyToCart = (item: ClothItem, qtyToAdd: number, stockSource: 'stock1' | 'stock2', selectedSize: string, selectedColor: string) => {
     const s1 = getItemStock1(item);
     const s2 = getItemStock2(item);
     const maxAvailable = stockSource === 'stock1' ? s1 : s2;
 
-    const existing = cart.find(ci => ci.itemId === item.id && ci.stockSource === stockSource);
+    const existing = cart.find(ci => ci.itemId === item.id && ci.stockSource === stockSource && ci.size === selectedSize && ci.color === selectedColor);
     const currentQtyInCart = existing ? existing.qty : 0;
     const finalQty = currentQtyInCart + qtyToAdd;
 
@@ -194,7 +207,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
     }
 
     if (existing) {
-      setCart(prev => prev.map(ci => (ci.itemId === item.id && ci.stockSource === stockSource) 
+      setCart(prev => prev.map(ci => (ci.itemId === item.id && ci.stockSource === stockSource && ci.size === selectedSize && ci.color === selectedColor) 
         ? { ...ci, qty: finalQty, total: finalQty * ci.price } 
         : ci
       ));
@@ -204,8 +217,8 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
         {
           itemId: item.id,
           name: item.name,
-          size: item.size,
-          color: item.color,
+          size: selectedSize || item.size || 'عادي',
+          color: selectedColor || item.color || 'عام',
           qty: qtyToAdd,
           stockSource,
           price: item.sellPrice,
@@ -216,7 +229,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
     }
 
     playPosScannerBeep('classic');
-    setLastScannedItem(`${item.name} (${qtyToAdd} قطعة)`);
+    setLastScannedItem(`${item.name} (${selectedSize} - ${selectedColor} - ${qtyToAdd} قطعة)`);
     setTimeout(() => setLastScannedItem(null), 2500);
   };
 
@@ -624,14 +637,27 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
 
           {/* Grid of Sellable Products with Virtualization */}
           <VirtualizedPosGrid
-            clothes={filteredClothes}
+            clothes={visibleClothes}
             cart={cart}
             getItemStock1={getItemStock1}
             getItemStock2={getItemStock2}
-            addToCart={addToCart}
+            onSelectItem={openItemModal}
             imageDisplayMode={imageDisplayMode}
             onOpenPreview={(url, title) => setPreviewImage({ url, title })}
           />
+
+          {visibleProductCount < filteredClothes.length && (
+            <div className="flex justify-center my-4">
+              <button
+                type="button"
+                onClick={() => setVisibleProductCount(prev => prev + 5)}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-2xl text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>تحميل 5 منتجات أخرى (عرض {visibleClothes.length} من {filteredClothes.length})</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Cart & Checkout Panel */}
@@ -1307,6 +1333,68 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               </div>
             </div>
 
+            {/* Size (الطاي / المقاس) Selection */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 block">اختر المقاس (الطاي):</label>
+              <div className="flex flex-wrap gap-1.5">
+                {scannedItemModal.item.sizes && scannedItemModal.item.sizes.length > 0 ? (
+                  scannedItemModal.item.sizes.map(sz => (
+                    <button
+                      key={sz}
+                      type="button"
+                      onClick={() => setScannedItemModal(prev => prev ? { ...prev, selectedSize: sz } : null)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        scannedItemModal.selectedSize === sz
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {sz}
+                    </button>
+                  ))
+                ) : (
+                  <input
+                    type="text"
+                    value={scannedItemModal.selectedSize}
+                    onChange={(e) => setScannedItemModal(prev => prev ? { ...prev, selectedSize: e.target.value } : null)}
+                    placeholder="أدخل المقاس (الطاي)..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-blue-500"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Color (اللون) Selection */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 block">اختر اللون:</label>
+              <div className="flex flex-wrap gap-1.5">
+                {scannedItemModal.item.colors && scannedItemModal.item.colors.length > 0 ? (
+                  scannedItemModal.item.colors.map(col => (
+                    <button
+                      key={col}
+                      type="button"
+                      onClick={() => setScannedItemModal(prev => prev ? { ...prev, selectedColor: col } : null)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        scannedItemModal.selectedColor === col
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {col}
+                    </button>
+                  ))
+                ) : (
+                  <input
+                    type="text"
+                    value={scannedItemModal.selectedColor}
+                    onChange={(e) => setScannedItemModal(prev => prev ? { ...prev, selectedColor: e.target.value } : null)}
+                    placeholder="أدخل اللون..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-blue-500"
+                  />
+                )}
+              </div>
+            </div>
+
             {/* Quantity Selector */}
             {(() => {
               const maxStock = scannedItemModal.stockSource === 'stock1' 
@@ -1398,7 +1486,13 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               <button
                 type="button"
                 onClick={() => {
-                  addCustomQtyToCart(scannedItemModal.item, scannedItemModal.qty, scannedItemModal.stockSource);
+                  addCustomQtyToCart(
+                    scannedItemModal.item, 
+                    scannedItemModal.qty, 
+                    scannedItemModal.stockSource,
+                    scannedItemModal.selectedSize,
+                    scannedItemModal.selectedColor
+                  );
                   setScannedItemModal(null);
                 }}
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95"

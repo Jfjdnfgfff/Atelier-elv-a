@@ -9,7 +9,7 @@ interface VirtualizedPosGridProps {
   cart: SaleItem[];
   getItemStock1: (item: ClothItem) => number;
   getItemStock2: (item: ClothItem) => number;
-  addToCart: (item: ClothItem, stockSource?: 'stock1' | 'stock2') => void;
+  onSelectItem: (item: ClothItem, stockSource?: 'stock1' | 'stock2') => void;
   imageDisplayMode: 'fill' | 'cover' | 'contain';
   onOpenPreview: (url: string, title: string) => void;
 }
@@ -19,7 +19,7 @@ export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
   cart,
   getItemStock1,
   getItemStock2,
-  addToCart,
+  onSelectItem,
   imageDisplayMode,
   onOpenPreview
 }) => {
@@ -115,7 +115,7 @@ export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
                     >
                       {/* Photo Container */}
                       <div 
-                        onClick={() => addToCart(item)}
+                        onClick={() => onSelectItem(item)}
                         className="relative aspect-[3/4] bg-slate-900/5 overflow-hidden flex items-center justify-center cursor-pointer group"
                       >
                         {imgUrl ? (
@@ -196,7 +196,7 @@ export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
                           <div className="grid grid-cols-2 gap-1 text-[10px]">
                             <button
                               type="button"
-                              onClick={() => addToCart(item, 'stock1')}
+                              onClick={() => onSelectItem(item, 'stock1')}
                               disabled={s1 <= 0}
                               className="py-1 px-1.5 bg-slate-50 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 text-slate-700 border border-slate-200/80 rounded-lg font-medium flex items-center justify-between active:scale-95 transition-all"
                               title="إضافة من المخزون 1"
@@ -207,7 +207,7 @@ export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
 
                             <button
                               type="button"
-                              onClick={() => addToCart(item, 'stock2')}
+                              onClick={() => onSelectItem(item, 'stock2')}
                               disabled={s2 <= 0}
                               className="py-1 px-1.5 bg-slate-50 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 text-slate-700 border border-slate-200/80 rounded-lg font-medium flex items-center justify-between active:scale-95 transition-all"
                               title="إضافة من المخزون 2"
