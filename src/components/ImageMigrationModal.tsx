@@ -47,12 +47,13 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
     setLogs(prev => [`[${new Date().toLocaleTimeString('ar-DZ')}] ${msg}`, ...prev.slice(0, 200)]);
   };
 
-  // Identify eligible items needing migration: has imageUrl starting with data:image and missing thumbUrl or hasFullImage
+  // Identify eligible items needing migration: has imageUrl starting with data:image and missing thumbUrl or hasFullImage, or oversized thumb (> 10KB)
   const getEligibleItems = () => {
     return clothes.filter(c => {
       const hasLegacyImage = typeof c.imageUrl === 'string' && c.imageUrl.startsWith('data:image');
       const missingThumb = !c.thumbUrl || !c.hasFullImage;
-      return hasLegacyImage && missingThumb;
+      const oversizedThumb = typeof c.thumbUrl === 'string' && c.thumbUrl.length > 10000;
+      return (hasLegacyImage && missingThumb) || oversizedThumb;
     });
   };
 
@@ -124,7 +125,7 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
             continue;
           }
 
-          const verifyRead = await imageStore.loadFull(item.id);
+          const verifyRead = await imageStore.loadFull(item.id, true);
           if (!verifyRead || verifyRead.length !== variants.fullUrl.length) {
             appendLog(`❌ [فشل التحقق] ${item.name} (#${item.barcode}): عدم تطابقة الصورة المرفوعة مع المقروءة.`);
             continue;
@@ -132,11 +133,16 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
 
           // (c) Update item with thumbUrl and hasFullImage (keep legacy imageUrl for safety)
           const updatedTs = new Date().toISOString();
-          await updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, item.id, {
+          const updateOk = await updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, item.id, {
             thumbUrl: variants.thumbUrl,
             hasFullImage: true,
             updatedAt: updatedTs
           });
+
+          if (!updateOk) {
+            appendLog(`❌ [فشل التحديث] ${item.name} (#${item.barcode}): فشل تحديث السجل في قاعدة البيانات.`);
+            continue;
+          }
 
           count++;
           setProcessedCount(count);
@@ -191,12 +197,24 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
     let cleaned = 0;
     for (const item of itemsWithLegacyImage) {
       try {
-        await updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, item.id, {
+        // Direct read check for clothImages/{id}.full bypassing cache
+        const fullExists = await imageStore.loadFull(item.id, true);
+        if (!fullExists || fullExists.length < 50) {
+          appendLog(`⚠️ [تخطي] ${item.name} (#${item.barcode}): لم يتم العثور على الصورة الكاملة في clothImages/${item.id}.full (تم إلغاء الحذف للحماية).`);
+          continue;
+        }
+
+        const purgeOk = await updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, item.id, {
           imageUrl: null,
           updatedAt: new Date().toISOString()
         });
-        cleaned++;
-        appendLog(`🧹 [حذف قديم] ${item.name} (#${item.barcode}): تم تفريغ imageUrl.`);
+
+        if (purgeOk) {
+          cleaned++;
+          appendLog(`🧹 [حذف قديم] ${item.name} (#${item.barcode}): تم تفريغ imageUrl بنجاح.`);
+        } else {
+          appendLog(`❌ [فشل الحذف] ${item.name} (#${item.barcode}): فشل التحديث في قاعدة البيانات.`);
+        }
       } catch (err) {
         appendLog(`❌ [خطأ تنظيف] ${item.name}: ${err}`);
       }

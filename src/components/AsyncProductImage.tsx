@@ -9,13 +9,15 @@ interface AsyncProductImageProps {
   alt?: string;
   className?: string;
   imageDisplayMode?: 'fill' | 'cover' | 'contain';
+  mode?: 'thumb' | 'full';
 }
 
 export const AsyncProductImage: React.FC<AsyncProductImageProps> = ({
   item,
   alt = '',
   className = '',
-  imageDisplayMode = 'contain'
+  imageDisplayMode = 'contain',
+  mode = 'full'
 }) => {
   const thumb = getListImage(item);
   const [fullSrc, setFullSrc] = useState<string | null>(null);
@@ -24,7 +26,7 @@ export const AsyncProductImage: React.FC<AsyncProductImageProps> = ({
   useEffect(() => {
     let isMounted = true;
 
-    if (item.hasFullImage && item.id) {
+    if (mode === 'full' && item.hasFullImage && item.id) {
       setIsLoadingFull(true);
       imageStore.loadFull(item.id).then(loaded => {
         if (isMounted) {
@@ -44,9 +46,9 @@ export const AsyncProductImage: React.FC<AsyncProductImageProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [item.id, item.hasFullImage, item.updatedAt]);
+  }, [item.id, item.hasFullImage, item.updatedAt, mode]);
 
-  const activeSrc = fullSrc || item.imageUrl || thumb;
+  const activeSrc = mode === 'thumb' ? (thumb || item.imageUrl) : (fullSrc || item.imageUrl || thumb);
   const fitClass = imageDisplayMode === 'fill' ? 'object-fill' : imageDisplayMode === 'cover' ? 'object-cover' : 'object-contain';
 
   return (
@@ -60,7 +62,7 @@ export const AsyncProductImage: React.FC<AsyncProductImageProps> = ({
         />
       ) : null}
 
-      {isLoadingFull && (
+      {mode === 'full' && isLoadingFull && (
         <div className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 shadow-xs">
           <Loader2 className="w-3 h-3 animate-spin text-amber-300" />
           <span>جاري تحميل الجودة العالية...</span>

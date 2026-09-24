@@ -5,6 +5,8 @@ const CustomerIdScannerModal = React.lazy(() => import('./CustomerIdScannerModal
 import type { ExtractedCustomerData } from './CustomerIdScannerModal';
 import { LettersInput, NumbersInput } from './Shared';
 import { sanitizeName, sanitizePhone, sanitizeDigitsOnly, sanitizeText } from '../utils/security';
+import { AsyncProductImage } from './AsyncProductImage';
+import { getListImage } from '../utils/imageUtils';
 import { 
   Shirt, 
   Calendar, 
@@ -414,12 +416,8 @@ export const RentalModal: React.FC<RentalModalProps> = ({
         
         {selectedItem && (
           <div className="flex items-center gap-3 mt-2.5 pt-2.5 border-t border-slate-200 text-[11px] font-bold text-slate-700">
-            {selectedItem.imageUrl ? (
-              <img 
-                src={selectedItem.imageUrl} 
-                alt={selectedItem.name} 
-                className="w-12 h-12 rounded-xl object-contain bg-slate-50 border border-slate-200 shadow-xs shrink-0 p-0.5" 
-              />
+            {(getListImage(selectedItem) || selectedItem.imageUrl) ? (
+              <AsyncProductImage item={selectedItem} mode="thumb" className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-200 shadow-xs shrink-0 p-0.5" />
             ) : (
               <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-xl shrink-0">
                 <Shirt className="w-6 h-6 text-slate-500" />

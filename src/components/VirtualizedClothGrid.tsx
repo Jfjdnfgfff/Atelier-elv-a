@@ -5,6 +5,7 @@ import { ClothCard } from './ClothCard';
 
 interface VirtualizedClothGridProps {
   clothes: ClothItem[];
+  highlightedBarcode?: string;
   getItemStock1: (item: ClothItem) => number;
   getItemStock2: (item: ClothItem) => number;
   onOpenVariantsModal: (item: ClothItem) => void;
@@ -15,6 +16,7 @@ interface VirtualizedClothGridProps {
 
 export const VirtualizedClothGrid: React.FC<VirtualizedClothGridProps> = ({
   clothes,
+  highlightedBarcode,
   getItemStock1,
   getItemStock2,
   onOpenVariantsModal,
@@ -61,6 +63,17 @@ export const VirtualizedClothGrid: React.FC<VirtualizedClothGridProps> = ({
     overscan: 2,
   });
 
+  // Scroll to item when barcode is highlighted
+  useEffect(() => {
+    if (!highlightedBarcode) return;
+    const cleanBar = highlightedBarcode.trim().toLowerCase();
+    const idx = clothes.findIndex(c => c.barcode.toLowerCase() === cleanBar);
+    if (idx !== -1) {
+      const rowIndex = Math.floor(idx / columnsCount);
+      rowVirtualizer.scrollToIndex(rowIndex, { align: 'center' });
+    }
+  }, [highlightedBarcode, clothes, columnsCount, rowVirtualizer]);
+
   if (clothes.length === 0) {
     return (
       <div className="py-16 text-center text-slate-400 text-sm bg-slate-50 rounded-2xl border border-dashed border-slate-200">
@@ -74,7 +87,7 @@ export const VirtualizedClothGrid: React.FC<VirtualizedClothGridProps> = ({
   return (
     <div 
       ref={parentRef} 
-      className="w-full h-[68vh] sm:h-[75vh] overflow-y-auto custom-scrollbar p-1"
+      className="w-full h-[calc(100vh-220px)] min-h-[400px] overflow-y-auto custom-scrollbar p-1"
       style={{ contain: 'layout paint' }}
     >
       <div

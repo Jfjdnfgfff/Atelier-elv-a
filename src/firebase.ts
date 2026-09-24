@@ -163,15 +163,17 @@ export async function updateItemInFirebase(
   collectionKey: string, 
   itemId: string, 
   updates: Record<string, any>
-): Promise<void> {
-  if (!itemId || !updates) return;
+): Promise<boolean> {
+  if (!itemId || !updates) return false;
   try {
     const updatesWithTs = { ...updates, updatedAt: updates.updatedAt || new Date().toISOString() };
     const cleanUpdates = sanitizeForFirebase(updatesWithTs);
     const itemRef = ref(rtdb, `${collectionKey}/${itemId}`);
     await update(itemRef, cleanUpdates);
+    return true;
   } catch (error) {
     console.warn(`[Firebase RTDB] Failed to update targeted item ${collectionKey}/${itemId}:`, error);
+    return false;
   }
 }
 
@@ -222,7 +224,7 @@ export interface FirebaseBackupReport {
  */
 export async function downloadFullFirebaseBackupDirect(): Promise<FirebaseBackupReport> {
   const collections = Object.values(FIREBASE_COLLECTIONS);
-  const backupData: Record<string, any[]> = {};
+  const backupData: Record<string, any> = {};
   const counts: Record<string, number> = {};
   let totalRecords = 0;
 
@@ -231,6 +233,35 @@ export async function downloadFullFirebaseBackupDirect(): Promise<FirebaseBackup
     backupData[col] = items;
     counts[col] = items.length;
     totalRecords += items.length;
+  }
+
+  // Also include clothImages and trash paths outside standard collections
+  try {
+    const clothImagesSnap = await get(ref(rtdb, 'clothImages'));
+    if (clothImagesSnap.exists()) {
+      const val = clothImagesSnap.val();
+      backupData['clothImages'] = val;
+      counts['clothImages'] = typeof val === 'object' && val ? Object.keys(val).length : 0;
+    } else {
+      backupData['clothImages'] = {};
+      counts['clothImages'] = 0;
+    }
+  } catch (e) {
+    console.warn('Failed to fetch clothImages for backup:', e);
+  }
+
+  try {
+    const trashSnap = await get(ref(rtdb, 'trash'));
+    if (trashSnap.exists()) {
+      const val = trashSnap.val();
+      backupData['trash'] = val;
+      counts['trash'] = typeof val === 'object' && val ? Object.keys(val).length : 0;
+    } else {
+      backupData['trash'] = {};
+      counts['trash'] = 0;
+    }
+  } catch (e) {
+    console.warn('Failed to fetch trash for backup:', e);
   }
 
   let verified = true;
@@ -255,7 +286,13 @@ export async function downloadFullFirebaseBackupDirect(): Promise<FirebaseBackup
     data: backupData
   };
 
-  const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+  const jsonStr = JSON.stringify(report, null, 2);
+  const sizeMb = (new Blob([jsonStr]).size / (1024 * 1024)).toFixed(2);
+  if (parseFloat(sizeMb) > 5) {
+    console.info(`[Backup Notice] Backup size is ${sizeMb} MB.`);
+  }
+
+  const blob = new Blob([jsonStr], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -421,6 +458,40 @@ export async function restoreItemFromTrash(collectionKey: string, itemId: string
   } catch (err) {
     console.error('Failed to restore item from trash:', err);
     return false;
+  }
+}
+
+/**
+ * Permanently purge items from /trash older than specified days (default 30 days)
+ */
+export async function purgeOldTrashItems(days: number = 30): Promise<number> {
+  try {
+    const trashRef = ref(rtdb, 'trash');
+    const snapshot = await get(trashRef);
+    if (!snapshot.exists()) return 0;
+    const val = snapshot.val();
+    const cutoffMs = Date.now() - (days * 24 * 60 * 60 * 1000);
+    let purgedCount = 0;
+
+    for (const col of Object.keys(val)) {
+      const colObj = val[col];
+      if (colObj && typeof colObj === 'object') {
+        for (const id of Object.keys(colObj)) {
+          const item = colObj[id];
+          if (item && item.deletedAt) {
+            const deletedTime = new Date(item.deletedAt).getTime();
+            if (!isNaN(deletedTime) && deletedTime < cutoffMs) {
+              await remove(ref(rtdb, `trash/${col}/${id}`));
+              purgedCount++;
+            }
+          }
+        }
+      }
+    }
+    return purgedCount;
+  } catch (err) {
+    console.error('Failed to purge old trash items:', err);
+    return 0;
   }
 }
 

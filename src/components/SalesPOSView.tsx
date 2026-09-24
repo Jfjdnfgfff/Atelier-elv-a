@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
 import { ClothItem, Sale, SaleItem } from '../types';
 import { getListImage } from '../utils/imageUtils';
+import { AsyncProductImage } from './AsyncProductImage';
 import { fetchClothByBarcode } from '../firebase';
 import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
 import { BarcodeScanner } from './BarcodeScanner';
@@ -210,7 +211,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
           price: item.sellPrice,
           cost: item.buyCost,
           total: qtyToAdd * item.sellPrice,
-          imageUrl: item.imageUrl
+          imageUrl: getListImage(item) || item.imageUrl
         }
       ]);
     }
@@ -269,7 +270,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
           price: item.sellPrice,
           cost: item.buyCost,
           total: item.sellPrice,
-          imageUrl: item.imageUrl
+          imageUrl: getListImage(item) || item.imageUrl
         }
       ]);
     }
@@ -884,12 +885,8 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
 
             {/* Item Card */}
             <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center gap-3">
-              {scannedItemModal.item.imageUrl ? (
-                <img
-                  src={scannedItemModal.item.imageUrl}
-                  alt={scannedItemModal.item.name}
-                  className="w-16 h-16 rounded-xl object-contain bg-slate-50 border border-slate-200 shrink-0 p-0.5"
-                />
+              {(getListImage(scannedItemModal.item) || scannedItemModal.item.imageUrl) ? (
+                <AsyncProductImage item={scannedItemModal.item} mode="thumb" className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-200 shrink-0 p-0.5" />
               ) : (
                 <div className="w-16 h-16 rounded-xl bg-slate-200 text-slate-400 flex items-center justify-center shrink-0">
                   <Package className="w-7 h-7" />
@@ -1235,12 +1232,8 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
 
             {/* Item Card */}
             <div className="flex gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 items-center">
-              {scannedItemModal.item.imageUrl ? (
-                <img 
-                  src={scannedItemModal.item.imageUrl} 
-                  alt={scannedItemModal.item.name} 
-                  className="w-16 h-16 rounded-xl object-contain bg-white border border-slate-200 shrink-0 p-0.5"
-                />
+              {(getListImage(scannedItemModal.item) || scannedItemModal.item.imageUrl) ? (
+                <AsyncProductImage item={scannedItemModal.item} mode="thumb" className="w-16 h-16 rounded-xl bg-white border border-slate-200 shrink-0 p-0.5" />
               ) : (
                 <div className="w-16 h-16 rounded-xl bg-slate-200 flex items-center justify-center shrink-0 text-slate-400">
                   <Package className="w-8 h-8" />

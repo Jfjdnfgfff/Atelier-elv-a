@@ -37,7 +37,8 @@ import {
   DEFAULT_SEAMSTRESSES,
   DEFAULT_ACTIVITY_LOGS,
   initializeStorage,
-  getCachedCollection
+  getCachedCollection,
+  hydrateFromIndexedDB
 } from './storage';
 import { perfMonitor } from './utils/performanceMonitor';
 import { 
@@ -58,6 +59,8 @@ import { Modal } from './components/Shared';
 import AppNavigation from './components/AppNavigation';
 import { TrashModal } from './components/TrashModal';
 import { ImageMigrationModal } from './components/ImageMigrationModal';
+import { AsyncProductImage } from './components/AsyncProductImage';
+import { getListImage } from './utils/imageUtils';
 import { imageStore } from './utils/imageStore';
 
 // Lazy-loaded Modals with idle background preloading
@@ -407,8 +410,9 @@ export default function App() {
     }
   }, [activityLogs]);
 
-  // Firebase Realtime Database: Connection Status Listener
+  // Firebase Realtime Database: Connection Status Listener & IndexedDB Async Hydration
   useEffect(() => {
+    hydrateFromIndexedDB().catch(err => console.warn('Hydration error:', err));
     const unsub = SubscriptionManager.onConnectionStatus(connected => {
       setIsFirebaseConnected(connected);
     });
@@ -2601,12 +2605,8 @@ export default function App() {
           <div className="space-y-4 py-1 text-slate-800" dir="rtl">
             {/* Item Card */}
             <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-              {scannedItemAction.imageUrl ? (
-                <img 
-                  src={scannedItemAction.imageUrl} 
-                  alt={scannedItemAction.name} 
-                  className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shrink-0" 
-                />
+              {(getListImage(scannedItemAction) || scannedItemAction.imageUrl) ? (
+                <AsyncProductImage item={scannedItemAction} mode="thumb" className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shrink-0" />
               ) : (
                 <div className="w-16 h-16 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
                   <Shirt className="w-8 h-8 text-slate-500" />
@@ -2672,7 +2672,7 @@ export default function App() {
                         price: item.sellPrice,
                         cost: item.buyCost,
                         total: item.sellPrice,
-                        imageUrl: item.imageUrl
+                        imageUrl: getListImage(item) || item.imageUrl
                       }],
                       totalAmount: item.sellPrice,
                       paidAmount: item.sellPrice,

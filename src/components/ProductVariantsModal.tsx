@@ -21,6 +21,9 @@ import {
   ArrowUpDown
 } from 'lucide-react';
 import { getColorHex, POPULAR_COLORS } from './InventoryView';
+import { getListImage } from '../utils/imageUtils';
+import { AsyncProductImage } from './AsyncProductImage';
+import { imageStore } from '../utils/imageStore';
 
 interface ProductVariantsModalProps {
   item: ClothItem;
@@ -106,7 +109,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
           stock: perVarStock1 + perVarStock2,
           price: item.sellPrice || item.rentPrice || 7200,
           rentPrice: item.rentPrice || undefined,
-          imageUrl: item.imageUrl
+          imageUrl: getListImage(item) || item.imageUrl
         });
         idx++;
       });
@@ -234,7 +237,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
       stock: s1 + s2,
       price: pr,
       rentPrice: item.rentPrice || undefined,
-      imageUrl: item.imageUrl
+      imageUrl: getListImage(item) || item.imageUrl
     };
 
     const updated = [newVar, ...variants];
@@ -242,6 +245,18 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
     setIsAddingNewVariant(false);
     setNewSize('');
     setNewCode('');
+  };
+
+  const handleOpenFullImage = async () => {
+    if (!onOpenFullImage) return;
+    const initialUrl = getListImage(item) || item.imageUrl || '';
+    onOpenFullImage(initialUrl, item.name);
+    if (item.hasFullImage && item.id) {
+      const full = await imageStore.loadFull(item.id);
+      if (full) {
+        onOpenFullImage(full, item.name);
+      }
+    }
   };
 
   return (
@@ -259,17 +274,13 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <div 
-                onClick={() => item.imageUrl && onOpenFullImage?.(item.imageUrl, item.name)}
+                onClick={handleOpenFullImage}
                 className="relative w-11 h-11 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 cursor-pointer group"
                 title="اضغط لتكبير الصورة كاملة"
               >
-                {item.imageUrl ? (
+                {(getListImage(item) || item.imageUrl) ? (
                   <>
-                    <img 
-                      src={item.imageUrl} 
-                      alt={item.name} 
-                      className="w-full h-full object-contain p-0.5 group-hover:scale-105 transition-transform" 
-                    />
+                    <AsyncProductImage item={item} mode="thumb" className="w-full h-full p-0.5 group-hover:scale-105 transition-transform" />
                     <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
                       <ZoomIn className="w-4 h-4" />
                     </div>
@@ -396,13 +407,8 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                   >
                     {/* Left: Product Thumbnail */}
                     <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden bg-slate-100 shrink-0 border border-slate-200/80 shadow-2xs">
-                      {variant.imageUrl || item.imageUrl ? (
-                        <img 
-                          src={variant.imageUrl || item.imageUrl} 
-                          alt={`${item.name} - ${variant.size}`} 
-                          className="w-full h-full object-contain p-0.5 group-hover:scale-105 transition-transform" 
-                          loading="lazy"
-                        />
+                      {(variant.imageUrl || getListImage(item) || item.imageUrl) ? (
+                        <AsyncProductImage item={item} mode="thumb" className="w-full h-full p-0.5 group-hover:scale-105 transition-transform" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-xl bg-blue-50 text-blue-400">
                           <Shirt className="w-6 h-6 text-blue-400" />
@@ -728,10 +734,10 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
           )}
 
           <div className="flex items-center gap-2">
-            {item.imageUrl && (
+            {(getListImage(item) || item.imageUrl) && (
               <button
                 type="button"
-                onClick={() => onOpenFullImage?.(item.imageUrl!, item.name)}
+                onClick={handleOpenFullImage}
                 className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5"
                 title="عرض الصورة كاملة"
               >

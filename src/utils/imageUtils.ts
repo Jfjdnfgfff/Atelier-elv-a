@@ -26,7 +26,7 @@ export function processImageToVariants(input: File | string): Promise<ImageVaria
 
     const processLoadedImage = () => {
       try {
-        const thumbUrl = compressCanvas(img, 200, 0.6);
+        const thumbUrl = compressCanvas(img, 140, 0.55);
         const fullUrl = compressCanvas(img, 1200, 0.8);
         resolve({ thumbUrl, fullUrl });
       } catch (err) {

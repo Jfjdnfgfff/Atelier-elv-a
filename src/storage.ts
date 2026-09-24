@@ -136,10 +136,19 @@ export function flushPendingStorageSynchronously(): void {
     const dataToPersist = memoryStore.get(key);
     if (dataToPersist === undefined) continue;
 
+    const meta = cacheMetaStore.get(key) || { timestamp: Date.now(), version: 1 };
+    const cacheEnvelope = {
+      data: dataToPersist,
+      timestamp: meta.timestamp,
+      version: meta.version
+    };
+
+    // 1. IndexedDB write (completely independent of localStorage and outside its try/catch)
+    set(key, cacheEnvelope)
+      .catch(idbErr => console.warn(`[IndexedDB] Error setting ${key}:`, idbErr));
+
+    // 2. localStorage write with 1MB size safety check for clothes
     try {
-      const meta = cacheMetaStore.get(key) || { timestamp: Date.now(), version: 1 };
-      
-      // For clothes collection, ensure localStorage payload strips heavy legacy imageUrl if thumbUrl exists
       let storageData = dataToPersist;
       if (key === STORAGE_KEYS.CLOTHES && Array.isArray(dataToPersist)) {
         storageData = dataToPersist.map((item: any) => {
@@ -152,42 +161,23 @@ export function flushPendingStorageSynchronously(): void {
         });
       }
 
-      const cacheEnvelope = {
+      const payloadStr = JSON.stringify({
         data: storageData,
         timestamp: meta.timestamp,
         version: meta.version
-      };
-      localStorage.setItem(key, JSON.stringify(cacheEnvelope));
-      // Save full envelope asynchronously to IndexedDB without quota limits
-      set(key, { data: dataToPersist, timestamp: meta.timestamp, version: meta.version })
-        .catch(idbErr => console.warn(`[IndexedDB] Error setting ${key}:`, idbErr));
+      });
+
+      // Disable localStorage write for clothes completely if size > 1MB
+      if (key === STORAGE_KEYS.CLOTHES && payloadStr.length > 1024 * 1024) {
+        console.warn(`[localStorage] Skipped writing clothes to localStorage (size: ${(payloadStr.length / (1024 * 1024)).toFixed(2)} MB > 1MB limit). Preserved safely in IndexedDB.`);
+      } else {
+        localStorage.setItem(key, payloadStr);
+      }
     } catch (e: any) {
       if (e?.name === 'QuotaExceededError' || e?.code === 22) {
-        console.warn(`[localStorage quota exceeded for ${key}]. Saving compact cache without giant image payloads...`);
-        try {
-          const meta = cacheMetaStore.get(key) || { timestamp: Date.now(), version: 1 };
-          let compactData = dataToPersist;
-          if (Array.isArray(dataToPersist)) {
-            compactData = dataToPersist.map((item: any) => {
-              if (item && typeof item === 'object' && item.imageUrl && typeof item.imageUrl === 'string' && item.imageUrl.length > 50000) {
-                const copy = { ...item };
-                delete copy.imageUrl;
-                return copy;
-              }
-              return item;
-            });
-          }
-          localStorage.setItem(key, JSON.stringify({
-            data: compactData,
-            timestamp: meta.timestamp,
-            version: meta.version
-          }));
-          console.log(`[localStorage] Compact cache for ${key} successfully written!`);
-        } catch (fallbackErr) {
-          console.error(`Fallback cache store failed for ${key}:`, fallbackErr);
-        }
+        console.warn(`[localStorage quota exceeded for ${key}]. Skipping localStorage write (data is saved in IndexedDB).`);
       } else {
-        console.error(`Error flushing key ${key} to storage:`, e);
+        console.error(`Error flushing key ${key} to localStorage:`, e);
       }
     }
   }
@@ -339,3 +329,27 @@ export const initializeStorage = () => {
     localStorage.setItem('boutique_empty_data_flag', RESET_VERSION);
   }
 };
+
+/**
+ * Asynchronously reads all collections from IndexedDB into memoryStore before initial cloud subscription (stale-while-revalidate pattern).
+ */
+export async function hydrateFromIndexedDB(): Promise<void> {
+  const keys = Object.values(STORAGE_KEYS);
+  for (const key of keys) {
+    try {
+      const idbVal = await get(key);
+      if (idbVal && idbVal.data) {
+        const memVal = memoryStore.get(key);
+        if (!memVal || (Array.isArray(memVal) && memVal.length === 0 && Array.isArray(idbVal.data) && idbVal.data.length > 0)) {
+          memoryStore.set(key, idbVal.data);
+          cacheMetaStore.set(key, {
+            timestamp: idbVal.timestamp || Date.now(),
+            version: idbVal.version || 1
+          });
+        }
+      }
+    } catch (err) {
+      console.warn(`[IndexedDB Hydrate] Error reading ${key}:`, err);
+    }
+  }
+}

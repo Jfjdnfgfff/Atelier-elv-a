@@ -3,7 +3,7 @@ import { rtdb, sanitizeForFirebase } from '../firebase';
 
 export interface ImageStore {
   saveFull(id: string, dataUrl: string): Promise<boolean>;
-  loadFull(id: string): Promise<string | null>;
+  loadFull(id: string, bypassCache?: boolean): Promise<string | null>;
   remove(id: string): Promise<boolean>;
 }
 
@@ -39,11 +39,11 @@ export const firebaseRtdbImageStore: ImageStore = {
     }
   },
 
-  async loadFull(id: string): Promise<string | null> {
+  async loadFull(id: string, bypassCache = false): Promise<string | null> {
     if (!id) return null;
 
-    // Check in-memory LRU cache first
-    if (memoryLruCache.has(id)) {
+    // Check in-memory LRU cache first unless bypassCache is requested
+    if (!bypassCache && memoryLruCache.has(id)) {
       const cached = memoryLruCache.get(id)!;
       // Re-insert to mark as recently used
       touchLru(id, cached);

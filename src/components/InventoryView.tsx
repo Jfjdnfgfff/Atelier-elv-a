@@ -518,39 +518,13 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
     });
   }, [clothes, filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search]);
 
-  const BATCH_SIZE = 12;
-  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (clothes !== undefined) {
       setIsInitialLoading(false);
     }
   }, [clothes, inventoryTab]);
-
-  useEffect(() => {
-    setVisibleCount(BATCH_SIZE);
-  }, [filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search]);
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisibleCount(prev => Math.min(prev + BATCH_SIZE, filteredClothes.length));
-        }
-      },
-      { rootMargin: '300px' }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [filteredClothes.length]);
-
-  const visibleClothes = useMemo(() => {
-    return filteredClothes.slice(0, visibleCount);
-  }, [filteredClothes, visibleCount]);
 
   if (isInitialLoading) {
     return (
@@ -925,6 +899,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
 
       <VirtualizedClothGrid
         clothes={filteredClothes}
+        highlightedBarcode={search}
         getItemStock1={getItemStock1}
         getItemStock2={getItemStock2}
         onOpenVariantsModal={setVariantsModalItem}
@@ -1146,8 +1121,8 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
 
         {/* Item Info Summary */}
         <div className="flex items-center gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200 mb-4">
-          {item.imageUrl ? (
-            <img src={item.imageUrl} alt={item.name} className="w-14 h-14 rounded-xl object-contain bg-white border border-slate-200 shrink-0 p-0.5 shadow-2xs" />
+          {(getListImage(item) || item.imageUrl) ? (
+            <AsyncProductImage item={item} mode="thumb" className="w-14 h-14 rounded-xl bg-white border border-slate-200 shrink-0 p-0.5 shadow-2xs" />
           ) : (
             <div className="w-14 h-14 rounded-xl bg-slate-200 text-slate-400 flex items-center justify-center shrink-0">
               <Shirt className="w-6 h-6 text-slate-400" />
