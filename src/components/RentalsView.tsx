@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import { Rental, ClothItem } from '../types';
+import { VirtualizedList } from './VirtualizedList';
+import { getListImage } from '../utils/imageUtils';
 import { 
   Shirt, 
   Crown, 
@@ -320,229 +322,223 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
       )}
 
       {/* Rentals List */}
-      {filteredRentals.length === 0 ? (
-        <div className="bg-white rounded-2xl p-12 text-center border border-slate-200/80 shadow-2xs">
-          <div className="w-14 h-14 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Shirt className="w-7 h-7 text-slate-400" />
-          </div>
-          <h3 className="font-bold text-slate-800 text-sm mb-1">لا توجد عمليات في هذا القسم</h3>
-          <p className="text-xs text-slate-500 font-normal">يمكنك تسجيل عملية كراء أو حجز مستقبلي بالباركود مباشرة.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredRentals.map(rental => {
-            const isReserved = rental.status === 'reserved';
-            const isReturned = rental.status === 'returned';
-            const isOverdue = rental.status === 'active' && new Date(rental.expectedReturnDate) < new Date(today);
-            const daysUntilStart = getDaysDiffFromToday(rental.startDate);
-            const daysDiffFromReturn = getDaysDiffFromToday(rental.expectedReturnDate);
-            const matchedCloth = clothes.find(c => c.id === rental.itemId);
+      <VirtualizedList<Rental>
+        items={filteredRentals}
+        getItemKey={(rental) => rental.id}
+        estimateSize={280}
+        emptyMessage="لا توجد عمليات في هذا القسم."
+        renderItem={(rental) => {
+          const isReserved = rental.status === 'reserved';
+          const isReturned = rental.status === 'returned';
+          const isOverdue = rental.status === 'active' && new Date(rental.expectedReturnDate) < new Date(today);
+          const daysUntilStart = getDaysDiffFromToday(rental.startDate);
+          const daysDiffFromReturn = getDaysDiffFromToday(rental.expectedReturnDate);
+          const matchedCloth = clothes.find(c => c.id === rental.itemId);
+          const clothImg = matchedCloth ? getListImage(matchedCloth) : '';
 
-            return (
-              <div
-                key={rental.id}
-                className={`bg-white rounded-2xl border p-4 sm:p-5 flex flex-col justify-between transition-all duration-200 shadow-2xs hover:shadow-xs group cv-auto ${
-                  isReturned
-                    ? 'border-slate-200/70 bg-slate-50/30'
-                    : isReserved
-                    ? 'border-sky-200/80 bg-sky-50/20'
-                    : isOverdue
-                    ? 'border-rose-300 bg-rose-50/20'
-                    : 'border-slate-200/80'
-                }`}
-              >
-                <div>
-                  {/* Card Header Status */}
-                  <div className="flex justify-between items-start gap-2 mb-3">
-                    <div className="flex items-center gap-2.5">
-                      {matchedCloth?.imageUrl ? (
-                        <img 
-                          src={matchedCloth.imageUrl} 
-                          alt={rental.itemName} 
-                          decoding="async"
-                          loading="lazy"
-                          className="w-12 h-12 rounded-xl object-contain bg-slate-50 border border-slate-200 shrink-0 p-0.5" 
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 font-bold bg-slate-100 text-slate-500">
-                          <Shirt className="w-6 h-6 text-slate-400" />
-                        </div>
-                      )}
-                      <div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-tight">
-                            {rental.itemName}
-                          </h3>
-                          {rental.hasAccessories && (
-                            <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
-                              <Crown className="w-3 h-3 text-slate-600" />
-                              <span>+{rental.accessoryName || 'إكسسوار'}</span>
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[11px] font-normal text-slate-500 block mt-0.5">
-                          الزبون: <strong className="text-slate-800 font-semibold">{rental.customerName}</strong>
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Badge */}
-                    {isReturned ? (
-                      <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-semibold px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-slate-600" />
-                        <span>تم الإرجاع</span>
-                      </span>
-                    ) : isReserved ? (
-                      <span className="bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-semibold px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        <span>مستأجرة مستقبلاً</span>
-                      </span>
-                    ) : isOverdue ? (
-                      <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" />
-                        <span>متأخر {Math.abs(daysDiffFromReturn)} يوم</span>
-                      </span>
+          return (
+            <div
+              className={`bg-white rounded-2xl border p-4 sm:p-5 flex flex-col justify-between transition-all duration-200 shadow-2xs hover:shadow-xs group cv-auto ${
+                isReturned
+                  ? 'border-slate-200/70 bg-slate-50/30'
+                  : isReserved
+                  ? 'border-sky-200/80 bg-sky-50/20'
+                  : isOverdue
+                  ? 'border-rose-300 bg-rose-50/20'
+                  : 'border-slate-200/80'
+              }`}
+            >
+              <div>
+                {/* Card Header Status */}
+                <div className="flex justify-between items-start gap-2 mb-3">
+                  <div className="flex items-center gap-2.5">
+                    {clothImg ? (
+                      <img 
+                        src={clothImg} 
+                        alt={rental.itemName} 
+                        decoding="async"
+                        loading="lazy"
+                        className="w-12 h-12 rounded-xl object-contain bg-slate-50 border border-slate-200 shrink-0 p-0.5" 
+                      />
                     ) : (
-                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-emerald-600" />
-                        <span>جاري عند الزبون</span>
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Future Booking Notice Tag */}
-                  {isReserved && (
-                    <div className="mb-2.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl flex items-center justify-between text-[11px] font-medium text-slate-700">
-                      <span>حالة القطعة: متوفرة بالمخزن حتى موعد الصفقة</span>
-                      <span className="bg-slate-800 text-white px-2 py-0.5 rounded-md text-[10px] font-semibold">
-                        {daysUntilStart > 0 
-                          ? `باقي ${daysUntilStart} أيام على الاستلام` 
-                          : daysUntilStart === 0 
-                          ? 'موعد الاستلام اليوم' 
-                          : 'حان موعد الاستلام'}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Rental Dates & Info */}
-                  <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 space-y-1.5 text-xs text-slate-600 mb-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[11px] font-medium text-slate-500">الهاتف:</span>
-                      <a href={`tel:${rental.customerPhone}`} className="font-semibold text-slate-900 font-mono hover:text-slate-700 transition-colors">
-                        {rental.customerPhone}
-                      </a>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="text-[11px] font-medium text-slate-500">
-                        {isReserved ? 'موعد استلام الحجز:' : 'تاريخ الاستلام:'}
-                      </span>
-                      <span className="font-semibold font-mono text-slate-800">{rental.startDate}</span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="text-[11px] font-medium text-slate-500">موعد الإرجاع:</span>
-                      <span className={`font-semibold font-mono ${isOverdue ? 'text-rose-700 font-bold' : 'text-slate-800'}`}>
-                        {rental.expectedReturnDate}
-                      </span>
-                    </div>
-
-                    {rental.cautionAmount > 0 && (
-                      <div className="flex justify-between items-center pt-1 border-t border-slate-200">
-                        <span className="text-[11px] font-medium text-slate-700">الضمان (Caution):</span>
-                        <span className="font-bold text-slate-900 font-mono">{rental.cautionAmount.toLocaleString()} دج</span>
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 font-bold bg-slate-100 text-slate-500">
+                        <Shirt className="w-6 h-6 text-slate-400" />
                       </div>
                     )}
+                    <div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-tight">
+                          {rental.itemName}
+                        </h3>
+                        {rental.hasAccessories && (
+                          <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <Crown className="w-3 h-3 text-slate-600" />
+                            <span>+{rental.accessoryName || 'إكسسوار'}</span>
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] font-normal text-slate-500 block mt-0.5">
+                        الزبون: <strong className="text-slate-800 font-semibold">{rental.customerName}</strong>
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Financial Summary Pill */}
-                  <div className="flex items-center justify-between px-3 py-2 rounded-xl text-xs mb-3 bg-slate-50 border border-slate-200/80">
-                    <div>
-                      <span className="text-[10px] text-slate-500 font-medium block">إجمالي الكراء</span>
-                      <span className="font-bold text-slate-900 text-sm font-mono">{rental.rentPrice.toLocaleString()} دج</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 font-medium block">
-                        {isReserved ? 'العربون المدفوع' : 'المدفوع'}
-                      </span>
-                      <span className="font-bold text-emerald-700 text-sm font-mono">{rental.paidAmount.toLocaleString()} دج</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 font-medium block">
-                        {isReserved ? 'المتبقي عند الاستلام' : 'المتبقي'}
-                      </span>
-                      <span className={`font-bold text-sm font-mono ${(rental.remainingAmount || 0) > 0 ? 'text-rose-600' : 'text-slate-700'}`}>
-                        {(rental.remainingAmount || 0).toLocaleString()} دج
-                      </span>
-                    </div>
-                  </div>
+                  {/* Badge */}
+                  {isReturned ? (
+                    <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-semibold px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-slate-600" />
+                      <span>تم الإرجاع</span>
+                    </span>
+                  ) : isReserved ? (
+                    <span className="bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-semibold px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      <span>مستأجرة مستقبلاً</span>
+                    </span>
+                  ) : isOverdue ? (
+                    <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      <span>متأخر {Math.abs(daysDiffFromReturn)} يوم</span>
+                    </span>
+                  ) : (
+                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-emerald-600" />
+                      <span>جاري عند الزبون</span>
+                    </span>
+                  )}
                 </div>
 
-                {/* Actions Grid */}
-                <div className="space-y-2 pt-2 border-t border-slate-100">
-                  {/* If reserved: Big Handover Button to finalize deal */}
-                  {isReserved && (
-                    <button
-                      onClick={() => openHandoverModal(rental)}
-                      className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition-all shadow-xs flex items-center justify-center gap-1.5 active:scale-95"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      <span>تسليم الفستان وبدء الكراء (إتمام الصفقة)</span>
-                    </button>
+                {/* Future Booking Notice Tag */}
+                {isReserved && (
+                  <div className="mb-2.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl flex items-center justify-between text-[11px] font-medium text-slate-700">
+                    <span>حالة القطعة: متوفرة بالمخزن حتى موعد الصفقة</span>
+                    <span className="bg-slate-800 text-white px-2 py-0.5 rounded-md text-[10px] font-semibold">
+                      {daysUntilStart > 0 
+                        ? `باقي ${daysUntilStart} أيام على الاستلام` 
+                        : daysUntilStart === 0 
+                        ? 'موعد الاستلام اليوم' 
+                        : 'حان موعد الاستلام'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Rental Dates & Info */}
+                <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 space-y-1.5 text-xs text-slate-600 mb-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-medium text-slate-500">الهاتف:</span>
+                    <a href={`tel:${rental.customerPhone}`} className="font-semibold text-slate-900 font-mono hover:text-slate-700 transition-colors">
+                      {rental.customerPhone}
+                    </a>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-medium text-slate-500">
+                      {isReserved ? 'موعد استلام الحجز:' : 'تاريخ الاستلام:'}
+                    </span>
+                    <span className="font-semibold font-mono text-slate-800">{rental.startDate}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-medium text-slate-500">موعد الإرجاع:</span>
+                    <span className={`font-semibold font-mono ${isOverdue ? 'text-rose-700 font-bold' : 'text-slate-800'}`}>
+                      {rental.expectedReturnDate}
+                    </span>
+                  </div>
+
+                  {rental.cautionAmount > 0 && (
+                    <div className="flex justify-between items-center pt-1 border-t border-slate-200">
+                      <span className="text-[11px] font-medium text-slate-700">الضمان (Caution):</span>
+                      <span className="font-bold text-slate-900 font-mono">{rental.cautionAmount.toLocaleString()} دج</span>
+                    </div>
                   )}
+                </div>
 
-                  {/* If active / overdue: Return button */}
-                  {!isReserved && !isReturned && (
-                    <button
-                      onClick={() => onOpenReturnModal(rental)}
-                      className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition-all shadow-xs flex items-center justify-center gap-1.5 active:scale-95"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>استرجاع الفستان وتسوية الحساب</span>
-                    </button>
-                  )}
-
-                  <div className="flex gap-1.5">
-                    <button
-                      onClick={() => onOpenReceiptModal(rental)}
-                      className="flex-1 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-[11px] font-medium transition-all text-center flex items-center justify-center gap-1.5 shadow-2xs"
-                      title="طباعة وصل وعقد الكراء / الحجز"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-slate-500" />
-                      <span>{isReserved ? 'وصل الحجز' : 'وصل الكراء'}</span>
-                    </button>
-
-                    <button
-                      onClick={() => onSendMessage(rental)}
-                      className="flex-1 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-[11px] font-medium transition-all text-center flex items-center justify-center gap-1.5 shadow-2xs"
-                      title="مراسلة الزبون عبر واتساب أو SMS"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{isReserved ? 'تذكير بالموعد' : 'تذكير'}</span>
-                    </button>
-
-                    <button
-                      onClick={() => onEditRental(rental)}
-                      className="p-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-xs font-medium transition-all shadow-2xs"
-                      title="تعديل بيانات العملية"
-                    >
-                      <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                    </button>
-
-                    <button
-                      onClick={() => onDeleteRental(rental.id)}
-                      className="p-1.5 bg-white hover:bg-rose-50 border border-slate-200 text-slate-400 hover:text-rose-600 rounded-xl text-xs font-medium transition-all shadow-2xs"
-                      title="حذف العملية"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                {/* Financial Summary Pill */}
+                <div className="flex items-center justify-between px-3 py-2 rounded-xl text-xs mb-3 bg-slate-50 border border-slate-200/80">
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-medium block">إجمالي الكراء</span>
+                    <span className="font-bold text-slate-900 text-sm font-mono">{rental.rentPrice.toLocaleString()} دج</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-medium block">
+                      {isReserved ? 'العربون المدفوع' : 'المدفوع'}
+                    </span>
+                    <span className="font-bold text-emerald-700 text-sm font-mono">{rental.paidAmount.toLocaleString()} دج</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-medium block">
+                      {isReserved ? 'المتبقي عند الاستلام' : 'المتبقي'}
+                    </span>
+                    <span className={`font-bold text-sm font-mono ${(rental.remainingAmount || 0) > 0 ? 'text-rose-600' : 'text-slate-700'}`}>
+                      {(rental.remainingAmount || 0).toLocaleString()} دج
+                    </span>
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+
+              {/* Actions Grid */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                {/* If reserved: Big Handover Button to finalize deal */}
+                {isReserved && (
+                  <button
+                    onClick={() => openHandoverModal(rental)}
+                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition-all shadow-xs flex items-center justify-center gap-1.5 active:scale-95"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>تسليم الفستان وبدء الكراء (إتمام الصفقة)</span>
+                  </button>
+                )}
+
+                {/* If active / overdue: Return button */}
+                {!isReserved && !isReturned && (
+                  <button
+                    onClick={() => onOpenReturnModal(rental)}
+                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition-all shadow-xs flex items-center justify-center gap-1.5 active:scale-95"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>استرجاع الفستان وتسوية الحساب</span>
+                  </button>
+                )}
+
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => onOpenReceiptModal(rental)}
+                    className="flex-1 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-[11px] font-medium transition-all text-center flex items-center justify-center gap-1.5 shadow-2xs"
+                    title="طباعة وصل وعقد الكراء / الحجز"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-slate-500" />
+                    <span>{isReserved ? 'وصل الحجز' : 'وصل الكراء'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => onSendMessage(rental)}
+                    className="flex-1 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-[11px] font-medium transition-all text-center flex items-center justify-center gap-1.5 shadow-2xs"
+                    title="مراسلة الزبون عبر واتساب أو SMS"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{isReserved ? 'تذكير بالموعد' : 'تذكير'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => onEditRental(rental)}
+                    className="p-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-xs font-medium transition-all shadow-2xs"
+                    title="تعديل بيانات العملية"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                  </button>
+
+                  <button
+                    onClick={() => onDeleteRental(rental.id)}
+                    className="p-1.5 bg-white hover:bg-rose-50 border border-slate-200 text-slate-400 hover:text-rose-600 rounded-xl text-xs font-medium transition-all shadow-2xs"
+                    title="حذف العملية"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }}
+      />
 
       {/* Handover / Finalize Deal Modal */}
       {handoverModalRental && (

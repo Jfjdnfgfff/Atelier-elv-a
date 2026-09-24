@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { VirtualizedList } from './VirtualizedList';
 import { 
   ActivityLog, 
   ActivityCategory, 
@@ -564,106 +565,97 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
 
       {/* Logs Table / List */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-        {filteredLogs.length === 0 ? (
-          <div className="py-16 px-4 text-center">
-            <div className="w-12 h-12 bg-slate-100 border border-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-400">
-              <History className="w-6 h-6 text-slate-400" />
-            </div>
-            <h3 className="text-sm font-bold text-slate-900 mb-1">لا توجد سجلات مطابقة لخيارات البحث</h3>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              تظهر هنا جميع التعديلات والإضافات المسجلة في النظام تلقائياً وبشكل دوري.
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {filteredLogs.map((log) => {
-              const isSelected = selectedLogIds.includes(log.id);
-              return (
-                <div 
-                  key={log.id} 
-                  className={`p-3.5 sm:p-4 hover:bg-slate-50/70 transition-colors flex items-start justify-between gap-3 ${
-                    isSelected ? 'bg-slate-50' : ''
-                  }`}
-                >
-                  {/* Left Column: Checkbox & Category Icon */}
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedLogIds(prev => [...prev, log.id]);
-                        } else {
-                          setSelectedLogIds(prev => prev.filter(id => id !== log.id));
-                        }
-                      }}
-                      className="mt-1 w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500"
-                    />
+        <VirtualizedList<ActivityLog>
+          items={filteredLogs}
+          getItemKey={(log) => log.id}
+          estimateSize={95}
+          emptyMessage="لا توجد سجلات مطابقة لخيارات البحث."
+          renderItem={(log) => {
+            const isSelected = selectedLogIds.includes(log.id);
+            return (
+              <div 
+                className={`p-3.5 sm:p-4 hover:bg-slate-50/70 transition-colors flex items-start justify-between gap-3 border-b border-slate-100 ${
+                  isSelected ? 'bg-slate-50' : ''
+                }`}
+              >
+                {/* Left Column: Checkbox & Category Icon */}
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedLogIds(prev => [...prev, log.id]);
+                      } else {
+                        setSelectedLogIds(prev => prev.filter(id => id !== log.id));
+                      }
+                    }}
+                    className="mt-1 w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-500"
+                  />
 
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200/70 flex items-center justify-center shrink-0 mt-0.5">
-                      {getCategoryIcon(log.category)}
-                    </div>
-
-                    {/* Middle Column: Details & Content */}
-                    <div className="flex-1 min-w-0 space-y-1">
-                      {/* Top Row: Title, Action Badge, Category Badge */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="font-bold text-xs sm:text-sm text-slate-900">
-                          {log.title}
-                        </h4>
-                        {getActionBadge(log.actionType)}
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                          {getCategoryLabel(log.category)}
-                        </span>
-                        {log.amount !== undefined && log.amount > 0 && (
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200 font-mono">
-                            {log.amount.toLocaleString('ar-DZ')} دج
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Detailed Description */}
-                      <p className="text-xs text-slate-600 leading-relaxed break-words font-normal">
-                        {log.details}
-                      </p>
-
-                      {/* Footer Info: Timestamp, Code, User */}
-                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 pt-0.5 font-normal">
-                        <span className="flex items-center gap-1 font-mono text-slate-600">
-                          <Clock className="w-3 h-3 text-slate-400" />
-                          {formatLogDate(log.timestamp)}
-                        </span>
-                        {log.itemCodeOrId && (
-                          <span className="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-[10px] text-slate-600 border border-slate-200/60">
-                            مرجع: {log.itemCodeOrId}
-                          </span>
-                        )}
-                        <span className="text-slate-400">
-                          بواسطة: <strong className="text-slate-700 font-medium">{log.performedBy || 'المسؤول'}</strong>
-                        </span>
-                      </div>
-                    </div>
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200/70 flex items-center justify-center shrink-0 mt-0.5">
+                    {getCategoryIcon(log.category)}
                   </div>
 
-                  {/* Right Column: Delete Button with Lock Indicator */}
-                  <div className="shrink-0 flex items-center gap-1">
-                    <button
-                      onClick={() => {
-                        setPendingDeleteAction({ type: 'single', targetId: log.id });
-                        setEnteredPin('');
-                        setPinError('');
-                      }}
-                      title="حذف هذا السجل (يتطلب كلمة السر)"
-                      className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-400 hover:border-rose-200 border border-transparent flex items-center justify-center transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                  {/* Middle Column: Details & Content */}
+                  <div className="flex-1 min-w-0 space-y-1">
+                    {/* Top Row: Title, Action Badge, Category Badge */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="font-bold text-xs sm:text-sm text-slate-900">
+                        {log.title}
+                      </h4>
+                      {getActionBadge(log.actionType)}
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                        {getCategoryLabel(log.category)}
+                      </span>
+                      {log.amount !== undefined && log.amount > 0 && (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200 font-mono">
+                          {log.amount.toLocaleString('ar-DZ')} دج
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Detailed Description */}
+                    <p className="text-xs text-slate-600 leading-relaxed break-words font-normal">
+                      {log.details}
+                    </p>
+
+                    {/* Footer Info: Timestamp, Code, User */}
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 pt-0.5 font-normal">
+                      <span className="flex items-center gap-1 font-mono text-slate-600">
+                        <Clock className="w-3 h-3 text-slate-400" />
+                        {formatLogDate(log.timestamp)}
+                      </span>
+                      {log.itemCodeOrId && (
+                        <span className="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-[10px] text-slate-600 border border-slate-200/60">
+                          مرجع: {log.itemCodeOrId}
+                        </span>
+                      )}
+                      <span className="text-slate-400">
+                        بواسطة: <strong className="text-slate-700 font-medium">{log.performedBy || 'المسؤول'}</strong>
+                      </span>
+                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+
+                {/* Right Column: Delete Button with Lock Indicator */}
+                <div className="shrink-0 flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      setPendingDeleteAction({ type: 'single', targetId: log.id });
+                      setEnteredPin('');
+                      setPinError('');
+                    }}
+                    title="حذف هذا السجل (يتطلب كلمة السر)"
+                    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-400 hover:border-rose-200 border border-transparent flex items-center justify-center transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          }}
+        />
       </div>
 
       {/* ================= MODALS ================= */}

@@ -4,6 +4,7 @@ import { getListImage } from '../utils/imageUtils';
 import { fetchClothByBarcode } from '../firebase';
 import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
 import { BarcodeScanner } from './BarcodeScanner';
+import { VirtualizedPosGrid } from './VirtualizedPosGrid';
 import { LettersInput, NumbersInput } from './Shared';
 import { 
   playPosScannerBeep, 
@@ -622,160 +623,16 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
             </div>
           </div>
 
-          {/* Grid of Sellable Products with Photo Gallery */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[560px] overflow-y-auto pr-1 hide-scrollbar">
-            {visibleClothes.map(item => {
-              const s1 = getItemStock1(item);
-              const s2 = getItemStock2(item);
-              const totalStock = s1 + s2;
-              const inCartCount = cart.filter(ci => ci.itemId === item.id).reduce((s, ci) => s + ci.qty, 0);
-
-              return (
-                <div
-                  key={item.id}
-                  className={`bg-white rounded-2xl overflow-hidden border transition-all duration-200 select-none relative shadow-2xs hover:shadow-xs flex flex-col justify-between group cv-auto ${
-                    inCartCount > 0 ? 'border-slate-900 ring-2 ring-slate-900/10' : 'border-slate-200/80 hover:border-slate-300'
-                  }`}
-                >
-                  {/* Photo Container */}
-                  <div 
-                    onClick={() => addToCart(item)}
-                    className="relative aspect-[3/4] bg-slate-900/5 overflow-hidden flex items-center justify-center cursor-pointer group"
-                  >
-                    {getListImage(item) ? (
-                      <div className="relative w-full h-full overflow-hidden flex items-center justify-center bg-slate-100">
-                        <img
-                          src={getListImage(item)}
-                          alt={item.name}
-                          decoding="async"
-                          className={`relative z-1 w-full h-full transition-transform duration-300 group-hover:scale-103 select-none ${
-                            imageDisplayMode === 'fill'
-                              ? 'object-fill'
-                              : imageDisplayMode === 'cover'
-                              ? 'object-cover object-top'
-                              : 'object-contain'
-                          }`}
-                          loading="lazy"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center text-slate-400">
-                        <Package className="w-10 h-10 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                      </div>
-                    )}
-
-                    {/* Quantity Badge in Cart */}
-                    {inCartCount > 0 && (
-                      <span className="absolute top-2 left-2 bg-slate-900 text-white text-[11px] font-bold font-mono w-6 h-6 rounded-full flex items-center justify-center shadow-xs">
-                        {inCartCount}
-                      </span>
-                    )}
-
-                    {/* Stock Tag on Top Right */}
-                    <span className="absolute top-2 right-2 text-[9px] font-medium px-1.5 py-0.5 rounded-md bg-slate-900/90 text-white">
-                      {totalStock} بالمخزنين
-                    </span>
-
-                    {/* Quick Image Zoom button */}
-                    {item.imageUrl && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPreviewImage({ url: item.imageUrl!, title: item.name });
-                        }}
-                        className="absolute bottom-1.5 left-1.5 bg-slate-900/80 hover:bg-slate-900 text-white p-1 rounded-lg text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow-2xs"
-                        title="تكبير الصورة"
-                      >
-                        <ZoomIn className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Details */}
-                  <div className="p-2.5 flex-1 flex flex-col justify-between space-y-2">
-                    <div>
-                      <span className="text-[10px] text-slate-400 font-normal block truncate">{item.category}</span>
-                      <h4 className="font-bold text-slate-900 text-xs mt-0.5 line-clamp-2 leading-tight min-h-[28px]">
-                        {item.name}
-                      </h4>
-                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-normal mt-1 flex-wrap">
-                        <span>مقاس: {item.sizes && item.sizes.length > 0 ? item.sizes.join(', ') : (item.size || '38')}</span>
-                        {(item.colors && item.colors.length > 0 ? item.colors.join(', ') : item.color) && (
-                          <span>• {item.colors && item.colors.length > 0 ? item.colors.join(', ') : item.color}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Stock 1 & Stock 2 badges with 1-click add */}
-                    <div className="pt-1.5 border-t border-slate-100 space-y-1">
-                      <div className="flex items-center justify-between text-xs font-bold text-slate-900">
-                        <span className="text-slate-400 font-medium">السعر:</span>
-                        <span className="text-slate-900 font-bold font-mono">{item.sellPrice.toLocaleString()} دج</span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-1 text-[10px]">
-                        <button
-                          type="button"
-                          onClick={() => addToCart(item, 'stock1')}
-                          disabled={s1 <= 0}
-                          className="py-1 px-1.5 bg-slate-50 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 text-slate-700 border border-slate-200/80 rounded-lg font-medium flex items-center justify-between active:scale-95 transition-all"
-                          title="إضافة من المخزون 1"
-                        >
-                          <span>مخزن 1:</span>
-                          <span className="font-bold font-mono">{s1}</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => addToCart(item, 'stock2')}
-                          disabled={s2 <= 0}
-                          className="py-1 px-1.5 bg-slate-50 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 text-slate-700 border border-slate-200/80 rounded-lg font-medium flex items-center justify-between active:scale-95 transition-all"
-                          title="إضافة من المخزون 2"
-                        >
-                          <span>مخزن 2:</span>
-                          <span className="font-bold font-mono">{s2}</span>
-                        </button>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const defaultSource = s1 > 0 ? 'stock1' : 'stock2';
-                          setScannedItemModal({
-                            item,
-                            qty: 1,
-                            stockSource: defaultSource
-                          });
-                        }}
-                        className="w-full py-1 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1 active:scale-95 transition-all mt-1"
-                        title="اختيار كمية محددة للبيع"
-                      >
-                        <Barcode className="w-3 h-3 text-slate-500" />
-                        <span>تحديد الكمية</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-            {/* Bottom load more button inside product grid */}
-            {visibleProductCount < filteredClothes.length && (
-              <div className="col-span-2 sm:col-span-3 py-2 text-center">
-                <button
-                  type="button"
-                  onClick={() => setVisibleProductCount(prev => Math.min(prev + 5, filteredClothes.length))}
-                  className="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all border border-blue-200 active:scale-95 flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
-                >
-                  <span>عرض 5 سلع إضافية (+5)</span>
-                  <span className="text-[11px] font-normal opacity-75">({visibleClothes.length} من {filteredClothes.length})</span>
-                </button>
-              </div>
-            )}
-          </div>
+          {/* Grid of Sellable Products with Virtualization */}
+          <VirtualizedPosGrid
+            clothes={filteredClothes}
+            cart={cart}
+            getItemStock1={getItemStock1}
+            getItemStock2={getItemStock2}
+            addToCart={addToCart}
+            imageDisplayMode={imageDisplayMode}
+            onOpenPreview={(url, title) => setPreviewImage({ url, title })}
+          />
         </div>
 
         {/* Cart & Checkout Panel */}

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Credit, Supplier } from '../types';
+import { VirtualizedList } from './VirtualizedList';
 import type { ExtractedCustomerData } from './CustomerIdScannerModal';
 const CustomerIdScannerModal = React.lazy(() => import('./CustomerIdScannerModal').then(m => ({ default: m.CustomerIdScannerModal })));
 import { LettersInput, NumbersInput } from './Shared';
@@ -377,104 +378,67 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
           </div>
         </div>
 
-        {filteredCredits.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-6">لا توجد أي ديون مسجلة في هذا القسم.</p>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {paginatedCredits.map(credit => {
-              const isSupplierDebt = credit.supplierDebt;
+        <VirtualizedList<Credit>
+          items={filteredCredits}
+          getItemKey={(credit) => credit.id}
+          estimateSize={70}
+          emptyMessage="لا توجد أي ديون مسجلة في هذا القسم."
+          renderItem={(credit) => {
+            const isSupplierDebt = credit.supplierDebt;
 
-              return (
-                <div key={credit.id} className="py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900 text-sm">{credit.name}</span>
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200/70">
-                        {isSupplierDebt ? 'دين مورد (علينا)' : 'دين زبون (لنا)'}
-                      </span>
-                    </div>
-
-                    <div className="text-[11px] text-slate-500 font-normal mt-1 flex flex-wrap items-center gap-2">
-                      {credit.phone && (
-                        <span className="flex items-center gap-1 font-mono">
-                          <Phone className="w-3 h-3 text-slate-400" />
-                          <span>{credit.phone}</span>
-                        </span>
-                      )}
-                      <span>• {credit.type}</span>
-                      {credit.desc && <span className="text-slate-700">({credit.desc})</span>}
-                      <span className="flex items-center gap-1">
-                        • <Calendar className="w-3 h-3 text-slate-400" />
-                        <span>{new Date(credit.date).toLocaleDateString('ar-DZ')}</span>
-                      </span>
-                    </div>
+            return (
+              <div className="py-3 px-3 bg-slate-50/50 hover:bg-slate-50 rounded-xl border border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 text-sm">{credit.name}</span>
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200/70">
+                      {isSupplierDebt ? 'دين مورد (علينا)' : 'دين زبون (لنا)'}
+                    </span>
                   </div>
 
-                  <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                    <span className="font-bold text-sm font-mono text-slate-900">
-                      {credit.amount.toLocaleString()} دج
+                  <div className="text-[11px] text-slate-500 font-normal mt-1 flex flex-wrap items-center gap-2">
+                    {credit.phone && (
+                      <span className="flex items-center gap-1 font-mono">
+                        <Phone className="w-3 h-3 text-slate-400" />
+                        <span>{credit.phone}</span>
+                      </span>
+                    )}
+                    <span>• {credit.type}</span>
+                    {credit.desc && <span className="text-slate-700">({credit.desc})</span>}
+                    <span className="flex items-center gap-1">
+                      • <Calendar className="w-3 h-3 text-slate-400" />
+                      <span>{new Date(credit.date).toLocaleDateString('ar-DZ')}</span>
                     </span>
-
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => onSettleCredit(credit.id)}
-                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-medium transition-all text-xs flex items-center gap-1 active:scale-95"
-                      >
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>تم التسديد</span>
-                      </button>
-
-                      <button
-                        onClick={() => onDeleteCredit(credit.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                        title="حذف"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
 
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 mt-4">
-            <div className="text-xs text-slate-500 font-medium">
-              عرض {((currentPage - 1) * PAGE_SIZE) + 1} - {Math.min(currentPage * PAGE_SIZE, filteredCredits.length)} من إجمالي {filteredCredits.length} دين
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all"
-              >
-                <ChevronRight className="w-4 h-4" />
-                <span>السابق</span>
-              </button>
-              
-              <div className="flex items-center gap-1 text-xs font-bold text-slate-800 px-2">
-                <span>صفحة</span>
-                <span className="font-mono bg-white border border-slate-200 px-2 py-0.5 rounded-lg">{currentPage}</span>
-                <span>من</span>
-                <span className="font-mono">{totalPages}</span>
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                  <span className="font-bold text-sm font-mono text-slate-900">
+                    {credit.amount.toLocaleString()} دج
+                  </span>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => onSettleCredit(credit.id)}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-medium transition-all text-xs flex items-center gap-1 active:scale-95"
+                    >
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>تم التسديد</span>
+                    </button>
+
+                    <button
+                      onClick={() => onDeleteCredit(credit.id)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      title="حذف"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all"
-              >
-                <span>التالي</span>
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
+            );
+          }}
+        />
       </div>
     </div>
   );
