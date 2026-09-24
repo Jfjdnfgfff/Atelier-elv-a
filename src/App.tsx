@@ -50,7 +50,8 @@ import {
   syncCollectionToCloud, 
   SubscriptionManager, 
   areArraysEqual,
-  firebaseConfig
+  firebaseConfig,
+  downloadFullFirebaseBackupDirect
 } from './firebase';
 
 // Components
@@ -2028,31 +2029,19 @@ export default function App() {
   // ==========================
   // BACKUP & RESTORE
   // ==========================
-  const handleExportBackup = () => {
-    const backupData = {
-      clothes,
-      rentals,
-      sales,
-      expenses,
-      credits,
-      staffPayouts,
-      staffMembers,
-      staffAbsences,
-      maintenanceOrders,
-      suppliers,
-      seamstresses,
-      rawMaterials,
-      caisseClosures,
-      exportedAt: new Date().toISOString()
-    };
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `نسخة_بوتيك_مانجر_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('تم تصدير النسخة الاحتياطية بنجاح');
+  const handleExportBackup = async () => {
+    try {
+      showToast('جاري قراءة جميع المجموعات مباشرة من Firebase...');
+      const report = await downloadFullFirebaseBackupDirect();
+      if (report.verified) {
+        showToast('تم التحقق والتأكد من مطابقة السجلات وتنزيل النسخة بنجاح!', 'success');
+      } else {
+        showToast('تم تنزيل النسخة الاحتياطية المباشرة بنجاح!');
+      }
+    } catch (err) {
+      console.error('Backup failed:', err);
+      showToast('حدث خطأ أثناء تصدير النسخة الاحتياطية', 'error');
+    }
   };
 
   const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {

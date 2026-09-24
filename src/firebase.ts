@@ -198,15 +198,88 @@ export async function updateItemInFirebase(
 export async function deleteItemFromFirebase(collectionKey: string, itemId: string): Promise<void> {
   if (!itemId) return;
   try {
-    // 1. Atomic update to null removes the key without touching other records
+    // 1. Fetch item snapshot first for soft-delete / trash copy (Data Protection Rule 7)
+    const itemRef = ref(rtdb, `${collectionKey}/${itemId}`);
+    const snapshot = await get(itemRef);
+    if (snapshot.exists()) {
+      const itemData = snapshot.val();
+      const trashRef = ref(rtdb, `trash/${collectionKey}/${itemId}`);
+      await set(trashRef, {
+        ...itemData,
+        originalCollection: collectionKey,
+        deletedAt: new Date().toISOString()
+      });
+    }
+
+    // 2. Atomic update to null removes the key from active collection without touching other records
     const collectionRef = ref(rtdb, collectionKey);
     await update(collectionRef, { [itemId]: null });
-    // 2. Also remove direct child ref for complete consistency
-    const itemRef = ref(rtdb, `${collectionKey}/${itemId}`);
+    // 3. Also remove direct child ref for complete consistency
     await remove(itemRef);
   } catch (error) {
-    console.warn(`[Firebase RTDB] Failed to delete targeted item ${collectionKey}/${itemId}:`, error);
+    console.warn(`[Firebase RTDB] Failed to soft-delete targeted item ${collectionKey}/${itemId}:`, error);
   }
+}
+
+export interface FirebaseBackupReport {
+  timestamp: string;
+  counts: Record<string, number>;
+  verified: boolean;
+  data: Record<string, any[]>;
+}
+
+/**
+ * Data Protection Rule 6:
+ * Reads ALL collections directly from Firebase Realtime Database (not from local state memory),
+ * counts records in every collection, verifies count against database totals, and triggers
+ * a direct JSON file download.
+ */
+export async function downloadFullFirebaseBackupDirect(): Promise<FirebaseBackupReport> {
+  const collections = Object.values(FIREBASE_COLLECTIONS);
+  const backupData: Record<string, any[]> = {};
+  const counts: Record<string, number> = {};
+  let totalRecords = 0;
+
+  for (const col of collections) {
+    const items = await fetchCollectionOnce(col);
+    backupData[col] = items;
+    counts[col] = items.length;
+    totalRecords += items.length;
+  }
+
+  let verified = true;
+  for (const col of collections) {
+    const checkSnap = await get(ref(rtdb, col));
+    let dbCount = 0;
+    if (checkSnap.exists()) {
+      const val = checkSnap.val();
+      if (Array.isArray(val)) dbCount = val.filter(Boolean).length;
+      else if (typeof val === 'object' && val !== null) dbCount = Object.keys(val).length;
+    }
+    if (dbCount !== counts[col]) {
+      console.warn(`[Backup Verification] Collection ${col}: fetched ${counts[col]}, DB count ${dbCount}`);
+      verified = false;
+    }
+  }
+
+  const report: FirebaseBackupReport = {
+    timestamp: new Date().toISOString(),
+    counts,
+    verified,
+    data: backupData
+  };
+
+  const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `boutique_full_firebase_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  return report;
 }
 
 /**

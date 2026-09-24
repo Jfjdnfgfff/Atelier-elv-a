@@ -1,3 +1,4 @@
+import { get, set } from 'idb-keyval';
 import { 
   ClothItem, 
   Rental, 
@@ -144,6 +145,8 @@ export function flushPendingStorageSynchronously(): void {
         version: meta.version
       };
       localStorage.setItem(key, JSON.stringify(cacheEnvelope));
+      // Save full envelope asynchronously to IndexedDB without quota limits
+      set(key, cacheEnvelope).catch(idbErr => console.warn(`[IndexedDB] Error setting ${key}:`, idbErr));
     } catch (e: any) {
       if (e?.name === 'QuotaExceededError' || e?.code === 22) {
         console.warn(`[localStorage quota exceeded for ${key}]. Saving compact cache without giant image payloads...`);
