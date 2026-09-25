@@ -47,7 +47,11 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
   const [measurements, setMeasurements] = useState(order?.measurements || '');
   const [tailorName, setTailorName] = useState(order?.tailorName || (staffMembers.find(s => s.role.includes('خياط'))?.name || staffMembers[0]?.name || ''));
   
-  const [cost, setCost] = useState<number>(order?.cost !== undefined ? order.cost : 500);
+  const hasBreakdown = order && (order.laborCost !== undefined || order.fabricCost !== undefined || order.extraCost !== undefined);
+  const [laborCost, setLaborCost] = useState<number | ''>(hasBreakdown ? (order!.laborCost || 0) : (order?.cost !== undefined ? order.cost : 500));
+  const [fabricCost, setFabricCost] = useState<number | ''>(hasBreakdown ? (order!.fabricCost || '') : '');
+  const [extraCost, setExtraCost] = useState<number | ''>(hasBreakdown ? (order!.extraCost || '') : '');
+  const cost = (Number(laborCost) || 0) + (Number(fabricCost) || 0) + (Number(extraCost) || 0);
   const [price, setPrice] = useState<number>(order?.price !== undefined ? order.price : 1500);
   const [paidAmount, setPaidAmount] = useState<number>(order?.paidAmount !== undefined ? order.paidAmount : 1500);
   
@@ -118,6 +122,9 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
       measurements,
       tailorName,
       cost: Number(cost) || 0,
+      laborCost: Number(laborCost) || 0,
+      fabricCost: Number(fabricCost) || 0,
+      extraCost: Number(extraCost) || 0,
       price: targetType === 'internal_stock' ? 0 : (Number(price) || 0),
       paidAmount: targetType === 'internal_stock' ? 0 : (Number(paidAmount) || 0),
       remainingAmount,
@@ -344,16 +351,36 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
 
         {/* Financial Fields */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">أتعاب الخياطة / التكلفة (دج)</label>
-            <input
-              type="number"
-              min="0"
-              value={cost}
-              onChange={(e) => setCost(Number(e.target.value))}
-              placeholder="500"
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
-            />
+          <div className="sm:col-span-3 bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-slate-800">قيمة التكليف (تكلفة الخياطة)</span>
+              <span className="text-xs font-bold bg-slate-900 text-white px-2 py-0.5 rounded-lg font-mono">{cost.toLocaleString()} دج</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                ['أتعاب الخياطة (يد عاملة)', laborCost, setLaborCost],
+                ['القماش والمواد', fabricCost, setFabricCost],
+                ['إكسسوارات / مصاريف أخرى', extraCost, setExtraCost],
+              ] as const).map(([label, val, setter]) => (
+                <div key={label}>
+                  <label className="block text-[10px] font-bold text-slate-600 mb-1">{label}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={val}
+                    onChange={(e) => (setter as any)(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="0"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 text-xs font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
+                  />
+                </div>
+              ))}
+            </div>
+            {targetType === 'customer_order' && (
+              <div className={`text-xs font-bold flex justify-between px-1 ${Number(price) - cost >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                <span>الربح الصافي (السعر - التكليف):</span>
+                <span className="font-mono">{(Number(price) - cost).toLocaleString()} دج</span>
+              </div>
+            )}
           </div>
 
           {targetType === 'customer_order' && (

@@ -73,7 +73,8 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
       activeCount: active.length,
       dueSoonCount,
       readyCount,
-      totalRemaining
+      totalRemaining,
+      totalCost: orders.reduce((s, o) => s + (o.cost || 0), 0)
     };
   }, [orders]);
 
@@ -148,7 +149,7 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
         </div>
 
         {/* Minimalist Stats Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 pt-3 border-t border-slate-100 text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3 pt-3 border-t border-slate-100 text-xs">
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
             <span className="text-slate-500 block font-normal">طلبات بالورشة</span>
             <span className="text-base font-bold font-mono text-slate-900">{stats.activeCount}</span>
@@ -164,6 +165,10 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
             <span className="text-slate-500 block font-normal">المتبقي (ديون)</span>
             <span className="text-base font-bold font-mono text-slate-900">{stats.totalRemaining.toLocaleString()} دج</span>
+          </div>
+          <div className="bg-rose-50 p-2.5 rounded-xl border border-rose-200/60">
+            <span className="text-rose-600 block font-normal">مجموع قيمة التكليف</span>
+            <span className="text-base font-bold font-mono text-rose-800">{stats.totalCost.toLocaleString()} دج</span>
           </div>
         </div>
       </div>
@@ -335,6 +340,16 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
                       <div>
                         <span className="text-[11px] text-slate-400 block font-normal">الجهة</span>
                         <span className="font-medium text-slate-700">مخزن المحل</span>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-[11px] text-slate-400 block font-normal">قيمة التكليف</span>
+                      <span className="font-bold text-rose-700 font-mono">{(order.cost || 0).toLocaleString()} دج</span>
+                    </div>
+                    {order.price > 0 && (
+                      <div>
+                        <span className="text-[11px] text-slate-400 block font-normal">الربح</span>
+                        <span className={`font-bold font-mono ${order.price - (order.cost || 0) >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{(order.price - (order.cost || 0)).toLocaleString()} دج</span>
                       </div>
                     )}
                   </div>

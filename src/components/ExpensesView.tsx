@@ -71,15 +71,23 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
   const [voucherExpense, setVoucherExpense] = useState<Expense | null>(null);
 
   const generalCategories = [
+    'كراء المحل (إيجار)',
+    'فاتورة الكهرباء',
+    'فاتورة الماء',
+    'فاتورة الغاز',
+    'الإنترنت والهاتف',
     'غسيل وتنظيف جاف (Pressing)',
-    'كراء المحل وفواتير (كهرباء، ماء، إنترنت)',
     'تغليف وأكياس فساتين ومستلزمات',
     'خياطة وتعديل مقاسات خارجية',
     'صيانة وتجهيزات وديكور المحل',
     'تسويق وإعلانات',
     'مصاريف نقل وتوصيل السلعة',
+    'ضرائب ورسوم وتأمين',
+    'أكل وشرب ومصاريف يومية',
     'مصاريف تشغيلية أخرى'
   ];
+  const [customCategory, setCustomCategory] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
   const quickGoodsSuggestions = [
     'فساتين سهرة وأعراس جديدة',
@@ -124,7 +132,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
     onAddExpense({
       desc: generalDesc.trim(),
       amount: Number(generalAmount),
-      category: generalCategory,
+      category: generalCategory === '__custom__' ? (customCategory.trim() || 'مصاريف أخرى') : generalCategory,
       date: new Date(generalDate).toISOString(),
       isSupplierPurchase: false
     });
@@ -226,6 +234,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
     if (filterTab === 'suppliers' && !exp.isSupplierPurchase) return false;
     if (filterTab === 'general' && exp.isSupplierPurchase) return false;
     if (filterTab === 'has_credit' && (!exp.isSupplierPurchase || (exp.creditAmount || 0) <= 0)) return false;
+    if (categoryFilter !== 'all' && (exp.isSupplierPurchase || exp.category !== categoryFilter)) return false;
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -607,7 +616,17 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                 className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-slate-400"
               >
                 {generalCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                <option value="__custom__">+ تصنيف آخر (اكتبه يدوياً)</option>
               </select>
+              {generalCategory === '__custom__' && (
+                <input
+                  type="text"
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  placeholder="اسم التصنيف..."
+                  className="mt-1.5 w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-slate-400"
+                />
+              )}
             </div>
           </div>
 
@@ -620,6 +639,55 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
           </button>
         </form>
       )}
+
+      {/* Expenses breakdown by category */}
+      {(() => {
+        const totals: Record<string, number> = {};
+        expenses.forEach(exp => {
+          const key = exp.isSupplierPurchase ? 'خلاص وشراء سلعة من المورد' : (exp.category || 'غير مصنف');
+          const val = exp.isSupplierPurchase ? (exp.paidAmount ?? exp.amount ?? 0) : (exp.amount || 0);
+          totals[key] = (totals[key] || 0) + Number(val || 0);
+        });
+        const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+        const grand = entries.reduce((a, [, v]) => a + v, 0);
+        if (entries.length === 0) return null;
+        return (
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900">تفصيل المصاريف حسب النوع</h3>
+              <span className="text-xs font-bold text-rose-700">المجموع: {grand.toLocaleString()} دج</span>
+            </div>
+            <div className="space-y-1.5">
+              {entries.map(([cat, val]) => {
+                const pct = grand > 0 ? Math.round((val / grand) * 100) : 0;
+                const clickable = cat !== 'خلاص وشراء سلعة من المورد';
+                const active = categoryFilter === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => clickable ? setCategoryFilter(active ? 'all' : cat) : setFilterTab('suppliers')}
+                    className={`w-full text-right rounded-xl px-3 py-2 border transition-colors ${active ? 'border-slate-900 bg-slate-50' : 'border-slate-100 hover:bg-slate-50'}`}
+                  >
+                    <div className="flex justify-between text-xs">
+                      <span className="font-medium text-slate-800">{cat}</span>
+                      <span className="font-bold text-slate-900">{val.toLocaleString()} دج <span className="text-slate-400 font-normal">({pct}%)</span></span>
+                    </div>
+                    <div className="mt-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-rose-500" style={{ width: `${pct}%` }} />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {categoryFilter !== 'all' && (
+              <button type="button" onClick={() => setCategoryFilter('all')} className="text-xs text-slate-600 underline">
+                إلغاء التصفية ({categoryFilter})
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Expenses History & Supplier Log */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs space-y-4">

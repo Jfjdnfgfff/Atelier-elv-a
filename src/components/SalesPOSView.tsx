@@ -379,7 +379,8 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
     }));
   };
 
-  const { totalAmount, totalCost, totalProfit } = useMemo(() => {
+  const [discount, setDiscount] = useState<number | ''>('');
+  const { totalAmount: subtotalAmount, totalCost } = useMemo(() => {
     let amount = 0;
     let cost = 0;
     for (let i = 0; i < cart.length; i++) {
@@ -394,6 +395,9 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
     };
   }, [cart]);
 
+  const discountValue = Math.min(Math.max(0, Number(discount) || 0), subtotalAmount);
+  const totalAmount = subtotalAmount - discountValue;
+  const totalProfit = totalAmount - totalCost;
   const actualPaid = paidAmount === '' ? totalAmount : Number(paidAmount);
   const debtAmount = Math.max(0, totalAmount - actualPaid);
 
@@ -424,8 +428,10 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
       paidAmount: actualPaid,
       debtAmount,
       profit: totalProfit,
-      date: finalSaleDate
+      date: finalSaleDate,
+      ...(discountValue > 0 ? { discountAmount: discountValue, subtotalAmount, notes: `تخفيض: ${discountValue.toLocaleString()} دج (السعر الأصلي ${subtotalAmount.toLocaleString()} دج)` } : {})
     });
+    setDiscount('');
 
     setCart([]);
     setCustomerName('');
@@ -826,9 +832,25 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                   />
                 </div>
 
+                <div className="flex items-center gap-2 bg-amber-50 p-2.5 rounded-xl border border-amber-200/70">
+                  <label className="text-[11px] text-amber-800 font-bold shrink-0">تخفيض السعر (دج)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max={subtotalAmount}
+                    value={discount}
+                    onChange={(e) => setDiscount(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="0"
+                    className="flex-1 min-w-0 bg-white border border-amber-200 rounded-lg px-2 py-1.5 text-xs font-bold font-mono text-slate-900 focus:outline-none focus:border-amber-400"
+                  />
+                  {discountValue > 0 && (
+                    <span className="text-[10px] text-slate-500 line-through font-mono shrink-0">{subtotalAmount.toLocaleString()}</span>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
                   <div>
-                    <label className="block text-[10px] text-slate-500 font-medium mb-1">المبلغ الإجمالي</label>
+                    <label className="block text-[10px] text-slate-500 font-medium mb-1">المبلغ الإجمالي{discountValue > 0 ? ' بعد التخفيض' : ''}</label>
                     <div className="text-base font-bold text-slate-900 font-mono">{totalAmount.toLocaleString()} دج</div>
                   </div>
                   <div>
