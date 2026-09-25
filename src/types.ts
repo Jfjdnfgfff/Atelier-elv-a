@@ -61,6 +61,7 @@ export interface Rental {
   hasAccessories?: boolean; // هل تم إضافة إكسسوارات مع الفستان
   accessoryName?: string; // بيان الإكسسوار (تاج، حزام، حقيبة، شال، مجوهرات...)
   accessoryPrice?: number; // سعر كراء الإكسسوارات الإضافية
+  discountAmount?: number; // تخفيض السعر
   rentPrice: number; // السعر الكلي الإجمالي (الفستان + الإكسسوار)
   paidAmount: number;
   remainingAmount: number;
@@ -99,6 +100,8 @@ export interface Sale {
   profit: number;
   date: string;
   notes?: string;
+  discountAmount?: number; // تخفيض
+  subtotalAmount?: number; // المبلغ قبل التخفيض
 }
 
 export interface Supplier {
@@ -247,7 +250,10 @@ export interface MaintenanceOrder {
   description: string;
   measurements?: string;
   tailorName?: string;
-  cost: number;
+  cost: number; // قيمة التكليف الإجمالية
+  laborCost?: number; // أتعاب الخياطة
+  fabricCost?: number; // القماش والمواد
+  extraCost?: number; // مصاريف أخرى
   price: number;
   paidAmount: number;
   remainingAmount: number;

@@ -207,6 +207,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   const [stockModalItem, setStockModalItem] = useState<ClothItem | null>(null);
   const [quickTransferItem, setQuickTransferItem] = useState<ClothItem | null>(null);
   const [showScannerModal, setShowScannerModal] = useState(false);
+  const [showSearchScanner, setShowSearchScanner] = useState(false);
   const [barcodeActionNotice, setBarcodeActionNotice] = useState<string | null>(null);
 
   // Security Password Modal for Add Product & Stock Transfer
@@ -509,7 +510,8 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
       if (search.trim()) {
         const q = search.toLowerCase();
         const matchName = item.name.toLowerCase().includes(q);
-        const matchBarcode = item.barcode.includes(q);
+        const qc = q.replace(/^#/, '').trim();
+        const matchBarcode = (item.barcode || '').toLowerCase().includes(qc) || (item.variants || []).some(v => (v.code || '').toLowerCase().replace(/^#/, '').includes(qc));
         const matchColor = item.color.toLowerCase().includes(q) || (item.colors && item.colors.some(c => c.toLowerCase().includes(q)));
         const matchSize = item.size.toLowerCase().includes(q) || (item.sizes && item.sizes.some(s => s.toLowerCase().includes(q)));
         return matchName || matchBarcode || matchColor || matchSize;
@@ -797,11 +799,25 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="بحث بالاسم، الباركود، المقاس، اللون..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-9 pl-4 py-2 text-xs font-normal text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:bg-white"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-9 pl-20 py-2 text-xs font-normal text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:bg-white"
             />
             <svg className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
+            {search && (
+              <button type="button" onClick={() => setSearch('')} className="absolute left-12 top-1.5 p-1 text-slate-400 hover:text-slate-700" title="مسح">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowSearchScanner(true)}
+              className="absolute left-1 top-1 bottom-1 px-2 rounded-lg bg-slate-900 text-white text-[10px] font-bold flex items-center gap-1 hover:bg-slate-700"
+              title="بحث بالباركود (كاميرا)"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>باركود</span>
+            </button>
           </div>
         </div>
 
@@ -1026,6 +1042,14 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           item={quickTransferItem}
           onClose={() => setQuickTransferItem(null)}
           onTransfer={(direction, qty) => handleTransferStock(quickTransferItem.id, direction, qty)}
+        />
+      )}
+
+      {showSearchScanner && (
+        <BarcodeScanner
+          title="بحث في المخزون بالباركود"
+          onScan={(code) => { setSearch(String(code).trim()); setShowSearchScanner(false); }}
+          onClose={() => setShowSearchScanner(false)}
         />
       )}
 
