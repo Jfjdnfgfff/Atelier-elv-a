@@ -529,9 +529,16 @@ export async function syncCollectionToCloud<T extends { id?: string }>(
     // document and no giant single write is sent for large imports/backups.
     const entries = Object.entries(mapObj);
     const CHUNK_SIZE = 50;
-    for (let start = 0; start < entries.length; start += CHUNK_SIZE) {
-      const chunk = Object.fromEntries(entries.slice(start, start + CHUNK_SIZE));
-      await update(colRef, chunk);
+    const MAX_PARALLEL_WRITES = 3;
+    for (let start = 0; start < entries.length; start += CHUNK_SIZE * MAX_PARALLEL_WRITES) {
+      const chunkPromises: Promise<void>[] = [];
+      for (let offset = 0; offset < MAX_PARALLEL_WRITES; offset++) {
+        const chunkStart = start + offset * CHUNK_SIZE;
+        if (chunkStart >= entries.length) break;
+        const chunk = Object.fromEntries(entries.slice(chunkStart, chunkStart + CHUNK_SIZE));
+        chunkPromises.push(update(colRef, chunk));
+      }
+      await Promise.all(chunkPromises);
     }
   } catch (error) {
     console.warn(`[Firebase RTDB] Failed to merge sync collection ${collectionKey}:`, error);
