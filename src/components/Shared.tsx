@@ -95,56 +95,56 @@ export const NavButton: React.FC<{
       case 'dashboard':
         return active 
           ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
-          : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/70';
+          : 'text-slate-600 ';
       case 'rentals':
         return active 
           ? 'bg-sky-600 text-white shadow-md shadow-sky-500/20' 
-          : 'text-slate-600 hover:text-sky-700 hover:bg-sky-50/70';
+          : 'text-slate-600 ';
       case 'inventory':
         return active 
           ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' 
-          : 'text-slate-600 hover:text-indigo-700 hover:bg-indigo-50/70';
+          : 'text-slate-600 ';
       case 'sales':
         return active 
           ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20' 
-          : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/70';
+          : 'text-slate-600 ';
       case 'tailoring':
         return active 
           ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' 
-          : 'text-slate-600 hover:text-purple-700 hover:bg-purple-50/70';
+          : 'text-slate-600 ';
       case 'expenses':
         return active 
           ? 'bg-rose-600 text-white shadow-md shadow-rose-500/20' 
-          : 'text-slate-600 hover:text-rose-700 hover:bg-rose-50/70';
+          : 'text-slate-600 ';
       case 'credits':
         return active 
           ? 'bg-amber-600 text-white shadow-md shadow-amber-500/20' 
-          : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/70';
+          : 'text-slate-600 ';
       case 'partners':
         return active 
           ? 'bg-teal-600 text-white shadow-md shadow-teal-500/20' 
-          : 'text-slate-600 hover:text-teal-700 hover:bg-teal-50/70';
+          : 'text-slate-600 ';
       case 'caisse':
         return active 
           ? 'bg-cyan-600 text-white shadow-md shadow-cyan-500/20' 
-          : 'text-slate-600 hover:text-cyan-700 hover:bg-cyan-50/70';
+          : 'text-slate-600 ';
       case 'staff':
         return active 
           ? 'bg-violet-600 text-white shadow-md shadow-violet-500/20' 
-          : 'text-slate-600 hover:text-violet-700 hover:bg-violet-50/70';
+          : 'text-slate-600 ';
       default:
         return active 
           ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
-          : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/70';
+          : 'text-slate-600 ';
     }
   };
 
   return (
     <button
       onClick={onClick}
-      className={`relative flex flex-col items-center justify-center gap-1 shrink-0 py-2 px-3 sm:px-3.5 rounded-xl text-xs font-semibold transition-all min-w-[64px] sm:min-w-[72px] min-h-[44px] group active:scale-95 ${getThemeClasses()}`}
+      className={`relative flex flex-col items-center justify-center gap-1 shrink-0 py-2 px-3 sm:px-3.5 rounded-xl text-xs font-semibold transition-none min-w-[64px] sm:min-w-[72px] min-h-[44px] active:scale-95 ${getThemeClasses()}`}
     >
-      <div className={`shrink-0 transition-transform group-hover:scale-110 ${active ? 'text-white' : ''}`}>
+      <div className={`shrink-0 ${active ? 'text-white' : ''}`}>
         {getIcon()}
       </div>
       <span className="whitespace-nowrap leading-none text-[11px] sm:text-xs tracking-tight">{label}</span>
