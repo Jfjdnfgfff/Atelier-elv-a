@@ -40,6 +40,12 @@ interface SalesPOSViewProps {
   onScanBarcode: () => void;
   scannedCode?: string | null;
   onClearScannedCode?: () => void;
+  hasMoreClothes?: boolean;
+  isLoadingMoreClothes?: boolean;
+  onLoadMoreClothes?: () => Promise<void>;
+  hasMoreSales?: boolean;
+  isLoadingMoreSales?: boolean;
+  onLoadMoreSales?: () => Promise<void>;
 }
 
 export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
@@ -48,7 +54,13 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
   onCompleteSale,
   onDeleteSale,
   scannedCode,
-  onClearScannedCode
+  onClearScannedCode,
+  hasMoreClothes = false,
+  isLoadingMoreClothes = false,
+  onLoadMoreClothes,
+  hasMoreSales = false,
+  isLoadingMoreSales = false,
+  onLoadMoreSales
 }) => {
   const getItemStock1 = (c: ClothItem) => c.stock1 !== undefined ? c.stock1 : (c.stock || 0);
   const getItemStock2 = (c: ClothItem) => c.stock2 !== undefined ? c.stock2 : 0;
@@ -669,15 +681,25 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
             onOpenPreview={(url, title) => setPreviewImage({ url, title })}
           />
 
-          {visibleProductCount < filteredClothes.length && (
+          {(visibleProductCount < filteredClothes.length || hasMoreClothes) && (
             <div className="flex justify-center my-4">
               <button
                 type="button"
-                onClick={() => setVisibleProductCount(prev => prev + 5)}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-2xl text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
+                disabled={isLoadingMoreClothes}
+                onClick={async () => {
+                  if (visibleProductCount < filteredClothes.length) {
+                    setVisibleProductCount(prev => prev + 5);
+                    return;
+                  }
+                  if (onLoadMoreClothes) {
+                    await onLoadMoreClothes();
+                    setVisibleProductCount(prev => prev + 5);
+                  }
+                }}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-wait text-white px-6 py-2.5 rounded-2xl text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
-                <span>تحميل 5 منتجات أخرى (عرض {visibleClothes.length} من {filteredClothes.length})</span>
+                {isLoadingMoreClothes ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                <span>{isLoadingMoreClothes ? 'جاري جلب 5 منتجات...' : `تحميل 5 منتجات أخرى (عرض ${visibleClothes.length} من المحمل ${filteredClothes.length})`}</span>
               </button>
             </div>
           )}
@@ -1263,14 +1285,25 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
 
             {/* Bottom Progressive Load Button for Sales History */}
             <div className="pt-3 flex justify-between items-center text-xs">
-              {visibleSalesCount < sales.length ? (
+              {((visibleSalesCount < sales.length) || hasMoreSales) ? (
                 <button
                   type="button"
-                  onClick={() => setVisibleSalesCount(prev => Math.min(prev + 5, sales.length))}
-                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold transition-all border border-slate-200 text-center active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                  disabled={isLoadingMoreSales}
+                  onClick={async () => {
+                    if (visibleSalesCount < sales.length) {
+                      setVisibleSalesCount(prev => Math.min(prev + 5, sales.length));
+                      return;
+                    }
+                    if (onLoadMoreSales) {
+                      await onLoadMoreSales();
+                      setVisibleSalesCount(prev => prev + 5);
+                    }
+                  }}
+                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-60 disabled:cursor-wait text-slate-800 rounded-xl font-bold transition-all border border-slate-200 text-center active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <span>عرض 5 عمليات بيع أخرى (+5)</span>
-                  <span className="text-[11px] font-normal text-slate-500">(عرض {visibleSales.length} من إجمالي {sales.length})</span>
+                  {isLoadingMoreSales ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  <span>{isLoadingMoreSales ? 'جاري جلب 5 عمليات...' : 'عرض 5 عمليات بيع أخرى (+5)'}</span>
+                  {!isLoadingMoreSales && <span className="text-[11px] font-normal text-slate-500">(عرض {visibleSales.length} من المحمل {sales.length})</span>}
                 </button>
               ) : (
                 <div className="w-full text-center text-emerald-700 bg-emerald-50 border border-emerald-200/80 py-2 rounded-xl font-medium">

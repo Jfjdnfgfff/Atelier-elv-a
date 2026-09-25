@@ -12,6 +12,7 @@ import {
   limitToLast,
   get,
   orderByChild,
+  orderByKey,
   equalTo,
   startAt,
   endAt,
@@ -359,6 +360,76 @@ export async function fetchCollectionOnce<T extends { id?: string }>(collectionK
   }
 }
 
+export interface CollectionPageOptions {
+  limit?: number;
+  cursor?: string | null;
+}
+
+export interface CollectionPage<T> {
+  items: T[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+/**
+ * Paginated collection read for large RTDB collections.
+ *
+ * Every record lives at /collection/{recordId}; this query never reads the
+ * complete collection. Pages are returned newest-key-first and the cursor is
+ * the last record key from the previous page. The extra record in the query
+ * lets us tell the UI whether another page exists.
+ */
+export async function fetchCollectionPage<T extends { id?: string }>(
+  collectionKey: string,
+  options: CollectionPageOptions = {}
+): Promise<CollectionPage<T>> {
+  const pageSize = Math.max(1, Math.min(options.limit || 5, 100));
+  const cursor = options.cursor || null;
+
+  try {
+    const constraints: any[] = [orderByKey()];
+    if (cursor) constraints.push(endAt(cursor));
+    constraints.push(limitToLast(pageSize + 1 + (cursor ? 1 : 0)));
+
+    const snapshot = await get(query(ref(rtdb, collectionKey), ...constraints));
+    if (!snapshot.exists()) {
+      return { items: [], nextCursor: null, hasMore: false };
+    }
+
+    const value = snapshot.val();
+    const entries: Array<{ key: string; item: T }> = [];
+    if (Array.isArray(value)) {
+      value.forEach((item: T, index: number) => {
+        if (item && typeof item === 'object') {
+          entries.push({ key: String(item.id || index), item: { ...item, id: item.id || String(index) } });
+        }
+      });
+    } else if (value && typeof value === 'object') {
+      Object.keys(value).forEach(key => {
+        const item = value[key];
+        if (item && typeof item === 'object') {
+          entries.push({ key, item: { ...item, id: item.id || key } });
+        }
+      });
+    }
+
+    // endAt() is inclusive so the cursor must not be returned twice.
+    const withoutCursor = cursor ? entries.filter(entry => entry.key !== cursor) : entries;
+    withoutCursor.sort((a, b) => a.key.localeCompare(b.key));
+    const hasMore = withoutCursor.length > pageSize;
+    const pageEntries = withoutCursor.slice(-pageSize).reverse();
+
+    return {
+      items: pageEntries.map(entry => entry.item),
+      nextCursor: pageEntries.length > 0 ? pageEntries[pageEntries.length - 1].key : null,
+      hasMore
+    };
+  } catch (error) {
+    console.warn(`[Firebase RTDB] Failed to fetch page for ${collectionKey}:`, error);
+    return { items: [], nextCursor: null, hasMore: false };
+  }
+}
+
 /**
  * Targeted Single-Item Fetch by Barcode:
  * Enables O(1) direct lookup from Firebase RTDB for a single item without loading the full collection.
@@ -454,8 +525,21 @@ export async function syncCollectionToCloud<T extends { id?: string }>(
         mapObj[key] = sanitizeForFirebase({ ...item, updatedAt: (item as any).updatedAt || new Date().toISOString() });
       }
     });
-    // Non-destructive merge update
-    await update(colRef, mapObj);
+    // Non-destructive chunked merge update. Each item remains a separate child
+    // document and no giant single write is sent for large imports/backups.
+    const entries = Object.entries(mapObj);
+    const CHUNK_SIZE = 50;
+    const MAX_PARALLEL_WRITES = 3;
+    for (let start = 0; start < entries.length; start += CHUNK_SIZE * MAX_PARALLEL_WRITES) {
+      const chunkPromises: Promise<void>[] = [];
+      for (let offset = 0; offset < MAX_PARALLEL_WRITES; offset++) {
+        const chunkStart = start + offset * CHUNK_SIZE;
+        if (chunkStart >= entries.length) break;
+        const chunk = Object.fromEntries(entries.slice(chunkStart, chunkStart + CHUNK_SIZE));
+        chunkPromises.push(update(colRef, chunk));
+      }
+      await Promise.all(chunkPromises);
+    }
   } catch (error) {
     console.warn(`[Firebase RTDB] Failed to merge sync collection ${collectionKey}:`, error);
   }

@@ -51,6 +51,12 @@ export interface AppNavigationProps {
   rawMaterials: RawMaterial[];
   activityLogs?: ActivityLog[];
   posScannedBarcode: string | null;
+  hasMoreClothes: boolean;
+  isLoadingMoreClothes: boolean;
+  onLoadMoreClothes: () => Promise<void>;
+  hasMoreSales: boolean;
+  isLoadingMoreSales: boolean;
+  onLoadMoreSales: () => Promise<void>;
 
   // Action Handlers
   onOpenAddRental: () => void;
@@ -126,6 +132,12 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
   rawMaterials,
   activityLogs,
   posScannedBarcode,
+  hasMoreClothes,
+  isLoadingMoreClothes,
+  onLoadMoreClothes,
+  hasMoreSales,
+  isLoadingMoreSales,
+  onLoadMoreSales,
   onOpenAddRental,
   onOpenReturnModal,
   onSendMessage,
@@ -386,6 +398,12 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
           activityLogs={activityLogs}
           hideFinances={hideFinances}
           posScannedBarcode={posScannedBarcode}
+          hasMoreClothes={hasMoreClothes}
+          isLoadingMoreClothes={isLoadingMoreClothes}
+          onLoadMoreClothes={onLoadMoreClothes}
+          hasMoreSales={hasMoreSales}
+          isLoadingMoreSales={isLoadingMoreSales}
+          onLoadMoreSales={onLoadMoreSales}
           onPrivacyToggle={toggleFinances}
           onNavigate={navigateTo}
           onOpenAddRental={onOpenAddRental}

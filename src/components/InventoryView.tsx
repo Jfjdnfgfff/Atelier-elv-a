@@ -177,6 +177,9 @@ interface InventoryViewProps {
   onUpdateRawMaterial?: (id: string, mat: Partial<RawMaterial>) => void;
   onDeleteRawMaterial?: (id: string) => void;
   onScanBarcode?: () => void;
+  hasMoreClothes?: boolean;
+  isLoadingMoreClothes?: boolean;
+  onLoadMoreClothes?: () => Promise<void>;
 }
 
 export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
@@ -188,7 +191,10 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   onDeleteCloth,
   onAddRawMaterial,
   onUpdateRawMaterial,
-  onDeleteRawMaterial
+  onDeleteRawMaterial,
+  hasMoreClothes = false,
+  isLoadingMoreClothes = false,
+  onLoadMoreClothes
 }) => {
   const [inventoryTab, setInventoryTab] = useState<'clothes' | 'raw_materials'>('clothes');
   const [filterPurpose, setFilterPurpose] = useState<string>('all');
@@ -1009,14 +1015,25 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         }}
       />
 
-      {visibleCount < filteredClothes.length && (
+      {(visibleCount < filteredClothes.length || hasMoreClothes) && (
         <div className="flex justify-center my-6">
           <button
-            onClick={() => setVisibleCount(prev => prev + 5)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95"
+            type="button"
+            disabled={isLoadingMoreClothes}
+            onClick={async () => {
+              if (visibleCount < filteredClothes.length) {
+                setVisibleCount(prev => prev + 5);
+                return;
+              }
+              if (onLoadMoreClothes) {
+                await onLoadMoreClothes();
+                setVisibleCount(prev => prev + 5);
+              }
+            }}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-wait text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95"
           >
-            <Plus className="w-4 h-4" />
-            <span>تحميل 5 منتجات أخرى (عرض {displayedClothes.length} من {filteredClothes.length})</span>
+            {isLoadingMoreClothes ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            <span>{isLoadingMoreClothes ? 'جاري جلب 5 منتجات...' : `تحميل 5 منتجات أخرى (عرض ${displayedClothes.length} من المحمل ${filteredClothes.length})`}</span>
           </button>
         </div>
       )}

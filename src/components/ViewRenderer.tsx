@@ -46,6 +46,12 @@ export interface ViewRendererProps {
   activityLogs?: ActivityLog[];
   hideFinances: boolean;
   posScannedBarcode: string | null;
+  hasMoreClothes: boolean;
+  isLoadingMoreClothes: boolean;
+  onLoadMoreClothes: () => Promise<void>;
+  hasMoreSales: boolean;
+  isLoadingMoreSales: boolean;
+  onLoadMoreSales: () => Promise<void>;
 
   // Handlers
   onPrivacyToggle: () => void;
@@ -117,16 +123,22 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
 
   switch (next.currentView) {
     case 'inventory':
-      return prev.clothes === next.clothes && 
-             prev.rawMaterials === next.rawMaterials && 
-             prev.suppliers === next.suppliers;
+      return prev.clothes === next.clothes &&
+             prev.rawMaterials === next.rawMaterials &&
+             prev.suppliers === next.suppliers &&
+             prev.hasMoreClothes === next.hasMoreClothes &&
+             prev.isLoadingMoreClothes === next.isLoadingMoreClothes;
     case 'rentals':
       return prev.rentals === next.rentals && 
              prev.clothes === next.clothes;
     case 'sales':
-      return prev.sales === next.sales && 
-             prev.clothes === next.clothes && 
-             prev.posScannedBarcode === next.posScannedBarcode;
+      return prev.sales === next.sales &&
+             prev.clothes === next.clothes &&
+             prev.posScannedBarcode === next.posScannedBarcode &&
+             prev.hasMoreClothes === next.hasMoreClothes &&
+             prev.isLoadingMoreClothes === next.isLoadingMoreClothes &&
+             prev.hasMoreSales === next.hasMoreSales &&
+             prev.isLoadingMoreSales === next.isLoadingMoreSales;
     case 'tailoring':
       return prev.maintenanceOrders === next.maintenanceOrders && 
              prev.clothes === next.clothes;
@@ -183,6 +195,12 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   activityLogs = [],
   hideFinances,
   posScannedBarcode,
+  hasMoreClothes,
+  isLoadingMoreClothes,
+  onLoadMoreClothes,
+  hasMoreSales,
+  isLoadingMoreSales,
+  onLoadMoreSales,
   onPrivacyToggle,
   onNavigate,
   onOpenAddRental,
@@ -284,6 +302,9 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           onUpdateRawMaterial={onUpdateRawMaterial}
           onDeleteRawMaterial={onDeleteRawMaterial}
           onScanBarcode={onScanBarcode}
+          hasMoreClothes={hasMoreClothes}
+          isLoadingMoreClothes={isLoadingMoreClothes}
+          onLoadMoreClothes={onLoadMoreClothes}
         />
       )}
 
@@ -296,6 +317,12 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           onScanBarcode={onScanBarcode}
           scannedCode={posScannedBarcode}
           onClearScannedCode={onClearPosScannedBarcode}
+          hasMoreClothes={hasMoreClothes}
+          isLoadingMoreClothes={isLoadingMoreClothes}
+          onLoadMoreClothes={onLoadMoreClothes}
+          hasMoreSales={hasMoreSales}
+          isLoadingMoreSales={isLoadingMoreSales}
+          onLoadMoreSales={onLoadMoreSales}
         />
       )}
 
