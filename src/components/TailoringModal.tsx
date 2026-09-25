@@ -3,7 +3,7 @@ import { MaintenanceOrder, MaintenanceServiceType, MaintenanceTargetType, Mainte
 import { Modal, LettersInput, NumbersInput } from './Shared';
 const CustomerIdScannerModal = React.lazy(() => import('./CustomerIdScannerModal').then(m => ({ default: m.CustomerIdScannerModal })));
 import type { ExtractedCustomerData } from './CustomerIdScannerModal';
-import { User, Tag, CreditCard } from 'lucide-react';
+import { User, Tag, CreditCard, Calendar, Check } from 'lucide-react';
 import { sanitizeName, sanitizePhone, sanitizeText } from '../utils/security';
 
 interface TailoringModalProps {
@@ -50,6 +50,9 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
   const [cost, setCost] = useState<number>(order?.cost !== undefined ? order.cost : 500);
   const [price, setPrice] = useState<number>(order?.price !== undefined ? order.price : 1500);
   const [paidAmount, setPaidAmount] = useState<number>(order?.paidAmount !== undefined ? order.paidAmount : 1500);
+  const [paymentDate, setPaymentDate] = useState<string>(
+    order?.paymentDate || (order?.createdAt ? order.createdAt.split('T')[0] : order?.receivedDate || today)
+  );
   
   const [receivedDate, setReceivedDate] = useState(order?.receivedDate || today);
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState(
@@ -120,6 +123,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
       cost: Number(cost) || 0,
       price: targetType === 'internal_stock' ? 0 : (Number(price) || 0),
       paidAmount: targetType === 'internal_stock' ? 0 : (Number(paidAmount) || 0),
+      paymentDate: (targetType === 'customer_order' && paidAmount > 0) ? (paymentDate || today) : (paymentDate || receivedDate || today),
       remainingAmount,
       receivedDate,
       expectedDeliveryDate,
@@ -468,6 +472,78 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
                   <span className="text-[10px] text-slate-500 mt-0.5 block">
                     {remainingAmount > 0 ? `المتبقي: ${remainingAmount.toLocaleString()} دج` : 'خالص بالكامل'}
                   </span>
+                </div>
+
+                {/* Date of Receiving Money / Payment (تاريخ استلام المال والعربون للدخول الدقيق في الصندوق) */}
+                <div className="col-span-1 sm:col-span-3 p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-2 text-right">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+                        <Calendar className="w-3 h-3" />
+                      </span>
+                      <div>
+                        <label className="block text-xs font-black text-blue-950">
+                          تاريخ استلام المال / العربون للخياطة (تاريخ دخول المبلغ في الصندوق) *
+                        </label>
+                        <span className="text-[10px] text-blue-700 font-medium">
+                          يدخل هذا المبلغ ({(paidAmount || 0).toLocaleString()} دج) في حساب الصندوق اليومي (La Caisse) في هذا التاريخ المختار بالضبط
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Quick Date Presets */}
+                    <div className="flex flex-wrap items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentDate(today)}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all border ${
+                          paymentDate === today
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                            : 'bg-white text-blue-900 border-blue-200 hover:bg-blue-100'
+                        }`}
+                      >
+                        اليوم
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentDate(addDays(today, -1))}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all border ${
+                          paymentDate === addDays(today, -1)
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                            : 'bg-white text-blue-900 border-blue-200 hover:bg-blue-100'
+                        }`}
+                      >
+                        أمس
+                      </button>
+                      {receivedDate !== today && (
+                        <button
+                          type="button"
+                          onClick={() => setPaymentDate(receivedDate)}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all border ${
+                            paymentDate === receivedDate
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                              : 'bg-white text-blue-900 border-blue-200 hover:bg-blue-100'
+                          }`}
+                        >
+                          تاريخ الاستلام ({receivedDate})
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-center pt-1">
+                    <input
+                      type="date"
+                      required
+                      value={paymentDate}
+                      onChange={(e) => setPaymentDate(e.target.value)}
+                      className="w-full bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 font-black"
+                    />
+                    <div className="text-[11px] font-bold text-blue-900 bg-white/80 border border-blue-200 px-3 py-2 rounded-xl flex items-center gap-1.5">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>مبلغ العربون/المدفوع: <strong>{(paidAmount || 0).toLocaleString()} دج</strong> مسجل بتاريخ <strong>{paymentDate}</strong></span>
+                    </div>
+                  </div>
                 </div>
               </>
             )}

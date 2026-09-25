@@ -25,7 +25,7 @@ export function useDashboardStats(
       const paid = r.paidAmount || 0;
       totalRentalIncome += paid;
 
-      const dateStr = r.startDate || r.createdAt || '';
+      const dateStr = r.paymentDate || (r.createdAt ? r.createdAt.split('T')[0] : r.startDate) || '';
       if (dateStr.startsWith(currentMonthStr)) {
         monthlyRentalIncome += paid;
       }
@@ -82,7 +82,7 @@ export function useDashboardStats(
       totalTailoringIncome += paid;
       totalTailoringCost += cost;
 
-      const dateStr = o.receivedDate || o.createdAt || '';
+      const dateStr = o.paymentDate || (o.createdAt ? o.createdAt.split('T')[0] : o.receivedDate) || '';
       if (dateStr.startsWith(currentMonthStr)) {
         monthlyTailoringIncome += paid;
         monthlyTailoringProfit += (paid - cost);

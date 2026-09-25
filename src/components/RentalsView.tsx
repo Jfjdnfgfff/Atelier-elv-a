@@ -485,7 +485,7 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
 
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] font-medium text-slate-500">
-                      {isReserved ? 'موعد استلام الحجز:' : 'تاريخ الاستلام:'}
+                      {isReserved ? 'موعد استلام الحجز:' : 'تاريخ بدء الكراء:'}
                     </span>
                     <span className="font-semibold font-mono text-slate-800">{rental.startDate}</span>
                   </div>
@@ -494,6 +494,13 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
                     <span className="text-[11px] font-medium text-slate-500">موعد الإرجاع:</span>
                     <span className={`font-semibold font-mono ${isOverdue ? 'text-rose-700 font-bold' : 'text-slate-800'}`}>
                       {rental.expectedReturnDate}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-medium text-blue-700">تاريخ استلام المال/العربون:</span>
+                    <span className="font-bold font-mono text-blue-900 text-xs">
+                      {rental.paymentDate || (rental.createdAt ? rental.createdAt.split('T')[0] : rental.startDate)}
                     </span>
                   </div>
 

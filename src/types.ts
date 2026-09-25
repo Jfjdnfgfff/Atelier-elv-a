@@ -71,6 +71,7 @@ export interface Rental {
   status: RentalStatus;
   handoverDate?: string; // Date when deal is finalized and dress is physically handed over
   bookingDate?: string; // Date of reservation
+  paymentDate?: string; // تاريخ استلام المال / العربون / الدفعة بالضبط
   conditionOnReturn?: 'perfect' | 'needs_cleaning' | 'damaged';
   penaltyAmount?: number;
   notes?: string;
@@ -259,6 +260,7 @@ export interface MaintenanceOrder {
   receivedDate: string;
   expectedDeliveryDate: string;
   actualDeliveryDate?: string;
+  paymentDate?: string; // تاريخ استلام المال / العربون للخياطة بالضبط
   status: MaintenanceStatus;
   notes?: string;
   createdAt: string;

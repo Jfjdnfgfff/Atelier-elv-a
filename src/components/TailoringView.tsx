@@ -499,16 +499,26 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
 
                     {/* Remaining debt if any */}
                     {order.price > 0 && (
-                      <div className="flex justify-between items-center pt-1 text-[11px] text-slate-600">
-                        <span className="text-slate-500">المدفوع / المتبقي:</span>
-                        <span className="font-mono font-bold">
-                          {order.paidAmount?.toLocaleString() || 0} دج مدفوع 
-                          {order.remainingAmount > 0 ? (
-                            <span className="text-rose-600 font-bold mr-1.5">({order.remainingAmount.toLocaleString()} دج متبقي دين)</span>
-                          ) : (
-                            <span className="text-emerald-700 mr-1 font-bold"> (تم الخلاص بالكامل ✓)</span>
-                          )}
-                        </span>
+                      <div className="space-y-1 pt-1 border-t border-slate-200/60 text-[11px] text-slate-600">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500">المدفوع / المتبقي:</span>
+                          <span className="font-mono font-bold">
+                            {order.paidAmount?.toLocaleString() || 0} دج مدفوع 
+                            {order.remainingAmount > 0 ? (
+                              <span className="text-rose-600 font-bold mr-1.5">({order.remainingAmount.toLocaleString()} دج متبقي دين)</span>
+                            ) : (
+                              <span className="text-emerald-700 mr-1 font-bold"> (تم الخلاص بالكامل ✓)</span>
+                            )}
+                          </span>
+                        </div>
+                        {order.paidAmount > 0 && (
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-blue-700 font-medium">تاريخ استلام المال/العربون:</span>
+                            <span className="font-bold font-mono text-blue-950">
+                              {order.paymentDate || (order.createdAt ? order.createdAt.split('T')[0] : order.receivedDate)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

@@ -78,6 +78,14 @@ export const TailoringReceiptModal: React.FC<TailoringReceiptModalProps> = ({
               <span className="text-slate-500 font-medium">موعد التسليم المتوقع:</span>
               <span className="font-bold text-slate-900">{order.expectedDeliveryDate}</span>
             </div>
+            {order.paidAmount > 0 && (
+              <div className="flex justify-between py-1 border-b border-slate-100">
+                <span className="text-blue-700 font-bold">تاريخ استلام المال/العربون:</span>
+                <span className="font-bold font-mono text-blue-900">
+                  {order.paymentDate || (order.createdAt ? order.createdAt.split('T')[0] : order.receivedDate)}
+                </span>
+              </div>
+            )}
 
             {/* Description & Measurements */}
             <div className="bg-slate-50 p-2.5 rounded-xl mt-2 border border-slate-100">

@@ -2046,6 +2046,7 @@ export default function App() {
       remainingAmount: Number(data.remainingAmount) || 0,
       receivedDate: data.receivedDate || new Date().toISOString().split('T')[0],
       expectedDeliveryDate: data.expectedDeliveryDate || new Date().toISOString().split('T')[0],
+      paymentDate: data.paymentDate || data.receivedDate || new Date().toISOString().split('T')[0],
       status: data.status || 'pending',
       notes: data.notes,
       createdAt: new Date().toISOString()

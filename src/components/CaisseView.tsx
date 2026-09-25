@@ -252,9 +252,8 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
     let cautionsRec = 0;
     for (let i = 0; i < rentals.length; i++) {
       const r = rentals[i];
-      if ((r.createdAt && r.createdAt.startsWith(selectedDate)) ||
-          (r.startDate && r.startDate.startsWith(selectedDate)) ||
-          (r.handoverDate && r.handoverDate.startsWith(selectedDate))) {
+      const rentPaymentDate = r.paymentDate || (r.createdAt ? r.createdAt.split('T')[0] : r.startDate);
+      if (rentPaymentDate === selectedDate) {
         dRentals.push(r);
         rentalsInc += (r.paidAmount || 0);
         if (r.cautionStatus === 'held') {
@@ -267,8 +266,8 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
     let tailoringInc = 0;
     for (let i = 0; i < maintenanceOrders.length; i++) {
       const o = maintenanceOrders[i];
-      if ((o.receivedDate && o.receivedDate.startsWith(selectedDate)) ||
-          (o.createdAt && o.createdAt.startsWith(selectedDate))) {
+      const tailoringPaymentDate = o.paymentDate || (o.createdAt ? o.createdAt.split('T')[0] : o.receivedDate);
+      if (tailoringPaymentDate === selectedDate) {
         dTailoring.push(o);
         tailoringInc += (o.paidAmount || 0);
       }
@@ -489,19 +488,18 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
 
     // Rentals (inflow)
     rentals.forEach(r => {
-      const d = r.createdAt || r.startDate || '';
-      const datePart = d.includes('T') ? d.split('T')[0] : (d.split(' ')[0] || '');
-      const timePart = d.includes('T') ? d.split('T')[1]?.substring(0, 5) : '';
+      const rentPaymentDate = r.paymentDate || (r.createdAt ? r.createdAt.split('T')[0] : r.startDate) || '';
+      const timePart = r.createdAt && r.createdAt.includes('T') ? r.createdAt.split('T')[1]?.substring(0, 5) : '';
       const amount = r.paidAmount || 0;
       list.push({
         id: r.id,
         type: 'rental',
-        typeLabel: 'كراء',
-        date: datePart,
+        typeLabel: r.status === 'reserved' ? 'عربون حجز كراء' : 'كراء',
+        date: rentPaymentDate,
         time: timePart,
         direction: 'inflow',
         title: r.customerName || 'زبون كراء',
-        subtitle: `${r.itemName} (عربون/دفع: ${(r.paidAmount || 0).toLocaleString()} دج)`,
+        subtitle: `${r.itemName} (${r.status === 'reserved' ? 'عربون حجز' : 'دفع كراء'}: ${(r.paidAmount || 0).toLocaleString()} دج • استلام المال: ${rentPaymentDate})`,
         amount,
         originalItem: r
       });
@@ -509,19 +507,18 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
 
     // Tailoring (inflow)
     maintenanceOrders.forEach(o => {
-      const d = o.receivedDate || o.createdAt || '';
-      const datePart = d.includes('T') ? d.split('T')[0] : (d.split(' ')[0] || '');
-      const timePart = d.includes('T') ? d.split('T')[1]?.substring(0, 5) : '';
+      const tailoringPaymentDate = o.paymentDate || (o.createdAt ? o.createdAt.split('T')[0] : o.receivedDate) || '';
+      const timePart = o.createdAt && o.createdAt.includes('T') ? o.createdAt.split('T')[1]?.substring(0, 5) : '';
       const amount = o.paidAmount || 0;
       list.push({
         id: o.id,
         type: 'tailoring',
         typeLabel: 'خياطة وتعديل',
-        date: datePart,
+        date: tailoringPaymentDate,
         time: timePart,
         direction: 'inflow',
         title: o.customerName || 'زبون خياطة',
-        subtitle: `${o.clothName} - ${o.description || 'طلب تعديل/خياطة'}`,
+        subtitle: `${o.itemName || 'فستان/تعديل'} (دفع/عربون: ${(o.paidAmount || 0).toLocaleString()} دج • استلام المال: ${tailoringPaymentDate})`,
         amount,
         originalItem: o
       });
@@ -1311,7 +1308,9 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                         <div key={r.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors group">
                           <div className="flex-1 min-w-0 pr-1">
                             <span className="font-semibold text-slate-800 block truncate">{r.customerName}</span>
-                            <span className="text-[10px] text-slate-400">({r.itemName})</span>
+                            <span className="text-[10px] text-slate-500">
+                              ({r.itemName}) {r.status === 'reserved' ? '• حجز/عربون' : '• كراء'} • استلام المال: <span className="font-mono font-bold text-slate-700">{r.paymentDate || (r.createdAt ? r.createdAt.split('T')[0] : r.startDate)}</span>
+                            </span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="font-mono font-bold text-slate-900">
@@ -1349,7 +1348,9 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                         <div key={o.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors group">
                           <div className="flex-1 min-w-0 pr-1">
                             <span className="font-semibold text-slate-800 block truncate">{o.customerName}</span>
-                            <span className="text-[10px] text-slate-400">({o.clothName || 'تعديل'}) {o.description}</span>
+                            <span className="text-[10px] text-slate-500">
+                              ({o.itemName || 'تعديل'}) {o.description} • استلام المال: <span className="font-mono font-bold text-slate-700">{o.paymentDate || (o.createdAt ? o.createdAt.split('T')[0] : o.receivedDate)}</span>
+                            </span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="font-mono font-bold text-slate-900">
