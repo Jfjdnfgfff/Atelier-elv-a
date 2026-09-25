@@ -313,7 +313,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
           </div>
 
           {/* Bottom Row of Header: All Navigation Icons scrollable horizontally */}
-          <nav className="flex items-center gap-1.5 sm:gap-2.5 w-full pt-1.5 pb-0.5 border-t border-blue-50 overflow-x-auto touch-pan-x overscroll-x-contain hide-scrollbar scroll-smooth" aria-label="أقسام التطبيق">
+          <nav className="flex items-center gap-1.5 sm:gap-2.5 w-full pt-1.5 pb-0.5 border-t border-blue-50 overflow-x-auto touch-pan-x overscroll-x-contain hide-scrollbar scroll-auto" aria-label="أقسام التطبيق">
             <NavButton 
               icon="dashboard" 
               label="الرئيسية" 
