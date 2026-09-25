@@ -47,6 +47,7 @@ import {
   updateItemInFirebase, 
   deleteItemFromFirebase, 
   fetchCollectionOnce,
+  fetchCollectionPage,
   syncCollectionToCloud, 
   SubscriptionManager, 
   areArraysEqual,
@@ -115,6 +116,25 @@ import {
 // Run storage initialization once to guarantee 50 items dataset is present
 initializeStorage();
 
+const PAGE_SIZE = 5;
+
+type PaginatedCollection = 'clothes' | 'sales';
+
+function mergeRecordsById<T extends { id?: string; createdAt?: string; updatedAt?: string; date?: string; timestamp?: string }>(
+  current: T[],
+  incoming: T[]
+): T[] {
+  const byId = new Map<string, T>();
+  current.forEach(item => item?.id && byId.set(item.id, item));
+  incoming.forEach(item => item?.id && byId.set(item.id, item));
+
+  return Array.from(byId.values()).sort((a, b) => {
+    const aTime = a.createdAt || a.updatedAt || a.date || a.timestamp || '';
+    const bTime = b.createdAt || b.updatedAt || b.date || b.timestamp || '';
+    return aTime && bTime ? bTime.localeCompare(aTime) : 0;
+  });
+}
+
 export default function App() {
   perfMonitor.recordAppRender();
 
@@ -146,6 +166,23 @@ export default function App() {
     STORAGE_KEYS.EXPENSES,
     STORAGE_KEYS.CREDITS
   ]));
+
+  // Inventory and sales use cursor pagination. The app keeps only the pages
+  // needed by the active screen in React state instead of downloading a whole
+  // collection on every navigation.
+  const paginationRef = useRef<Record<PaginatedCollection, {
+    cursor: string | null;
+    hasMore: boolean;
+    isLoading: boolean;
+    initialized: boolean;
+  }>>({
+    clothes: { cursor: null, hasMore: true, isLoading: false, initialized: false },
+    sales: { cursor: null, hasMore: true, isLoading: false, initialized: false }
+  });
+  const [hasMoreClothes, setHasMoreClothes] = useState(true);
+  const [isLoadingMoreClothes, setIsLoadingMoreClothes] = useState(false);
+  const [hasMoreSales, setHasMoreSales] = useState(true);
+  const [isLoadingMoreSales, setIsLoadingMoreSales] = useState(false);
 
   // Cache-First On-Demand Storage Loader
   const ensureCollectionLoaded = useCallback((storageKey: string) => {
@@ -436,19 +473,48 @@ export default function App() {
   }, []);
 
   // Individual collection subscription helper returning an idempotent unsubscribe function
-  const subscribeToCollection = useCallback((collection: string, options?: { limit?: number }): () => void => {
+  const subscribeToCollection = useCallback((collection: string, options?: { limit?: number; sort?: boolean }): () => void => {
     switch (collection) {
-      case FIREBASE_COLLECTIONS.CLOTHES:
-        return SubscriptionManager.subscribeGranular<ClothItem>(
-          FIREBASE_COLLECTIONS.CLOTHES, 
-          (items) => {
-            if (Array.isArray(items)) {
-              loadedCollectionsRef.current.add(STORAGE_KEYS.CLOTHES);
-              setClothes(prev => areArraysEqual(prev, items) ? prev : items);
+      case FIREBASE_COLLECTIONS.CLOTHES: {
+        const onClothes = (items: ClothItem[]) => {
+          if (!Array.isArray(items)) return;
+          loadedCollectionsRef.current.add(STORAGE_KEYS.CLOTHES);
+
+          if (options?.limit) {
+            const pageState = paginationRef.current.clothes;
+            const wasInitialized = pageState.initialized;
+            if (!wasInitialized || !pageState.cursor) {
+              // The limited clothes listener is ordered by RTDB key (ascending),
+              // therefore the first item is the cursor for the next older page.
+              pageState.cursor = items[0]?.id || pageState.cursor;
             }
-          }, 
+            pageState.initialized = true;
+            setHasMoreClothes(items.length >= options.limit);
+            pageState.hasMore = items.length >= options.limit;
+            const pageItems = items.slice().reverse();
+            setClothes(prev => {
+              const next = wasInitialized ? mergeRecordsById(prev, pageItems) : pageItems;
+              return areArraysEqual(prev, next) ? prev : next;
+            });
+          } else {
+            setClothes(prev => areArraysEqual(prev, items) ? prev : items);
+          }
+        };
+
+        if (options?.limit) {
+          return SubscriptionManager.subscribe<ClothItem>(
+            FIREBASE_COLLECTIONS.CLOTHES,
+            onClothes,
+            { limit: options.limit, sort: false }
+          );
+        }
+
+        return SubscriptionManager.subscribeGranular<ClothItem>(
+          FIREBASE_COLLECTIONS.CLOTHES,
+          onClothes,
           { sort: false }
         );
+      }
       case FIREBASE_COLLECTIONS.RENTALS:
         return SubscriptionManager.subscribe<Rental>(FIREBASE_COLLECTIONS.RENTALS, (items) => {
           if (Array.isArray(items)) {
@@ -463,26 +529,38 @@ export default function App() {
             setCaisseClosures(prev => areArraysEqual(prev, items) ? prev : items);
           }
         }, { limit: 90, ...options });
-      case FIREBASE_COLLECTIONS.SALES:
-        return SubscriptionManager.subscribe<Sale>(
-          FIREBASE_COLLECTIONS.SALES, 
-          (items) => {
-            if (Array.isArray(items)) {
-              loadedCollectionsRef.current.add(STORAGE_KEYS.SALES);
-              setSales(prev => {
-                if (options?.limit && prev.length > items.length) {
-                  const map = new Map<string, Sale>();
-                  prev.forEach(s => map.set(s.id, s));
-                  items.forEach(s => map.set(s.id, s));
-                  const merged = Array.from(map.values()).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-                  return areArraysEqual(prev, merged) ? prev : merged;
-                }
-                return areArraysEqual(prev, items) ? prev : items;
-              });
+      case FIREBASE_COLLECTIONS.SALES: {
+        const onSales = (items: Sale[]) => {
+          if (!Array.isArray(items)) return;
+          loadedCollectionsRef.current.add(STORAGE_KEYS.SALES);
+
+          if (options?.limit) {
+            const pageState = paginationRef.current.sales;
+            const wasInitialized = pageState.initialized;
+            if (!wasInitialized || !pageState.cursor) {
+              // Keep the RTDB key cursor stable; the first item is the oldest
+              // record in the current newest page.
+              pageState.cursor = items[0]?.id || pageState.cursor;
             }
-          },
-          { limit: 150, ...options }
+            pageState.initialized = true;
+            setHasMoreSales(items.length >= options.limit);
+            pageState.hasMore = items.length >= options.limit;
+            const pageItems = items.slice().reverse();
+            setSales(prev => {
+              const next = wasInitialized ? mergeRecordsById(prev, pageItems) : pageItems;
+              return areArraysEqual(prev, next) ? prev : next;
+            });
+          } else {
+            setSales(prev => areArraysEqual(prev, items) ? prev : items);
+          }
+        };
+
+        return SubscriptionManager.subscribe<Sale>(
+          FIREBASE_COLLECTIONS.SALES,
+          onSales,
+          { limit: options?.limit || 150, ...options }
         );
+      }
       case FIREBASE_COLLECTIONS.EXPENSES:
         return SubscriptionManager.subscribe<Expense>(FIREBASE_COLLECTIONS.EXPENSES, (items) => {
           if (Array.isArray(items)) {
@@ -674,6 +752,58 @@ export default function App() {
     ]
   };
 
+  const resetPaginatedCollection = useCallback((collection: PaginatedCollection) => {
+    const state = paginationRef.current[collection];
+    state.cursor = null;
+    state.hasMore = true;
+    state.isLoading = false;
+    state.initialized = false;
+
+    if (collection === 'clothes') {
+      setHasMoreClothes(true);
+      setIsLoadingMoreClothes(false);
+      setClothes(prev => prev.slice(0, PAGE_SIZE));
+    } else {
+      setHasMoreSales(true);
+      setIsLoadingMoreSales(false);
+      setSales(prev => prev.slice(0, PAGE_SIZE));
+    }
+  }, []);
+
+  const loadMorePaginatedCollection = useCallback(async (collection: PaginatedCollection) => {
+    const state = paginationRef.current[collection];
+    if (state.isLoading || !state.hasMore) return;
+
+    state.isLoading = true;
+    if (collection === 'clothes') setIsLoadingMoreClothes(true);
+    else setIsLoadingMoreSales(true);
+
+    try {
+      const result = collection === 'clothes'
+        ? await fetchCollectionPage<ClothItem>(FIREBASE_COLLECTIONS.CLOTHES, { limit: PAGE_SIZE, cursor: state.cursor })
+        : await fetchCollectionPage<Sale>(FIREBASE_COLLECTIONS.SALES, { limit: PAGE_SIZE, cursor: state.cursor });
+
+      state.cursor = result.nextCursor || state.cursor;
+      state.hasMore = result.hasMore;
+      if (collection === 'clothes') {
+        setHasMoreClothes(result.hasMore);
+        if (result.items.length > 0) setClothes(prev => mergeRecordsById(prev, result.items as ClothItem[]));
+      } else {
+        setHasMoreSales(result.hasMore);
+        if (result.items.length > 0) setSales(prev => mergeRecordsById(prev, result.items as Sale[]));
+      }
+    } catch (error) {
+      console.warn(`[Pagination] Failed to load more ${collection}:`, error);
+    } finally {
+      state.isLoading = false;
+      if (collection === 'clothes') setIsLoadingMoreClothes(false);
+      else setIsLoadingMoreSales(false);
+    }
+  }, []);
+
+  const loadMoreClothes = useCallback(() => loadMorePaginatedCollection('clothes'), [loadMorePaginatedCollection]);
+  const loadMoreSales = useCallback(() => loadMorePaginatedCollection('sales'), [loadMorePaginatedCollection]);
+
   // Map of active view subscription cleanup functions: collectionKey -> unsubscribeFn
   const activeViewUnsubsMapRef = useRef<Map<string, () => void>>(new Map());
   const currentActiveViewRef = useRef<ViewType | null>(null);
@@ -687,20 +817,33 @@ export default function App() {
       ensureCollectionLoaded(key);
     }
 
+    const previousView = currentActiveViewRef.current;
+    const viewChanged = previousView !== view;
+    const paginatedView = view === 'inventory' || view === 'sales';
+    const previousPaginatedView = previousView === 'inventory' || previousView === 'sales';
+    if (viewChanged && paginatedView) {
+      resetPaginatedCollection('clothes');
+      if (view === 'sales') resetPaginatedCollection('sales');
+    }
     currentActiveViewRef.current = view;
 
     const neededCollections = VIEW_COLLECTIONS_MAP[view] || [
-      FIREBASE_COLLECTIONS.CLOTHES, 
+      FIREBASE_COLLECTIONS.CLOTHES,
       FIREBASE_COLLECTIONS.RENTALS
     ];
 
     const activeMap = activeViewUnsubsMapRef.current;
 
     // Unsubscribe from collections that are no longer needed by the active view
+    // and recreate paginated listeners when entering inventory/POS.
     const neededSet = new Set(neededCollections);
     const existingCols = Array.from(activeMap.keys()) as string[];
     for (const col of existingCols) {
-      if (!neededSet.has(col)) {
+      const shouldRefreshPagination = viewChanged && (
+        (col === FIREBASE_COLLECTIONS.CLOTHES && (paginatedView || previousPaginatedView)) ||
+        (col === FIREBASE_COLLECTIONS.SALES && (view === 'sales' || previousView === 'sales'))
+      );
+      if (!neededSet.has(col) || shouldRefreshPagination) {
         const unsub = activeMap.get(col);
         if (unsub) {
           try {
@@ -713,16 +856,18 @@ export default function App() {
       }
     }
 
-    // Subscribe ONLY to newly needed collections for active view
+    // Subscribe ONLY to newly needed collections for active view.
     for (const col of neededCollections) {
       if (!activeMap.has(col)) {
-        // Apply limit: 100 specifically for Sales POS view to avoid downloading entire sales history
-        const options = (col === FIREBASE_COLLECTIONS.SALES && view === 'sales') ? { limit: 100 } : undefined;
+        const options = (
+          (col === FIREBASE_COLLECTIONS.CLOTHES && paginatedView) ||
+          (col === FIREBASE_COLLECTIONS.SALES && view === 'sales')
+        ) ? { limit: PAGE_SIZE, sort: false } : undefined;
         const unsub = subscribeToCollection(col, options);
         activeMap.set(col, unsub);
       }
     }
-  }, [subscribeToCollection, ensureCollectionLoaded]);
+  }, [subscribeToCollection, ensureCollectionLoaded, resetPaginatedCollection]);
 
   // Initial load: subscribe ONLY to dashboard view (NO pre-warm of other views)
   useEffect(() => {
@@ -2179,6 +2324,12 @@ export default function App() {
         rawMaterials={rawMaterials}
         activityLogs={activityLogs}
         posScannedBarcode={posScannedBarcode}
+        hasMoreClothes={hasMoreClothes}
+        isLoadingMoreClothes={isLoadingMoreClothes}
+        onLoadMoreClothes={loadMoreClothes}
+        hasMoreSales={hasMoreSales}
+        isLoadingMoreSales={isLoadingMoreSales}
+        onLoadMoreSales={loadMoreSales}
         onOpenAddRental={handleOpenAddRental}
         onOpenReturnModal={handleOpenReturnModal}
         onSendMessage={handleOpenMessageModal}
