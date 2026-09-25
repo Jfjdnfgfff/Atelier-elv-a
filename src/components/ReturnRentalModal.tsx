@@ -180,16 +180,42 @@ export const ReturnRentalModal: React.FC<ReturnRentalModalProps> = ({ rental, on
       {/* Collect Remaining Debt */}
       {rental.remainingAmount > 0 && (
         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
-          <label className="block text-xs font-bold text-slate-900">تحصيل المبلغ المتبقي للكراء (المتبقي: {rental.remainingAmount} دج)</label>
+          <div className="flex justify-between items-center">
+            <label className="block text-xs font-bold text-slate-900">
+              تحصيل المبلغ المتبقي للكراء (المتبقي الأصلي: {rental.remainingAmount.toLocaleString()} دج)
+            </label>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCollectedRemaining(rental.remainingAmount)}
+                className="text-[10px] text-blue-700 font-bold hover:underline"
+              >
+                دفع كامل
+              </button>
+              <span className="text-slate-300">|</span>
+              <button
+                type="button"
+                onClick={() => setCollectedRemaining(0)}
+                className="text-[10px] text-emerald-700 font-bold hover:underline"
+              >
+                إنقاص وإعفاء (مسامحة 0 دج)
+              </button>
+            </div>
+          </div>
           <input
             type="number"
             min="0"
             max={rental.remainingAmount}
             value={collectedRemaining}
             onChange={(e) => setCollectedRemaining(Number(e.target.value))}
-            className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-slate-800"
+            className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-slate-800 font-mono"
           />
-          <p className="text-[11px] text-slate-500">أدخل المبلغ المستلم الآن من الزبون عند تسليم الفستان.</p>
+          {collectedRemaining < rental.remainingAmount && (
+            <p className="text-[11px] text-emerald-700 font-medium">
+              تم إنقاص السعر وتخفيض مبلغ: {(rental.remainingAmount - collectedRemaining).toLocaleString()} دج لصالح الزبونة.
+            </p>
+          )}
+          <p className="text-[10px] text-slate-500">أدخل المبلغ المستلم الآن من الزبونة عند تسليم الفستان (يمكنك إنقاص السعر حسب رغبتك).</p>
         </div>
       )}
 

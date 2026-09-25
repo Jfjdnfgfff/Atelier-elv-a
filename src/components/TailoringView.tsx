@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { MaintenanceOrder, MaintenanceStatus, MaintenanceTargetType, ClothItem } from '../types';
-import { Plus, AlertTriangle, AlertCircle, MessageSquare, Mail, Phone, Trash2, FileText, Edit3 } from 'lucide-react';
+import { Plus, AlertTriangle, AlertCircle, MessageSquare, Mail, Phone, Trash2, FileText, Edit3, Calendar, DollarSign, Sparkles, Scissors, Clock, TrendingUp } from 'lucide-react';
 
 interface TailoringViewProps {
   orders: MaintenanceOrder[];
@@ -22,6 +22,9 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
   onOpenReceiptModal
 }) => {
   const [filter, setFilter] = useState<'all' | 'due_soon' | 'pending' | 'in_progress' | 'ready' | 'delivered'>('all');
+  const [serviceFilter, setServiceFilter] = useState<'all' | 'ironing_prep' | 'alteration' | 'repair' | 'custom_sewing'>('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'tomorrow' | 'this_week' | 'overdue' | 'custom'>('all');
+  const [customDate, setCustomDate] = useState<string>('');
   const [search, setSearch] = useState('');
 
   const today = new Date().toISOString().split('T')[0];
@@ -33,18 +36,41 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  // Filtered list
+  // Filtered list with Status, Service Type, and Date Controls
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
       const daysLeft = getDaysDiffFromToday(order.expectedDeliveryDate);
       const isDueSoon = order.status !== 'delivered' && daysLeft >= 0 && daysLeft <= 10;
 
+      // Status filter
       if (filter === 'due_soon' && !isDueSoon) return false;
       if (filter === 'pending' && order.status !== 'pending') return false;
       if (filter === 'in_progress' && order.status !== 'in_progress') return false;
       if (filter === 'ready' && order.status !== 'ready') return false;
       if (filter === 'delivered' && order.status !== 'delivered') return false;
 
+      // Service type filter (الكواء، الخياطة، التعديل...)
+      if (serviceFilter !== 'all' && order.serviceType !== serviceFilter) return false;
+
+      // Date Control filter (التحكم في التاريخ)
+      if (dateFilter === 'today' && order.expectedDeliveryDate !== today) return false;
+      if (dateFilter === 'tomorrow') {
+        const tomorrowDate = new Date();
+        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+        const tomStr = tomorrowDate.toISOString().split('T')[0];
+        if (order.expectedDeliveryDate !== tomStr) return false;
+      }
+      if (dateFilter === 'this_week') {
+        if (daysLeft < 0 || daysLeft > 7) return false;
+      }
+      if (dateFilter === 'overdue') {
+        if (order.status === 'delivered' || daysLeft >= 0) return false;
+      }
+      if (dateFilter === 'custom' && customDate) {
+        if (order.expectedDeliveryDate !== customDate && order.receivedDate !== customDate) return false;
+      }
+
+      // Search filter
       if (search.trim()) {
         const query = search.toLowerCase();
         const matchName = order.itemName.toLowerCase().includes(query);
@@ -57,9 +83,9 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
 
       return true;
     });
-  }, [orders, filter, search]);
+  }, [orders, filter, serviceFilter, dateFilter, customDate, search, today]);
 
-  // Quick statistics
+  // Quick statistics with complete financial tracking (تكاليف، مداخيل، أرباح)
   const stats = useMemo(() => {
     const active = orders.filter(o => o.status !== 'delivered');
     const dueSoonCount = orders.filter(o => {
@@ -67,22 +93,32 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
       return o.status !== 'delivered' && days >= 0 && days <= 10;
     }).length;
     const readyCount = orders.filter(o => o.status === 'ready').length;
+    const ironingCount = orders.filter(o => o.serviceType === 'ironing_prep' && o.status !== 'delivered').length;
+    
+    // Financials
+    const totalRevenue = orders.reduce((s, o) => s + (o.price || 0), 0);
+    const totalCost = orders.reduce((s, o) => s + (o.cost || 0), 0);
+    const netProfit = totalRevenue - totalCost;
     const totalRemaining = orders.reduce((s, o) => s + (o.remainingAmount || 0), 0);
 
     return {
       activeCount: active.length,
       dueSoonCount,
       readyCount,
+      ironingCount,
+      totalRevenue,
+      totalCost,
+      netProfit,
       totalRemaining
     };
-  }, [orders]);
+  }, [orders, today]);
 
   const getServiceLabel = (type: string) => {
     switch (type) {
+      case 'ironing_prep': return 'كواء وغسيل وكي';
       case 'alteration': return 'تعديل مقاس';
       case 'repair': return 'تصليح وترقيع';
       case 'custom_sewing': return 'تفصيل جديد';
-      case 'ironing_prep': return 'كي وتجهيز';
       default: return 'صيانة عامة';
     }
   };
@@ -147,51 +183,152 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
           </button>
         </div>
 
-        {/* Minimalist Stats Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 pt-3 border-t border-slate-100 text-xs">
+        {/* Financial & Operational Stats Bar (تتبع المداخيل والتكاليف والأرباح والكواء) */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3 pt-3 border-t border-slate-100 text-xs">
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
             <span className="text-slate-500 block font-normal">طلبات بالورشة</span>
-            <span className="text-base font-bold font-mono text-slate-900">{stats.activeCount}</span>
+            <div className="flex items-baseline gap-1.5 mt-0.5">
+              <span className="text-base font-bold font-mono text-slate-900">{stats.activeCount}</span>
+              {stats.ironingCount > 0 && (
+                <span className="text-[10px] text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded font-bold border border-sky-200">
+                  {stats.ironingCount} كواء
+                </span>
+              )}
+            </div>
           </div>
-          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
-            <span className="text-slate-500 block font-normal">تسليم قريب (≤ 10 أيام)</span>
-            <span className="text-base font-bold font-mono text-slate-900">{stats.dueSoonCount} طلب</span>
+
+          <div className="bg-indigo-50/60 p-2.5 rounded-xl border border-indigo-100">
+            <span className="text-indigo-700 block font-normal text-[11px] flex items-center gap-1">
+              <DollarSign className="w-3.5 h-3.5 text-indigo-600" />
+              <span>إجمالي المداخيل</span>
+            </span>
+            <span className="text-base font-bold font-mono text-indigo-950 mt-0.5 block">
+              {stats.totalRevenue.toLocaleString()} دج
+            </span>
           </div>
-          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
-            <span className="text-slate-500 block font-normal">جاهزة للتسليم</span>
-            <span className="text-base font-bold font-mono text-slate-900">{stats.readyCount}</span>
+
+          <div className="bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/70">
+            <span className="text-amber-800 block font-normal text-[11px] flex items-center gap-1">
+              <Scissors className="w-3.5 h-3.5 text-amber-600" />
+              <span>إجمالي قيمة التكليف</span>
+            </span>
+            <span className="text-base font-bold font-mono text-amber-950 mt-0.5 block">
+              {stats.totalCost.toLocaleString()} دج
+            </span>
           </div>
-          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
-            <span className="text-slate-500 block font-normal">المتبقي (ديون)</span>
-            <span className="text-base font-bold font-mono text-slate-900">{stats.totalRemaining.toLocaleString()} دج</span>
+
+          <div className="bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-200/70">
+            <span className="text-emerald-800 block font-normal text-[11px] flex items-center gap-1">
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+              <span>صافي أرباح الخياطة</span>
+            </span>
+            <span className={`text-base font-bold font-mono mt-0.5 block ${stats.netProfit >= 0 ? 'text-emerald-950' : 'text-rose-700'}`}>
+              {stats.netProfit.toLocaleString()} دج
+            </span>
+          </div>
+
+          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 col-span-2 sm:col-span-1">
+            <span className="text-slate-500 block font-normal">المتبقي للتحصيل (ديون)</span>
+            <span className="text-base font-bold font-mono text-rose-700 mt-0.5 block">
+              {stats.totalRemaining.toLocaleString()} دج
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-2xs space-y-2.5">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="بحث بالاسم، رقم الطلب، هاتف الزبونة..."
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-normal text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-slate-400 focus:outline-none"
-        />
+      {/* Filter and Search Bar with Comprehensive Date Controls (التحكم في التاريخ والكواء) */}
+      <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-2xs space-y-3">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="بحث بالاسم، رقم الطلب، هاتف الزبونة، الخياطة..."
+            className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-normal text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-slate-400 focus:outline-none"
+          />
+        </div>
 
-        {/* Filters */}
+        {/* 1. Date Controls Filter (التحكم في التاريخ ومواعيد التسليم) */}
+        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold text-slate-700 flex items-center gap-1.5 text-[11px]">
+              <Calendar className="w-3.5 h-3.5 text-slate-600" />
+              <span>التحكم في التاريخ ومواعيد التسليم:</span>
+            </span>
+            {dateFilter === 'custom' && (
+              <input
+                type="date"
+                value={customDate}
+                onChange={(e) => setCustomDate(e.target.value)}
+                className="bg-white border border-slate-300 rounded-lg px-2 py-0.5 text-[11px] font-mono font-bold text-slate-800"
+              />
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 hide-scrollbar text-xs">
+            {[
+              { id: 'all', label: 'كل التواريخ' },
+              { id: 'today', label: 'تسليم اليوم 📅' },
+              { id: 'tomorrow', label: 'تسليم غداً' },
+              { id: 'this_week', label: 'خلال 7 أيام' },
+              { id: 'overdue', label: 'متأخرة عن الموعد ⚠️' },
+              { id: 'custom', label: 'تاريخ محدد 🗓️' }
+            ].map(df => (
+              <button
+                key={df.id}
+                type="button"
+                onClick={() => setDateFilter(df.id as any)}
+                className={`px-2.5 py-1 rounded-lg whitespace-nowrap font-medium text-[11px] transition-all shrink-0 border ${
+                  dateFilter === df.id
+                    ? 'bg-slate-900 text-white font-bold border-slate-900 shadow-2xs'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                {df.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 2. Service Type Filter (الكواء، التعديل، التصليح، التفصيل) */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 hide-scrollbar text-xs">
+          <span className="text-[11px] text-slate-500 font-medium shrink-0 ml-1">نوع الخدمة:</span>
+          {[
+            { id: 'all', label: 'كل الخدمات' },
+            { id: 'ironing_prep', label: '👔 الكواء والغسيل والكي (Pressing)' },
+            { id: 'alteration', label: '✂️ تعديل مقاس' },
+            { id: 'custom_sewing', label: '🪡 تفصيل وخياطة جديدة' },
+            { id: 'repair', label: '🧵 تصليح وترقيع' }
+          ].map(sf => (
+            <button
+              key={sf.id}
+              type="button"
+              onClick={() => setServiceFilter(sf.id as any)}
+              className={`px-3 py-1 rounded-xl whitespace-nowrap font-medium text-[11px] transition-all shrink-0 border ${
+                serviceFilter === sf.id
+                  ? 'bg-blue-600 text-white font-bold border-blue-600 shadow-2xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              {sf.label}
+            </button>
+          ))}
+        </div>
+
+        {/* 3. Status Filters */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 hide-scrollbar text-xs pt-1 border-t border-slate-100">
+          <span className="text-[11px] text-slate-500 font-medium shrink-0 ml-1">الحالة:</span>
           {[
             { id: 'all', label: 'الكل' },
-            { id: 'due_soon', label: `تسليم خلال 10 أيام (${stats.dueSoonCount})` },
+            { id: 'due_soon', label: `تسليم قريب (${stats.dueSoonCount})` },
             { id: 'pending', label: 'في الانتظار' },
             { id: 'in_progress', label: 'قيد الإنجاز' },
-            { id: 'ready', label: 'جاهزة' },
+            { id: 'ready', label: 'جاهزة للتسليم' },
             { id: 'delivered', label: 'تم التسليم' }
           ].map(f => (
             <button
               key={f.id}
               onClick={() => setFilter(f.id as any)}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium transition-all shrink-0 ${
+              className={`px-3 py-1 rounded-lg whitespace-nowrap font-medium text-[11px] transition-all shrink-0 ${
                 filter === f.id
                   ? 'bg-slate-900 text-white font-bold shadow-xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -317,24 +454,61 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
                     </div>
                   )}
 
-                  {/* Dates & Financials */}
-                  <div className="grid grid-cols-2 gap-2 text-xs pt-1 text-slate-600">
-                    <div>
-                      <span className="text-[11px] text-slate-400 block font-normal">تاريخ التسليم</span>
-                      <span className="font-bold text-slate-800 font-mono">{order.expectedDeliveryDate}</span>
+                  {/* Dates & Financials (التواريخ وقيمة التكليف والمداخيل والربح الصافي) */}
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 space-y-2 text-xs">
+                    {/* Dates row */}
+                    <div className="flex items-center justify-between text-[11px] pb-1.5 border-b border-slate-200/60">
+                      <div className="flex items-center gap-1 text-slate-500">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>استلام: <strong className="font-mono text-slate-700">{order.receivedDate || '—'}</strong></span>
+                      </div>
+                      <div className="flex items-center gap-1 font-bold text-slate-800">
+                        <span>موعد التسليم:</span>
+                        <span className="font-mono text-blue-900 bg-white px-2 py-0.5 rounded border border-slate-200">{order.expectedDeliveryDate}</span>
+                      </div>
                     </div>
-                    {order.price > 0 ? (
-                      <div>
-                        <span className="text-[11px] text-slate-400 block font-normal">المتبقي / الإجمالي</span>
-                        <span className="font-bold text-slate-900 font-mono">
-                          {order.remainingAmount > 0 ? `${order.remainingAmount.toLocaleString()} دج متبقي` : 'خالص'} 
-                          <span className="text-slate-400 font-normal text-[10px]"> ({order.price.toLocaleString()} دج)</span>
-                        </span>
+
+                    {/* Financial details: Cost vs Price vs Net Profit */}
+                    {order.targetType === 'customer_order' && order.price > 0 ? (
+                      <div className="grid grid-cols-3 gap-1.5 text-center">
+                        <div className="bg-white p-1.5 rounded-lg border border-slate-200">
+                          <span className="text-[10px] text-slate-500 block">سعر الخدمة</span>
+                          <span className="font-bold text-slate-900 font-mono text-xs">{order.price.toLocaleString()} دج</span>
+                        </div>
+                        <div className="bg-amber-50/80 p-1.5 rounded-lg border border-amber-200/80">
+                          <span className="text-[10px] text-amber-800 font-bold block">قيمة التكليف</span>
+                          <span className="font-bold text-amber-950 font-mono text-xs">{(order.cost || 0).toLocaleString()} دج</span>
+                        </div>
+                        <div className={`p-1.5 rounded-lg border ${
+                          (order.price - (order.cost || 0)) >= 0
+                            ? 'bg-emerald-50 text-emerald-950 border-emerald-200'
+                            : 'bg-rose-50 text-rose-950 border-rose-200'
+                        }`}>
+                          <span className="text-[10px] font-bold block text-emerald-800">صافي الربح</span>
+                          <span className="font-bold font-mono text-xs">
+                            {(order.price - (order.cost || 0)).toLocaleString()} دج
+                          </span>
+                        </div>
                       </div>
                     ) : (
-                      <div>
-                        <span className="text-[11px] text-slate-400 block font-normal">الجهة</span>
-                        <span className="font-medium text-slate-700">مخزن المحل</span>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-500">صيانة داخلية للمخزن:</span>
+                        <span className="font-bold text-amber-800 font-mono">قيمة التكليف: {(order.cost || 0).toLocaleString()} دج</span>
+                      </div>
+                    )}
+
+                    {/* Remaining debt if any */}
+                    {order.price > 0 && (
+                      <div className="flex justify-between items-center pt-1 text-[11px] text-slate-600">
+                        <span className="text-slate-500">المدفوع / المتبقي:</span>
+                        <span className="font-mono font-bold">
+                          {order.paidAmount?.toLocaleString() || 0} دج مدفوع 
+                          {order.remainingAmount > 0 ? (
+                            <span className="text-rose-600 font-bold mr-1.5">({order.remainingAmount.toLocaleString()} دج متبقي دين)</span>
+                          ) : (
+                            <span className="text-emerald-700 mr-1 font-bold"> (تم الخلاص بالكامل ✓)</span>
+                          )}
+                        </span>
                       </div>
                     )}
                   </div>

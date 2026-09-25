@@ -10,7 +10,7 @@ import { isValidImageFileType, generateSecureImageFilename, sanitizeText, saniti
 import { processImageToVariants, getListImage } from '../utils/imageUtils';
 import { imageStore } from '../utils/imageStore';
 import { AsyncProductImage } from './AsyncProductImage';
-import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap, ChevronLeft, ChevronRight, Search, Loader2 } from 'lucide-react';
+import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap, ChevronLeft, ChevronRight, Search, Loader2, Barcode } from 'lucide-react';
 
 export const STANDARD_SIZES = [
   '34', '36', '38', '40', '42', '44', '46', '48', '50', '52', '54',
@@ -197,6 +197,9 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   const [filterSize, setFilterSize] = useState<string>('all');
   const [filterColor, setFilterColor] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const [barcodeSearch, setBarcodeSearch] = useState('');
+  const [showSearchBarcodeCamera, setShowSearchBarcodeCamera] = useState(false);
+  const barcodeSearchInputRef = useRef<HTMLInputElement>(null);
   const [editingItem, setEditingItem] = useState<ClothItem | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [initialBarcodeForAdd, setInitialBarcodeForAdd] = useState<string>('');
@@ -506,23 +509,35 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         }
       }
 
+      // Dedicated Barcode Search filter (الكودبار والباركود المخصص)
+      if (barcodeSearch.trim()) {
+        const b = barcodeSearch.trim().toLowerCase();
+        const matchBarcode = item.barcode && item.barcode.toLowerCase().includes(b);
+        const matchVariant = item.variants && item.variants.some(v => (v.code && v.code.toLowerCase().includes(b)) || (v.id && v.id.toLowerCase().includes(b)));
+        const matchId = item.id && item.id.toLowerCase().includes(b);
+        if (!matchBarcode && !matchVariant && !matchId) {
+          return false;
+        }
+      }
+
       if (search.trim()) {
         const q = search.toLowerCase();
         const matchName = item.name.toLowerCase().includes(q);
         const matchBarcode = item.barcode.includes(q);
+        const matchVariant = item.variants && item.variants.some(v => v.code && v.code.toLowerCase().includes(q));
         const matchColor = item.color.toLowerCase().includes(q) || (item.colors && item.colors.some(c => c.toLowerCase().includes(q)));
         const matchSize = item.size.toLowerCase().includes(q) || (item.sizes && item.sizes.some(s => s.toLowerCase().includes(q)));
-        return matchName || matchBarcode || matchColor || matchSize;
+        return matchName || matchBarcode || matchVariant || matchColor || matchSize;
       }
       return true;
     });
-  }, [clothes, filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search]);
+  }, [clothes, filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search, barcodeSearch]);
 
   const [visibleCount, setVisibleCount] = useState<number>(5);
 
   useEffect(() => {
     setVisibleCount(5);
-  }, [filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search, inventoryTab]);
+  }, [filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search, barcodeSearch, inventoryTab]);
 
   const displayedClothes = useMemo(() => {
     return filteredClothes.slice(0, visibleCount);
@@ -791,19 +806,92 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
             </button>
           </div>
 
-          <div className="relative w-full sm:w-72">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="بحث بالاسم، الباركود، المقاس، اللون..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-9 pl-4 py-2 text-xs font-normal text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:bg-white"
-            />
-            <svg className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+          {/* Dual Search Area: Barcode Search & General Search */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+            {/* 1. Barcode Search Input with Camera button */}
+            <div className="relative flex-1 sm:w-64">
+              <div className="absolute right-2.5 top-2.5 text-indigo-600 flex items-center pointer-events-none">
+                <Barcode className="w-4 h-4" />
+              </div>
+              <input
+                ref={barcodeSearchInputRef}
+                type="text"
+                value={barcodeSearch}
+                onChange={(e) => setBarcodeSearch(e.target.value)}
+                placeholder="بحث بالكودبار (امسح أو اكتب)..."
+                className="w-full bg-indigo-50/60 border border-indigo-200 rounded-xl pr-9 pl-16 py-2 text-xs font-bold text-slate-900 placeholder:text-indigo-400 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all font-mono"
+              />
+              <div className="absolute left-1.5 top-1.5 flex items-center gap-1">
+                {barcodeSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setBarcodeSearch('')}
+                    className="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-700 rounded-lg transition-colors"
+                    title="مسح البحث بالكودبار"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowSearchBarcodeCamera(true)}
+                  className="p-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-2xs transition-colors"
+                  title="مسح باركود بالكاميرا للبحث المباشر"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* 2. General Name / Color / Size search */}
+            <div className="relative flex-1 sm:w-60">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="بحث بالاسم، المقاس، اللون..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-9 pl-8 py-2 text-xs font-normal text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:bg-white"
+              />
+              <svg className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute left-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Barcode Search Match Banner */}
+        {barcodeSearch && (
+          <div className="p-2.5 bg-indigo-50 border border-indigo-200/80 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="p-1 bg-indigo-600 text-white rounded-lg">
+                <Barcode className="w-3.5 h-3.5" />
+              </span>
+              <span className="font-bold text-indigo-950">
+                نتائج البحث بالكودبار: <span className="font-mono text-indigo-700 bg-white px-2 py-0.5 rounded-md border border-indigo-200">{barcodeSearch}</span>
+              </span>
+              <span className="text-indigo-600 font-medium">
+                (تم العثور على {filteredClothes.length} نتيجة)
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBarcodeSearch('')}
+              className="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 underline flex items-center gap-1"
+            >
+              <span>إلغاء تصفية الكودبار</span>
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
 
         {/* Categories Bar */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs hide-scrollbar">
@@ -1035,6 +1123,18 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           title="مسح باركود لإضافة المخزون"
           onScan={(code) => handleProcessBarcode(code)}
           onClose={() => setShowScannerModal(false)}
+        />
+      )}
+
+      {/* Embedded Barcode Scanner Camera for Searching Inventory */}
+      {showSearchBarcodeCamera && (
+        <BarcodeScanner
+          title="مسح باركود للبحث المباشر في المخزون"
+          onScan={(code) => {
+            setBarcodeSearch(code.trim());
+            setShowSearchBarcodeCamera(false);
+          }}
+          onClose={() => setShowSearchBarcodeCamera(false)}
         />
       )}
 

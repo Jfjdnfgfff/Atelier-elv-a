@@ -44,6 +44,8 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
   onScanBarcode
 }) => {
   const [filter, setFilter] = useState<'all' | 'reserved' | 'active' | 'overdue' | 'returned'>('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'returns_today' | 'starts_today' | 'this_week' | 'custom'>('all');
+  const [customDate, setCustomDate] = useState<string>('');
   const [search, setSearch] = useState('');
   const [handoverModalRental, setHandoverModalRental] = useState<Rental | null>(null);
   const [handoverCollectedAmount, setHandoverCollectedAmount] = useState<number>(0);
@@ -140,6 +142,17 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
       if (filter === 'active' && !isActive) return false;
       if (filter === 'overdue' && !isOverdue) return false;
       if (filter === 'returned' && !isReturned) return false;
+
+      // Date Controls filter (التحكم في التواريخ ومواعيد الاستلام والإرجاع)
+      if (dateFilter === 'returns_today' && r.expectedReturnDate !== today) return false;
+      if (dateFilter === 'starts_today' && r.startDate !== today) return false;
+      if (dateFilter === 'this_week') {
+        const diff = getDaysDiffFromToday(r.expectedReturnDate);
+        if (diff < 0 || diff > 7) return false;
+      }
+      if (dateFilter === 'custom' && customDate) {
+        if (r.expectedReturnDate !== customDate && r.startDate !== customDate) return false;
+      }
 
       if (deferredSearch.trim()) {
         const q = deferredSearch.toLowerCase();
@@ -305,6 +318,46 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
           <svg className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
+        </div>
+      </div>
+
+      {/* Date Controls Toolbar (التحكم في تواريخ الكراء والإرجاع) */}
+      <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-1.5">
+          <Calendar className="w-3.5 h-3.5 text-sky-600" />
+          <span className="font-bold text-slate-800 text-[11px]">التحكم في التواريخ:</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {[
+            { id: 'all', label: 'جميع التواريخ' },
+            { id: 'returns_today', label: 'إرجاع اليوم 📅' },
+            { id: 'starts_today', label: 'استلام اليوم' },
+            { id: 'this_week', label: 'مواعيد هذا الأسبوع' },
+            { id: 'custom', label: 'تاريخ محدد 🗓️' }
+          ].map(df => (
+            <button
+              key={df.id}
+              type="button"
+              onClick={() => setDateFilter(df.id as any)}
+              className={`px-2.5 py-1 rounded-lg whitespace-nowrap font-medium text-[11px] transition-all border ${
+                dateFilter === df.id
+                  ? 'bg-sky-600 text-white font-bold border-sky-600 shadow-2xs'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              {df.label}
+            </button>
+          ))}
+
+          {dateFilter === 'custom' && (
+            <input
+              type="date"
+              value={customDate}
+              onChange={(e) => setCustomDate(e.target.value)}
+              className="bg-white border border-slate-300 rounded-lg px-2 py-0.5 text-[11px] font-mono font-bold text-slate-800 focus:outline-none focus:border-sky-500"
+            />
+          )}
         </div>
       </div>
 

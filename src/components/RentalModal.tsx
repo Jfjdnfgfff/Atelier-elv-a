@@ -167,13 +167,18 @@ export const RentalModal: React.FC<RentalModalProps> = ({
   const [accessoryPrice, setAccessoryPrice] = useState<number | ''>(
     rental?.accessoryPrice !== undefined && rental.accessoryPrice > 0 ? rental.accessoryPrice : ''
   );
+  const [discountAmount, setDiscountAmount] = useState<number | ''>(
+    rental?.discountAmount !== undefined && rental.discountAmount > 0 ? rental.discountAmount : ''
+  );
 
-  // Auto-calculated Total Rental Price (سعر الفستان + سعر الإكسسوار)
+  // Auto-calculated Total Rental Price (سعر الفستان + سعر الإكسسوار - التخفيض)
   const safeDressPrice = typeof dressRentPrice === 'number' ? dressRentPrice : 0;
   const safeAccPrice = (hasAccessories && typeof accessoryPrice === 'number') ? accessoryPrice : 0;
-  const totalRentPrice = safeDressPrice + safeAccPrice;
+  const subtotalRentPrice = safeDressPrice + safeAccPrice;
+  const safeDiscount = typeof discountAmount === 'number' ? Math.min(subtotalRentPrice, Math.max(0, discountAmount)) : 0;
+  const totalRentPrice = Math.max(0, subtotalRentPrice - safeDiscount);
 
-  const initialPaid = rental ? rental.paidAmount : (selectedItem ? selectedItem.rentPrice : 0);
+  const initialPaid = rental ? rental.paidAmount : (selectedItem ? Math.max(0, selectedItem.rentPrice - safeDiscount) : 0);
   const [paidAmount, setPaidAmount] = useState<number>(initialPaid);
   const [cautionAmount, setCautionAmount] = useState<number>(rental ? rental.cautionAmount : (selectedItem ? selectedItem.cautionAmount : 0));
   const [notes, setNotes] = useState(rental?.notes || '');
@@ -268,6 +273,8 @@ export const RentalModal: React.FC<RentalModalProps> = ({
       hasAccessories: Boolean(hasAccessories),
       accessoryName: hasAccessories && accessoryName.trim() ? accessoryName.trim() : undefined,
       accessoryPrice: hasAccessories ? Number(safeAccPrice) : 0,
+      originalRentPrice: Number(subtotalRentPrice),
+      discountAmount: Number(safeDiscount),
       rentPrice: Number(totalRentPrice),
       paidAmount: Number(paidAmount),
       remainingAmount,
@@ -532,48 +539,141 @@ export const RentalModal: React.FC<RentalModalProps> = ({
         )}
       </div>
 
-      {/* Date & Duration Inputs - Standard Form Style */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">
-            تاريخ استلام الكراء *
-          </label>
-          <input
-            type="date"
-            required
-            value={startDate}
-            onChange={(e) => handleStartDateChange(e.target.value)}
-            className="w-[145px] sm:w-[155px] bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none"
-          />
+      {/* Date & Duration Controls (التحكم في تاريخ ومدة الكراء) */}
+      <div className="bg-slate-50 p-3.5 sm:p-4 rounded-3xl border border-slate-200/80 shadow-2xs space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200/60">
+          <div className="flex items-center gap-2">
+            <span className="w-7 h-7 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold">
+              <Calendar className="w-4 h-4" />
+            </span>
+            <div>
+              <span className="text-xs font-bold text-slate-900 block">التحكم في تاريخ ومدة الكراء</span>
+              <span className="text-[10px] text-slate-500 font-medium">حدد تاريخ بداية الاستلام والمدة وتاريخ الإرجاع بدقة</span>
+            </div>
+          </div>
+
+          {/* Quick Date Presets */}
+          <div className="flex flex-wrap items-center gap-1">
+            <button
+              type="button"
+              onClick={() => handleStartDateChange(today)}
+              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all border ${
+                startDate === today 
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-2xs' 
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              اليوم
+            </button>
+            <button
+              type="button"
+              onClick={() => handleStartDateChange(addDays(today, 1))}
+              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all border ${
+                startDate === addDays(today, 1) 
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-2xs' 
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              غداً (+1)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleStartDateChange(addDays(today, 2))}
+              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all border ${
+                startDate === addDays(today, 2) 
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-2xs' 
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              بعد يومين (+2)
+            </button>
+          </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">
-            مدة الكراء (عدد الأيام) *
-          </label>
-          <input
-            type="number"
-            min="1"
-            max="365"
-            required
-            value={durationDays}
-            onChange={(e) => handleDurationChange(Number(e.target.value))}
-            placeholder="2"
-            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none"
-          />
+        {/* Date Inputs */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              تاريخ استلام الكراء *
+            </label>
+            <input
+              type="date"
+              required
+              value={startDate}
+              onChange={(e) => handleStartDateChange(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-xs font-bold text-slate-700">
+                مدة الكراء (عدد الأيام) *
+              </label>
+              <span className="text-[10px] text-slate-500 font-mono">({durationDays} أيام)</span>
+            </div>
+            <input
+              type="number"
+              min="1"
+              max="365"
+              required
+              value={durationDays}
+              onChange={(e) => handleDurationChange(Number(e.target.value))}
+              placeholder="2"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              تاريخ إرجاع الفستان *
+            </label>
+            <input
+              type="date"
+              required
+              value={expectedReturnDate}
+              onChange={(e) => handleExpectedReturnDateChange(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none font-black"
+            />
+          </div>
         </div>
 
+        {/* Quick Duration Buttons */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">
-            تاريخ إرجاع الفستان *
-          </label>
-          <input
-            type="date"
-            required
-            value={expectedReturnDate}
-            onChange={(e) => handleExpectedReturnDateChange(e.target.value)}
-            className="w-[145px] sm:w-[155px] bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none font-black"
-          />
+          <span className="block text-[10px] font-bold text-slate-500 mb-1">اختيار مدة الكراء سريعة:</span>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { days: 1, label: 'يوم واحد (24 ساعة)' },
+              { days: 2, label: 'يومين (48 ساعة - المعتاد)' },
+              { days: 3, label: '3 أيام' },
+              { days: 4, label: '4 أيام' },
+              { days: 7, label: 'أسبوع كامل (7 أيام)' }
+            ].map(d => (
+              <button
+                key={d.days}
+                type="button"
+                onClick={() => handleDurationChange(d.days)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all border ${
+                  durationDays === d.days
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Timeline Summary Box */}
+        <div className="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs font-medium text-slate-700">
+          <div className="flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-slate-500" />
+            <span>من: <strong className="font-mono text-slate-900">{startDate}</strong> إلى: <strong className="font-mono text-slate-900">{expectedReturnDate}</strong></span>
+          </div>
+          <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md font-mono text-[11px]">
+            {durationDays} أيام كراء
+          </span>
         </div>
       </div>
 
@@ -794,7 +894,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           </div>
         </div>
 
-        {/* Detailed inputs: Dress Price, Accessory Price, Total, Paid, Remaining */}
+        {/* Detailed inputs: Dress Price, Accessory Price, Discount, Total, Paid, Remaining */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {/* 1. Dress Base Price */}
           <div>
@@ -807,7 +907,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
               required
               value={dressRentPrice}
               onChange={(e) => setDressRentPrice(Number(e.target.value))}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400 font-mono"
             />
           </div>
 
@@ -827,7 +927,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
                 }
               }}
               placeholder={hasAccessories ? "0" : "بدون إكسسوار"}
-              className={`w-full border rounded-xl px-3 py-2 text-xs font-bold focus:outline-none ${
+              className={`w-full border rounded-xl px-3 py-2 text-xs font-bold focus:outline-none font-mono ${
                 hasAccessories
                   ? 'bg-white border-slate-300 text-slate-900 focus:border-slate-400'
                   : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
@@ -855,7 +955,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
               required
               value={paidAmount}
               onChange={(e) => setPaidAmount(Number(e.target.value))}
-              className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400"
+              className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400 font-mono"
             />
           </div>
 
@@ -864,27 +964,105 @@ export const RentalModal: React.FC<RentalModalProps> = ({
             <label className="block text-[11px] font-bold text-slate-700 mb-1">
               {bookingType === 'reserved' ? 'المتبقي عند استلام الفستان' : 'المتبقي (دين/كريدي)'}
             </label>
-            <div className={`w-full rounded-xl px-3 py-2 text-xs font-bold border flex items-center justify-between ${
+            <div className={`w-full rounded-xl px-3 py-2 text-xs font-bold border flex items-center justify-between font-mono ${
               remainingAmount > 0 
                 ? 'bg-slate-100 border-slate-200 text-slate-800' 
                 : 'bg-slate-50 border-slate-200 text-slate-600'
             }`}>
               <span>{remainingAmount.toLocaleString()} دج</span>
-              <span className="text-[10px] font-medium flex items-center gap-1">
+              <span className="text-[10px] font-medium flex items-center gap-1 font-sans">
                 {remainingAmount > 0 ? (
                   <>
                     <Clock className="w-3 h-3 text-slate-500" />
                     <span>متبقي</span>
                   </>
                 ) : (
-                  <>
-                    <Check className="w-3 h-3 text-blue-600" />
-                    <span>خالص 0 دج</span>
-                  </>
+                  <span>خالص</span>
                 )}
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Discount / Price Reduction Control for Rentals (إنقاص سعر الكراء والتخفيض) */}
+        <div className="p-3 bg-white rounded-2xl border border-slate-200/80 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="p-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold">
+                %
+              </span>
+              <span className="text-xs font-bold text-slate-900">إنقاص السعر / تخفيض كراء الفستان (Remise للزبونة):</span>
+            </div>
+
+            {safeDiscount > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDiscountAmount('');
+                  setPaidAmount(subtotalRentPrice);
+                }}
+                className="text-[11px] text-rose-600 font-medium hover:underline"
+              >
+                إلغاء التخفيض
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+            <div className="sm:col-span-1">
+              <label className="block text-[10px] font-bold text-slate-600 mb-1">مبلغ التخفيض المخصوم (دج)</label>
+              <input
+                type="number"
+                min="0"
+                max={subtotalRentPrice}
+                value={discountAmount}
+                onChange={(e) => {
+                  const d = e.target.value === '' ? '' : Number(e.target.value);
+                  setDiscountAmount(d);
+                  const newDisc = typeof d === 'number' ? Math.min(subtotalRentPrice, d) : 0;
+                  setPaidAmount(Math.max(0, subtotalRentPrice - newDisc));
+                }}
+                placeholder="أدخل مبلغ الخصم (مثال: 500)..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-emerald-900 focus:outline-none focus:border-emerald-500 font-mono"
+              />
+            </div>
+
+            {/* Quick reduction chips */}
+            <div className="sm:col-span-2">
+              <span className="block text-[10px] font-bold text-slate-500 mb-1">تخفيضات جاهزة سريعة:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {[500, 1000, 1500, 2000, 3000].map(amt => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => {
+                      setDiscountAmount(amt);
+                      const newTotal = Math.max(0, subtotalRentPrice - amt);
+                      setPaidAmount(newTotal);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all border ${
+                      discountAmount === amt 
+                        ? 'bg-emerald-700 text-white border-emerald-700 shadow-2xs' 
+                        : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                    }`}
+                  >
+                    - {amt.toLocaleString()} دج
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {safeDiscount > 0 && (
+            <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium">
+                السعر الأصلي: <strong className="font-mono text-slate-700">{subtotalRentPrice.toLocaleString()} دج</strong> | التخفيض: <strong className="font-mono text-emerald-700">-{safeDiscount.toLocaleString()} دج</strong>
+              </span>
+              <span className="text-slate-900 font-bold">
+                السعر النهائي بعد التخفيض: <strong className="font-mono text-sm text-slate-900">{totalRentPrice.toLocaleString()} دج</strong>
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Breakdown Calculation Banner */}

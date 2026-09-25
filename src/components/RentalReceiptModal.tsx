@@ -163,8 +163,23 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
             </>
           )}
 
+          {rental.discountAmount && rental.discountAmount > 0 ? (
+            <>
+              {rental.originalRentPrice && (
+                <div className="flex justify-between font-medium text-slate-500">
+                  <span>السعر الأصلي قبل التخفيض:</span>
+                  <span className="line-through">{rental.originalRentPrice.toLocaleString()} دج</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-emerald-700">
+                <span>تخفيض / إنقاص السعر الممنوح:</span>
+                <span>-{rental.discountAmount.toLocaleString()} دج</span>
+              </div>
+            </>
+          ) : null}
+
           <div className="flex justify-between font-black text-slate-900 pt-1 border-t border-slate-200 text-sm">
-            <span>مبلغ الكراء الإجمالي الكلي:</span>
+            <span>مبلغ الكراء الإجمالي النهائي:</span>
             <span className="text-blue-700">{rental.rentPrice.toLocaleString()} دج</span>
           </div>
           <div className="flex justify-between font-bold text-blue-700">

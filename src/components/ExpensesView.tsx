@@ -19,7 +19,17 @@ import {
   Search,
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Zap,
+  Droplets,
+  Sparkles,
+  Package,
+  Scissors,
+  Wrench,
+  Truck,
+  Coffee,
+  Tag,
+  Filter
 } from 'lucide-react';
 
 interface ExpensesViewProps {
@@ -44,12 +54,14 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
   // Mode: 'supplier' (خلاص وشراء من المورد) vs 'general' (مصاريف عامة وتجهيزات)
   const [activeFormTab, setActiveFormTab] = useState<'supplier' | 'general'>('supplier');
   const [filterTab, setFilterTab] = useState<'all' | 'suppliers' | 'general' | 'has_credit'>('all');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
 
   // General Expense Form State
   const [generalDesc, setGeneralDesc] = useState('');
   const [generalAmount, setGeneralAmount] = useState<number | ''>('');
-  const [generalCategory, setGeneralCategory] = useState('غسيل وتنظيف جاف (Pressing)');
+  const [generalCategory, setGeneralCategory] = useState('كراء وإيجار المحل (Loyer)');
+  const [generalPeriodNote, setGeneralPeriodNote] = useState('');
   const [generalDate, setGeneralDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Supplier Expense Form State
@@ -71,14 +83,27 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
   const [voucherExpense, setVoucherExpense] = useState<Expense | null>(null);
 
   const generalCategories = [
-    'غسيل وتنظيف جاف (Pressing)',
-    'كراء المحل وفواتير (كهرباء، ماء، إنترنت)',
-    'تغليف وأكياس فساتين ومستلزمات',
-    'خياطة وتعديل مقاسات خارجية',
+    'كراء وإيجار المحل (Loyer)',
+    'فواتير الكهرباء والغاز',
+    'فواتير الماء',
+    'فواتير الإنترنت والهاتف',
+    'أجور ورواتب العمال ومساعدين',
+    'غسيل وتنظيف جاف ومصبغة (Pressing)',
+    'تغليف وأكياس وعلب الفساتين',
+    'لوازم وأدوات وخيوط الخياطة والأقمشة',
     'صيانة وتجهيزات وديكور المحل',
-    'تسويق وإعلانات',
-    'مصاريف نقل وتوصيل السلعة',
-    'مصاريف تشغيلية أخرى'
+    'تسويق وإعلانات وتصوير فوتوغرافي',
+    'مصاريف نقل وشحن وتوصيل السلع',
+    'ضرائب ورسوم قانونية ومحاسبية',
+    'ضيافة واستقبال الزبائن',
+    'مصاريف تشغيلية ونثرية أخرى'
+  ];
+
+  const rentPeriods = [
+    'شهر جانفي', 'شهر فيفري', 'شهر مارس', 'شهر أفريل',
+    'شهر ماي', 'شهر جوان', 'شهر جويلية', 'شهر أوت',
+    'شهر سبتمبر', 'شهر أكتوبر', 'شهر نوفمبر', 'شهر ديسمبر',
+    'كراء 3 أشهر', 'كراء 6 أشهر', 'كراء سنوي'
   ];
 
   const quickGoodsSuggestions = [
@@ -125,12 +150,14 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
       desc: generalDesc.trim(),
       amount: Number(generalAmount),
       category: generalCategory,
+      periodNote: generalPeriodNote ? generalPeriodNote.trim() : undefined,
       date: new Date(generalDate).toISOString(),
       isSupplierPurchase: false
     });
 
     setGeneralDesc('');
     setGeneralAmount('');
+    setGeneralPeriodNote('');
   };
 
   const handleSupplierSubmit = (e: React.FormEvent) => {
@@ -221,11 +248,36 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
   // Total outstanding supplier debt from expenses
   const totalSupplierDebts = supplierExpenses.reduce((s, e) => s + (e.creditAmount || 0), 0);
 
+  // Detailed Expense Breakdown
+  const rentTotal = generalExpensesList
+    .filter(e => e.category?.includes('كراء') || e.category?.includes('إيجار'))
+    .reduce((s, e) => s + Number(e.amount), 0);
+
+  const billsTotal = generalExpensesList
+    .filter(e => e.category?.includes('كهرباء') || e.category?.includes('ماء') || e.category?.includes('إنترنت') || e.category?.includes('فواتير'))
+    .reduce((s, e) => s + Number(e.amount), 0);
+
+  const salariesTotal = generalExpensesList
+    .filter(e => e.category?.includes('أجور') || e.category?.includes('رواتب'))
+    .reduce((s, e) => s + Number(e.amount), 0);
+
+  const pressingPackagingTotal = generalExpensesList
+    .filter(e => e.category?.includes('غسيل') || e.category?.includes('تنظيف') || e.category?.includes('تغليف') || e.category?.includes('أكياس'))
+    .reduce((s, e) => s + Number(e.amount), 0);
+
   // Filtered List
   const filteredExpenses = expenses.filter(exp => {
     if (filterTab === 'suppliers' && !exp.isSupplierPurchase) return false;
     if (filterTab === 'general' && exp.isSupplierPurchase) return false;
     if (filterTab === 'has_credit' && (!exp.isSupplierPurchase || (exp.creditAmount || 0) <= 0)) return false;
+
+    if (selectedCategoryFilter !== 'all') {
+      if (exp.isSupplierPurchase) {
+        if (selectedCategoryFilter !== 'مشتريات موردين') return false;
+      } else {
+        if (exp.category !== selectedCategoryFilter) return false;
+      }
+    }
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -234,7 +286,8 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
       const matchSup = exp.supplierName?.toLowerCase().includes(q);
       const matchGoods = exp.goodsDescription?.toLowerCase().includes(q);
       const matchInvoice = exp.invoiceNumber?.toLowerCase().includes(q);
-      return matchDesc || matchCat || matchSup || matchGoods || matchInvoice;
+      const matchPeriod = exp.periodNote?.toLowerCase().includes(q);
+      return matchDesc || matchCat || matchSup || matchGoods || matchInvoice || matchPeriod;
     }
     return true;
   });
@@ -244,7 +297,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterTab, search]);
+  }, [filterTab, selectedCategoryFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filteredExpenses.length / PAGE_SIZE));
   const paginatedExpenses = useMemo(() => {
@@ -329,6 +382,49 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
               {totalCashOut.toLocaleString()} دج
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">إجمالي السيولة الخارجة من الصندوق</span>
+          </div>
+        </div>
+
+        {/* Detailed Breakdown for General Expenses (تفصيل المصاريف التشغيلية: إيجار، فواتير، أجور، تنظيف) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-100 text-xs">
+          <div className="bg-indigo-50/70 border border-indigo-100 p-2.5 rounded-xl">
+            <span className="text-indigo-800 text-[11px] font-bold block flex items-center gap-1">
+              <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+              <span>إيجار وكراء المحل (Loyer)</span>
+            </span>
+            <span className="text-sm font-bold font-mono text-indigo-950 block mt-1">
+              {rentTotal.toLocaleString()} دج
+            </span>
+          </div>
+
+          <div className="bg-amber-50/70 border border-amber-100 p-2.5 rounded-xl">
+            <span className="text-amber-800 text-[11px] font-bold block flex items-center gap-1">
+              <Zap className="w-3.5 h-3.5 text-amber-600" />
+              <span>كهرباء، ماء وإنترنت</span>
+            </span>
+            <span className="text-sm font-bold font-mono text-amber-950 block mt-1">
+              {billsTotal.toLocaleString()} دج
+            </span>
+          </div>
+
+          <div className="bg-emerald-50/70 border border-emerald-100 p-2.5 rounded-xl">
+            <span className="text-emerald-800 text-[11px] font-bold block flex items-center gap-1">
+              <Receipt className="w-3.5 h-3.5 text-emerald-600" />
+              <span>أجور ورواتب العمال</span>
+            </span>
+            <span className="text-sm font-bold font-mono text-emerald-950 block mt-1">
+              {salariesTotal.toLocaleString()} دج
+            </span>
+          </div>
+
+          <div className="bg-purple-50/70 border border-purple-100 p-2.5 rounded-xl">
+            <span className="text-purple-800 text-[11px] font-bold block flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+              <span>غسيل، تنظيف وتغليف</span>
+            </span>
+            <span className="text-sm font-bold font-mono text-purple-950 block mt-1">
+              {pressingPackagingTotal.toLocaleString()} دج
+            </span>
           </div>
         </div>
       </div>
@@ -581,7 +677,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                 required
                 value={generalDesc}
                 onChange={setGeneralDesc}
-                placeholder="مثال: تنظيف جاف لفساتين سهرة بعد الكراء..."
+                placeholder="مثال: كراء المحل لشهر جانفي / فاتورة الكهرباء / أكياس وتغليف..."
                 className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-normal focus:outline-none focus:border-slate-400"
               />
             </div>
@@ -600,14 +696,90 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">التصنيف</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">التصنيف التفصيلي *</label>
               <select
                 value={generalCategory}
                 onChange={(e) => setGeneralCategory(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-slate-400"
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-slate-400 bg-white"
               >
                 {generalCategories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
+            </div>
+          </div>
+
+          {/* Quick Category Chips */}
+          <div>
+            <span className="block text-[11px] font-bold text-slate-500 mb-1.5">اختيار تصنيف سريع:</span>
+            <div className="flex flex-wrap gap-1.5">
+              {generalCategories.map(cat => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => {
+                    setGeneralCategory(cat);
+                    if ((cat.includes('كراء') || cat.includes('إيجار')) && !generalDesc) {
+                      setGeneralDesc('كراء وإيجار المحل');
+                    }
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                    generalCategory === cat
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Rent Period Helper (Loyer) */}
+          {(generalCategory.includes('كراء') || generalCategory.includes('إيجار')) && (
+            <div className="p-3 bg-indigo-50/70 border border-indigo-200/80 rounded-2xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>تحديد فترة الإيجار (اختر الشهر لإدراجه تلقائياً في السجل والوصل):</span>
+                </span>
+                {generalPeriodNote && (
+                  <span className="text-[11px] bg-indigo-600 text-white px-2 py-0.5 rounded-md font-bold">
+                    المحدد: {generalPeriodNote}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {rentPeriods.map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => {
+                      setGeneralPeriodNote(p);
+                      setGeneralDesc(`كراء وإيجار المحل - ${p}`);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all border ${
+                      generalPeriodNote === p
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                        : 'bg-white text-indigo-800 border-indigo-200 hover:bg-indigo-100'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Date Selector */}
+          <div className="flex items-center gap-3">
+            <div className="w-48">
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">تاريخ دفع المصروف</label>
+              <input
+                type="date"
+                required
+                value={generalDate}
+                onChange={(e) => setGeneralDate(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-slate-800"
+              />
             </div>
           </div>
 
@@ -669,15 +841,30 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* Search input */}
-        <div className="relative">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="بحث باسم المورد، السلعة المشتراة، رقم الفاتورة، أو بيان المصروف..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-slate-400"
-          />
+        {/* Search input and Category Filter */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="بحث باسم المورد، السلعة المشتراة، رقم الفاتورة، أو بيان المصروف..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-slate-400"
+            />
+          </div>
+
+          <div className="sm:w-64">
+            <select
+              value={selectedCategoryFilter}
+              onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:border-slate-400"
+            >
+              <option value="all">جميع التصنيفات والمصاريف</option>
+              {generalCategories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {filteredExpenses.length === 0 ? (
@@ -748,8 +935,13 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                           )}
                         </div>
                       ) : (
-                        <div className="text-xs font-medium text-slate-800 mt-1">
-                          {exp.desc}
+                        <div className="text-xs font-medium text-slate-800 mt-1 flex flex-wrap items-center gap-1.5">
+                          <span>{exp.desc}</span>
+                          {exp.periodNote && (
+                            <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-md border border-indigo-200">
+                              {exp.periodNote}
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>

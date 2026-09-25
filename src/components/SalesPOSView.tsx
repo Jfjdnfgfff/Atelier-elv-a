@@ -28,7 +28,8 @@ import {
   Barcode,
   Plus,
   Minus,
-  Loader2
+  Loader2,
+  Tag
 } from 'lucide-react';
 
 interface SalesPOSViewProps {
@@ -87,6 +88,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
   } | null>(null);
 
   const [paidAmount, setPaidAmount] = useState<number | ''>('');
+  const [cartDiscount, setCartDiscount] = useState<number | ''>('');
   
   // Date selector for the sale
   const getTodayDateString = () => {
@@ -379,20 +381,38 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
     }));
   };
 
-  const { totalAmount, totalCost, totalProfit } = useMemo(() => {
-    let amount = 0;
+  const updateCartItemPrice = (itemId: string, stockSource: string | undefined, size: string, color: string, newPrice: number) => {
+    const safePrice = Math.max(0, Number(newPrice) || 0);
+    setCart(prev => prev.map(ci => {
+      if (ci.itemId === itemId && ci.stockSource === stockSource && ci.size === size && ci.color === color) {
+        return {
+          ...ci,
+          price: safePrice,
+          total: ci.qty * safePrice
+        };
+      }
+      return ci;
+    }));
+  };
+
+  const rawSubtotal = useMemo(() => {
+    return cart.reduce((s, ci) => s + ci.total, 0);
+  }, [cart]);
+
+  const discountVal = typeof cartDiscount === 'number' ? Math.min(rawSubtotal, Math.max(0, cartDiscount)) : 0;
+  const totalAmount = Math.max(0, rawSubtotal - discountVal);
+
+  const { totalCost, totalProfit } = useMemo(() => {
     let cost = 0;
     for (let i = 0; i < cart.length; i++) {
       const ci = cart[i];
-      amount += ci.total;
       cost += (ci.cost * ci.qty);
     }
     return {
-      totalAmount: amount,
       totalCost: cost,
-      totalProfit: amount - cost
+      totalProfit: totalAmount - cost
     };
-  }, [cart]);
+  }, [cart, totalAmount]);
 
   const actualPaid = paidAmount === '' ? totalAmount : Number(paidAmount);
   const debtAmount = Math.max(0, totalAmount - actualPaid);
@@ -420,6 +440,8 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
       customerName: customerName.trim() || 'زبون عام',
       customerPhone: customerPhone.trim(),
       items: cart,
+      subtotal: rawSubtotal,
+      discount: discountVal,
       totalAmount,
       paidAmount: actualPaid,
       debtAmount,
@@ -431,6 +453,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
     setCustomerName('');
     setCustomerPhone('');
     setPaidAmount('');
+    setCartDiscount('');
     setSaleDate(getTodayDateString());
   };
 
@@ -826,13 +849,77 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                   />
                 </div>
 
+                {/* Pricing & Discount (إنقاص السعر والتخفيض) */}
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500 font-medium">المجموع قبل التخفيض:</span>
+                    <span className="font-bold text-slate-800 font-mono">{rawSubtotal.toLocaleString()} دج</span>
+                  </div>
+
+                  {/* Discount input */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
+                        <Tag className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>إنقاص السعر / تخفيض (دج):</span>
+                      </label>
+                      {discountVal > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setCartDiscount('')}
+                          className="text-[10px] text-rose-600 font-medium hover:underline"
+                        >
+                          إلغاء التخفيض
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      max={rawSubtotal}
+                      value={cartDiscount}
+                      onChange={(e) => setCartDiscount(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="أدخل مبلغ التخفيض (مثال: 500)..."
+                      className="w-full bg-white border border-emerald-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-emerald-900 focus:outline-none focus:border-emerald-500 font-mono"
+                    />
+
+                    {/* Quick discount chips */}
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {[200, 500, 1000, 1500, 2000].map(amt => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => setCartDiscount(amt)}
+                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md text-[10px] font-bold transition-all"
+                        >
+                          - {amt.toLocaleString()} دج
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-900">المبلغ الإجمالي بعد التخفيض:</span>
+                    <div className="text-lg font-black text-slate-900 font-mono">{totalAmount.toLocaleString()} دج</div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
                   <div>
-                    <label className="block text-[10px] text-slate-500 font-medium mb-1">المبلغ الإجمالي</label>
+                    <label className="block text-[10px] text-slate-500 font-medium mb-1">المبلغ المطلوب</label>
                     <div className="text-base font-bold text-slate-900 font-mono">{totalAmount.toLocaleString()} دج</div>
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500 font-medium mb-1">المبلغ المستلم</label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-[10px] text-slate-500 font-medium">المبلغ المستلم</label>
+                      <button
+                        type="button"
+                        onClick={() => setPaidAmount(totalAmount)}
+                        className="text-[10px] text-slate-700 font-bold underline hover:text-slate-900"
+                      >
+                        خالص كامل
+                      </button>
+                    </div>
                     <input
                       type="number"
                       min="0"
@@ -1085,7 +1172,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               <button
                 type="button"
                 onClick={() => {
-                  addCustomQtyToCart(scannedItemModal.item, scannedItemModal.qty, scannedItemModal.stockSource);
+                  addCustomQtyToCart(scannedItemModal.item, scannedItemModal.qty, scannedItemModal.stockSource, scannedItemModal.selectedSize, scannedItemModal.selectedColor);
                   setScannedItemModal(null);
                 }}
                 className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white rounded-xl font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-2"

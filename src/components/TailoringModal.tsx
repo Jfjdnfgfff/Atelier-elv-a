@@ -253,10 +253,10 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
               onChange={(e) => setServiceType(e.target.value as MaintenanceServiceType)}
               className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
             >
+              <option value="ironing_prep">كواء وغسيل وكي وتجهيز فاخر (Pressing)</option>
               <option value="alteration">تعديل مقاس (تضييق / توسيع / تقصير)</option>
               <option value="repair">تصليح وترقيع (سحاب / أزرار / تمزق)</option>
               <option value="custom_sewing">خياطة وتفصيل جديد</option>
-              <option value="ironing_prep">غسيل وكي وتجهيز فاخر</option>
               <option value="other">صيانة وأعمال أخرى</option>
             </select>
           </div>
@@ -304,91 +304,174 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
           />
         </div>
 
-        {/* Dates Controls - Standard Input Style */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">تاريخ الاستلام *</label>
-            <input
-              type="date"
-              required
-              value={receivedDate}
-              onChange={(e) => handleReceivedDateChange(e.target.value)}
-              className="w-[145px] sm:w-[155px] bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
-            />
+        {/* Dates Controls (التحكم في التواريخ ومواعيد التسليم والاستلام) */}
+        <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-1.5 pb-1 border-b border-slate-200/60">
+            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <span>📅 مواعيد الاستلام والتسليم والمدة</span>
+            </span>
+            {/* Quick date control chips */}
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="text-[10px] text-slate-500 font-medium">تسليم سريع:</span>
+              {[
+                { label: 'نفس اليوم', days: 0 },
+                { label: 'غداً (+1)', days: 1 },
+                { label: 'يومين (+2)', days: 2 },
+                { label: '3 أيام (+3)', days: 3 },
+                { label: 'أسبوع (+7)', days: 7 }
+              ].map(preset => (
+                <button
+                  key={preset.days}
+                  type="button"
+                  onClick={() => {
+                    if (preset.days === 0) {
+                      setExpectedDeliveryDate(receivedDate);
+                      setDurationDays(0);
+                    } else {
+                      handleDurationChange(preset.days);
+                    }
+                  }}
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all ${
+                    (preset.days === 0 && expectedDeliveryDate === receivedDate) || (preset.days > 0 && durationDays === preset.days)
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">المدة (عدد الأيام) *</label>
-            <input
-              type="number"
-              min="1"
-              max="180"
-              required
-              value={durationDays}
-              onChange={(e) => handleDurationChange(Number(e.target.value))}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
-            />
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-bold text-slate-700">تاريخ الاستلام *</label>
+                <button
+                  type="button"
+                  onClick={() => handleReceivedDateChange(today)}
+                  className="text-[10px] text-slate-500 hover:text-slate-800 underline"
+                >
+                  اليوم
+                </button>
+              </div>
+              <input
+                type="date"
+                required
+                value={receivedDate}
+                onChange={(e) => handleReceivedDateChange(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
+              />
+            </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">تاريخ التسليم المتوقع *</label>
-            <input
-              type="date"
-              required
-              value={expectedDeliveryDate}
-              onChange={(e) => handleDeliveryDateChange(e.target.value)}
-              className="w-[145px] sm:w-[155px] bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
-            />
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">المدة (عدد الأيام) *</label>
+              <input
+                type="number"
+                min="0"
+                max="180"
+                required
+                value={durationDays}
+                onChange={(e) => handleDurationChange(Number(e.target.value))}
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">تاريخ التسليم المتوقع *</label>
+              <input
+                type="date"
+                required
+                value={expectedDeliveryDate}
+                onChange={(e) => handleDeliveryDateChange(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Financial Fields */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">أتعاب الخياطة / التكلفة (دج)</label>
-            <input
-              type="number"
-              min="0"
-              value={cost}
-              onChange={(e) => setCost(Number(e.target.value))}
-              placeholder="500"
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
-            />
+        {/* Financial Fields & Cost Tracking (قيمة التكليف وسعر الخدمة والأرباح) */}
+        <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
+          <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60">
+            <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+              <CreditCard className="w-4 h-4 text-slate-600" />
+              <span>الحساب المالي وقيمة التكليف للخياطة</span>
+            </span>
+            {targetType === 'customer_order' && (
+              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md font-mono ${
+                (Number(price) - Number(cost)) >= 0 
+                  ? 'bg-emerald-100 text-emerald-800' 
+                  : 'bg-rose-100 text-rose-800'
+              }`}>
+                صافي الربح: {(Number(price) - Number(cost)).toLocaleString()} دج
+              </span>
+            )}
           </div>
 
-          {targetType === 'customer_order' && (
-            <>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">السعر للزبونة (دج) *</label>
-                <input
-                  type="number"
-                  min="0"
-                  required
-                  value={price}
-                  onChange={(e) => {
-                    const p = Number(e.target.value) || 0;
-                    setPrice(p);
-                    if (paidAmount > p) setPaidAmount(p);
-                  }}
-                  placeholder="1500"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
-                />
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                قيمة التكليف (تكلفة القماش واللوازم واليد العاملة) (دج) *
+              </label>
+              <input
+                type="number"
+                min="0"
+                required
+                value={cost}
+                onChange={(e) => setCost(Number(e.target.value))}
+                placeholder="500"
+                className="w-full bg-white border border-amber-300 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-amber-950 focus:border-amber-500 focus:outline-none font-mono"
+              />
+              <span className="text-[10px] text-slate-500 mt-0.5 block">تكلفة تنفيذ الخطة واللوازم</span>
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">المبلغ المدفوع (عربون)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max={price}
-                  value={paidAmount}
-                  onChange={(e) => setPaidAmount(Number(e.target.value))}
-                  placeholder="1000"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
-                />
-              </div>
-            </>
-          )}
+            {targetType === 'customer_order' && (
+              <>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">سعر الخدمة للزبونة (دج) *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={price}
+                    onChange={(e) => {
+                      const p = Number(e.target.value) || 0;
+                      setPrice(p);
+                      if (paidAmount > p) setPaidAmount(p);
+                    }}
+                    placeholder="1500"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none font-mono"
+                  />
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">السعر الإجمالي المطلوب من الزبونة</span>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-xs font-bold text-slate-700">المبلغ المدفوع (عربون)</label>
+                    <button
+                      type="button"
+                      onClick={() => setPaidAmount(price)}
+                      className="text-[10px] text-slate-600 hover:text-slate-900 font-bold underline"
+                    >
+                      دفع كامل
+                    </button>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    max={price}
+                    value={paidAmount}
+                    onChange={(e) => setPaidAmount(Number(e.target.value))}
+                    placeholder="1000"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none font-mono"
+                  />
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">
+                    {remainingAmount > 0 ? `المتبقي: ${remainingAmount.toLocaleString()} دج` : 'خالص بالكامل'}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Status (when editing) */}

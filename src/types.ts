@@ -61,7 +61,9 @@ export interface Rental {
   hasAccessories?: boolean; // هل تم إضافة إكسسوارات مع الفستان
   accessoryName?: string; // بيان الإكسسوار (تاج، حزام، حقيبة، شال، مجوهرات...)
   accessoryPrice?: number; // سعر كراء الإكسسوارات الإضافية
-  rentPrice: number; // السعر الكلي الإجمالي (الفستان + الإكسسوار)
+  originalRentPrice?: number; // السعر الأصلي قبل التخفيض
+  discountAmount?: number; // مبلغ إنقاص السعر / التخفيض الممنوح
+  rentPrice: number; // السعر الكلي الإجمالي النهائي بعد التخفيض
   paidAmount: number;
   remainingAmount: number;
   cautionAmount: number;
@@ -93,7 +95,9 @@ export interface Sale {
   customerName?: string;
   customerPhone?: string;
   items: SaleItem[];
-  totalAmount: number;
+  subtotal?: number; // المجموع قبل التخفيض
+  discount?: number; // قيمة التخفيض أو إنقاص السعر
+  totalAmount: number; // المبلغ الإجمالي النهائي بعد التخفيض
   paidAmount: number;
   debtAmount: number;
   profit: number;
@@ -141,6 +145,7 @@ export interface Expense {
   amount: number;
   date: string;
   expenseScope?: ExpenseScope; // فساتين كراء، فساتين بيع، خياطة، أو مصاريف عامة
+  periodNote?: string; // بيان الفترة (مثل: إيجار شهر جانفي، كراء 3 أشهر...)
   // Supplier purchase specific fields
   isSupplierPurchase?: boolean;
   supplierName?: string;
