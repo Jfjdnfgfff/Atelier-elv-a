@@ -2689,7 +2689,7 @@ export default function App() {
 
       {/* Full Financial Report */}
       {activeModal === 'fullReport' && (
-        <Modal title="تقرير البوتيك الشامل" onClose={() => setActiveModal(null)} wide>
+        <Modal title="التقرير المالي والإداري الشامل" onClose={() => setActiveModal(null)} wide>
           <FullReport 
             clothes={clothes}
             rentals={rentals}
@@ -2697,6 +2697,10 @@ export default function App() {
             expenses={expenses}
             credits={credits}
             staffPayouts={staffPayouts}
+            maintenanceOrders={maintenanceOrders}
+            caisseClosures={caisseClosures}
+            rawMaterials={rawMaterials}
+            staffMembers={staffMembers}
             hideFinances={hideFinances}
           />
         </Modal>
