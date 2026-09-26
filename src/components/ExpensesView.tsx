@@ -2,10 +2,13 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Expense, Supplier, Credit } from '../types';
 import { LettersInput, NumbersInput } from './Shared';
 import { sanitizeName, sanitizePhone, sanitizeText } from '../utils/security';
+import { downloadElementAsPng } from '../utils/pngDownload';
+import { openPrintInterface } from '../utils/printInterface';
 import {
   Building2,
   Receipt,
   Clock,
+  Download,
   Printer,
   FileText,
   DollarSign,
@@ -1173,7 +1176,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
               </button>
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-xl space-y-3 text-xs border border-slate-200/80">
+            <div id="expenseVoucherPrint" className="bg-slate-50 p-4 rounded-xl space-y-3 text-xs border border-slate-200/80">
               <div className="flex justify-between">
                 <span className="text-slate-500 font-normal">اسم المورد:</span>
                 <span className="font-bold text-slate-900">{voucherExpense.supplierName}</span>
@@ -1213,7 +1216,29 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
 
             <div className="flex gap-2">
               <button
-                onClick={() => window.print()}
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('expenseVoucherPrint');
+                  if (!el || !voucherExpense) return;
+                  void downloadElementAsPng(el, `وصل_شراء_${voucherExpense.supplierName || 'مورد'}`).catch(() => {
+                    alert('تعذر تنزيل الصورة بصيغة PNG');
+                  });
+                }}
+                className="flex-1 py-2 bg-slate-700 text-white rounded-xl font-bold text-xs hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <Download className="w-4 h-4" />
+                <span>تنزيل صور PNG</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!voucherExpense) return;
+                  openPrintInterface({
+                    title: `وصل شراء ${voucherExpense.supplierName || ''}`,
+                    fileName: `وصل_شراء_${voucherExpense.supplierName || 'مورد'}`,
+                    sourceElement: document.getElementById('expenseVoucherPrint'),
+                  });
+                }}
                 className="flex-1 py-2 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 shadow-xs"
               >
                 <Printer className="w-4 h-4" />

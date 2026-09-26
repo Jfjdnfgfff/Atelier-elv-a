@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { DailyCaisseClosure } from '../types';
 import { Download, Printer, Scale, Calendar, AlertTriangle, TrendingUp, CheckCircle } from 'lucide-react';
+import { downloadElementAsPng } from '../utils/pngDownload';
+import { openPrintInterface } from '../utils/printInterface';
 
 interface CaisseReceiptModalProps {
   closure: DailyCaisseClosure;
@@ -8,32 +10,28 @@ interface CaisseReceiptModalProps {
 }
 
 export const CaisseReceiptModal: React.FC<CaisseReceiptModalProps> = ({ closure, onClose }) => {
+  const [downloadNote, setDownloadNote] = useState('');
+  const fileName = `وصل_إقفال_صندوق_${closure.date}`;
+
   const exportAsImage = async () => {
     const el = document.getElementById('caisseReceiptPrintArea');
     if (!el) return;
-
+    setDownloadNote('جاري تنزيل الصورة بصيغة PNG...');
     try {
-      const html2canvasModule = await import('html2canvas');
-      const html2canvas = (html2canvasModule.default || html2canvasModule) as any;
-
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff'
-      });
-
-      const image = canvas.toDataURL('image/png', 1.0);
-      const link = document.createElement('a');
-      link.download = `وصل_إقفال_صندوق_${closure.date}.png`;
-      link.href = image;
-      link.click();
-    } catch (e) {
-      console.error('Error generating receipt image:', e);
+      await downloadElementAsPng(el, fileName);
+      setDownloadNote('تم تنزيل الصورة بصيغة PNG');
+    } catch (error) {
+      console.error('Error generating receipt image:', error);
+      setDownloadNote('تعذر تنزيل الصورة بصيغة PNG');
     }
   };
 
   const handlePrint = () => {
-    window.print();
+    openPrintInterface({
+      title: `وصل إقفال الصندوق ${closure.date}`,
+      fileName,
+      sourceElement: document.getElementById('caisseReceiptPrintArea'),
+    });
   };
 
   const isShortage = closure.difference < 0;
@@ -44,14 +42,14 @@ export const CaisseReceiptModal: React.FC<CaisseReceiptModalProps> = ({ closure,
     <div className="space-y-4" dir="rtl">
       {/* Top Action Controls */}
       <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200 no-print">
-        <span className="text-xs font-bold text-slate-600">يمكنك طباعة تقرير الصندوق أو تصديره كصورة</span>
+        <span className="text-xs font-bold text-slate-600">{downloadNote || 'تنزيل الوصل صورة PNG، أو الانتقال إلى واجهة الطباعة'}</span>
         <div className="flex gap-2">
           <button
             onClick={exportAsImage}
             className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>حفظ كصورة</span>
+            <span>تنزيل صور PNG</span>
           </button>
           <button
             onClick={handlePrint}

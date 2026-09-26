@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ClothItem, Rental, Sale, Expense, Credit, StaffPayout } from '../types';
+import { downloadElementAsPng } from '../utils/pngDownload';
+import { openPrintInterface } from '../utils/printInterface';
 
 interface FullReportProps {
   clothes: ClothItem[];
@@ -24,28 +26,28 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
   const formattedDate = now.toLocaleDateString('ar-DZ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const formattedTime = now.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+  const [downloadNote, setDownloadNote] = useState('');
+  const fileName = `تقرير_شامل_${now.toISOString().slice(0, 10)}`;
+
   const exportToImage = async () => {
     const element = document.getElementById('boutiqueFullReportContent');
     if (!element) return;
-
+    setDownloadNote('جاري تنزيل الصورة بصيغة PNG...');
     try {
-      const html2canvasModule = await import('html2canvas');
-      const html2canvas = (html2canvasModule.default || html2canvasModule) as any;
-
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff'
-      });
-
-      const image = canvas.toDataURL('image/png', 1.0);
-      const link = document.createElement('a');
-      link.download = `تقرير_شامل_${new Date().toLocaleDateString()}.png`;
-      link.href = image;
-      link.click();
-    } catch (e) {
-      console.error('Error exporting report to image:', e);
+      await downloadElementAsPng(element, fileName);
+      setDownloadNote('تم تنزيل الصورة بصيغة PNG');
+    } catch (error) {
+      console.error('Error exporting report to image:', error);
+      setDownloadNote('تعذر تنزيل الصورة بصيغة PNG');
     }
+  };
+
+  const handlePrint = () => {
+    openPrintInterface({
+      title: 'التقرير المالي والإداري الشامل',
+      fileName,
+      sourceElement: document.getElementById('boutiqueFullReportContent'),
+    });
   };
 
   const totalRentalIncome = rentals.reduce((s, r) => s + (r.paidAmount || 0), 0);
@@ -68,17 +70,17 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 no-print">
-        <span className="hidden sm:block text-xs font-bold text-slate-600">يمكنك حفظ التقرير الإداري والمالي كصورة عالية الجودة أو طباعته</span>
+        <span className="hidden sm:block text-xs font-bold text-slate-600">{downloadNote || 'تنزيل التقرير صورة PNG، أو الانتقال إلى واجهة الطباعة'}</span>
         <div className="flex gap-2 w-full sm:w-auto">
           <button
             onClick={exportToImage}
             className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 whitespace-nowrap"
           >
             <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" strokeWidth="2"></path></svg>
-            حفظ التقرير كصورة
+            تنزيل صور PNG
           </button>
           <button
-            onClick={() => window.print()}
+            onClick={handlePrint}
             className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap"
           >
             <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" strokeWidth="2"></path></svg>

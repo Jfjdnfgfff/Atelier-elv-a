@@ -18,10 +18,15 @@ import {
   ShoppingBag, 
   Sparkles,
   Barcode,
-  ArrowUpDown
+  ArrowUpDown,
+  Download,
+  Printer
 } from 'lucide-react';
 import { getColorHex, POPULAR_COLORS } from './InventoryView';
 import { getListImage, openFullImagePreview } from '../utils/imageUtils';
+import { downloadImagesAsPng } from '../utils/pngDownload';
+import { openPrintInterface } from '../utils/printInterface';
+import { collectClothExportImages } from '../utils/productImages';
 import { AsyncProductImage } from './AsyncProductImage';
 import { imageStore } from '../utils/imageStore';
 
@@ -250,6 +255,46 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
   const handleOpenFullImage = async () => {
     if (!onOpenFullImage) return;
     openFullImagePreview(item, onOpenFullImage);
+  };
+
+  const [imageBusy, setImageBusy] = useState<'download' | 'print' | null>(null);
+
+  const handleDownloadImages = async () => {
+    if (imageBusy) return;
+    setImageBusy('download');
+    try {
+      const images = await collectClothExportImages([item]);
+      if (images.length === 0) {
+        alert('لا توجد صور لهذا المنتج.');
+        return;
+      }
+      await downloadImagesAsPng(images);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'تعذر تنزيل الصور بصيغة PNG');
+    } finally {
+      setImageBusy(null);
+    }
+  };
+
+  const handlePrintImages = async () => {
+    if (imageBusy) return;
+    setImageBusy('print');
+    try {
+      const images = await collectClothExportImages([item]);
+      if (images.length === 0) {
+        alert('لا توجد صور لهذا المنتج للطباعة.');
+        return;
+      }
+      openPrintInterface({
+        title: item.name,
+        fileName: item.name,
+        images,
+      });
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'تعذر فتح واجهة الطباعة');
+    } finally {
+      setImageBusy(null);
+    }
   };
 
   return (
@@ -727,6 +772,26 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
           )}
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadImages}
+              disabled={imageBusy !== null}
+              className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-60 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5"
+              title="تنزيل الصور بصيغة PNG"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{imageBusy === 'download' ? 'جاري التنزيل...' : 'تنزيل صور'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handlePrintImages}
+              disabled={imageBusy !== null}
+              className="px-3 py-2 bg-slate-50 hover:bg-slate-100 disabled:opacity-60 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5"
+              title="الانتقال إلى واجهة الطباعة"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">طباعة</span>
+            </button>
             {(getListImage(item) || item.imageUrl) && (
               <button
                 type="button"
