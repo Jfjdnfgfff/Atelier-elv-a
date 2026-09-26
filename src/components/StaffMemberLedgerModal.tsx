@@ -20,6 +20,7 @@ import {
   Percent,
   Sparkles
 } from 'lucide-react';
+import { buildSimplePrintHtml, openPrintInterface } from '../utils/printInterface';
 
 interface StaffMemberLedgerModalProps {
   member: StaffMember;
@@ -263,9 +264,25 @@ export const StaffMemberLedgerModal: React.FC<StaffMemberLedgerModalProps> = ({
     setQuickAbsenceDays(1);
   };
 
-  // Print Statement Handler
+  // Print Statement Handler — opens the dedicated print interface
   const handlePrintStatement = () => {
-    window.print();
+    const rows = filteredLedger.map((item) => [
+      new Date(item.date).toLocaleString('ar-DZ'),
+      item.title,
+      item.category,
+      hideFinances ? '••••' : `${item.amount.toLocaleString()} دج`,
+      item.details || item.notes || '',
+    ]);
+    openPrintInterface({
+      title: `كشف حساب ${member.name}`,
+      fileName: `كشف_حساب_${member.name}`,
+      html: buildSimplePrintHtml({
+        heading: `كشف حساب ${member.name}`,
+        subtitle: `${member.role} • ${filteredLedger.length} عملية`,
+        headers: ['التاريخ', 'البيان', 'النوع', 'المبلغ', 'التفاصيل'],
+        rows,
+      }),
+    });
   };
 
   return (

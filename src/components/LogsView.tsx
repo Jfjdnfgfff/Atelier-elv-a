@@ -35,6 +35,7 @@ import {
   FileText
 } from 'lucide-react';
 import { Modal } from './Shared';
+import { buildSimplePrintHtml, openPrintInterface } from '../utils/printInterface';
 
 interface LogsViewProps {
   logs: ActivityLog[];
@@ -258,9 +259,27 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
     showToast('تم تصدير ملف سجل العمليات (CSV) بنجاح');
   };
 
-  // Print Logs
+  // Print Logs — opens the dedicated print interface
   const handlePrint = () => {
-    window.print();
+    const rows = filteredLogs.map((log) => [
+      formatLogDate(log.timestamp),
+      getCategoryLabel(log.category),
+      getActionLabel(log.actionType),
+      log.title || '',
+      log.details || '',
+      log.amount ? `${log.amount} دج` : '',
+      log.performedBy || 'المسؤول',
+    ]);
+    openPrintInterface({
+      title: 'سجل عمليات البوتيك',
+      fileName: `سجل_عمليات_${new Date().toISOString().slice(0, 10)}`,
+      html: buildSimplePrintHtml({
+        heading: 'سجل عمليات البوتيك',
+        subtitle: `${filteredLogs.length} عملية`,
+        headers: ['التاريخ', 'القسم', 'النوع', 'العنوان', 'التفاصيل', 'المبلغ', 'القائم بالعملية'],
+        rows,
+      }),
+    });
   };
 
   // Helper labels & icons

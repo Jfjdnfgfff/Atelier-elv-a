@@ -155,35 +155,229 @@
   100% { top: 88%; opacity: 0.8; }
 }
 
+#app-print-interface {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  background: #e2e8f0;
+  color: #0f172a;
+  font-family: 'Tajawal', 'Plus Jakarta Sans', sans-serif;
+}
+
+#app-print-interface .print-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #0f172a;
+  color: white;
+  flex-wrap: wrap;
+}
+
+#app-print-interface .print-toolbar-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+#app-print-interface .print-toolbar-copy strong {
+  font-size: 15px;
+}
+
+#app-print-interface .print-toolbar-copy span {
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+#app-print-interface .print-toolbar-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#app-print-interface .print-toolbar button {
+  border: 0;
+  border-radius: 12px;
+  min-height: 40px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  background: #1e293b;
+  color: white;
+}
+
+#app-print-interface .print-toolbar button.print-primary {
+  background: white;
+  color: #0f172a;
+}
+
+#app-print-interface .print-toolbar button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+#app-print-interface .print-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 24px 16px 48px;
+}
+
+#app-print-interface .print-sheet {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+}
+
+#app-print-interface .print-document-head {
+  text-align: center;
+  border-bottom: 2px solid #0f172a;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+}
+
+#app-print-interface .print-document-head h1 {
+  margin: 4px 0;
+  font-size: 22px;
+}
+
+#app-print-interface .print-document-head p {
+  margin: 0;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+#app-print-interface .print-gallery,
+#app-print-interface .print-single {
+  display: grid;
+  gap: 16px;
+}
+
+#app-print-interface .print-gallery {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+#app-print-interface .print-gallery > header,
+#app-print-interface .print-single > header {
+  grid-column: 1 / -1;
+}
+
+#app-print-interface figure {
+  margin: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+#app-print-interface figure img {
+  width: 100%;
+  height: 280px;
+  object-fit: contain;
+  background: #f8fafc;
+  display: block;
+}
+
+#app-print-interface .print-single figure img {
+  height: auto;
+  max-height: 240mm;
+}
+
+#app-print-interface figcaption {
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+#app-print-interface .print-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+#app-print-interface .print-table th,
+#app-print-interface .print-table td {
+  border: 1px solid #e2e8f0;
+  padding: 8px;
+  text-align: right;
+  vertical-align: top;
+}
+
+#app-print-interface .print-table th {
+  background: #f8fafc;
+}
+
+#app-print-interface .print-empty {
+  text-align: center;
+  color: #64748b;
+  font-weight: 700;
+}
+
 @media print {
-  body * {
-    visibility: hidden;
+  @page {
+    margin: 12mm;
   }
-  #fullReportModal, #fullReportModal * {
-    visibility: visible;
-  }
-  #fullReportModal {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0 !important;
-    padding: 0 !important;
+
+  html,
+  body.print-interface-open {
     background: white !important;
-    display: block !important;
-    opacity: 1 !important;
-    transform: none !important;
+    height: auto !important;
+    overflow: visible !important;
   }
-  #fullReportModal .modal-content {
-    max-width: 100% !important;
-    max-height: none !important;
-    box-shadow: none !important;
-    border: none !important;
+
+  body.print-interface-open > *:not(#app-print-interface) {
+    display: none !important;
+  }
+
+  body.print-interface-open * {
+    visibility: hidden !important;
+  }
+
+  body.print-interface-open #app-print-interface,
+  body.print-interface-open #app-print-interface * {
+    visibility: visible !important;
+  }
+
+  body.print-interface-open #app-print-interface {
+    position: absolute !important;
+    inset: auto !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 100% !important;
-    padding: 0 !important;
-    transform: none !important;
-    margin: 0 !important;
+    height: auto !important;
+    background: white !important;
+    overflow: visible !important;
   }
+
+  body.print-interface-open #app-print-interface .print-toolbar {
+    display: none !important;
+  }
+
+  body.print-interface-open #app-print-interface .print-scroll {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  body.print-interface-open #app-print-interface .print-sheet {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
   .no-print {
     display: none !important;
   }

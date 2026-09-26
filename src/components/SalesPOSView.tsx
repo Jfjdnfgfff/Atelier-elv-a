@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
 import { ClothItem, Sale, SaleItem } from '../types';
 import { getListImage } from '../utils/imageUtils';
+import { ImagePreviewModal } from './ImagePreviewModal';
 import { AsyncProductImage } from './AsyncProductImage';
 import { fetchClothByBarcode } from '../firebase';
 import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
@@ -1315,34 +1316,12 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
         )}
       </div>
 
-      {/* Image Preview Modal */}
       {previewImage && (
-        <div 
-          onClick={() => setPreviewImage(null)}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4"
-        >
-          <div 
-            onClick={(e) => e.stopPropagation()} 
-            className="bg-white rounded-2xl overflow-hidden max-w-md w-full shadow-2xl relative"
-          >
-            <div className="p-3 bg-slate-900 text-white flex justify-between items-center">
-              <span className="font-bold text-xs">{previewImage.title}</span>
-              <button 
-                onClick={() => setPreviewImage(null)} 
-                className="w-7 h-7 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="max-h-[70vh] overflow-hidden flex items-center justify-center bg-black">
-              <img 
-                src={previewImage.url} 
-                alt={previewImage.title} 
-                className="max-h-[70vh] w-auto object-contain"
-              />
-            </div>
-          </div>
-        </div>
+        <ImagePreviewModal
+          url={previewImage.url}
+          title={previewImage.title}
+          onClose={() => setPreviewImage(null)}
+        />
       )}
 
       {/* Camera Barcode Scanner Modal */}

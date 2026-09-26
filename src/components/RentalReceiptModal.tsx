@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Rental } from '../types';
 import { Shirt, Crown, Download, Printer } from 'lucide-react';
+import { downloadElementAsPng } from '../utils/pngDownload';
+import { openPrintInterface } from '../utils/printInterface';
 
 interface RentalReceiptModalProps {
   rental: Rental;
@@ -8,45 +10,42 @@ interface RentalReceiptModalProps {
 }
 
 export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, onClose }) => {
+  const [downloadNote, setDownloadNote] = useState('');
+  const fileName = `وصل_كراء_${rental.customerName}_${rental.id.substring(0, 6)}`;
+
   const exportAsImage = async () => {
     const el = document.getElementById('rentalReceiptPrintArea');
     if (!el) return;
-
+    setDownloadNote('جاري تنزيل الصورة بصيغة PNG...');
     try {
-      const html2canvasModule = await import('html2canvas');
-      const html2canvas = (html2canvasModule.default || html2canvasModule) as any;
-
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff'
-      });
-
-      const image = canvas.toDataURL('image/png', 1.0);
-      const link = document.createElement('a');
-      link.download = `وصل_كراء_${rental.customerName.replace(/\s+/g, '_')}_${rental.id.substring(0, 6)}.png`;
-      link.href = image;
-      link.click();
-    } catch (e) {
-      console.error('Error generating image:', e);
+      await downloadElementAsPng(el, fileName);
+      setDownloadNote('تم تنزيل الصورة بصيغة PNG');
+    } catch (error) {
+      console.error('Error generating image:', error);
+      setDownloadNote('تعذر تنزيل الصورة بصيغة PNG');
     }
   };
 
   const handlePrint = () => {
-    window.print();
+    const el = document.getElementById('rentalReceiptPrintArea');
+    openPrintInterface({
+      title: `وصل كراء ${rental.customerName}`,
+      fileName,
+      sourceElement: el,
+    });
   };
 
   return (
     <div className="space-y-4" dir="rtl">
       <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-200 no-print">
-        <span className="text-xs font-bold text-slate-600">يمكنك طباعة الوصل أو حفظه كصورة وإرساله للزبون</span>
+        <span className="text-xs font-bold text-slate-600">{downloadNote || 'تنزيل الوصل صورة PNG، أو الانتقال إلى واجهة الطباعة'}</span>
         <div className="flex gap-2">
           <button
             onClick={exportAsImage}
             className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
           >
             <Download className="w-4 h-4" />
-            حفظ كصورة للواتساب
+            تنزيل صور PNG
           </button>
           <button
             onClick={handlePrint}

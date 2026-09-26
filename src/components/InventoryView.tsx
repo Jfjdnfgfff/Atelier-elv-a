@@ -9,8 +9,12 @@ import { SecurityPasswordModal, checkSecurityPin } from './SecurityPasswordModal
 import { isValidImageFileType, generateSecureImageFilename, sanitizeText, sanitizeNumericAmount } from '../utils/security';
 import { processImageToVariants, getListImage } from '../utils/imageUtils';
 import { imageStore } from '../utils/imageStore';
+import { downloadImagesAsPng } from '../utils/pngDownload';
+import { openPrintInterface } from '../utils/printInterface';
+import { collectClothExportImages } from '../utils/productImages';
+import { ImagePreviewModal } from './ImagePreviewModal';
 import { AsyncProductImage } from './AsyncProductImage';
-import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap, ChevronLeft, ChevronRight, Search, Loader2, Barcode } from 'lucide-react';
+import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap, ChevronLeft, ChevronRight, Search, Loader2, Barcode, Download, Printer } from 'lucide-react';
 
 export const STANDARD_SIZES = [
   '34', '36', '38', '40', '42', '44', '46', '48', '50', '52', '54',
@@ -217,6 +221,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   const [quickTransferItem, setQuickTransferItem] = useState<ClothItem | null>(null);
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [barcodeActionNotice, setBarcodeActionNotice] = useState<string | null>(null);
+  const [imageAction, setImageAction] = useState<'download' | 'print' | null>(null);
 
   // Security Password Modal for Add Product & Stock Transfer
   const [securityModal, setSecurityModal] = useState<{
@@ -549,6 +554,40 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
     return filteredClothes.slice(0, visibleCount);
   }, [filteredClothes, visibleCount]);
 
+  const runImageAction = async (action: 'download' | 'print') => {
+    if (imageAction) return;
+    setImageAction(action);
+    try {
+      const images = await collectClothExportImages(filteredClothes);
+      if (images.length === 0) {
+        setBarcodeActionNotice('لا توجد صور في النتائج الحالية لتنزيلها أو طباعتها');
+        window.setTimeout(() => setBarcodeActionNotice(null), 3500);
+        return;
+      }
+      if (action === 'download') {
+        const result = await downloadImagesAsPng(images);
+        setBarcodeActionNotice(
+          result.count === 1
+            ? 'تم تنزيل الصورة بصيغة PNG'
+            : `تم تنزيل ${result.count} صورة بصيغة PNG`
+        );
+      } else {
+        openPrintInterface({
+          title: 'صور المنتجات',
+          fileName: 'صور_المنتجات',
+          images,
+        });
+        setBarcodeActionNotice('تم فتح واجهة الطباعة');
+      }
+      window.setTimeout(() => setBarcodeActionNotice(null), 3500);
+    } catch (error) {
+      setBarcodeActionNotice(error instanceof Error ? error.message : 'تعذر تجهيز الصور');
+      window.setTimeout(() => setBarcodeActionNotice(null), 3500);
+    } finally {
+      setImageAction(null);
+    }
+  };
+
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {
@@ -622,7 +661,27 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           </div>
 
           {inventoryTab === 'clothes' && (
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+              <button
+                type="button"
+                onClick={() => runImageAction('download')}
+                disabled={imageAction !== null}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white hover:bg-emerald-50 disabled:opacity-60 text-emerald-800 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border border-emerald-200 shadow-2xs active:scale-95"
+                title="تنزيل صور المنتجات المعروضة بصيغة PNG"
+              >
+                <Download className="w-4 h-4 text-emerald-600" />
+                <span>{imageAction === 'download' ? 'جاري التنزيل...' : 'تنزيل صور'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => runImageAction('print')}
+                disabled={imageAction !== null}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 disabled:opacity-60 text-slate-800 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border border-slate-200 shadow-2xs active:scale-95"
+                title="الانتقال إلى واجهة الطباعة"
+              >
+                <Printer className="w-4 h-4 text-slate-700" />
+                <span>{imageAction === 'print' ? 'جاري التجهيز...' : 'طباعة'}</span>
+              </button>
               <button
                 onClick={() => setShowScannerModal(true)}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white hover:bg-indigo-50 text-indigo-800 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border border-indigo-200 shadow-2xs active:scale-95"
@@ -1038,34 +1097,12 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         </div>
       )}
 
-      {/* Image Preview Modal */}
       {previewImage && (
-        <div 
-          onClick={() => setPreviewImage(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md cursor-pointer animate-in fade-in"
-        >
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            className="max-w-2xl w-full bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl relative"
-          >
-            <div className="p-3 bg-slate-900 flex justify-between items-center text-white border-b border-slate-800">
-              <span className="font-bold text-xs">{previewImage.title}</span>
-              <button 
-                onClick={() => setPreviewImage(null)} 
-                className="w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="max-h-[75vh] overflow-hidden flex items-center justify-center bg-black">
-              <img 
-                src={previewImage.url} 
-                alt={previewImage.title} 
-                className="max-h-[75vh] w-auto object-contain"
-              />
-            </div>
-          </div>
-        </div>
+        <ImagePreviewModal
+          url={previewImage.url}
+          title={previewImage.title}
+          onClose={() => setPreviewImage(null)}
+        />
       )}
 
       {/* Colors & Sizes Variants Modal (نافذة الألوان والمقاسات عند الضغط على صورة المنتج) */}

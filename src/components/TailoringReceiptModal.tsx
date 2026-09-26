@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MaintenanceOrder } from '../types';
 import { Modal } from './Shared';
-import { Printer } from 'lucide-react';
+import { Download, Printer } from 'lucide-react';
+import { downloadElementAsPng } from '../utils/pngDownload';
+import { openPrintInterface } from '../utils/printInterface';
 
 interface TailoringReceiptModalProps {
   order: MaintenanceOrder | null;
@@ -12,10 +14,29 @@ export const TailoringReceiptModal: React.FC<TailoringReceiptModalProps> = ({
   order,
   onClose
 }) => {
+  const [downloadNote, setDownloadNote] = useState('');
+  const fileName = `وصل_خياطة_${order?.orderNumber || 'وصل'}`;
+
   if (!order) return null;
 
+  const handleDownload = async () => {
+    const el = document.getElementById('tailoring-receipt-print');
+    if (!el) return;
+    setDownloadNote('جاري تنزيل الصورة بصيغة PNG...');
+    try {
+      await downloadElementAsPng(el, fileName);
+      setDownloadNote('تم تنزيل الصورة بصيغة PNG');
+    } catch {
+      setDownloadNote('تعذر تنزيل الصورة بصيغة PNG');
+    }
+  };
+
   const handlePrint = () => {
-    window.print();
+    openPrintInterface({
+      title: `وصل الخياطة ${order.orderNumber}`,
+      fileName,
+      sourceElement: document.getElementById('tailoring-receipt-print'),
+    });
   };
 
   const getServiceLabel = (type: string) => {
@@ -125,7 +146,16 @@ export const TailoringReceiptModal: React.FC<TailoringReceiptModalProps> = ({
         </div>
 
         {/* Action Buttons */}
+        {downloadNote && <p className="text-[11px] font-bold text-slate-600">{downloadNote}</p>}
         <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="flex-1 bg-slate-700 hover:bg-slate-800 active:scale-95 text-white py-3 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-xs min-h-[44px]"
+          >
+            <Download className="w-4 h-4" />
+            <span>تنزيل صور PNG</span>
+          </button>
           <button
             onClick={handlePrint}
             className="flex-1 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white py-3 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-xs min-h-[44px]"
