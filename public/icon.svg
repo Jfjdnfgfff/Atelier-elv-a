@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCE08B" />
+      <stop offset="25%" stop-color="#E2B755" />
+      <stop offset="50%" stop-color="#C59324" />
+      <stop offset="75%" stop-color="#ECC66D" />
+      <stop offset="100%" stop-color="#9E6E12" />
+    </linearGradient>
+    <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#b8860b" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Clean Luxury White Background with soft border -->
+  <rect width="512" height="512" rx="100" fill="#ffffff" />
+  
+  <g filter="url(#goldGlow)">
+    <!-- Golden Thread Loops -->
+    <!-- Top Left Loop -->
+    <path d="M 125 135 C 105 170, 165 200, 200 170 C 225 150, 175 110, 155 145 C 135 180, 205 190, 256 180" 
+          fill="none" stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- Thread Arch over right side -->
+    <path d="M 260 175 C 310 165, 370 185, 365 240 C 360 280, 310 240, 335 270 C 355 295, 395 285, 400 310" 
+          fill="none" stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- Sewing Needle -->
+    <!-- Needle body -->
+    <path d="M 253 160 L 259 160 L 261 280 L 258 280 L 253 160 Z" fill="url(#goldGrad)" />
+    <!-- Needle eyelet outline -->
+    <path d="M 252 165 C 252 155, 260 155, 260 165 L 260 205 C 260 215, 252 215, 252 205 Z" fill="none" stroke="url(#goldGrad)" stroke-width="2.5" />
+    <!-- Eyelet hole -->
+    <ellipse cx="256" cy="185" rx="1.8" ry="12" fill="#ffffff" />
+    
+    <!-- Needle lower tip -->
+    <path d="M 255 360 L 257 360 L 256.5 435 L 255.5 435 Z" fill="url(#goldGrad)" />
+    
+    <!-- Boutique script text -->
+    <text x="256" y="285" 
+          font-family="'Playfair Display', 'Brush Script MT', 'Tajawal', cursive, serif" 
+          font-size="36" 
+          font-style="italic" 
+          font-weight="500" 
+          text-anchor="middle" 
+          fill="url(#goldGrad)">Boutique</text>
+
+    <!-- FEMORA serif logo text -->
+    <text x="256" y="348" 
+          font-family="'Cinzel', 'Playfair Display', 'Times New Roman', serif" 
+          font-size="54" 
+          font-weight="700" 
+          letter-spacing="5" 
+          text-anchor="middle" 
+          fill="url(#goldGrad)">FEMORA</text>
+  </g>
+</svg>
