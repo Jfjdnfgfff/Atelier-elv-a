@@ -736,10 +736,14 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
 
           <button
             type="submit"
-            className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs flex items-center justify-center gap-2"
+            className={`w-full py-3 px-4 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs flex items-center justify-center gap-2 ${
+              supplierFundSource === 'general' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-slate-900 hover:bg-slate-800'
+            }`}
           >
             <Check className="w-4 h-4" />
-            <span className="text-center">حفظ عملية شراء السلعة وتسجيل خلاص المورد</span>
+            <span className="text-center">
+              حفظ عملية الشراء وخلاص المورد — خصم من {supplierFundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)'}
+            </span>
           </button>
         </form>
       ) : (
@@ -883,10 +887,16 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
 
           <button
             type="submit"
-            className="w-full py-2.5 sm:py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs active:scale-[0.98] flex items-center justify-center gap-1.5"
+            className={`w-full py-2.5 sm:py-3 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs active:scale-[0.98] flex items-center justify-center gap-1.5 ${
+              generalFundSource === 'general'
+                ? 'bg-indigo-600 hover:bg-indigo-700'
+                : 'bg-slate-900 hover:bg-slate-800'
+            }`}
           >
-            <Plus className="w-4 h-4" />
-            <span>إضافة المصروف العام للمحل</span>
+            {generalFundSource === 'general' ? <Landmark className="w-4 h-4" /> : <Wallet className="w-4 h-4" />}
+            <span>
+              إضافة المصروف العام — خصم من {generalFundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)'}
+            </span>
           </button>
         </form>
       )}
