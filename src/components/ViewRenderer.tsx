@@ -15,6 +15,7 @@ import {
   RawMaterial,
   MaintenanceStatus,
   ActivityLog,
+  FundSource,
 } from '../types';
 
 // Directly imported Views for instant zero-latency section navigation
@@ -45,6 +46,7 @@ export interface ViewRendererProps {
   rawMaterials: RawMaterial[];
   activityLogs?: ActivityLog[];
   hideFinances: boolean;
+  generalFundBalance: number;
   posScannedBarcode: string | null;
   hasMoreClothes: boolean;
   isLoadingMoreClothes: boolean;
@@ -103,12 +105,14 @@ export interface ViewRendererProps {
 
   // CreditsView handlers
   onAddCredit: (credData: any) => void;
-  onSettleCredit: (id: string) => void;
+  onSettleCredit: (creditId: string, payment: { amount: number; date: string; fundSource: FundSource; note?: string }) => void;
   onDeleteCredit: (id: string) => void;
 
   // CaisseView handlers
   onSaveCaisseClosure: (closure: DailyCaisseClosure) => void;
   onDeleteCaisseClosure: (id: string) => void;
+  onSetGeneralFundBalance: (value: number) => void;
+  onFeedGeneralFund: (amount: number) => void;
   onDeleteStaffPayout?: (id: string) => void;
 
   // PartnersView seamstress handlers
@@ -145,10 +149,12 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
     case 'expenses':
       return prev.expenses === next.expenses && 
              prev.suppliers === next.suppliers && 
-             prev.credits === next.credits;
+             prev.credits === next.credits &&
+             prev.generalFundBalance === next.generalFundBalance;
     case 'credits':
       return prev.credits === next.credits && 
-             prev.suppliers === next.suppliers;
+             prev.suppliers === next.suppliers &&
+             prev.generalFundBalance === next.generalFundBalance;
     case 'partners':
       return prev.suppliers === next.suppliers && 
              prev.seamstresses === next.seamstresses && 
@@ -161,7 +167,9 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
              prev.rentals === next.rentals && 
              prev.expenses === next.expenses && 
              prev.staffPayouts === next.staffPayouts && 
-             prev.maintenanceOrders === next.maintenanceOrders;
+             prev.maintenanceOrders === next.maintenanceOrders &&
+             prev.credits === next.credits &&
+             prev.generalFundBalance === next.generalFundBalance;
     case 'logs':
       return prev.activityLogs === next.activityLogs;
     case 'dashboard':
@@ -194,6 +202,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   rawMaterials,
   activityLogs = [],
   hideFinances,
+  generalFundBalance,
   posScannedBarcode,
   hasMoreClothes,
   isLoadingMoreClothes,
@@ -242,6 +251,8 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   onDeleteCredit,
   onSaveCaisseClosure,
   onDeleteCaisseClosure,
+  onSetGeneralFundBalance,
+  onFeedGeneralFund,
   onDeleteStaffPayout,
   onAddSeamstress,
   onUpdateSeamstress,
@@ -347,6 +358,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           onDeleteExpense={onDeleteExpense}
           onSettleSupplierCredit={onSettleSupplierCredit}
           onAddSupplier={onAddSupplier}
+          generalFundBalance={generalFundBalance}
         />
       )}
 
@@ -357,6 +369,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           onAddCredit={onAddCredit}
           onSettleCredit={onSettleCredit}
           onDeleteCredit={onDeleteCredit}
+          generalFundBalance={generalFundBalance}
         />
       )}
 
@@ -365,6 +378,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           sales={sales}
           rentals={rentals}
           expenses={expenses}
+          credits={credits}
           staffPayouts={staffPayouts}
           maintenanceOrders={maintenanceOrders}
           caisseClosures={caisseClosures}
@@ -377,6 +391,9 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           onDeleteTailoringOrder={onDeleteTailoringOrder}
           hideFinances={hideFinances}
           onPrivacyToggle={onPrivacyToggle}
+          generalFundBalance={generalFundBalance}
+          onSetGeneralFundBalance={onSetGeneralFundBalance}
+          onFeedGeneralFund={onFeedGeneralFund}
         />
       )}
 

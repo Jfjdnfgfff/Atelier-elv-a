@@ -56,7 +56,9 @@ export const FIREBASE_COLLECTIONS = {
   CAISSE_CLOSURES: 'caisseClosures',
   ACTIVITY_LOGS: 'activityLogs',
   CLOTH_THUMBS: 'clothThumbs',
-  CLOTH_IMAGES: 'clothImages'
+  CLOTH_IMAGES: 'clothImages',
+  // إعدادات المحل (مثل رصيد الصندوق العام) — سجل واحد مشترك بين كل الأجهزة
+  SETTINGS: 'appSettings'
 } as const;
 
 export type FirebaseCollectionKey = typeof FIREBASE_COLLECTIONS[keyof typeof FIREBASE_COLLECTIONS];

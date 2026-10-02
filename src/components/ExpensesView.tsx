@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Expense, Supplier, Credit } from '../types';
+import { Expense, Supplier, Credit, FundSource } from '../types';
 import { LettersInput, NumbersInput } from './Shared';
 import { sanitizeName, sanitizePhone, sanitizeText } from '../utils/security';
 import { downloadElementAsPng } from '../utils/pngDownload';
 import { openPrintInterface } from '../utils/printInterface';
+import { FundSourcePicker } from './FundSourcePicker';
 import {
   Building2,
   Receipt,
@@ -32,7 +33,9 @@ import {
   Truck,
   Coffee,
   Tag,
-  Filter
+  Filter,
+  Wallet,
+  Landmark
 } from 'lucide-react';
 
 interface ExpensesViewProps {
@@ -43,6 +46,8 @@ interface ExpensesViewProps {
   onDeleteExpense: (id: string) => void;
   onSettleSupplierCredit?: (expenseId: string, paidNow: number) => void;
   onAddSupplier?: (sup: Supplier) => void;
+  /** الرصيد المتوفر حالياً في الصندوق العام (الخزينة) */
+  generalFundBalance?: number;
 }
 
 export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
@@ -52,7 +57,8 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
   onAddExpense,
   onDeleteExpense,
   onSettleSupplierCredit,
-  onAddSupplier
+  onAddSupplier,
+  generalFundBalance = 0
 }) => {
   // Mode: 'supplier' (خلاص وشراء من المورد) vs 'general' (مصاريف عامة وتجهيزات)
   const [activeFormTab, setActiveFormTab] = useState<'supplier' | 'general'>('supplier');
@@ -66,6 +72,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
   const [generalCategory, setGeneralCategory] = useState('كراء وإيجار المحل (Loyer)');
   const [generalPeriodNote, setGeneralPeriodNote] = useState('');
   const [generalDate, setGeneralDate] = useState(new Date().toISOString().split('T')[0]);
+  const [generalFundSource, setGeneralFundSource] = useState<FundSource>('daily');
 
   // Supplier Expense Form State
   const [selectedSupplierName, setSelectedSupplierName] = useState('');
@@ -77,6 +84,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [supplierNotes, setSupplierNotes] = useState('');
   const [supplierDate, setSupplierDate] = useState(new Date().toISOString().split('T')[0]);
+  const [supplierFundSource, setSupplierFundSource] = useState<FundSource>('daily');
 
   // Quick Settle Modal State
   const [settleModalExpense, setSettleModalExpense] = useState<Expense | null>(null);
@@ -155,7 +163,8 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
       category: generalCategory,
       periodNote: generalPeriodNote ? generalPeriodNote.trim() : undefined,
       date: new Date(generalDate).toISOString(),
-      isSupplierPurchase: false
+      isSupplierPurchase: false,
+      fundSource: generalFundSource
     });
 
     setGeneralDesc('');
@@ -201,6 +210,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
       desc: `شراء من المورد (${finalSupplierName}): ${goodsDescription.trim()}`,
       amount: paidVal, // Actual cash spent now
       date: new Date(supplierDate).toISOString(),
+      fundSource: supplierFundSource,
       isSupplierPurchase: true,
       supplierName: finalSupplierName,
       supplierPhone: supplierPhone.trim(),
@@ -636,6 +646,14 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             )}
           </div>
 
+          {/* Payment Source: صندوق اليوم أو الصندوق العام */}
+          <FundSourcePicker
+            value={supplierFundSource}
+            onChange={setSupplierFundSource}
+            generalFundBalance={generalFundBalance}
+            amount={supplierPaidAmount}
+          />
+
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1">ملاحظات إضافية (اختياري)</label>
             <input
@@ -649,10 +667,14 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
 
           <button
             type="submit"
-            className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs flex items-center justify-center gap-2"
+            className={`w-full py-3 px-4 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs flex items-center justify-center gap-2 ${
+              supplierFundSource === 'general' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-slate-900 hover:bg-slate-800'
+            }`}
           >
             <Check className="w-4 h-4" />
-            <span className="text-center">حفظ عملية شراء السلعة وتسجيل خلاص المورد</span>
+            <span className="text-center">
+              حفظ عملية الشراء وخلاص المورد — خصم من {supplierFundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)'}
+            </span>
           </button>
         </form>
       ) : (
@@ -772,6 +794,14 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             </div>
           )}
 
+          {/* Payment Source: صندوق اليوم أو الصندوق العام */}
+          <FundSourcePicker
+            value={generalFundSource}
+            onChange={setGeneralFundSource}
+            generalFundBalance={generalFundBalance}
+            amount={generalAmount}
+          />
+
           {/* Date Selector */}
           <div className="flex items-center gap-3">
             <div className="w-48">
@@ -788,10 +818,16 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
 
           <button
             type="submit"
-            className="w-full py-2.5 sm:py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs active:scale-[0.98] flex items-center justify-center gap-1.5"
+            className={`w-full py-2.5 sm:py-3 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs active:scale-[0.98] flex items-center justify-center gap-1.5 ${
+              generalFundSource === 'general'
+                ? 'bg-indigo-600 hover:bg-indigo-700'
+                : 'bg-slate-900 hover:bg-slate-800'
+            }`}
           >
-            <Plus className="w-4 h-4" />
-            <span>إضافة المصروف العام للمحل</span>
+            {generalFundSource === 'general' ? <Landmark className="w-4 h-4" /> : <Wallet className="w-4 h-4" />}
+            <span>
+              إضافة المصروف العام — خصم من {generalFundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)'}
+            </span>
           </button>
         </form>
       )}
@@ -920,6 +956,19 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                         <span className="text-[10px] text-slate-400 font-normal flex items-center gap-1">
                           <Calendar className="w-3 h-3 text-slate-400" />
                           <span>{new Date(exp.date).toLocaleDateString('ar-DZ')}</span>
+                        </span>
+
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                            exp.fundSource === 'general'
+                              ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}
+                          title="مصدر خصم هذا المصروف"
+                        >
+                          {exp.fundSource === 'general'
+                            ? <><Landmark className="w-3 h-3" /><span>من الصندوق العام</span></>
+                            : <><Wallet className="w-3 h-3" /><span>من صندوق اليوم</span></>}
                         </span>
                       </div>
 

@@ -13,7 +13,8 @@ import {
   Seamstress, 
   RawMaterial, 
   MaintenanceStatus,
-  ActivityLog
+  ActivityLog,
+  FundSource
 } from '../types';
 import { NavButton } from './Shared';
 import { ViewRenderer } from './ViewRenderer';
@@ -91,7 +92,7 @@ export interface AppNavigationProps {
   onUpdateSupplier: (id: string, data: Partial<Supplier>) => void;
   onDeleteSupplier: (id: string) => void;
   onAddCredit: (credData: any) => void;
-  onSettleCredit: (id: string) => void;
+  onSettleCredit: (creditId: string, payment: { amount: number; date: string; fundSource: FundSource; note?: string }) => void;
   onDeleteCredit: (id: string) => void;
   onSaveCaisseClosure: (closure: DailyCaisseClosure) => void;
   onDeleteCaisseClosure: (id: string) => void;
@@ -104,6 +105,11 @@ export interface AppNavigationProps {
   isFirebaseConnected?: boolean;
   isCloudSyncing?: boolean;
   openCloudSyncModal?: () => void;
+
+  // الصندوق العام (الخزينة)
+  generalFundBalance: number;
+  onSetGeneralFundBalance: (value: number) => void;
+  onFeedGeneralFund: (amount: number) => void;
 }
 
 export const AppNavigation: React.FC<AppNavigationProps> = memo(({
@@ -174,6 +180,9 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
   onDeleteCredit,
   onSaveCaisseClosure,
   onDeleteCaisseClosure,
+  generalFundBalance,
+  onSetGeneralFundBalance,
+  onFeedGeneralFund,
   onDeleteStaffPayout,
   onAddSeamstress,
   onUpdateSeamstress,
@@ -449,6 +458,9 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
           onDeleteCredit={onDeleteCredit}
           onSaveCaisseClosure={onSaveCaisseClosure}
           onDeleteCaisseClosure={onDeleteCaisseClosure}
+          generalFundBalance={generalFundBalance}
+          onSetGeneralFundBalance={onSetGeneralFundBalance}
+          onFeedGeneralFund={onFeedGeneralFund}
           onDeleteStaffPayout={onDeleteStaffPayout}
           onAddSeamstress={onAddSeamstress}
           onUpdateSeamstress={onUpdateSeamstress}

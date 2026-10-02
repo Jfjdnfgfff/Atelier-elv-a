@@ -35,7 +35,9 @@ export const STORAGE_KEYS = {
   CAISSE_CLOSURES: 'boutique_caisse_closures',
   ACTIVITY_LOGS: 'boutique_activity_logs',
   SECURITY_PIN: 'bm_security_pin',
-  STORE_CONFIG: 'boutique_store_config'
+  STORE_CONFIG: 'boutique_store_config',
+  // رصيد الصندوق العام (الخزينة) المخزّن
+  GENERAL_FUND_BALANCE: 'boutique_general_fund_balance'
 };
 
 export const DEFAULT_ACTIVITY_LOGS: ActivityLog[] = [];

@@ -15,7 +15,9 @@ import {
   DailyCaisseClosure,
   RawMaterial,
   Seamstress,
-  ActivityLog
+  ActivityLog,
+  FundSource,
+  CreditPayment
 } from './types';
 import { 
   loadFromStorage, 
@@ -41,6 +43,13 @@ import {
   hydrateFromIndexedDB
 } from './storage';
 import { perfMonitor } from './utils/performanceMonitor';
+import {
+  isGeneralFundExpense,
+  creditRemaining,
+  creditTotalPaid,
+  generalFundEffectOfPayment,
+  generalFundEffectOfCredit
+} from './utils/fundBalance';
 import { 
   FIREBASE_COLLECTIONS, 
   saveItemToFirebase, 
@@ -145,6 +154,11 @@ export default function App() {
   const [sales, setSales] = useState<Sale[]>(() => loadFromStorage(STORAGE_KEYS.SALES, DEFAULT_SALES));
   const [expenses, setExpenses] = useState<Expense[]>(() => loadFromStorage(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES));
   const [credits, setCredits] = useState<Credit[]>(() => loadFromStorage(STORAGE_KEYS.CREDITS, DEFAULT_CREDITS));
+  // رصيد الصندوق العام (الخزينة) — مخزّن ومشترك بين كل الأجهزة عبر إعدادات Firebase
+  const [generalFundBalance, setGeneralFundBalance] = useState<number>(() => {
+    const stored = Number(loadFromStorage<number>(STORAGE_KEYS.GENERAL_FUND_BALANCE, 0));
+    return Number.isFinite(stored) ? stored : 0;
+  });
 
   // Secondary Collections: Lazy-loaded from browser storage cache on-demand when view/modal opens!
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
@@ -848,6 +862,76 @@ export default function App() {
     };
   }, [handleEnsureCollection]);
 
+  // ==========================
+  // GENERAL FUND (الصندوق العام / الخزينة)
+  // ==========================
+  // هل تم استلام رصيد الخزينة المشترك من Firebase؟ (نمنع الكتابة قبله حتى لا نطمس قيمة أحدث من جهاز آخر)
+  const [isSettingsSynced, setIsSettingsSynced] = useState(false);
+
+  // استقبال رصيد الصندوق العام من الأجهزة الأخرى
+  useEffect(() => {
+    const fallbackTimer = window.setTimeout(() => setIsSettingsSynced(true), 3000);
+    const unsubscribe = SubscriptionManager.subscribe<{ id: string; balance?: number }>(
+      FIREBASE_COLLECTIONS.SETTINGS,
+      (items) => {
+        setIsSettingsSynced(true);
+        if (!Array.isArray(items)) return;
+        const record = items.find(item => item?.id === 'generalFund');
+        if (record && typeof record.balance === 'number' && Number.isFinite(record.balance)) {
+          setGeneralFundBalance(prev => (prev === record.balance ? prev : record.balance as number));
+        }
+      }
+    );
+    return () => {
+      window.clearTimeout(fallbackTimer);
+      unsubscribe();
+    };
+  }, []);
+
+  // كل تغيير على الرصيد يُحفظ محلياً فوراً ثم يُرفع إلى Firebase (سجل واحد مشترك بين الأجهزة).
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.GENERAL_FUND_BALANCE, generalFundBalance);
+    if (!isSettingsSynced) return;
+    const timeout = window.setTimeout(() => {
+      saveItemToFirebase(FIREBASE_COLLECTIONS.SETTINGS, {
+        id: 'generalFund',
+        balance: generalFundBalance
+      });
+    }, 400);
+    return () => window.clearTimeout(timeout);
+  }, [generalFundBalance, isSettingsSynced]);
+
+  // تعديل رصيد الصندوق العام يدوياً (تغذية الخزينة أو تصحيح الرصيد الفعلي)
+  const handleSetGeneralFundBalance = useCallback((value: number) => {
+    const safeValue = Math.round((Number(value) || 0) * 100) / 100;
+    setGeneralFundBalance(safeValue);
+    addActivityLog({
+      actionType: 'update',
+      category: 'caisse',
+      title: 'تعديل رصيد الصندوق العام',
+      details: `تم ضبط رصيد الصندوق العام (الخزينة) على ${safeValue.toLocaleString()} دج`,
+      amount: safeValue
+    });
+    showToast(`تم تحديث رصيد الصندوق العام (${safeValue.toLocaleString()} دج)`);
+  }, [addActivityLog, showToast]);
+
+  // تغذية الصندوق العام بمبلغ (إضافة) أو سحب مبلغ منه
+  const handleFeedGeneralFund = useCallback((amount: number) => {
+    const safeAmount = Number(amount) || 0;
+    if (safeAmount === 0) return;
+    setGeneralFundBalance(prev => Math.round((prev + safeAmount) * 100) / 100);
+    addActivityLog({
+      actionType: 'payment',
+      category: 'caisse',
+      title: safeAmount > 0 ? 'تغذية الصندوق العام' : 'سحب من الصندوق العام',
+      details: `${safeAmount > 0 ? 'إضافة' : 'خصم'} مبلغ ${Math.abs(safeAmount).toLocaleString()} دج ${safeAmount > 0 ? 'إلى' : 'من'} الصندوق العام (الخزينة)`,
+      amount: Math.abs(safeAmount)
+    });
+    showToast(safeAmount > 0
+      ? `تمت إضافة ${safeAmount.toLocaleString()} دج إلى الصندوق العام`
+      : `تم خصم ${Math.abs(safeAmount).toLocaleString()} دج من الصندوق العام`);
+  }, [addActivityLog, showToast]);
+
   // Modal-specific subscriptions & cache loaders: only active while the modal is open, auto-unsubscribes on close!
   useEffect(() => {
     if (activeModal === 'staffPayouts') {
@@ -900,7 +984,8 @@ export default function App() {
         syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, seamstresses),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, rawMaterials),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, caisseClosures),
-        syncCollectionToCloud(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, activityLogs)
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, activityLogs),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.SETTINGS, [{ id: 'generalFund', balance: generalFundBalance }])
       ]);
       const nowStr = new Date().toLocaleTimeString('ar-DZ');
       setLastCloudSyncTime(nowStr);
@@ -914,7 +999,7 @@ export default function App() {
   }, [
     clothes, rentals, sales, expenses, credits, staffPayouts, 
     staffMembers, staffAbsences, maintenanceOrders, suppliers, 
-    seamstresses, rawMaterials, caisseClosures, activityLogs, showToast
+    seamstresses, rawMaterials, caisseClosures, activityLogs, generalFundBalance, showToast
   ]);
 
   // UI state
@@ -1517,11 +1602,19 @@ export default function App() {
     setExpenses(prev => [newExp, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.EXPENSES, newExp);
 
+    // مصروف من الصندوق العام (الخزينة) → يُخصم مبلغه مباشرة من الرصيد
+    if (isGeneralFundExpense(newExp)) {
+      const amount = Number(newExp.amount) || 0;
+      setGeneralFundBalance(prev => Math.round((prev - amount) * 100) / 100);
+    }
+
+    const fundLabel = expData.fundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)';
+
     addActivityLog({
       actionType: 'create',
       category: 'expenses',
       title: expData.isSupplierPurchase ? 'تسجيل مشتريات وموردين' : 'تسجيل مصروف جديد',
-      details: `${expData.category}: ${expData.desc || expData.goodsDescription} (${expData.amount} دج)`,
+      details: `${expData.category}: ${expData.desc || expData.goodsDescription} (${expData.amount} دج) — مصدر الدفع: ${fundLabel}`,
       amount: expData.amount
     });
 
@@ -1550,9 +1643,16 @@ export default function App() {
     } else {
       showToast('تم تسجيل المصروف بنجاح');
     }
-  }, []);
+  }, [addActivityLog, showToast]);
 
   const handleDeleteExpense = useCallback((id: string) => {
+    // حذف مصروف كان مسحوباً من الصندوق العام → يُرجع مبلغه إلى الرصيد
+    const target = expenses.find(e => e.id === id);
+    if (target && isGeneralFundExpense(target)) {
+      const amount = Number(target.amount) || 0;
+      setGeneralFundBalance(prev => Math.round((prev + amount) * 100) / 100);
+    }
+
     setExpenses(prev => prev.filter(e => e.id !== id));
     deleteItemFromFirebase(FIREBASE_COLLECTIONS.EXPENSES, id);
     setCredits(prev => {
@@ -1568,9 +1668,16 @@ export default function App() {
     });
 
     showToast('تم حذف سجل المصروف');
-  }, []);
+  }, [expenses, addActivityLog, showToast]);
 
   const handleSettleSupplierCredit = useCallback((expenseId: string, paidNow: number) => {
+    // تسديد دفعة إضافية لمصروف كان مسحوباً من الصندوق العام → تُخصم من رصيد الخزينة
+    const settledExpense = expenses.find(e => e.id === expenseId);
+    if (settledExpense && isGeneralFundExpense(settledExpense)) {
+      const paidAmount = Number(paidNow) || 0;
+      setGeneralFundBalance(prev => Math.round((prev - paidAmount) * 100) / 100);
+    }
+
     // 1. Update expense record
     setExpenses(prev => prev.map(exp => {
       if (exp.id === expenseId) {
@@ -1617,7 +1724,7 @@ export default function App() {
     });
 
     showToast(`تم خلاص وتسديد مبلغ ${paidNow.toLocaleString()} دج للمورد بنجاح`);
-  }, []);
+  }, [expenses, addActivityLog, showToast]);
 
   const handleAddSupplier = useCallback((newSup: Supplier) => {
     setSuppliers(prev => {
@@ -1796,44 +1903,108 @@ export default function App() {
     showToast(credData.supplierDebt ? 'تم تسجيل دين للمورد' : 'تم تسجيل الدين على الزبون');
   }, []);
 
-  const handleSettleCredit = useCallback((id: string) => {
-    setCredits(currentCredits => {
-      const cred = currentCredits.find(c => c.id === id);
-      if (cred && cred.relatedExpenseId) {
-        // Also update linked expense when settled from credits view
-        setExpenses(prev => prev.map(exp => {
-          if (exp.id === cred.relatedExpenseId) {
-            const currentPaid = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
-            const newPaid = currentPaid + cred.amount;
-            const updates = {
-              paidAmount: newPaid,
-              amount: newPaid,
-              creditAmount: 0
-            };
-            updateItemInFirebase(FIREBASE_COLLECTIONS.EXPENSES, exp.id, updates);
-            return {
-              ...exp,
-              ...updates
-            };
-          }
-          return exp;
-        }));
-      }
-      deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, id);
-      return currentCredits.filter(c => c.id !== id);
-    });
+  /**
+   * تسديد كريدي (دفعة كاملة أو جزئية):
+   * - دين على الزبون → يُضاف المبلغ إلى الصندوق المختار (درج اليوم أو الصندوق العام).
+   * - دين للمورد → يُخصم المبلغ من الصندوق المختص.
+   * - يُسجَّل تاريخ استلام/دفع المال، ويظهر الأثر في صندوق ذلك التاريخ.
+   */
+  const handleSettleCredit = useCallback((
+    creditId: string,
+    paymentData: { amount: number; date: string; fundSource: FundSource; note?: string }
+  ) => {
+    const credit = credits.find(c => c.id === creditId);
+    if (!credit) return;
+
+    const amount = Number(paymentData?.amount) || 0;
+    if (amount <= 0) return;
+
+    const fundSource: FundSource = paymentData?.fundSource === 'general' ? 'general' : 'daily';
+    const paymentDate = (paymentData?.date || new Date().toISOString().split('T')[0]).substring(0, 10);
+
+    const payment: CreditPayment = {
+      id: generateId(),
+      amount,
+      date: paymentDate,
+      fundSource,
+      note: paymentData?.note
+    };
+
+    const updatedCredit: Credit = {
+      ...credit,
+      payments: [...(credit.payments || []), payment]
+    };
+
+    setCredits(prev => prev.map(c => (c.id === creditId ? updatedCredit : c)));
+    saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, updatedCredit);
+
+    // الأثر المالي على الصندوق العام (إضافة عند التحصيل من الزبون، خصم عند الدفع للمورد)
+    if (fundSource === 'general') {
+      const effect = generalFundEffectOfPayment(credit, amount);
+      setGeneralFundBalance(prev => Math.round((prev + effect) * 100) / 100);
+    }
+
+    // دين مورد مرتبط بمصروف شراء → تحديث المدفوع والمتبقي في المصروف أيضاً
+    if (credit.supplierDebt && credit.relatedExpenseId) {
+      setExpenses(prev => prev.map(exp => {
+        if (exp.id !== credit.relatedExpenseId) return exp;
+        const currentPaid = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
+        const newPaid = currentPaid + amount;
+        const newCredit = Math.max(0, (exp.creditAmount || 0) - amount);
+        const updates = { paidAmount: newPaid, amount: newPaid, creditAmount: newCredit };
+        updateItemInFirebase(FIREBASE_COLLECTIONS.EXPENSES, exp.id, updates);
+        return { ...exp, ...updates };
+      }));
+    }
+
+    const remaining = creditRemaining(updatedCredit);
+    const isCustomer = !credit.supplierDebt;
 
     addActivityLog({
       actionType: 'payment',
       category: 'credits',
-      title: 'تسديد وتصفية دين',
-      details: `تسديد الدين بالكامل وإبراء ذمة الزبون أو المورد`
+      title: isCustomer ? 'تحصيل دفعة من دين زبون' : 'تسديد دفعة دين مورد',
+      details: `${isCustomer ? 'تحصيل' : 'دفع'} ${amount.toLocaleString()} دج ${isCustomer ? 'من' : 'إلى'} ${credit.name} بتاريخ ${paymentDate} — ${fundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)'}${remaining > 0 ? ` • المتبقي: ${remaining.toLocaleString()} دج` : ' • تسديد كامل'}`,
+      amount
     });
 
-    showToast('تم تسديد وتصفية الدين بنجاح');
-  }, []);
+    if (remaining <= 0) {
+      showToast(isCustomer
+        ? `تم تحصيل ${amount.toLocaleString()} دج وإبراء ذمة ${credit.name} بالكامل`
+        : `تم تسديد ${amount.toLocaleString()} دج للمورد ${credit.name} بالكامل`);
+    } else {
+      showToast(`تم تسجيل دفعة ${amount.toLocaleString()} دج • المتبقي: ${remaining.toLocaleString()} دج`);
+    }
+  }, [credits, addActivityLog, showToast]);
 
   const handleDeleteCredit = useCallback((id: string) => {
+    const target = credits.find(c => c.id === id);
+    if (target) {
+      // حذف قيد دين كان قد سُدِّد من/إلى الصندوق العام → عكس أثره على الرصيد
+      const effect = generalFundEffectOfCredit(target);
+      if (effect !== 0) {
+        setGeneralFundBalance(prev => Math.round((prev - effect) * 100) / 100);
+      }
+
+      // دين مورد مرتبط بمصروف شراء: نُعيد المدفوع في المصروف إلى ما كان عليه
+      // حتى لا يُحسب نفس المبلغ مرتين عند حذف المصروف لاحقاً
+      const paidViaCredit = creditTotalPaid(target);
+      if (target.supplierDebt && target.relatedExpenseId && paidViaCredit > 0) {
+        setExpenses(prev => prev.map(exp => {
+          if (exp.id !== target.relatedExpenseId) return exp;
+          const currentPaid = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
+          const newPaid = Math.max(0, currentPaid - paidViaCredit);
+          const invoiceTotal = Number(exp.totalInvoiceAmount) || 0;
+          const newCredit = invoiceTotal > 0
+            ? Math.max(0, invoiceTotal - newPaid)
+            : (Number(exp.creditAmount) || 0) + paidViaCredit;
+          const updates = { paidAmount: newPaid, amount: newPaid, creditAmount: newCredit };
+          updateItemInFirebase(FIREBASE_COLLECTIONS.EXPENSES, exp.id, updates);
+          return { ...exp, ...updates };
+        }));
+      }
+    }
+
     setCredits(prev => prev.filter(c => c.id !== id));
     deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, id);
 
@@ -1845,7 +2016,7 @@ export default function App() {
     });
 
     showToast('تم حذف السجل');
-  }, []);
+  }, [credits, addActivityLog, showToast]);
 
   // ==========================
   // CAISSE (CASH REGISTER) HANDLERS
@@ -2329,6 +2500,9 @@ export default function App() {
         onDeleteCredit={handleDeleteCredit}
         onSaveCaisseClosure={handleSaveCaisseClosure}
         onDeleteCaisseClosure={handleDeleteCaisseClosure}
+        generalFundBalance={generalFundBalance}
+        onSetGeneralFundBalance={handleSetGeneralFundBalance}
+        onFeedGeneralFund={handleFeedGeneralFund}
         onDeleteStaffPayout={handleDeleteStaffPayout}
         onAddSeamstress={handleAddSeamstress}
         onUpdateSeamstress={handleUpdateSeamstress}
