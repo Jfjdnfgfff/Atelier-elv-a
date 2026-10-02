@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Expense, Supplier, Credit } from '../types';
+import { Expense, Supplier, Credit, FundSource } from '../types';
 import { LettersInput, NumbersInput } from './Shared';
 import { sanitizeName, sanitizePhone, sanitizeText } from '../utils/security';
 import { downloadElementAsPng } from '../utils/pngDownload';
@@ -32,7 +32,9 @@ import {
   Truck,
   Coffee,
   Tag,
-  Filter
+  Filter,
+  Wallet,
+  Landmark
 } from 'lucide-react';
 
 interface ExpensesViewProps {
@@ -43,7 +45,79 @@ interface ExpensesViewProps {
   onDeleteExpense: (id: string) => void;
   onSettleSupplierCredit?: (expenseId: string, paidNow: number) => void;
   onAddSupplier?: (sup: Supplier) => void;
+  /** الرصيد المتوفر حالياً في الصندوق العام (الخزينة) */
+  generalFundBalance?: number;
 }
+
+/**
+ * اختيار مصدر دفع المصروف: من صندوق اليوم (الدرج) أو من الصندوق العام (الخزينة)
+ */
+const FundSourcePicker: React.FC<{
+  value: FundSource;
+  onChange: (source: FundSource) => void;
+  generalFundBalance?: number;
+  amount?: number | '';
+  compact?: boolean;
+}> = ({ value, onChange, generalFundBalance, amount = '', compact = false }) => {
+  const balance = Number(generalFundBalance) || 0;
+  const entered = typeof amount === 'number' ? amount : 0;
+  const isOverBalance = value === 'general' && entered > 0 && entered > balance;
+
+  return (
+    <div className={`rounded-2xl border border-slate-200/80 bg-slate-50/70 ${compact ? 'p-2.5' : 'p-3'} space-y-2`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
+          <Wallet className="w-3.5 h-3.5 text-slate-500" />
+          <span>من أين يتم خصم هذا المصروف؟ *</span>
+        </span>
+        {value === 'general' && (
+          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border ${
+            isOverBalance
+              ? 'bg-rose-50 text-rose-700 border-rose-200'
+              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          }`}>
+            رصيد الصندوق العام: {balance.toLocaleString()} دج
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => onChange('daily')}
+          className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+            value === 'daily'
+              ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+          }`}
+        >
+          <Wallet className="w-4 h-4" />
+          <span>صندوق اليوم (الدرج)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange('general')}
+          className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+            value === 'general'
+              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+          }`}
+        >
+          <Landmark className="w-4 h-4" />
+          <span>الصندوق العام (الخزينة)</span>
+        </button>
+      </div>
+
+      <p className={`text-[11px] font-medium ${isOverBalance ? 'text-rose-600' : 'text-slate-500'}`}>
+        {value === 'daily'
+          ? 'سيُخصم المبلغ من مبلغ الدرج اليومي وسيظهر ضمن فارق صندوق اليوم (Fi Nhar).'
+          : isOverBalance
+            ? `تنبيه: المبلغ المُدخل (${entered.toLocaleString()} دج) أكبر من رصيد الصندوق العام المتوفر (${balance.toLocaleString()} دج). سيصبح الرصيد بالسالب.`
+            : 'سيُخصم المبلغ من رصيد الصندوق العام مباشرة، ولن يتأثر حساب فارق صندوق اليوم.'}
+      </p>
+    </div>
+  );
+};
 
 export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
   expenses,
@@ -52,7 +126,8 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
   onAddExpense,
   onDeleteExpense,
   onSettleSupplierCredit,
-  onAddSupplier
+  onAddSupplier,
+  generalFundBalance = 0
 }) => {
   // Mode: 'supplier' (خلاص وشراء من المورد) vs 'general' (مصاريف عامة وتجهيزات)
   const [activeFormTab, setActiveFormTab] = useState<'supplier' | 'general'>('supplier');
@@ -66,6 +141,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
   const [generalCategory, setGeneralCategory] = useState('كراء وإيجار المحل (Loyer)');
   const [generalPeriodNote, setGeneralPeriodNote] = useState('');
   const [generalDate, setGeneralDate] = useState(new Date().toISOString().split('T')[0]);
+  const [generalFundSource, setGeneralFundSource] = useState<FundSource>('daily');
 
   // Supplier Expense Form State
   const [selectedSupplierName, setSelectedSupplierName] = useState('');
@@ -77,6 +153,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [supplierNotes, setSupplierNotes] = useState('');
   const [supplierDate, setSupplierDate] = useState(new Date().toISOString().split('T')[0]);
+  const [supplierFundSource, setSupplierFundSource] = useState<FundSource>('daily');
 
   // Quick Settle Modal State
   const [settleModalExpense, setSettleModalExpense] = useState<Expense | null>(null);
@@ -155,7 +232,8 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
       category: generalCategory,
       periodNote: generalPeriodNote ? generalPeriodNote.trim() : undefined,
       date: new Date(generalDate).toISOString(),
-      isSupplierPurchase: false
+      isSupplierPurchase: false,
+      fundSource: generalFundSource
     });
 
     setGeneralDesc('');
@@ -201,6 +279,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
       desc: `شراء من المورد (${finalSupplierName}): ${goodsDescription.trim()}`,
       amount: paidVal, // Actual cash spent now
       date: new Date(supplierDate).toISOString(),
+      fundSource: supplierFundSource,
       isSupplierPurchase: true,
       supplierName: finalSupplierName,
       supplierPhone: supplierPhone.trim(),
@@ -636,6 +715,14 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             )}
           </div>
 
+          {/* Payment Source: صندوق اليوم أو الصندوق العام */}
+          <FundSourcePicker
+            value={supplierFundSource}
+            onChange={setSupplierFundSource}
+            generalFundBalance={generalFundBalance}
+            amount={supplierPaidAmount}
+          />
+
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1">ملاحظات إضافية (اختياري)</label>
             <input
@@ -771,6 +858,14 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
               </div>
             </div>
           )}
+
+          {/* Payment Source: صندوق اليوم أو الصندوق العام */}
+          <FundSourcePicker
+            value={generalFundSource}
+            onChange={setGeneralFundSource}
+            generalFundBalance={generalFundBalance}
+            amount={generalAmount}
+          />
 
           {/* Date Selector */}
           <div className="flex items-center gap-3">
@@ -920,6 +1015,19 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                         <span className="text-[10px] text-slate-400 font-normal flex items-center gap-1">
                           <Calendar className="w-3 h-3 text-slate-400" />
                           <span>{new Date(exp.date).toLocaleDateString('ar-DZ')}</span>
+                        </span>
+
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                            exp.fundSource === 'general'
+                              ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}
+                          title="مصدر خصم هذا المصروف"
+                        >
+                          {exp.fundSource === 'general'
+                            ? <><Landmark className="w-3 h-3" /><span>من الصندوق العام</span></>
+                            : <><Wallet className="w-3 h-3" /><span>من صندوق اليوم</span></>}
                         </span>
                       </div>
 

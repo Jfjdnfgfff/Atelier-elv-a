@@ -37,8 +37,13 @@ import {
   Filter,
   Layers,
   ArrowUpDown,
-  Clock
+  Clock,
+  Landmark,
+  Wallet,
+  Pencil,
+  X
 } from 'lucide-react';
+import { isGeneralFundExpense, sumGeneralFundExpenses } from '../utils/fundBalance';
 
 interface CaisseViewProps {
   sales: Sale[];
@@ -56,6 +61,12 @@ interface CaisseViewProps {
   onDeleteTailoringOrder?: (orderId: string) => void;
   hideFinances: boolean;
   onPrivacyToggle: () => void;
+  /** الرصيد الحالي للصندوق العام (الخزينة) */
+  generalFundBalance?: number;
+  /** ضبط رصيد الصندوق العام يدوياً */
+  onSetGeneralFundBalance?: (value: number) => void;
+  /** تغذية الصندوق العام بمبلغ أو سحب مبلغ منه */
+  onFeedGeneralFund?: (amount: number) => void;
 }
 
 export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
@@ -73,7 +84,10 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
   onDeleteStaffPayout,
   onDeleteTailoringOrder,
   hideFinances,
-  onPrivacyToggle
+  onPrivacyToggle,
+  generalFundBalance = 0,
+  onSetGeneralFundBalance,
+  onFeedGeneralFund
 }) => {
   // Password lock state for Caisse
   const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
@@ -231,6 +245,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
     dateTailoringIncome,
     dateExpenses,
     dateExpensesPaid,
+    dateGeneralSourceExpenses,
     dateStaffPayouts,
     dateStaffPayoutsPaid,
     totalDailyInflow,
@@ -275,11 +290,17 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
 
     const dExpenses: Expense[] = [];
     let expensesPaid = 0;
+    let generalSourceExpensesToday = 0;
     for (let i = 0; i < expenses.length; i++) {
       const e = expenses[i];
       if (e.date && e.date.startsWith(selectedDate)) {
         dExpenses.push(e);
-        expensesPaid += Number(e.amount || 0);
+        // المصاريف المسددة من الصندوق العام لا تُخصم من درج اليوم
+        if (isGeneralFundExpense(e)) {
+          generalSourceExpensesToday += Number(e.amount || 0);
+        } else {
+          expensesPaid += Number(e.amount || 0);
+        }
       }
     }
 
@@ -307,6 +328,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       dateTailoringIncome: tailoringInc,
       dateExpenses: dExpenses,
       dateExpensesPaid: expensesPaid,
+      dateGeneralSourceExpenses: generalSourceExpensesToday,
       dateStaffPayouts: dStaffPayouts,
       dateStaffPayoutsPaid: staffPayoutsPaid,
       totalDailyInflow: totalInflow,
@@ -398,6 +420,42 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
     };
   }, [caisseClosures, currentYearPrefix, selectedDate, existingClosure, hasEnteredActual, theoreticalAmount, actualAmount, dailyDifference]);
 
+  // ==========================================
+  // 4. GENERAL FUND (الصندوق العام / الخزينة)
+  // ==========================================
+  const [isEditingFund, setIsEditingFund] = useState(false);
+  const [fundInput, setFundInput] = useState<string>(generalFundBalance ? String(generalFundBalance) : '');
+  const [feedInput, setFeedInput] = useState<string>('');
+
+  React.useEffect(() => {
+    setFundInput(generalFundBalance ? String(generalFundBalance) : '');
+  }, [generalFundBalance]);
+
+  // مصاريف اليوم المسحوبة من الصندوق العام (لا تدخل في حساب الدرج)
+  const todayGeneralFundExpenses = useMemo(
+    () => dateExpenses.filter(isGeneralFundExpense),
+    [dateExpenses]
+  );
+  const todayGeneralFundTotal = useMemo(
+    () => sumGeneralFundExpenses(dateExpenses).total,
+    [dateExpenses]
+  );
+
+  const handleSaveFundBalance = () => {
+    const value = Number(fundInput);
+    if (onSetGeneralFundBalance) {
+      onSetGeneralFundBalance(Number.isFinite(value) ? value : 0);
+    }
+    setIsEditingFund(false);
+  };
+
+  const handleFeedFund = (sign: 1 | -1) => {
+    const value = Math.abs(Number(feedInput) || 0);
+    if (value === 0 || !onFeedGeneralFund) return;
+    onFeedGeneralFund(sign * value);
+    setFeedInput('');
+  };
+
   // Handle Save / Clôture
   const handleSaveCaisse = (e: React.FormEvent) => {
     e.preventDefault();
@@ -414,6 +472,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       tailoringIncome: dateTailoringIncome,
       cautionsReceived: dateCautionsReceived,
       expensesPaid: dateExpensesPaid,
+      generalFundExpenses: dateGeneralSourceExpenses,
       staffPayoutsPaid: dateStaffPayoutsPaid,
       cautionsRefunded: 0,
       totalInflow: totalDailyInflow,
@@ -538,7 +597,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
         time: timePart,
         direction: 'outflow',
         title: e.desc || e.category,
-        subtitle: `تصنيف: ${e.category} ${e.supplierName ? `• مورد: ${e.supplierName}` : ''}`,
+        subtitle: `تصنيف: ${e.category} ${e.supplierName ? `• مورد: ${e.supplierName}` : ''} • المصدر: ${isGeneralFundExpense(e) ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)'}`,
         amount,
         originalItem: e
       });
@@ -1007,6 +1066,127 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       </div>
 
       {/* ==================================================== */}
+      {/* GENERAL FUND CARD (الصندوق العام / الخزينة)          */}
+      {/* ==================================================== */}
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-indigo-200/70 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="w-9 h-9 bg-indigo-50 text-indigo-700 rounded-xl flex items-center justify-center border border-indigo-200/80">
+              <Landmark className="w-4 h-4" />
+            </span>
+            <div>
+              <h3 className="text-sm sm:text-base font-bold text-slate-900">
+                الصندوق العام (الخزينة)
+              </h3>
+              <p className="text-[11px] text-slate-500 font-normal mt-0.5">
+                كل مصروف يُسجَّل على أنه «من الصندوق العام» يُخصم مبلغه مباشرة من هذا الرصيد، ولا يؤثر على درج اليوم.
+              </p>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <span className="text-[11px] font-medium text-slate-500 block">الرصيد المتوفر في الخزينة</span>
+            <span className={`text-xl sm:text-2xl font-bold font-mono ${
+              generalFundBalance < 0 ? 'text-rose-600' : 'text-indigo-700'
+            }`}>
+              {hideFinances ? '••••••' : `${generalFundBalance.toLocaleString()} دج`}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="bg-slate-50 border border-slate-200/80 p-2.5 rounded-xl flex items-center justify-between">
+            <span className="text-[11px] text-slate-600 font-medium">مسحوب من الخزينة اليوم ({selectedDate})</span>
+            <span className="text-sm font-bold font-mono text-indigo-700">
+              {hideFinances ? '•••' : `-${todayGeneralFundTotal.toLocaleString()} دج`}
+            </span>
+          </div>
+          <div className="bg-slate-50 border border-slate-200/80 p-2.5 rounded-xl flex items-center justify-between">
+            <span className="text-[11px] text-slate-600 font-medium">عدد عمليات الخزينة اليوم</span>
+            <span className="text-sm font-bold font-mono text-slate-800">
+              {todayGeneralFundExpenses.length} عملية
+            </span>
+          </div>
+        </div>
+
+        {/* Manual adjust / feed the general fund */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/80 border border-slate-200/80 rounded-xl p-2.5">
+          <div className="flex items-center gap-2">
+            <Wallet className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-[11px] font-medium text-slate-600">
+              تعديل الرصيد الفعلي للخزينة:
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            {isEditingFund ? (
+              <>
+                <input
+                  type="number"
+                  value={fundInput}
+                  onChange={(e) => setFundInput(e.target.value)}
+                  placeholder="0"
+                  className="w-32 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold font-mono focus:outline-none focus:border-indigo-400"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveFundBalance}
+                  className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>حفظ</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setFundInput(generalFundBalance ? String(generalFundBalance) : ''); setIsEditingFund(false); }}
+                  className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </>
+            ) : (
+              <>
+                <input
+                  type="number"
+                  value={feedInput}
+                  onChange={(e) => setFeedInput(e.target.value)}
+                  placeholder="مبلغ التغذية..."
+                  className="w-32 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold font-mono focus:outline-none focus:border-indigo-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleFeedFund(1)}
+                  disabled={!feedInput}
+                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-[11px] font-bold transition-colors"
+                >
+                  + تغذية الخزينة
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFeedFund(-1)}
+                  disabled={!feedInput}
+                  className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 disabled:opacity-40 disabled:cursor-not-allowed text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold transition-colors"
+                >
+                  − سحب
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingFund(true)}
+                  className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-colors"
+                >
+                  <Pencil className="w-3 h-3" />
+                  <span>ضبط الرصيد</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        <p className="text-[11px] text-slate-500 font-normal">
+          الرصيد مخزّن ومشترك بين كل الأجهزة • مصاريف الدرج لا تُخصم من الخزينة، ومصاريف الخزينة لا تُخصم من الدرج.
+        </p>
+      </div>
+
       {/* MAIN CONTENT: VIEW TAB 1 = TODAY'S CAISSE            */}
       {/* ==================================================== */}
       {viewTab === 'today' ? (
@@ -1035,9 +1215,18 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                   <span className="font-mono font-bold text-slate-900">+{totalDailyInflow.toLocaleString()} دج</span>
                 </div>
                 <div className="flex justify-between text-slate-700">
-                  <span>- إجمالي المصاريف المسددة:</span>
+                  <span>- المصاريف والأجور المسددة من الدرج:</span>
                   <span className="font-mono font-bold text-rose-600">-{totalDailyOutflow.toLocaleString()} دج</span>
                 </div>
+                {dateGeneralSourceExpenses > 0 && (
+                  <div className="flex justify-between text-indigo-700 bg-indigo-50/70 -mx-1 px-1.5 py-1 rounded-lg">
+                    <span className="flex items-center gap-1">
+                      <Landmark className="w-3 h-3" />
+                      <span>مصاريف مسددة من الصندوق العام (خارج الدرج):</span>
+                    </span>
+                    <span className="font-mono font-bold">-{dateGeneralSourceExpenses.toLocaleString()} دج</span>
+                  </div>
+                )}
                 <div className="flex justify-between pt-2 border-t border-slate-200/80 font-bold text-slate-900 text-xs sm:text-sm">
                   <span>المبلغ النظري المتوقع في الصندوق:</span>
                   <span className="font-mono font-bold text-slate-900">{theoreticalAmount.toLocaleString()} دج</span>
@@ -1390,11 +1579,14 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 text-xs">
-                    <div className="text-slate-500 font-medium">مصاريف المحل اليومية:</div>
+                    <div className="text-slate-500 font-medium">مصاريف مسددة من الدرج:</div>
                     <div className="font-bold text-rose-600 font-mono text-sm mt-0.5">
                       -{dateExpensesPaid.toLocaleString()} دج
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">{dateExpenses.length} سند صرف</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">
+                      {dateExpenses.length} سند صرف
+                      {dateGeneralSourceExpenses > 0 ? ` • +${dateGeneralSourceExpenses.toLocaleString()} دج من الصندوق العام` : ''}
+                    </div>
                   </div>
 
                   <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 text-xs">
@@ -1417,10 +1609,19 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                         <div key={e.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors group">
                           <div className="flex-1 min-w-0 pr-1">
                             <span className="font-semibold text-slate-800 block truncate">{e.desc || e.category}</span>
-                            <span className="text-[10px] text-slate-400">[{e.category}] {e.supplierName ? `• مورد: ${e.supplierName}` : ''}</span>
+                            <span className="text-[10px] text-slate-400 flex items-center gap-1.5 flex-wrap">
+                              <span>[{e.category}] {e.supplierName ? `• مورد: ${e.supplierName}` : ''}</span>
+                              <span className={`px-1.5 py-0.5 rounded-md font-bold border ${
+                                isGeneralFundExpense(e)
+                                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              }`}>
+                                {isGeneralFundExpense(e) ? 'من الصندوق العام (لا يخصم من الدرج)' : 'من صندوق اليوم'}
+                              </span>
+                            </span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <span className="font-mono font-bold text-rose-600">
+                            <span className={`font-mono font-bold ${isGeneralFundExpense(e) ? 'text-indigo-600' : 'text-rose-600'}`}>
                               -{Number(e.amount).toLocaleString()} دج
                             </span>
                             {onDeleteExpense && (

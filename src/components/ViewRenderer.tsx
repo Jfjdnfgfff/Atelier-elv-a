@@ -45,6 +45,7 @@ export interface ViewRendererProps {
   rawMaterials: RawMaterial[];
   activityLogs?: ActivityLog[];
   hideFinances: boolean;
+  generalFundBalance: number;
   posScannedBarcode: string | null;
   hasMoreClothes: boolean;
   isLoadingMoreClothes: boolean;
@@ -109,6 +110,8 @@ export interface ViewRendererProps {
   // CaisseView handlers
   onSaveCaisseClosure: (closure: DailyCaisseClosure) => void;
   onDeleteCaisseClosure: (id: string) => void;
+  onSetGeneralFundBalance: (value: number) => void;
+  onFeedGeneralFund: (amount: number) => void;
   onDeleteStaffPayout?: (id: string) => void;
 
   // PartnersView seamstress handlers
@@ -145,7 +148,8 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
     case 'expenses':
       return prev.expenses === next.expenses && 
              prev.suppliers === next.suppliers && 
-             prev.credits === next.credits;
+             prev.credits === next.credits &&
+             prev.generalFundBalance === next.generalFundBalance;
     case 'credits':
       return prev.credits === next.credits && 
              prev.suppliers === next.suppliers;
@@ -161,7 +165,8 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
              prev.rentals === next.rentals && 
              prev.expenses === next.expenses && 
              prev.staffPayouts === next.staffPayouts && 
-             prev.maintenanceOrders === next.maintenanceOrders;
+             prev.maintenanceOrders === next.maintenanceOrders &&
+             prev.generalFundBalance === next.generalFundBalance;
     case 'logs':
       return prev.activityLogs === next.activityLogs;
     case 'dashboard':
@@ -194,6 +199,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   rawMaterials,
   activityLogs = [],
   hideFinances,
+  generalFundBalance,
   posScannedBarcode,
   hasMoreClothes,
   isLoadingMoreClothes,
@@ -242,6 +248,8 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   onDeleteCredit,
   onSaveCaisseClosure,
   onDeleteCaisseClosure,
+  onSetGeneralFundBalance,
+  onFeedGeneralFund,
   onDeleteStaffPayout,
   onAddSeamstress,
   onUpdateSeamstress,
@@ -347,6 +355,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           onDeleteExpense={onDeleteExpense}
           onSettleSupplierCredit={onSettleSupplierCredit}
           onAddSupplier={onAddSupplier}
+          generalFundBalance={generalFundBalance}
         />
       )}
 
@@ -377,6 +386,9 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           onDeleteTailoringOrder={onDeleteTailoringOrder}
           hideFinances={hideFinances}
           onPrivacyToggle={onPrivacyToggle}
+          generalFundBalance={generalFundBalance}
+          onSetGeneralFundBalance={onSetGeneralFundBalance}
+          onFeedGeneralFund={onFeedGeneralFund}
         />
       )}
 

@@ -104,6 +104,11 @@ export interface AppNavigationProps {
   isFirebaseConnected?: boolean;
   isCloudSyncing?: boolean;
   openCloudSyncModal?: () => void;
+
+  // الصندوق العام (الخزينة)
+  generalFundBalance: number;
+  onSetGeneralFundBalance: (value: number) => void;
+  onFeedGeneralFund: (amount: number) => void;
 }
 
 export const AppNavigation: React.FC<AppNavigationProps> = memo(({
@@ -174,6 +179,9 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
   onDeleteCredit,
   onSaveCaisseClosure,
   onDeleteCaisseClosure,
+  generalFundBalance,
+  onSetGeneralFundBalance,
+  onFeedGeneralFund,
   onDeleteStaffPayout,
   onAddSeamstress,
   onUpdateSeamstress,
@@ -449,6 +457,9 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
           onDeleteCredit={onDeleteCredit}
           onSaveCaisseClosure={onSaveCaisseClosure}
           onDeleteCaisseClosure={onDeleteCaisseClosure}
+          generalFundBalance={generalFundBalance}
+          onSetGeneralFundBalance={onSetGeneralFundBalance}
+          onFeedGeneralFund={onFeedGeneralFund}
           onDeleteStaffPayout={onDeleteStaffPayout}
           onAddSeamstress={onAddSeamstress}
           onUpdateSeamstress={onUpdateSeamstress}

@@ -144,9 +144,15 @@ export const CaisseReceiptModal: React.FC<CaisseReceiptModalProps> = ({ closure,
             2. حركة المصاريف والخوارج (Sorties)
           </div>
           <div className="flex justify-between py-1 border-b border-slate-100">
-            <span className="text-slate-600">مصاريف المحل المسددة كاش:</span>
+            <span className="text-slate-600">مصاريف المحل المسددة من الدرج:</span>
             <span className="font-bold text-black font-mono">-{(closure.expensesPaid || 0).toLocaleString()} دج</span>
           </div>
+          {(closure.generalFundExpenses || 0) > 0 && (
+            <div className="flex justify-between py-1 border-b border-slate-100">
+              <span className="text-slate-600">مصاريف مسددة من الصندوق العام (خارج الدرج):</span>
+              <span className="font-bold text-black font-mono">-{(closure.generalFundExpenses || 0).toLocaleString()} دج</span>
+            </div>
+          )}
           {(closure.staffPayoutsPaid || 0) > 0 && (
             <div className="flex justify-between py-1 border-b border-slate-100">
               <span className="text-slate-600">دفعات وأجور العمال كاش:</span>

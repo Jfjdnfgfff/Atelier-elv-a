@@ -139,12 +139,16 @@ export interface RawMaterial {
 
 export type ExpenseScope = 'rental' | 'sale' | 'tailoring' | 'general';
 
+// مصدر دفع المصروف: من صندوق اليوم (الدرج) أو من الصندوق العام (الخزينة التراكمية للمحل)
+export type FundSource = 'daily' | 'general';
+
 export interface Expense {
   id: string;
   category: string;
   desc: string;
   amount: number;
   date: string;
+  fundSource?: FundSource; // من أين خُصم المصروف: صندوق اليوم أو الصندوق العام (افتراضياً: صندوق اليوم)
   expenseScope?: ExpenseScope; // فساتين كراء، فساتين بيع، خياطة، أو مصاريف عامة
   periodNote?: string; // بيان الفترة (مثل: إيجار شهر جانفي، كراء 3 أشهر...)
   // Supplier purchase specific fields
@@ -274,7 +278,8 @@ export interface DailyCaisseClosure {
   rentalsIncome: number; // مدخول كراء اليوم
   tailoringIncome: number; // مدخول خياطة وتعديل اليوم
   cautionsReceived: number; // مبالغ الضمان المستلمة كاش
-  expensesPaid: number; // مصاريف المحل المسددة كاش اليوم
+  expensesPaid: number; // مصاريف المحل المسددة كاش اليوم من الدرج
+  generalFundExpenses?: number; // مصاريف مسددة اليوم من الصندوق العام (لا تدخل في حساب الدرج)
   staffPayoutsPaid: number; // دفعات العمال المسددة كاش اليوم
   cautionsRefunded: number; // ضمانات تم إرجاعها للزبائن كاش
   totalInflow: number; // إجمالي المدخول
