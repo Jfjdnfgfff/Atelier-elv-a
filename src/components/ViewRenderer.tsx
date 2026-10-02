@@ -15,6 +15,7 @@ import {
   RawMaterial,
   MaintenanceStatus,
   ActivityLog,
+  FundSource,
 } from '../types';
 
 // Directly imported Views for instant zero-latency section navigation
@@ -104,7 +105,7 @@ export interface ViewRendererProps {
 
   // CreditsView handlers
   onAddCredit: (credData: any) => void;
-  onSettleCredit: (id: string) => void;
+  onSettleCredit: (creditId: string, payment: { amount: number; date: string; fundSource: FundSource; note?: string }) => void;
   onDeleteCredit: (id: string) => void;
 
   // CaisseView handlers
@@ -152,7 +153,8 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
              prev.generalFundBalance === next.generalFundBalance;
     case 'credits':
       return prev.credits === next.credits && 
-             prev.suppliers === next.suppliers;
+             prev.suppliers === next.suppliers &&
+             prev.generalFundBalance === next.generalFundBalance;
     case 'partners':
       return prev.suppliers === next.suppliers && 
              prev.seamstresses === next.seamstresses && 
@@ -166,6 +168,7 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
              prev.expenses === next.expenses && 
              prev.staffPayouts === next.staffPayouts && 
              prev.maintenanceOrders === next.maintenanceOrders &&
+             prev.credits === next.credits &&
              prev.generalFundBalance === next.generalFundBalance;
     case 'logs':
       return prev.activityLogs === next.activityLogs;
@@ -366,6 +369,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           onAddCredit={onAddCredit}
           onSettleCredit={onSettleCredit}
           onDeleteCredit={onDeleteCredit}
+          generalFundBalance={generalFundBalance}
         />
       )}
 
@@ -374,6 +378,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           sales={sales}
           rentals={rentals}
           expenses={expenses}
+          credits={credits}
           staffPayouts={staffPayouts}
           maintenanceOrders={maintenanceOrders}
           caisseClosures={caisseClosures}

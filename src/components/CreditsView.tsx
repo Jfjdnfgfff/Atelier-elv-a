@@ -1,10 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Credit, Supplier } from '../types';
+import { Credit, Supplier, FundSource, CreditPayment } from '../types';
 import { VirtualizedList } from './VirtualizedList';
 import type { ExtractedCustomerData } from './CustomerIdScannerModal';
 const CustomerIdScannerModal = React.lazy(() => import('./CustomerIdScannerModal').then(m => ({ default: m.CustomerIdScannerModal })));
 import { LettersInput, NumbersInput } from './Shared';
 import { sanitizeName, sanitizePhone, sanitizeText } from '../utils/security';
+import { FundSourcePicker } from './FundSourcePicker';
+import { creditTotalPaid, creditRemaining, isCreditSettled } from '../utils/fundBalance';
 import {
   Users,
   Building2,
@@ -16,23 +18,38 @@ import {
   Trash2,
   Plus,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  X,
+  Wallet,
+  Landmark,
+  CalendarDays,
+  History
 } from 'lucide-react';
 
 interface CreditsViewProps {
   credits: Credit[];
   suppliers?: Supplier[];
   onAddCredit: (data: any) => void;
-  onSettleCredit: (id: string) => void;
+  /** تسجيل دفعة تسديد (كاملة أو جزئية) مع تاريخها والصندوق الذي دخلت/خرجت منه */
+  onSettleCredit: (creditId: string, payment: { amount: number; date: string; fundSource: FundSource; note?: string }) => void;
   onDeleteCredit: (id: string) => void;
+  /** الرصيد الحالي للصندوق العام (الخزينة) */
+  generalFundBalance?: number;
 }
+
+const todayDateString = () => {
+  const now = new Date();
+  const offsetMs = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offsetMs).toISOString().split('T')[0];
+};
 
 export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
   credits,
   suppliers = [],
   onAddCredit,
   onSettleCredit,
-  onDeleteCredit
+  onDeleteCredit,
+  generalFundBalance = 0
 }) => {
   const [filterTab, setFilterTab] = useState<'all' | 'customers' | 'suppliers'>('all');
   const [debtCategory, setDebtCategory] = useState<'customer' | 'supplier'>('customer');
@@ -42,7 +59,40 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
   const [desc, setDesc] = useState('');
   const [amount, setAmount] = useState<number | ''>('');
   const [type, setType] = useState('دين كراء فستان');
+  const [creditDate, setCreditDate] = useState<string>(todayDateString());
   const [showScanner, setShowScanner] = useState(false);
+
+  // نافذة تسديد الكريدي: المبلغ + التاريخ + الصندوق
+  const [settleCredit, setSettleCredit] = useState<Credit | null>(null);
+  const [settleAmount, setSettleAmount] = useState<number | ''>('');
+  const [settleDate, setSettleDate] = useState<string>(todayDateString());
+  const [settleFund, setSettleFund] = useState<FundSource>('daily');
+
+  const openSettleModal = (credit: Credit) => {
+    setSettleCredit(credit);
+    setSettleAmount(creditRemaining(credit));
+    setSettleDate(todayDateString());
+    setSettleFund('daily');
+  };
+
+  const confirmSettle = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!settleCredit) return;
+    const value = Number(settleAmount) || 0;
+    if (value <= 0) return;
+    if (value > creditRemaining(settleCredit) && !window.confirm(
+      `المبلغ المُدخل (${value.toLocaleString()} دج) أكبر من المتبقي (${creditRemaining(settleCredit).toLocaleString()} دج). هل تريد المتابعة؟`
+    )) {
+      return;
+    }
+    onSettleCredit(settleCredit.id, {
+      amount: value,
+      date: settleDate,
+      fundSource: settleFund
+    });
+    setSettleCredit(null);
+    setSettleAmount('');
+  };
 
   const customerCreditTypes = [
     'دين كراء فستان',
@@ -86,13 +136,14 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
       supplierDebt: isSup,
       supplierName: isSup ? name.trim() : undefined,
       goodsDescription: isSup ? desc.trim() : undefined,
-      date: new Date().toISOString()
+      date: new Date(creditDate || todayDateString()).toISOString()
     });
 
     setName('');
     setPhone('');
     setDesc('');
     setAmount('');
+    setCreditDate(todayDateString());
   };
 
   // Calculations
@@ -235,7 +286,7 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">
               {debtCategory === 'supplier' ? 'اسم المورد *' : 'اسم الزبون *'}
@@ -304,7 +355,33 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
               ))}
             </select>
           </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1 flex items-center gap-1">
+              <CalendarDays className="w-3 h-3 text-slate-400" />
+              <span>تاريخ الدين / الكريدي</span>
+            </label>
+            <input
+              type="date"
+              value={creditDate}
+              onChange={(e) => setCreditDate(e.target.value)}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 bg-white focus:outline-none focus:border-slate-400"
+            />
+          </div>
         </div>
+
+        {creditDate !== todayDateString() && (
+          <div className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 flex items-center justify-between gap-2">
+            <span>التاريخ المحدد للدين هو {creditDate} (وليس اليوم).</span>
+            <button
+              type="button"
+              onClick={() => setCreditDate(todayDateString())}
+              className="text-[10px] bg-white border border-amber-300 text-amber-800 px-2 py-0.5 rounded-md font-bold hover:bg-amber-100 transition-colors"
+            >
+              العودة لتاريخ اليوم
+            </button>
+          </div>
+        )}
 
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">
@@ -341,6 +418,138 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
             onClose={() => setShowScanner(false)}
           />
         </React.Suspense>
+      )}
+
+      {/* Settle Credit Modal: المبلغ + التاريخ + الصندوق */}
+      {settleCredit && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50" dir="rtl">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 max-w-lg w-full shadow-xl border border-slate-200/80 space-y-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-600" />
+                  <span>{settleCredit.supplierDebt ? 'تسديد دفعة للمورد' : 'تحصيل وتسديد الكريدي'}</span>
+                </h3>
+                <p className="text-xs text-slate-500 font-normal mt-0.5">
+                  {settleCredit.supplierDebt
+                    ? 'سيُخصم المبلغ من الصندوق الذي تختاره.'
+                    : 'سيُضاف المبلغ إلى الصندوق الذي تختاره.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSettleCredit(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-xl space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-normal">{settleCredit.supplierDebt ? 'المورد:' : 'الزبون:'}</span>
+                <span className="font-bold text-slate-900">{settleCredit.name}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-normal">البيان:</span>
+                <span className="font-medium text-slate-800 line-clamp-1">{settleCredit.desc || settleCredit.type}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-normal">إجمالي الدين:</span>
+                <span className="font-bold text-slate-900 font-mono">{Number(settleCredit.amount).toLocaleString()} دج</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-normal">المسدَّد سابقاً:</span>
+                <span className="font-bold text-slate-900 font-mono">{creditTotalPaid(settleCredit).toLocaleString()} دج</span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+                <span className="text-slate-700 font-medium">المتبقي حالياً:</span>
+                <span className="font-bold text-rose-600 font-mono text-sm">{creditRemaining(settleCredit).toLocaleString()} دج</span>
+              </div>
+            </div>
+
+            <form onSubmit={confirmSettle} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-xs font-medium text-slate-700">المبلغ (دج) *</label>
+                    <button
+                      type="button"
+                      onClick={() => setSettleAmount(creditRemaining(settleCredit))}
+                      className="text-[10px] text-slate-600 hover:text-slate-900 font-medium underline"
+                    >
+                      تسديد كامل المتبقي
+                    </button>
+                  </div>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={settleAmount}
+                    onChange={(e) => setSettleAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="0"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400 focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1 flex items-center gap-1">
+                    <CalendarDays className="w-3 h-3 text-slate-400" />
+                    <span>تاريخ استلام / دفع المال *</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={settleDate}
+                    onChange={(e) => setSettleDate(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <FundSourcePicker
+                value={settleFund}
+                onChange={setSettleFund}
+                generalFundBalance={generalFundBalance}
+                amount={settleAmount}
+                warnOnInsufficient={!!settleCredit.supplierDebt}
+                question={settleCredit.supplierDebt ? 'من أي صندوق يُخصم المبلغ؟ *' : 'إلى أي صندوق يُضاف المبلغ؟ *'}
+                dailyHint={
+                  settleCredit.supplierDebt
+                    ? 'سيُخصم المبلغ من درج اليوم ويُحسب ضمن مصاريف ذلك اليوم في الصندوق.'
+                    : 'سيُضاف المبلغ إلى مدخول درج اليوم ويُحسب ضمن مداخيل ذلك التاريخ في الصندوق.'
+                }
+                generalHint={
+                  settleCredit.supplierDebt
+                    ? 'سيُخصم المبلغ من رصيد الصندوق العام، ولن يتأثر درج اليوم.'
+                    : 'سيُضاف المبلغ إلى رصيد الصندوق العام مباشرة، ولن يتأثر درج اليوم.'
+                }
+              />
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="submit"
+                  className={`flex-1 py-2.5 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 ${
+                    settleFund === 'general' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
+                >
+                  {settleFund === 'general' ? <Landmark className="w-4 h-4" /> : <Wallet className="w-4 h-4" />}
+                  <span>
+                    {settleCredit.supplierDebt ? 'تأكيد الدفع من ' : 'تأكيد التحصيل في '}
+                    {settleFund === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettleCredit(null)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-xl transition-all"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Credit List with Filters */}
@@ -410,24 +619,70 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
                       <span>{new Date(credit.date).toLocaleDateString('ar-DZ')}</span>
                     </span>
                   </div>
+
+                  {/* سجل دفعات التسديد مع التاريخ والصندوق */}
+                  {Array.isArray(credit.payments) && credit.payments.length > 0 && (
+                    <div className="mt-1.5 space-y-1">
+                      {credit.payments.map(payment => (
+                        <div key={payment.id} className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                          <span className="flex items-center gap-1 text-slate-500 font-mono">
+                            <History className="w-3 h-3 text-slate-400" />
+                            <span>{payment.date}</span>
+                          </span>
+                          <span className="font-bold font-mono text-emerald-700">
+                            {credit.supplierDebt ? '-' : '+'}{Number(payment.amount).toLocaleString()} دج
+                          </span>
+                          <span className={`px-1.5 py-0.5 rounded-md font-bold border flex items-center gap-1 ${
+                            payment.fundSource === 'general'
+                              ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                              : 'bg-slate-50 text-slate-700 border-slate-200'
+                          }`}>
+                            {payment.fundSource === 'general'
+                              ? <><Landmark className="w-2.5 h-2.5" /><span>الصندوق العام</span></>
+                              : <><Wallet className="w-2.5 h-2.5" /><span>صندوق اليوم</span></>}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                  <span className="font-bold text-sm font-mono text-slate-900">
-                    {credit.amount.toLocaleString()} دج
-                  </span>
+                  <div className="text-right">
+                    <span className="font-bold text-sm font-mono text-slate-900 block">
+                      {credit.amount.toLocaleString()} دج
+                    </span>
+                    {creditTotalPaid(credit) > 0 && (
+                      <span className="text-[10px] font-mono text-slate-500 block">
+                        مسدد: {creditTotalPaid(credit).toLocaleString()} • المتبقي: {creditRemaining(credit).toLocaleString()} دج
+                      </span>
+                    )}
+                  </div>
 
                   <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => onSettleCredit(credit.id)}
-                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-medium transition-all text-xs flex items-center gap-1 active:scale-95"
-                    >
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>تم التسديد</span>
-                    </button>
+                    {isCreditSettled(credit) ? (
+                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>مسدّد بالكامل</span>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => openSettleModal(credit)}
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-medium transition-all text-xs flex items-center gap-1 active:scale-95"
+                      >
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>تسديد</span>
+                      </button>
+                    )}
 
                     <button
-                      onClick={() => onDeleteCredit(credit.id)}
+                      onClick={() => {
+                        const paid = creditTotalPaid(credit);
+                        const message = paid > 0
+                          ? `هذا الدين مسدَّد منه ${paid.toLocaleString()} دج.\nحذفه سيعكس أثر الدفعات على الصندوق ويعيد المتبقي كدين كامل.\nهل تريد المتابعة؟`
+                          : `هل أنت متأكد من حذف دين (${credit.name}) بمبلغ ${Number(credit.amount).toLocaleString()} دج؟`;
+                        if (window.confirm(message)) onDeleteCredit(credit.id);
+                      }}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                       title="حذف"
                     >

@@ -135,6 +135,12 @@ export const CaisseReceiptModal: React.FC<CaisseReceiptModalProps> = ({ closure,
               <span className="font-bold text-blue-700 font-mono">+{(closure.cautionsReceived || 0).toLocaleString()} دج</span>
             </div>
           )}
+          {(closure.creditsCollected || 0) > 0 && (
+            <div className="flex justify-between py-1 border-b border-slate-100">
+              <span className="text-slate-600">تحصيل ديون وكريدي من الزبائن كاش:</span>
+              <span className="font-bold text-black font-mono">+{(closure.creditsCollected || 0).toLocaleString()} دج</span>
+            </div>
+          )}
           <div className="flex justify-between py-1.5 bg-slate-50 px-2 rounded-lg font-black text-slate-900">
             <span>إجمالي المداخيل النقدية:</span>
             <span className="font-mono">{closure.totalInflow.toLocaleString()} دج</span>
@@ -147,6 +153,12 @@ export const CaisseReceiptModal: React.FC<CaisseReceiptModalProps> = ({ closure,
             <span className="text-slate-600">مصاريف المحل المسددة من الدرج:</span>
             <span className="font-bold text-black font-mono">-{(closure.expensesPaid || 0).toLocaleString()} دج</span>
           </div>
+          {(closure.creditSettlementsPaid || 0) > 0 && (
+            <div className="flex justify-between py-1 border-b border-slate-100">
+              <span className="text-slate-600">دفعات ديون الموردين (كريدي) من الدرج:</span>
+              <span className="font-bold text-black font-mono">-{(closure.creditSettlementsPaid || 0).toLocaleString()} دج</span>
+            </div>
+          )}
           {(closure.generalFundExpenses || 0) > 0 && (
             <div className="flex justify-between py-1 border-b border-slate-100">
               <span className="text-slate-600">مصاريف مسددة من الصندوق العام (خارج الدرج):</span>

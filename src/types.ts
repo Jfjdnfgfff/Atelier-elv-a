@@ -174,6 +174,18 @@ export interface Seamstress {
   createdAt?: string;
 }
 
+/**
+ * دفعة تسديد لكريدي (دين): سُجّلت عند استلام المال من الزبون
+ * أو عند دفع دفعة للمورد، مع تحديد الصندوق الذي دخلت أو خرجت منه.
+ */
+export interface CreditPayment {
+  id: string;
+  amount: number;
+  date: string; // YYYY-MM-DD تاريخ استلام / دفع المال بالضبط
+  fundSource: FundSource; // الصندوق: صندوق اليوم (الدرج) أو الصندوق العام (الخزينة)
+  note?: string;
+}
+
 export interface Credit {
   id: string;
   name: string;
@@ -189,6 +201,7 @@ export interface Credit {
   goodsDescription?: string;
   totalInvoiceAmount?: number;
   paidAmount?: number;
+  payments?: CreditPayment[]; // دفعات التسديد (كاملة أو جزئية) مع تاريخها وصندوقها
 }
 
 export interface StaffMember {
@@ -280,6 +293,8 @@ export interface DailyCaisseClosure {
   cautionsReceived: number; // مبالغ الضمان المستلمة كاش
   expensesPaid: number; // مصاريف المحل المسددة كاش اليوم من الدرج
   generalFundExpenses?: number; // مصاريف مسددة اليوم من الصندوق العام (لا تدخل في حساب الدرج)
+  creditsCollected?: number; // مبالغ ديون الزبائن المحصلة كاش في الدرج اليوم
+  creditSettlementsPaid?: number; // دفعات ديون الموردين المسددة كاش من الدرج اليوم
   staffPayoutsPaid: number; // دفعات العمال المسددة كاش اليوم
   cautionsRefunded: number; // ضمانات تم إرجاعها للزبائن كاش
   totalInflow: number; // إجمالي المدخول

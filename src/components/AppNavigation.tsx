@@ -13,7 +13,8 @@ import {
   Seamstress, 
   RawMaterial, 
   MaintenanceStatus,
-  ActivityLog
+  ActivityLog,
+  FundSource
 } from '../types';
 import { NavButton } from './Shared';
 import { ViewRenderer } from './ViewRenderer';
@@ -91,7 +92,7 @@ export interface AppNavigationProps {
   onUpdateSupplier: (id: string, data: Partial<Supplier>) => void;
   onDeleteSupplier: (id: string) => void;
   onAddCredit: (credData: any) => void;
-  onSettleCredit: (id: string) => void;
+  onSettleCredit: (creditId: string, payment: { amount: number; date: string; fundSource: FundSource; note?: string }) => void;
   onDeleteCredit: (id: string) => void;
   onSaveCaisseClosure: (closure: DailyCaisseClosure) => void;
   onDeleteCaisseClosure: (id: string) => void;

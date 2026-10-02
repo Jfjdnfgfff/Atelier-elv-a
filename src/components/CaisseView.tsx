@@ -5,7 +5,8 @@ import {
   Expense, 
   StaffPayout, 
   MaintenanceOrder, 
-  DailyCaisseClosure 
+  DailyCaisseClosure,
+  Credit
 } from '../types';
 import { Modal } from './Shared';
 import { CaisseReceiptModal } from './CaisseReceiptModal';
@@ -40,15 +41,21 @@ import {
   Clock,
   Landmark,
   Wallet,
+  HandCoins,
   Pencil,
   X
 } from 'lucide-react';
-import { isGeneralFundExpense, sumGeneralFundExpenses } from '../utils/fundBalance';
+import {
+  isGeneralFundExpense,
+  sumGeneralFundExpenses,
+  summarizeCreditPaymentsOn
+} from '../utils/fundBalance';
 
 interface CaisseViewProps {
   sales: Sale[];
   rentals: Rental[];
   expenses: Expense[];
+  credits?: Credit[];
   staffPayouts: StaffPayout[];
   maintenanceOrders: MaintenanceOrder[];
   caisseClosures: DailyCaisseClosure[];
@@ -73,6 +80,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
   sales,
   rentals,
   expenses,
+  credits = [],
   staffPayouts,
   maintenanceOrders,
   caisseClosures,
@@ -246,6 +254,11 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
     dateExpenses,
     dateExpensesPaid,
     dateGeneralSourceExpenses,
+    dateCreditInflow,
+    dateCreditOutflow,
+    dateCreditGeneralInflow,
+    dateCreditGeneralOutflow,
+    dateCreditPaymentsCount,
     dateStaffPayouts,
     dateStaffPayoutsPaid,
     totalDailyInflow,
@@ -314,8 +327,11 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       }
     }
 
-    const totalInflow = salesInc + rentalsInc + tailoringInc + cautionsRec;
-    const totalOutflow = expensesPaid + staffPayoutsPaid;
+    // دفعات الكريدي المسجلة في هذا التاريخ: تحصيل ديون الزبائن (داخل) ودفعات الموردين (خارج)
+    const creditPayments = summarizeCreditPaymentsOn(credits, selectedDate);
+
+    const totalInflow = salesInc + rentalsInc + tailoringInc + cautionsRec + creditPayments.inflow;
+    const totalOutflow = expensesPaid + staffPayoutsPaid + creditPayments.outflow;
     const theoretical = openingBalance + totalInflow - totalOutflow;
 
     return {
@@ -329,13 +345,18 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       dateExpenses: dExpenses,
       dateExpensesPaid: expensesPaid,
       dateGeneralSourceExpenses: generalSourceExpensesToday,
+      dateCreditInflow: creditPayments.inflow,
+      dateCreditOutflow: creditPayments.outflow,
+      dateCreditGeneralInflow: creditPayments.generalInflow,
+      dateCreditGeneralOutflow: creditPayments.generalOutflow,
+      dateCreditPaymentsCount: creditPayments.count,
       dateStaffPayouts: dStaffPayouts,
       dateStaffPayoutsPaid: staffPayoutsPaid,
       totalDailyInflow: totalInflow,
       totalDailyOutflow: totalOutflow,
       theoreticalAmount: theoretical
     };
-  }, [sales, rentals, maintenanceOrders, expenses, staffPayouts, selectedDate, openingBalance]);
+  }, [sales, rentals, maintenanceOrders, expenses, credits, staffPayouts, selectedDate, openingBalance]);
 
   // Actual counted amount in drawer
   const actualAmount = Number(actualInput) || 0;
@@ -473,6 +494,8 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       cautionsReceived: dateCautionsReceived,
       expensesPaid: dateExpensesPaid,
       generalFundExpenses: dateGeneralSourceExpenses,
+      creditsCollected: dateCreditInflow,
+      creditSettlementsPaid: dateCreditOutflow,
       staffPayoutsPaid: dateStaffPayoutsPaid,
       cautionsRefunded: 0,
       totalInflow: totalDailyInflow,
@@ -514,7 +537,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
   const allTransactions = useMemo(() => {
     const list: Array<{
       id: string;
-      type: 'sale' | 'rental' | 'tailoring' | 'expense' | 'staffPayout';
+      type: 'sale' | 'rental' | 'tailoring' | 'expense' | 'staffPayout' | 'creditPayment';
       typeLabel: string;
       date: string;
       time?: string;
@@ -583,6 +606,27 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       });
     });
 
+    // Credit settlements (customer collections = inflow, supplier payments = outflow)
+    credits.forEach(c => {
+      const payments = c.payments;
+      if (!Array.isArray(payments)) return;
+      payments.forEach(p => {
+        const isSupplierDebt = !!c.supplierDebt;
+        list.push({
+          id: `${c.id}_${p.id}`,
+          type: 'creditPayment',
+          typeLabel: isSupplierDebt ? 'تسديد دين مورد' : 'تحصيل دين زبون',
+          date: p.date || '',
+          time: '',
+          direction: isSupplierDebt ? 'outflow' : 'inflow',
+          title: c.name,
+          subtitle: `${isSupplierDebt ? 'دفعة للمورد' : 'تحصيل من الزبون'} • ${c.desc || c.type} • المصدر: ${p.fundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)'}`,
+          amount: Number(p.amount) || 0,
+          originalItem: c
+        });
+      });
+    });
+
     // Expenses (outflow)
     expenses.forEach(e => {
       const d = e.date || '';
@@ -625,7 +669,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
 
     // Sort descending by date & time
     return list.sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')));
-  }, [sales, rentals, maintenanceOrders, expenses, staffPayouts]);
+  }, [sales, rentals, maintenanceOrders, expenses, staffPayouts, credits]);
 
   // Filtered transactions for Transactions Tab
   const filteredTransactions = useMemo(() => {
@@ -674,6 +718,11 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       if (window.confirm(`هل أنت متأكد من حذف سجل الدفعة/الراتب (${tx.title}) بمبلغ ${tx.amount.toLocaleString()} دج؟`)) {
         onDeleteStaffPayout?.(tx.id);
       }
+    } else if (tx.type === 'creditPayment') {
+      window.alert(
+        `دفعة كريدي (${tx.title}) بمبلغ ${tx.amount.toLocaleString()} دج.\n` +
+        'لتعديلها أو حذفها، افتح قسم الديون والكريدي واحذف قيد الدين نفسه، فيُعكس أثر الدفعة على الصندوق تلقائياً.'
+      );
     }
   };
 
@@ -1214,10 +1263,28 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                   <span>+ إجمالي المداخيل اليومية:</span>
                   <span className="font-mono font-bold text-slate-900">+{totalDailyInflow.toLocaleString()} دج</span>
                 </div>
+                {dateCreditInflow > 0 && (
+                  <div className="flex justify-between text-emerald-700 bg-emerald-50/70 -mx-1 px-1.5 py-1 rounded-lg">
+                    <span className="flex items-center gap-1">
+                      <HandCoins className="w-3 h-3" />
+                      <span>منها تحصيل ديون وكريدي:</span>
+                    </span>
+                    <span className="font-mono font-bold">+{dateCreditInflow.toLocaleString()} دج</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-slate-700">
                   <span>- المصاريف والأجور المسددة من الدرج:</span>
                   <span className="font-mono font-bold text-rose-600">-{totalDailyOutflow.toLocaleString()} دج</span>
                 </div>
+                {dateCreditOutflow > 0 && (
+                  <div className="flex justify-between text-rose-700 bg-rose-50/70 -mx-1 px-1.5 py-1 rounded-lg">
+                    <span className="flex items-center gap-1">
+                      <HandCoins className="w-3 h-3" />
+                      <span>تسديد دفعات ديون موردين (كريدي):</span>
+                    </span>
+                    <span className="font-mono font-bold">-{dateCreditOutflow.toLocaleString()} دج</span>
+                  </div>
+                )}
                 {dateGeneralSourceExpenses > 0 && (
                   <div className="flex justify-between text-indigo-700 bg-indigo-50/70 -mx-1 px-1.5 py-1 rounded-lg">
                     <span className="flex items-center gap-1">
@@ -1577,7 +1644,18 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                   <span className="font-mono text-xs font-bold text-rose-600">-{totalDailyOutflow.toLocaleString()} دج</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 text-xs">
+                    <div className="text-slate-500 font-medium">تحصيل ديون وكريدي (داخل):</div>
+                    <div className="font-bold text-emerald-600 font-mono text-sm mt-0.5">
+                      +{dateCreditInflow.toLocaleString()} دج
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">
+                      {dateCreditPaymentsCount} دفعة كريدي
+                      {dateCreditGeneralInflow > 0 ? ` • +${dateCreditGeneralInflow.toLocaleString()} دج للصندوق العام` : ''}
+                    </div>
+                  </div>
+
                   <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 text-xs">
                     <div className="text-slate-500 font-medium">مصاريف مسددة من الدرج:</div>
                     <div className="font-bold text-rose-600 font-mono text-sm mt-0.5">
@@ -1823,6 +1901,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                               tx.type === 'rental' ? 'bg-purple-50 text-purple-700 border-purple-200' :
                               tx.type === 'tailoring' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                               tx.type === 'expense' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                              tx.type === 'creditPayment' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                               'bg-slate-100 text-slate-700 border-slate-200'
                             }`}>
                               {tx.typeLabel}

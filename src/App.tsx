@@ -15,7 +15,9 @@ import {
   DailyCaisseClosure,
   RawMaterial,
   Seamstress,
-  ActivityLog
+  ActivityLog,
+  FundSource,
+  CreditPayment
 } from './types';
 import { 
   loadFromStorage, 
@@ -41,7 +43,13 @@ import {
   hydrateFromIndexedDB
 } from './storage';
 import { perfMonitor } from './utils/performanceMonitor';
-import { isGeneralFundExpense } from './utils/fundBalance';
+import {
+  isGeneralFundExpense,
+  creditRemaining,
+  creditTotalPaid,
+  generalFundEffectOfPayment,
+  generalFundEffectOfCredit
+} from './utils/fundBalance';
 import { 
   FIREBASE_COLLECTIONS, 
   saveItemToFirebase, 
@@ -1895,44 +1903,108 @@ export default function App() {
     showToast(credData.supplierDebt ? 'تم تسجيل دين للمورد' : 'تم تسجيل الدين على الزبون');
   }, []);
 
-  const handleSettleCredit = useCallback((id: string) => {
-    setCredits(currentCredits => {
-      const cred = currentCredits.find(c => c.id === id);
-      if (cred && cred.relatedExpenseId) {
-        // Also update linked expense when settled from credits view
-        setExpenses(prev => prev.map(exp => {
-          if (exp.id === cred.relatedExpenseId) {
-            const currentPaid = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
-            const newPaid = currentPaid + cred.amount;
-            const updates = {
-              paidAmount: newPaid,
-              amount: newPaid,
-              creditAmount: 0
-            };
-            updateItemInFirebase(FIREBASE_COLLECTIONS.EXPENSES, exp.id, updates);
-            return {
-              ...exp,
-              ...updates
-            };
-          }
-          return exp;
-        }));
-      }
-      deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, id);
-      return currentCredits.filter(c => c.id !== id);
-    });
+  /**
+   * تسديد كريدي (دفعة كاملة أو جزئية):
+   * - دين على الزبون → يُضاف المبلغ إلى الصندوق المختار (درج اليوم أو الصندوق العام).
+   * - دين للمورد → يُخصم المبلغ من الصندوق المختص.
+   * - يُسجَّل تاريخ استلام/دفع المال، ويظهر الأثر في صندوق ذلك التاريخ.
+   */
+  const handleSettleCredit = useCallback((
+    creditId: string,
+    paymentData: { amount: number; date: string; fundSource: FundSource; note?: string }
+  ) => {
+    const credit = credits.find(c => c.id === creditId);
+    if (!credit) return;
+
+    const amount = Number(paymentData?.amount) || 0;
+    if (amount <= 0) return;
+
+    const fundSource: FundSource = paymentData?.fundSource === 'general' ? 'general' : 'daily';
+    const paymentDate = (paymentData?.date || new Date().toISOString().split('T')[0]).substring(0, 10);
+
+    const payment: CreditPayment = {
+      id: generateId(),
+      amount,
+      date: paymentDate,
+      fundSource,
+      note: paymentData?.note
+    };
+
+    const updatedCredit: Credit = {
+      ...credit,
+      payments: [...(credit.payments || []), payment]
+    };
+
+    setCredits(prev => prev.map(c => (c.id === creditId ? updatedCredit : c)));
+    saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, updatedCredit);
+
+    // الأثر المالي على الصندوق العام (إضافة عند التحصيل من الزبون، خصم عند الدفع للمورد)
+    if (fundSource === 'general') {
+      const effect = generalFundEffectOfPayment(credit, amount);
+      setGeneralFundBalance(prev => Math.round((prev + effect) * 100) / 100);
+    }
+
+    // دين مورد مرتبط بمصروف شراء → تحديث المدفوع والمتبقي في المصروف أيضاً
+    if (credit.supplierDebt && credit.relatedExpenseId) {
+      setExpenses(prev => prev.map(exp => {
+        if (exp.id !== credit.relatedExpenseId) return exp;
+        const currentPaid = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
+        const newPaid = currentPaid + amount;
+        const newCredit = Math.max(0, (exp.creditAmount || 0) - amount);
+        const updates = { paidAmount: newPaid, amount: newPaid, creditAmount: newCredit };
+        updateItemInFirebase(FIREBASE_COLLECTIONS.EXPENSES, exp.id, updates);
+        return { ...exp, ...updates };
+      }));
+    }
+
+    const remaining = creditRemaining(updatedCredit);
+    const isCustomer = !credit.supplierDebt;
 
     addActivityLog({
       actionType: 'payment',
       category: 'credits',
-      title: 'تسديد وتصفية دين',
-      details: `تسديد الدين بالكامل وإبراء ذمة الزبون أو المورد`
+      title: isCustomer ? 'تحصيل دفعة من دين زبون' : 'تسديد دفعة دين مورد',
+      details: `${isCustomer ? 'تحصيل' : 'دفع'} ${amount.toLocaleString()} دج ${isCustomer ? 'من' : 'إلى'} ${credit.name} بتاريخ ${paymentDate} — ${fundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)'}${remaining > 0 ? ` • المتبقي: ${remaining.toLocaleString()} دج` : ' • تسديد كامل'}`,
+      amount
     });
 
-    showToast('تم تسديد وتصفية الدين بنجاح');
-  }, []);
+    if (remaining <= 0) {
+      showToast(isCustomer
+        ? `تم تحصيل ${amount.toLocaleString()} دج وإبراء ذمة ${credit.name} بالكامل`
+        : `تم تسديد ${amount.toLocaleString()} دج للمورد ${credit.name} بالكامل`);
+    } else {
+      showToast(`تم تسجيل دفعة ${amount.toLocaleString()} دج • المتبقي: ${remaining.toLocaleString()} دج`);
+    }
+  }, [credits, addActivityLog, showToast]);
 
   const handleDeleteCredit = useCallback((id: string) => {
+    const target = credits.find(c => c.id === id);
+    if (target) {
+      // حذف قيد دين كان قد سُدِّد من/إلى الصندوق العام → عكس أثره على الرصيد
+      const effect = generalFundEffectOfCredit(target);
+      if (effect !== 0) {
+        setGeneralFundBalance(prev => Math.round((prev - effect) * 100) / 100);
+      }
+
+      // دين مورد مرتبط بمصروف شراء: نُعيد المدفوع في المصروف إلى ما كان عليه
+      // حتى لا يُحسب نفس المبلغ مرتين عند حذف المصروف لاحقاً
+      const paidViaCredit = creditTotalPaid(target);
+      if (target.supplierDebt && target.relatedExpenseId && paidViaCredit > 0) {
+        setExpenses(prev => prev.map(exp => {
+          if (exp.id !== target.relatedExpenseId) return exp;
+          const currentPaid = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
+          const newPaid = Math.max(0, currentPaid - paidViaCredit);
+          const invoiceTotal = Number(exp.totalInvoiceAmount) || 0;
+          const newCredit = invoiceTotal > 0
+            ? Math.max(0, invoiceTotal - newPaid)
+            : (Number(exp.creditAmount) || 0) + paidViaCredit;
+          const updates = { paidAmount: newPaid, amount: newPaid, creditAmount: newCredit };
+          updateItemInFirebase(FIREBASE_COLLECTIONS.EXPENSES, exp.id, updates);
+          return { ...exp, ...updates };
+        }));
+      }
+    }
+
     setCredits(prev => prev.filter(c => c.id !== id));
     deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, id);
 
@@ -1944,7 +2016,7 @@ export default function App() {
     });
 
     showToast('تم حذف السجل');
-  }, []);
+  }, [credits, addActivityLog, showToast]);
 
   // ==========================
   // CAISSE (CASH REGISTER) HANDLERS
