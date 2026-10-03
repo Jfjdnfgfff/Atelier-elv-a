@@ -8,7 +8,8 @@ dotenv.config();
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  // يقرأ PORT من البيئة (Vercel / Render / أى مضيف سحابي) مع 3000 كافتراضي
+  const PORT = Number(process.env.PORT) || 3000;
   const distPath = path.join(process.cwd(), 'dist');
 
   // Standard lightweight payload limit for regular API requests
@@ -222,13 +223,44 @@ JSON Schema Requirements:
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(distPath));
+    // ---- إعدادات التخزين المؤقت (Caching) — تقليل زمن LCP في الزيارات المتكررة ----
+    // 1) الملفات ذات البصمة في الاسم (assets/*): تخزين دائم سنوي immutable
+    // 2) index.html و manifest: بلا تخزين (must-revalidate) لضمان نشر التحديثات فوراً
+    // 3) بقية الأصول العامة: تخزين قصير مع إعادة التحقق
+    const ONE_YEAR = 'public, max-age=31536000, immutable';
+    const NO_CACHE = 'public, max-age=0, must-revalidate';
+
+    app.use(
+      '/assets',
+      express.static(path.join(distPath, 'assets'), {
+        immutable: true,
+        maxAge: '1y',
+        setHeaders: (res) => res.setHeader('Cache-Control', ONE_YEAR),
+      })
+    );
+
+    app.use(
+      express.static(distPath, {
+        maxAge: '1h',
+        etag: true,
+        lastModified: true,
+        setHeaders: (res, filePath) => {
+          if (/\.(html|json)$/i.test(filePath) || filePath.endsWith('sw.js')) {
+            res.setHeader('Cache-Control', NO_CACHE);
+          } else if (/\.(woff2?|png|jpe?g|webp|svg|ico)$/i.test(filePath)) {
+            res.setHeader('Cache-Control', ONE_YEAR);
+          }
+        },
+      })
+    );
+
     app.get('*', (req, res) => {
+      res.setHeader('Cache-Control', NO_CACHE);
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
-  app.listen(Number(PORT), '0.0.0.0', () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on http://0.0.0.0:${PORT}`);
   });
 }

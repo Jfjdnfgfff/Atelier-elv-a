@@ -4,8 +4,14 @@ import { getListImage } from '../utils/imageUtils';
 import { ImagePreviewModal } from './ImagePreviewModal';
 import { AsyncProductImage } from './AsyncProductImage';
 import { fetchClothByBarcode } from '../firebase';
-import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
-import { BarcodeScanner } from './BarcodeScanner';
+import type { ExtractedCustomerData } from './CustomerIdScannerModal';
+// الماسحات (باركود + بطاقة التعريف + OCR) خارج حزمة الإقلاع — تُحمَّل عند فتح النافذة فقط
+const BarcodeScanner = React.lazy(() =>
+  import('./BarcodeScanner').then((m) => ({ default: m.BarcodeScanner }))
+);
+const CustomerIdScannerModal = React.lazy(() =>
+  import('./CustomerIdScannerModal').then((m) => ({ default: m.CustomerIdScannerModal }))
+);
 import { VirtualizedPosGrid } from './VirtualizedPosGrid';
 import { LettersInput, NumbersInput } from './Shared';
 import { 
@@ -967,22 +973,26 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
       </div>
 
       {showCustomerIdScanner && (
-        <CustomerIdScannerModal
-          title="مسح بطاقة تعريف أو باركود الزبون"
-          onExtract={handleCustomerExtracted}
-          onClose={() => setShowCustomerIdScanner(false)}
-        />
+        <React.Suspense fallback={null}>
+          <CustomerIdScannerModal
+            title="مسح بطاقة تعريف أو باركود الزبون"
+            onExtract={handleCustomerExtracted}
+            onClose={() => setShowCustomerIdScanner(false)}
+          />
+        </React.Suspense>
       )}
 
       {showCameraScanner && (
-        <BarcodeScanner
-          title="مسح باركود القطعة للبيع"
-          onScan={(code) => {
-            setShowCameraScanner(false);
-            handleBarcodeCode(code);
-          }}
-          onClose={() => setShowCameraScanner(false)}
-        />
+        <React.Suspense fallback={null}>
+          <BarcodeScanner
+            title="مسح باركود القطعة للبيع"
+            onScan={(code) => {
+              setShowCameraScanner(false);
+              handleBarcodeCode(code);
+            }}
+            onClose={() => setShowCameraScanner(false)}
+          />
+        </React.Suspense>
       )}
 
       {scannedItemModal && (
@@ -1304,14 +1314,16 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
       )}
 
       {showCameraScanner && (
-        <BarcodeScanner 
-          onScan={(code) => {
-            setShowCameraScanner(false);
-            handleBarcodeCode(code);
-          }}
-          onClose={() => setShowCameraScanner(false)}
-          title="مسح باركود القطعة للمبيعات"
-        />
+        <React.Suspense fallback={null}>
+          <BarcodeScanner 
+            onScan={(code) => {
+              setShowCameraScanner(false);
+              handleBarcodeCode(code);
+            }}
+            onClose={() => setShowCameraScanner(false)}
+            title="مسح باركود القطعة للمبيعات"
+          />
+        </React.Suspense>
       )}
 
       {scannedItemModal && (

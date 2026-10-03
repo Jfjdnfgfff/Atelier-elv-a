@@ -19,6 +19,7 @@ import {
 } from '../types';
 import { NavButton } from './Shared';
 import { ViewRenderer } from './ViewRenderer';
+import { preloadView } from './viewRegistry';
 import { Scale, Plus } from 'lucide-react';
 import { perfMonitor } from '../utils/performanceMonitor';
 
@@ -222,6 +223,30 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
     }
   }, [onInitNav, navigateTo]);
 
+  // نيّة المستخدم: تحميل حزمة القسم مسبقاً عند المرور/اللمس (بدون أي تأثير على التنقّل الفوري)
+  const viewIntents = React.useMemo(() => {
+    const make = (view: ViewType) => () => preloadView(view);
+    return {
+      dashboard: make('dashboard'),
+      rentals: make('rentals'),
+      inventory: make('inventory'),
+      sales: make('sales'),
+      tailoring: make('tailoring'),
+      expenses: make('expenses'),
+      credits: make('credits'),
+      partners: make('partners'),
+      caisse: make('caisse'),
+    } as Record<string, () => void>;
+  }, []);
+
+  // تمييز حزم النوافذ المنبثقة الثقيلة عند نيّة المستخدم فقط (تبقى خارج حزمة الإقلاع)
+  const warmDeferred = React.useMemo(() => ({
+    barcode: () => { void import('./BarcodeScanner'); },
+    rental: () => { void import('./RentalModal'); },
+    report: () => { void import('./FullReport'); },
+    staffPayouts: () => { void import('./StaffPayoutsModal'); },
+  }), []);
+
   const goDashboard = useCallback(() => navigateTo('dashboard'), [navigateTo]);
   const goRentals = useCallback(() => navigateTo('rentals'), [navigateTo]);
   const goInventory = useCallback(() => navigateTo('inventory'), [navigateTo]);
@@ -240,6 +265,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
             <div className="flex items-center gap-1.5 sm:gap-2">
               <button
                 onClick={openBarcodeScan}
+                onPointerEnter={warmDeferred.barcode}
+                onTouchStart={warmDeferred.barcode}
                 title="مسح الباركود"
                 aria-label="مسح الباركود"
                 className="h-7 sm:h-9 w-7 sm:w-auto px-0 sm:px-3 justify-center shrink-0 rounded-lg sm:rounded-xl bg-blue-50/50 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-300 border border-blue-100/70 active:scale-95 text-blue-800 flex items-center gap-1 sm:gap-1.5 transition-all text-[11px] sm:text-xs font-bold group"
@@ -282,6 +309,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
 
               <button 
                 onClick={openFullReportModal} 
+                onPointerEnter={warmDeferred.report}
+                onTouchStart={warmDeferred.report}
                 title="التقرير المالي"
                 aria-label="التقرير الشامل"
                 className="h-7 sm:h-9 w-7 sm:w-auto px-0 sm:px-3 justify-center shrink-0 flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 hover:text-blue-900 hover:border-blue-300 border border-blue-200 rounded-lg sm:rounded-xl transition-all shadow-2xs active:scale-95 group"
@@ -314,6 +343,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
                 onClick={openAddRentalModal}
+                onPointerEnter={warmDeferred.rental}
+                onTouchStart={warmDeferred.rental}
                 title="كراء جديد"
                 aria-label="كراء جديد"
                 className="h-7 sm:h-9 w-7 sm:w-auto px-0 sm:px-4 justify-center bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs flex items-center gap-1 sm:gap-1.5 shadow-xs shrink-0 transition-all hover:shadow-md hover:shadow-blue-500/20"
@@ -330,6 +361,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
               label="الرئيسية" 
               onClick={goDashboard} 
               active={currentView === 'dashboard'} 
+              onIntent={viewIntents.dashboard}
             />
             <NavButton 
               icon="rentals" 
@@ -337,18 +369,21 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
               onClick={goRentals} 
               active={currentView === 'rentals'} 
               badge={overdueCount}
+              onIntent={viewIntents.rentals}
             />
             <NavButton 
               icon="inventory" 
               label="المخزون" 
               onClick={goInventory} 
               active={currentView === 'inventory'} 
+              onIntent={viewIntents.inventory}
             />
             <NavButton 
               icon="sales" 
               label="المبيعات" 
               onClick={goSales} 
               active={currentView === 'sales'} 
+              onIntent={viewIntents.sales}
             />
             <NavButton 
               icon="tailoring" 
@@ -356,36 +391,42 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
               onClick={goTailoring} 
               active={currentView === 'tailoring'} 
               badge={activeMaintenanceCount}
+              onIntent={viewIntents.tailoring}
             />
             <NavButton 
               icon="expenses" 
               label="المصاريف" 
               onClick={goExpenses} 
               active={currentView === 'expenses'} 
+              onIntent={viewIntents.expenses}
             />
             <NavButton 
               icon="credits" 
               label="الكريدي" 
               onClick={goCredits} 
               active={currentView === 'credits'} 
+              onIntent={viewIntents.credits}
             />
             <NavButton 
               icon="partners" 
               label="الموردين والخياطات" 
               onClick={goPartners} 
               active={currentView === 'partners'} 
+              onIntent={viewIntents.partners}
             />
             <NavButton 
               icon="caisse" 
               label="الصندوق" 
               onClick={goCaisse} 
               active={currentView === 'caisse'} 
+              onIntent={viewIntents.caisse}
             />
             <NavButton 
               icon="staff" 
               label="العمال" 
               onClick={openStaffPayoutsModal} 
               badge={pendingAbsencesCount}
+              onIntent={warmDeferred.staffPayouts}
             />
           </nav>
         </div>

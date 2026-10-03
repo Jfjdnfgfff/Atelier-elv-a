@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ClothItem, ClothVariant, PurposeType, RawMaterial, Supplier } from '../types';
-import { BarcodeScanner } from './BarcodeScanner';
+// ماسح الباركود يُحمَّل كسلاً عند الطلب فقط (حزمة @zxing بحجم ~450KB خارج حزمة الإقلاع)
+const BarcodeScanner = React.lazy(() =>
+  import('./BarcodeScanner').then((m) => ({ default: m.BarcodeScanner }))
+);
 import { LettersInput, NumbersInput } from './Shared';
 import { RawMaterialsSection } from './RawMaterialsSection';
 import { ProductVariantsModal } from './ProductVariantsModal';
@@ -1092,22 +1095,26 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
       )}
 
       {showScannerModal && (
-        <BarcodeScanner
-          title="مسح باركود لإضافة المخزون"
-          onScan={(code) => handleProcessBarcode(code)}
-          onClose={() => setShowScannerModal(false)}
-        />
+        <React.Suspense fallback={null}>
+          <BarcodeScanner
+            title="مسح باركود لإضافة المخزون"
+            onScan={(code) => handleProcessBarcode(code)}
+            onClose={() => setShowScannerModal(false)}
+          />
+        </React.Suspense>
       )}
 
       {showSearchBarcodeCamera && (
-        <BarcodeScanner
-          title="مسح باركود للبحث المباشر في المخزون"
-          onScan={(code) => {
-            setBarcodeSearch(code.trim());
-            setShowSearchBarcodeCamera(false);
-          }}
-          onClose={() => setShowSearchBarcodeCamera(false)}
-        />
+        <React.Suspense fallback={null}>
+          <BarcodeScanner
+            title="مسح باركود للبحث المباشر في المخزون"
+            onScan={(code) => {
+              setBarcodeSearch(code.trim());
+              setShowSearchBarcodeCamera(false);
+            }}
+            onClose={() => setShowSearchBarcodeCamera(false)}
+          />
+        </React.Suspense>
       )}
 
       {securityModal && (
@@ -2608,14 +2615,16 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
       </div>
 
       {showInFormScanner && (
-        <BarcodeScanner
-          title="مسح باركود القطعة"
-          onScan={(code) => {
-            setBarcode(code.trim());
-            setShowInFormScanner(false);
-          }}
-          onClose={() => setShowInFormScanner(false)}
-        />
+        <React.Suspense fallback={null}>
+          <BarcodeScanner
+            title="مسح باركود القطعة"
+            onScan={(code) => {
+              setBarcode(code.trim());
+              setShowInFormScanner(false);
+            }}
+            onClose={() => setShowInFormScanner(false)}
+          />
+        </React.Suspense>
       )}
     </div>
   );

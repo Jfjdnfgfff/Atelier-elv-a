@@ -56,7 +56,9 @@ export const NavButton: React.FC<{
   active?: boolean;
   color?: string;
   badge?: number;
-}> = React.memo(({ icon, label, onClick, active, badge }) => {
+  /** نيّة المستخدم (Hover/Touch/Focus) لتحميل حزمة القسم مسبقاً قبل النقر */
+  onIntent?: () => void;
+}> = React.memo(({ icon, label, onClick, active, badge, onIntent }) => {
   const getIcon = () => {
     const iconClass = "w-4 h-4";
     switch (icon) {
@@ -139,6 +141,9 @@ export const NavButton: React.FC<{
   return (
     <button
       onClick={onClick}
+      onPointerEnter={onIntent}
+      onFocus={onIntent}
+      onTouchStart={onIntent}
       className={`relative flex flex-col items-center justify-center gap-1 shrink-0 py-2 px-3 sm:px-3.5 rounded-xl text-xs font-semibold transition-none min-w-[64px] sm:min-w-[72px] min-h-[44px] active:scale-95 ${getThemeClasses()}`}
     >
       <div className={`shrink-0 ${active ? 'text-white' : ''}`}>

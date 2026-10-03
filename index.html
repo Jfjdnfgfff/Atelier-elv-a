@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>بوتيك مانجر برو</title>
     <meta name="description" content="نظام احترافي لإدارة محلات بيع وتأجير الملابس وفساتين السهرة مع متابعة الصندوق اليومي والعجز (La Caisse)، الكراء، الخياطة، وقارئ الباركود والتقارير المالية." />
     <meta property="og:title" content="بوتيك مانجر برو" />
@@ -25,13 +25,81 @@
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+
+    <!-- تسريع أول مزامنة للبيانات: مصافحة TLS/WS مع Firebase Realtime Database مسبقاً -->
+    <link rel="preconnect" href="https://uohouhi-41bde-default-rtdb.firebaseio.com" crossorigin>
+    <link rel="dns-prefetch" href="https://uohouhi-41bde-default-rtdb.firebaseio.com">
+
+    <!-- الخطوط: تُحمَّل بشكل غير متزامن (لا تحجب العرض) مع بديل بلا جافاسكربت -->
+    <!-- لتحويلها إلى خطوط محلية (يزيل 3 اتصالات خارجية): node scripts/self-host-fonts.mjs -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- الخطوط تُحمَّل بشكل غير متزامن حتى لا تعطّل أول رسم للصفحة -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    </noscript>
+
+    <!--
+      CRITICAL CSS (inline): يُرسم الهيكل الأول (App Shell) بدون أي طلب ملف CSS خارجي
+      → يحسّن FCP و LCP ويزيل طلب CSS الحاجب للعرض من المسار الحرج.
+    -->
+    <style>
+      :root { --bs-brand: #C59324; --bs-blue: #1d4ed8; --bs-ink: #0f172a; }
+      html, body { margin: 0; padding: 0; background: #f8fafc; color: var(--bs-ink); }
+      body {
+        font-family: 'Plus Jakarta Sans', 'Tajawal', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeSpeed;
+        overscroll-behavior-y: none;
+      }
+      #boot-shell {
+        position: fixed; inset: 0; z-index: 60;
+        display: flex; flex-direction: column;
+        background: #f8fafc; pointer-events: none;
+        opacity: 1; transition: opacity .22s ease-out;
+      }
+      #boot-shell.is-hidden { opacity: 0; }
+      .bs-bar {
+        height: 64px; flex: 0 0 auto; display: flex; align-items: center;
+        justify-content: center; gap: 8px; background: #fff;
+        border-bottom: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+      }
+      .bs-logo { width: 28px; height: 28px; border-radius: 9px; background: linear-gradient(135deg, #1d4ed8, #C59324); }
+      .bs-title { font-size: 15px; font-weight: 800; color: #1e3a8a; letter-spacing: -.2px; }
+      .bs-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+      .bs-spin {
+        width: 22px; height: 22px; border-radius: 9999px;
+        border: 2.5px solid #dbeafe; border-top-color: var(--bs-blue);
+        animation: bs-rot .8s linear infinite;
+      }
+      .bs-hint { font-size: 12px; font-weight: 600; color: #64748b; }
+      @keyframes bs-rot { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .bs-spin { animation: none; } }
+      .bs-error { max-width: 320px; text-align: center; font-size: 13px; font-weight: 600; color: #b91c1c; line-height: 1.7; }
+    </style>
   </head>
   <body class="bg-slate-50 text-slate-900 font-['Plus_Jakarta_Sans','Tajawal',sans-serif] antialiased selection:bg-slate-900 selection:text-white">
+    <!--
+      HULL أول (App Shell) داخل HTML مباشرة: يُرسم خلال أول إطار (FCP≈LCP) قبل تحميل أي JavaScript،
+      ثم يزيله React عند أول commit في bootstrap.tsx. حجمه مطابق لترويسة التطبيق لمنع أي CLS.
+    -->
+    <div id="boot-shell" role="status" aria-live="polite" aria-label="جارٍ تحميل التطبيق">
+      <div class="bs-bar">
+        <span class="bs-logo" aria-hidden="true"></span>
+        <span class="bs-title">بوتيك مانجر برو</span>
+      </div>
+      <div class="bs-body">
+        <span class="bs-spin" aria-hidden="true"></span>
+        <span class="bs-hint">جارٍ تجهيز الواجهة…</span>
+      </div>
+    </div>
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <noscript>
+      <div style="padding:24px;text-align:center;font-family:system-ui,sans-serif;font-size:14px;font-weight:600">
+        هذا التطبيق يحتاج إلى تفعيل JavaScript للعمل.
+      </div>
+    </noscript>
   </body>
 </html>
