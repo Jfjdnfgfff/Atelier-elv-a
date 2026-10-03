@@ -69,6 +69,7 @@ import { ImageMigrationModal } from './components/ImageMigrationModal';
 import { AsyncProductImage } from './components/AsyncProductImage';
 import { getListImage } from './utils/imageUtils';
 import { imageStore } from './utils/imageStore';
+import { preloadIdleViews } from './components/viewRegistry';
 
 // النوافذ المنبثقة تُحمَّل كسلاً وتُجهَّز مسبقاً في وقت الخمول لفتح فوري
 const BarcodeScanner = React.lazy(() => import('./components/BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
@@ -80,22 +81,37 @@ const StaffPayoutsModal = React.lazy(() => import('./components/StaffPayoutsModa
 const TailoringModal = React.lazy(() => import('./components/TailoringModal').then(m => ({ default: m.TailoringModal })));
 const TailoringReceiptModal = React.lazy(() => import('./components/TailoringReceiptModal').then(m => ({ default: m.TailoringReceiptModal })));
 
+// ---------------------------------------------------------------------------
+// استراتيجية التحميل المسبق (Preloading Strategy)
+// ---------------------------------------------------------------------------
+// القاعدة: لا نُنزِّل أي كود لا يحتاجه المستخدم فوراً، لأن ذلك يرفع FCP/LCP
+// ويُسجَّل كـ«JavaScript غير مستخدم» في PageSpeed Insights.
+// بدلاً من ذلك نعتمد على «نيّة المستخدم» (أول تفاعل) لتمييز الحزم الثقيلة،
+// مع شبكة أمان زمنية للاستخدام على الشاشات اللمسية/الواجهات بدون تفاعل.
 if (typeof window !== 'undefined') {
-  const preloadModals = () => {
-    import('./components/RentalModal');
-    import('./components/ReturnRentalModal');
-    import('./components/RentalReceiptModal');
-    import('./components/TailoringModal');
-    import('./components/TailoringReceiptModal');
-    import('./components/StaffPayoutsModal');
-    import('./components/FullReport');
-    import('./components/BarcodeScanner');
+  const warmDeferredModals = () => {
+    preloadIdleViews(); // تمييز تدريجي لأقسام التطبيق واحداً بعد الآخر
+    void import('./components/RentalModal');
+    void import('./components/ReturnRentalModal');
+    void import('./components/RentalReceiptModal');
+    void import('./components/TailoringModal');
+    void import('./components/TailoringReceiptModal');
+    void import('./components/StaffPayoutsModal');
+    void import('./components/FullReport');
   };
-  if ('requestIdleCallback' in window) {
-    (window as any).requestIdleCallback(preloadModals, { timeout: 1500 });
-  } else {
-    setTimeout(preloadModals, 1000);
-  }
+
+  const intentEvents = ['pointerdown', 'touchstart', 'keydown', 'wheel'];
+  const onFirstIntent = () => {
+    intentEvents.forEach((ev) => window.removeEventListener(ev, onFirstIntent, true));
+    warmDeferredModals();
+  };
+
+  intentEvents.forEach((ev) =>
+    window.addEventListener(ev, onFirstIntent, { capture: true, passive: true })
+  );
+
+  // شبكة أمان: إن لم يتفاعل المستخدم إطلاقاً (شاشة عرض/تابلت في المحل) نُجهّز الحزم لاحقاً
+  window.setTimeout(onFirstIntent, 15000);
 }
 
 import { 

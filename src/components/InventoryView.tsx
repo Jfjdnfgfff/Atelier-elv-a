@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ClothItem, ClothVariant, PurposeType, RawMaterial, Supplier } from '../types';
-import { BarcodeScanner } from './BarcodeScanner';
+// ماسح الباركود يُحمَّل كسلاً عند الطلب فقط (حزمة @zxing بحجم ~450KB خارج حزمة الإقلاع)
+const BarcodeScanner = React.lazy(() =>
+  import('./BarcodeScanner').then((m) => ({ default: m.BarcodeScanner }))
+);
 import { LettersInput, NumbersInput } from './Shared';
 import { RawMaterialsSection } from './RawMaterialsSection';
 import { ProductVariantsModal } from './ProductVariantsModal';
@@ -542,6 +545,20 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
 
   const [visibleCount, setVisibleCount] = useState<number>(5);
 
+  // زر «تحميل المنتجات الباقية»: يظهر طالما توجد قطع محمّلة غير معروضة أو صفحات أخرى في السحابة
+  const canLoadMoreClothes = visibleCount < filteredClothes.length || hasMoreClothes;
+  const handleLoadMoreClothes = async () => {
+    if (isLoadingMoreClothes) return;
+    if (visibleCount < filteredClothes.length) {
+      setVisibleCount(prev => prev + 5);
+      return;
+    }
+    if (onLoadMoreClothes) {
+      await onLoadMoreClothes();
+      setVisibleCount(prev => prev + 5);
+    }
+  };
+
   useEffect(() => {
     setVisibleCount(5);
   }, [filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search, barcodeSearch, inventoryTab]);
@@ -982,6 +999,18 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           <Shirt className="w-4 h-4 text-blue-900" />
           <span>قائمة القطع في المخزن ({filteredClothes.length})</span>
         </span>
+        {canLoadMoreClothes && (
+          <button
+            type="button"
+            onClick={handleLoadMoreClothes}
+            disabled={isLoadingMoreClothes}
+            className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-60 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all active:scale-95 shrink-0"
+            title="تحميل 5 منتجات أخرى"
+          >
+            {isLoadingMoreClothes ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+            <span>{isLoadingMoreClothes ? 'جاري الجلب...' : `تحميل المزيد (${displayedClothes.length}/${filteredClothes.length})`}</span>
+          </button>
+        )}
       </div>
 
       <VirtualizedClothGrid
@@ -996,30 +1025,23 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           const item = clothes.find(c => c.id === id);
           if (item) handleInitiateDeleteCloth(item);
         }}
+        footer={
+          canLoadMoreClothes ? (
+            <div className="flex justify-center pt-2 pb-4">
+              <button
+                type="button"
+                disabled={isLoadingMoreClothes}
+                onClick={handleLoadMoreClothes}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-wait text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95"
+              >
+                {isLoadingMoreClothes ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                <span>{isLoadingMoreClothes ? 'جاري جلب 5 منتجات...' : `تحميل 5 منتجات أخرى (عرض ${displayedClothes.length} من المحمل ${filteredClothes.length})`}</span>
+              </button>
+            </div>
+          ) : null
+        }
       />
 
-      {(visibleCount < filteredClothes.length || hasMoreClothes) && (
-        <div className="flex justify-center my-6">
-          <button
-            type="button"
-            disabled={isLoadingMoreClothes}
-            onClick={async () => {
-              if (visibleCount < filteredClothes.length) {
-                setVisibleCount(prev => prev + 5);
-                return;
-              }
-              if (onLoadMoreClothes) {
-                await onLoadMoreClothes();
-                setVisibleCount(prev => prev + 5);
-              }
-            }}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-wait text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95"
-          >
-            {isLoadingMoreClothes ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-            <span>{isLoadingMoreClothes ? 'جاري جلب 5 منتجات...' : `تحميل 5 منتجات أخرى (عرض ${displayedClothes.length} من المحمل ${filteredClothes.length})`}</span>
-          </button>
-        </div>
-      )}
 
       {previewImage && (
         <ImagePreviewModal
@@ -1092,22 +1114,26 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
       )}
 
       {showScannerModal && (
-        <BarcodeScanner
-          title="مسح باركود لإضافة المخزون"
-          onScan={(code) => handleProcessBarcode(code)}
-          onClose={() => setShowScannerModal(false)}
-        />
+        <React.Suspense fallback={null}>
+          <BarcodeScanner
+            title="مسح باركود لإضافة المخزون"
+            onScan={(code) => handleProcessBarcode(code)}
+            onClose={() => setShowScannerModal(false)}
+          />
+        </React.Suspense>
       )}
 
       {showSearchBarcodeCamera && (
-        <BarcodeScanner
-          title="مسح باركود للبحث المباشر في المخزون"
-          onScan={(code) => {
-            setBarcodeSearch(code.trim());
-            setShowSearchBarcodeCamera(false);
-          }}
-          onClose={() => setShowSearchBarcodeCamera(false)}
-        />
+        <React.Suspense fallback={null}>
+          <BarcodeScanner
+            title="مسح باركود للبحث المباشر في المخزون"
+            onScan={(code) => {
+              setBarcodeSearch(code.trim());
+              setShowSearchBarcodeCamera(false);
+            }}
+            onClose={() => setShowSearchBarcodeCamera(false)}
+          />
+        </React.Suspense>
       )}
 
       {securityModal && (
@@ -2608,14 +2634,16 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
       </div>
 
       {showInFormScanner && (
-        <BarcodeScanner
-          title="مسح باركود القطعة"
-          onScan={(code) => {
-            setBarcode(code.trim());
-            setShowInFormScanner(false);
-          }}
-          onClose={() => setShowInFormScanner(false)}
-        />
+        <React.Suspense fallback={null}>
+          <BarcodeScanner
+            title="مسح باركود القطعة"
+            onScan={(code) => {
+              setBarcode(code.trim());
+              setShowInFormScanner(false);
+            }}
+            onClose={() => setShowInFormScanner(false)}
+          />
+        </React.Suspense>
       )}
     </div>
   );

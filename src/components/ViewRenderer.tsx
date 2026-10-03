@@ -20,17 +20,37 @@ import {
   FundSource,
 } from '../types';
 
-// الأقسام تُحمَّل مباشرة ضمن الحزمة الرئيسية لتنقّل فوري بدون أي تأخير
-import { DashboardView } from './DashboardView';
-import { RentalsView } from './RentalsView';
-import { InventoryView } from './InventoryView';
-import { SalesPOSView } from './SalesPOSView';
-import { TailoringView } from './TailoringView';
-import { ExpensesView } from './ExpensesView';
-import { CreditsView } from './CreditsView';
-import { CaisseView } from './CaisseView';
-import { PartnersView } from './PartnersView';
-import { LogsView } from './LogsView';
+// الأقسام تُحمَّل كحزم منفصلة (Code Splitting) — الحزمة الرئيسية لا تحمل أي قسم غير مفتوح
+// + تمييز مسبق عند نيّة المستخدم (hover/touch) عبر viewRegistry.preloadView للحفاظ على فورية التنقّل
+import { LazyViews } from './viewRegistry';
+
+const DashboardView = LazyViews.dashboard;
+const RentalsView = LazyViews.rentals;
+const InventoryView = LazyViews.inventory;
+const SalesPOSView = LazyViews.sales;
+const TailoringView = LazyViews.tailoring;
+const ExpensesView = LazyViews.expenses;
+const CreditsView = LazyViews.credits;
+const CaisseView = LazyViews.caisse;
+const PartnersView = LazyViews.partners;
+const LogsView = LazyViews.logs;
+
+/** هيكل انتظار خفيف (بدون صور/خطوط) يظهر فقط أثناء تنزيل حزمة القسم لأول مرة */
+const ViewSkeleton: React.FC = () => (
+  <div className="space-y-3" dir="rtl" aria-busy="true" aria-label="جارٍ تحميل القسم">
+    <div className="h-7 w-40 bg-slate-200/70 rounded-xl animate-pulse" />
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {[0, 1, 2, 3].map((i) => (
+        <div
+          key={i}
+          className="h-24 bg-white border border-slate-200/80 rounded-2xl animate-pulse"
+          style={{ animationDelay: `${i * 60}ms` }}
+        />
+      ))}
+    </div>
+    <div className="h-64 bg-white border border-slate-200/80 rounded-2xl animate-pulse" />
+  </div>
+);
 
 export interface ViewRendererProps {
   currentView: ViewType;
@@ -275,7 +295,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   );
 
   return (
-    <>
+    <React.Suspense fallback={<ViewSkeleton />}>
       {currentView === 'dashboard' && (
         <DashboardView
           rentals={rentals}
@@ -438,7 +458,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           showToast={() => {}}
         />
       )}
-    </>
+    </React.Suspense>
   );
 }, areViewRendererPropsEqual);
 

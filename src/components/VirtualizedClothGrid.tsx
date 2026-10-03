@@ -12,6 +12,8 @@ interface VirtualizedClothGridProps {
   onOpenQuickTransferModal: (item: ClothItem) => void;
   onOpenEditModal: (item: ClothItem) => void;
   onOpenDeleteModal: (id: string) => void;
+  /** محتوى يُعرض في نهاية القائمة داخل منطقة التمرير نفسها (زر «تحميل المزيد») */
+  footer?: React.ReactNode;
 }
 
 export const VirtualizedClothGrid: React.FC<VirtualizedClothGridProps> = ({
@@ -22,7 +24,8 @@ export const VirtualizedClothGrid: React.FC<VirtualizedClothGridProps> = ({
   onOpenVariantsModal,
   onOpenQuickTransferModal,
   onOpenEditModal,
-  onOpenDeleteModal
+  onOpenDeleteModal,
+  footer
 }) => {
   const parentRef = useRef<HTMLDivElement>(null);
   const [columnsCount, setColumnsCount] = useState<number>(() => {
@@ -76,8 +79,11 @@ export const VirtualizedClothGrid: React.FC<VirtualizedClothGridProps> = ({
 
   if (clothes.length === 0) {
     return (
-      <div className="py-16 text-center text-slate-400 text-sm bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-        لا توجد نتائج مطابقة للبحث أو الفلتر المحدد.
+      <div>
+        <div className="py-16 text-center text-slate-400 text-sm bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+          لا توجد نتائج مطابقة للبحث أو الفلتر المحدد.
+        </div>
+        {footer && <div className="pb-1">{footer}</div>}
       </div>
     );
   }
@@ -157,6 +163,8 @@ export const VirtualizedClothGrid: React.FC<VirtualizedClothGridProps> = ({
           );
         })}
       </div>
+
+      {footer && <div className="pb-1">{footer}</div>}
     </div>
   );
 };

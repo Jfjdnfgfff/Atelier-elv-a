@@ -12,6 +12,8 @@ interface VirtualizedPosGridProps {
   onSelectItem: (item: ClothItem, stockSource?: 'stock1' | 'stock2') => void;
   imageDisplayMode: 'fill' | 'cover' | 'contain';
   onOpenPreview: (url: string, title: string) => void;
+  /** محتوى يُعرض في نهاية القائمة داخل منطقة التمرير نفسها (زر «تحميل المزيد») */
+  footer?: React.ReactNode;
 }
 
 export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
@@ -21,7 +23,8 @@ export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
   getItemStock2,
   onSelectItem,
   imageDisplayMode,
-  onOpenPreview
+  onOpenPreview,
+  footer
 }) => {
   const parentRef = useRef<HTMLDivElement>(null);
   const [columnsCount, setColumnsCount] = useState<number>(() => {
@@ -58,8 +61,11 @@ export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
 
   if (clothes.length === 0) {
     return (
-      <div className="py-16 text-center text-slate-400 text-sm bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-        لا توجد منتجات قابلة للبيع تضاهي البحث.
+      <div>
+        <div className="py-16 text-center text-slate-400 text-sm bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+          لا توجد منتجات قابلة للبيع تضاهي البحث.
+        </div>
+        {footer && <div className="pb-1">{footer}</div>}
       </div>
     );
   }
@@ -220,6 +226,8 @@ export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
           );
         })}
       </div>
+
+      {footer && <div className="pb-1">{footer}</div>}
     </div>
   );
 };

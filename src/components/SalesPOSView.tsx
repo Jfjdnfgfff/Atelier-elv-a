@@ -4,8 +4,14 @@ import { getListImage } from '../utils/imageUtils';
 import { ImagePreviewModal } from './ImagePreviewModal';
 import { AsyncProductImage } from './AsyncProductImage';
 import { fetchClothByBarcode } from '../firebase';
-import { CustomerIdScannerModal, ExtractedCustomerData } from './CustomerIdScannerModal';
-import { BarcodeScanner } from './BarcodeScanner';
+import type { ExtractedCustomerData } from './CustomerIdScannerModal';
+// الماسحات (باركود + بطاقة التعريف + OCR) خارج حزمة الإقلاع — تُحمَّل عند فتح النافذة فقط
+const BarcodeScanner = React.lazy(() =>
+  import('./BarcodeScanner').then((m) => ({ default: m.BarcodeScanner }))
+);
+const CustomerIdScannerModal = React.lazy(() =>
+  import('./CustomerIdScannerModal').then((m) => ({ default: m.CustomerIdScannerModal }))
+);
 import { VirtualizedPosGrid } from './VirtualizedPosGrid';
 import { LettersInput, NumbersInput } from './Shared';
 import { 
@@ -485,6 +491,20 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
 
   // Progressive display for products (5 items at a time)
   const [visibleProductCount, setVisibleProductCount] = useState(5);
+
+  // زر «تحميل المنتجات الباقية» في نقطة البيع
+  const canLoadMoreProducts = visibleProductCount < filteredClothes.length || hasMoreClothes;
+  const handleLoadMoreProducts = async () => {
+    if (isLoadingMoreClothes) return;
+    if (visibleProductCount < filteredClothes.length) {
+      setVisibleProductCount(prev => prev + 5);
+      return;
+    }
+    if (onLoadMoreClothes) {
+      await onLoadMoreClothes();
+      setVisibleProductCount(prev => prev + 5);
+    }
+  };
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {
@@ -560,6 +580,18 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                   <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg font-medium">
                     {filteredClothes.length} معروض
                   </span>
+                  {canLoadMoreProducts && (
+                    <button
+                      type="button"
+                      onClick={handleLoadMoreProducts}
+                      disabled={isLoadingMoreClothes}
+                      className="bg-blue-50 hover:bg-blue-100 disabled:opacity-60 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 transition-all active:scale-95"
+                      title="تحميل 5 منتجات أخرى"
+                    >
+                      {isLoadingMoreClothes ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                      <span>{isLoadingMoreClothes ? 'جاري الجلب...' : `المزيد (${visibleClothes.length}/${filteredClothes.length})`}</span>
+                    </button>
+                  )}
                 </h2>
                 <p className="text-xs text-slate-500 font-normal">البيع من المخزون 1 أو المخزون 2 مع المسح بالباركود.</p>
               </div>
@@ -671,30 +703,23 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
             onSelectItem={openItemModal}
             imageDisplayMode={imageDisplayMode}
             onOpenPreview={(url, title) => setPreviewImage({ url, title })}
+            footer={
+              canLoadMoreProducts ? (
+                <div className="flex justify-center pt-2 pb-3">
+                  <button
+                    type="button"
+                    disabled={isLoadingMoreClothes}
+                    onClick={handleLoadMoreProducts}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-wait text-white px-6 py-2.5 rounded-2xl text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
+                  >
+                    {isLoadingMoreClothes ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    <span>{isLoadingMoreClothes ? 'جاري جلب 5 منتجات...' : `تحميل 5 منتجات أخرى (عرض ${visibleClothes.length} من المحمل ${filteredClothes.length})`}</span>
+                  </button>
+                </div>
+              ) : null
+            }
           />
 
-          {(visibleProductCount < filteredClothes.length || hasMoreClothes) && (
-            <div className="flex justify-center my-4">
-              <button
-                type="button"
-                disabled={isLoadingMoreClothes}
-                onClick={async () => {
-                  if (visibleProductCount < filteredClothes.length) {
-                    setVisibleProductCount(prev => prev + 5);
-                    return;
-                  }
-                  if (onLoadMoreClothes) {
-                    await onLoadMoreClothes();
-                    setVisibleProductCount(prev => prev + 5);
-                  }
-                }}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-wait text-white px-6 py-2.5 rounded-2xl text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
-              >
-                {isLoadingMoreClothes ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                <span>{isLoadingMoreClothes ? 'جاري جلب 5 منتجات...' : `تحميل 5 منتجات أخرى (عرض ${visibleClothes.length} من المحمل ${filteredClothes.length})`}</span>
-              </button>
-            </div>
-          )}
         </div>
 
         <div className="lg:col-span-5" id="checkout-card">
@@ -967,22 +992,26 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
       </div>
 
       {showCustomerIdScanner && (
-        <CustomerIdScannerModal
-          title="مسح بطاقة تعريف أو باركود الزبون"
-          onExtract={handleCustomerExtracted}
-          onClose={() => setShowCustomerIdScanner(false)}
-        />
+        <React.Suspense fallback={null}>
+          <CustomerIdScannerModal
+            title="مسح بطاقة تعريف أو باركود الزبون"
+            onExtract={handleCustomerExtracted}
+            onClose={() => setShowCustomerIdScanner(false)}
+          />
+        </React.Suspense>
       )}
 
       {showCameraScanner && (
-        <BarcodeScanner
-          title="مسح باركود القطعة للبيع"
-          onScan={(code) => {
-            setShowCameraScanner(false);
-            handleBarcodeCode(code);
-          }}
-          onClose={() => setShowCameraScanner(false)}
-        />
+        <React.Suspense fallback={null}>
+          <BarcodeScanner
+            title="مسح باركود القطعة للبيع"
+            onScan={(code) => {
+              setShowCameraScanner(false);
+              handleBarcodeCode(code);
+            }}
+            onClose={() => setShowCameraScanner(false)}
+          />
+        </React.Suspense>
       )}
 
       {scannedItemModal && (
@@ -1304,14 +1333,16 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
       )}
 
       {showCameraScanner && (
-        <BarcodeScanner 
-          onScan={(code) => {
-            setShowCameraScanner(false);
-            handleBarcodeCode(code);
-          }}
-          onClose={() => setShowCameraScanner(false)}
-          title="مسح باركود القطعة للمبيعات"
-        />
+        <React.Suspense fallback={null}>
+          <BarcodeScanner 
+            onScan={(code) => {
+              setShowCameraScanner(false);
+              handleBarcodeCode(code);
+            }}
+            onClose={() => setShowCameraScanner(false)}
+            title="مسح باركود القطعة للمبيعات"
+          />
+        </React.Suspense>
       )}
 
       {scannedItemModal && (
