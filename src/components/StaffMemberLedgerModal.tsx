@@ -287,7 +287,7 @@ export const StaffMemberLedgerModal: React.FC<StaffMemberLedgerModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto" dir="rtl">
-      <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[94vh] animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col min-h-0 max-h-[94dvh] animate-in fade-in zoom-in-95 duration-200">
         
         <div className="bg-slate-900 text-white p-4 sm:p-5 flex flex-wrap justify-between items-center gap-3">
           <div className="flex items-center gap-3">
@@ -606,7 +606,7 @@ export const StaffMemberLedgerModal: React.FC<StaffMemberLedgerModalProps> = ({
           </div>
         </div>
 
-        <div className="p-4 flex-1 overflow-y-auto space-y-2">
+        <div className="p-4 min-h-0 flex-1 overflow-y-auto space-y-2 touch-pan-y">
           <div className="flex justify-between items-center text-xs font-semibold text-slate-700 pb-1">
             <span>سجل المعاملات والعمليات ({filteredLedger.length}):</span>
             <span className="text-[11px] text-slate-400 font-normal">

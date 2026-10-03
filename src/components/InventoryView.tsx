@@ -1842,7 +1842,7 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
   const totalStock2 = variants.reduce((sum, v) => sum + (Number(v.stock2) || 0), 0);
   const totalCalculatedStock = totalStock1 + totalStock2;
 
-  // Compress & convert file to Base64 (thumb ~200px and full ~1200px)
+  // Compress & convert file to Base64 (thumb up to 512px and full image up to 2048px)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;

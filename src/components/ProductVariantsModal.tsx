@@ -303,7 +303,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
       onClick={onClose}
     >
       <div 
-        className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh] animate-in zoom-in-95 duration-150"
+        className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col min-h-0 max-h-[92dvh] sm:max-h-[88dvh] animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
         dir="rtl"
       >
@@ -416,7 +416,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto divide-y divide-slate-100 p-2 sm:p-3 space-y-1">
+        <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-slate-100 p-2 sm:p-3 space-y-1 touch-pan-y">
           {displayedVariants.length === 0 ? (
             <div className="py-12 text-center text-slate-400 space-y-2">
               <Shirt className="w-12 h-12 text-blue-300 mx-auto" />

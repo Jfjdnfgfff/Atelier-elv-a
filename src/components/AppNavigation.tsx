@@ -432,7 +432,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
         </div>
       </header>
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-3 sm:px-6 md:px-8 py-4 pb-12 overflow-y-auto">
+      <main className="flex-1 min-w-0 max-w-6xl mx-auto w-full px-3 sm:px-6 md:px-8 py-4 pb-12">
         <ViewRenderer
           currentView={currentView}
           rentals={rentals}

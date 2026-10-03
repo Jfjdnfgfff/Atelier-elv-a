@@ -131,7 +131,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
   const [barcodeInput, setBarcodeInput] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('الكل');
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
-  const [imageDisplayMode, setImageDisplayMode] = useState<'fill' | 'cover' | 'contain'>('fill');
+  const [imageDisplayMode, setImageDisplayMode] = useState<'fill' | 'cover' | 'contain'>('contain');
   const [lastScannedItem, setLastScannedItem] = useState<string | null>(null);
 
   const barcodeInputRef = useRef<HTMLInputElement>(null);

@@ -22,7 +22,7 @@ export const AsyncProductImage: React.FC<AsyncProductImageProps> = ({
 }) => {
   const fallbackThumb = getListImage(item);
   const [thumbSrc, setThumbSrc] = useState<string | null>(() => {
-    return thumbStore.getThumbSync(item.id) || fallbackThumb || item.imageUrl || null;
+    return item.thumbUrl || thumbStore.getThumbSync(item.id) || fallbackThumb || item.imageUrl || null;
   });
   const [fullSrc, setFullSrc] = useState<string | null>(null);
   const [isLoadingFull, setIsLoadingFull] = useState<boolean>(false);
@@ -31,7 +31,9 @@ export const AsyncProductImage: React.FC<AsyncProductImageProps> = ({
   useEffect(() => {
     let isMounted = true;
     const syncVal = thumbStore.getThumbSync(item.id);
-    if (syncVal) {
+    if (item.thumbUrl) {
+      setThumbSrc(item.thumbUrl);
+    } else if (syncVal) {
       setThumbSrc(syncVal);
     } else if (item.id) {
       thumbStore.getThumb(item.id, fallbackThumb).then(res => {
@@ -51,6 +53,7 @@ export const AsyncProductImage: React.FC<AsyncProductImageProps> = ({
   useEffect(() => {
     let isMounted = true;
 
+    setFullSrc(null);
     if (mode === 'full' && item.hasFullImage && item.id) {
       setIsLoadingFull(true);
       imageStore.loadFull(item.id).then(loaded => {
@@ -75,7 +78,7 @@ export const AsyncProductImage: React.FC<AsyncProductImageProps> = ({
 
   const activeSrc = mode === 'thumb' 
     ? (thumbSrc || fallbackThumb || item.imageUrl) 
-    : (fullSrc || thumbSrc || item.imageUrl || fallbackThumb);
+    : (fullSrc || item.imageUrl || thumbSrc || fallbackThumb);
   const fitClass = imageDisplayMode === 'fill' ? 'object-fill' : imageDisplayMode === 'cover' ? 'object-cover' : 'object-contain';
 
   return (
@@ -89,7 +92,7 @@ export const AsyncProductImage: React.FC<AsyncProductImageProps> = ({
         />
       ) : null}
 
-      {mode === 'full' && isLoadingFull && (
+      {mode === 'full' && isLoadingFull && !thumbSrc && !item.imageUrl && (
         <div className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 shadow-xs">
           <Loader2 className="w-3 h-3 animate-spin text-amber-300" />
           <span>جاري تحميل الجودة العالية...</span>

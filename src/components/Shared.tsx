@@ -25,7 +25,7 @@ export const Modal: React.FC<{
     <div 
       className={`bg-white rounded-t-2xl sm:rounded-2xl w-full ${
         wide ? 'max-w-4xl' : 'max-w-xl'
-      } max-w-full p-4 sm:p-6 shadow-xl border border-slate-200 max-h-[90vh] sm:max-h-[92vh] flex flex-col my-0 sm:my-auto overflow-x-hidden animate-in fade-in slide-in-from-bottom-3 sm:zoom-in-95 duration-150 safe-bottom`}
+      } max-w-full p-4 sm:p-6 shadow-xl border border-slate-200 max-h-[90dvh] sm:max-h-[92dvh] min-h-0 flex flex-col my-0 sm:my-auto overflow-y-hidden overflow-x-hidden animate-in fade-in slide-in-from-bottom-3 sm:zoom-in-95 duration-150 safe-bottom`}
     >
       <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-2.5 sm:hidden shrink-0" />
 
@@ -42,7 +42,7 @@ export const Modal: React.FC<{
         </button>
       </div>
 
-      <div className="overflow-y-auto overflow-x-hidden flex-1 px-0.5 custom-scrollbar pb-1 touch-pan-y overscroll-x-none">
+      <div className="min-h-0 overflow-y-auto overflow-x-hidden flex-1 px-0.5 custom-scrollbar pb-1 touch-pan-y overscroll-x-none">
         {children}
       </div>
     </div>

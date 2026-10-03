@@ -93,7 +93,7 @@ export const VirtualizedClothGrid: React.FC<VirtualizedClothGridProps> = ({
   return (
     <div 
       ref={parentRef} 
-      className="w-full h-[calc(100vh-220px)] min-h-[400px] overflow-y-auto custom-scrollbar p-1"
+      className="w-full h-[calc(100dvh-220px)] min-h-[320px] overflow-y-auto custom-scrollbar p-1 touch-pan-y"
       style={{ contain: 'layout paint' }}
     >
       <div
