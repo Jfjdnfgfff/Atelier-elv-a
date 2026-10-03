@@ -2,6 +2,7 @@ import React, { useRef, useMemo, useEffect, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ClothItem, SaleItem } from '../types';
 import { getListImage, openFullImagePreview } from '../utils/imageUtils';
+import { AsyncProductImage } from './AsyncProductImage';
 import { Package, ZoomIn } from 'lucide-react';
 
 interface VirtualizedPosGridProps {
@@ -75,7 +76,7 @@ export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
   return (
     <div 
       ref={parentRef} 
-      className="w-full h-[540px] max-h-[70vh] overflow-y-auto custom-scrollbar p-1"
+      className="w-full h-[70dvh] max-h-[540px] min-h-[320px] overflow-y-auto custom-scrollbar p-1 touch-pan-y"
       style={{ contain: 'layout paint' }}
     >
       <div
@@ -111,6 +112,7 @@ export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
                   const totalStock = s1 + s2;
                   const inCartCount = cart.filter(ci => ci.itemId === item.id).reduce((s, ci) => s + ci.qty, 0);
                   const imgUrl = getListImage(item);
+                  const hasImage = Boolean(imgUrl || item.hasFullImage);
 
                   return (
                     <div
@@ -123,25 +125,14 @@ export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
                         onClick={() => onSelectItem(item)}
                         className="relative aspect-[3/4] bg-slate-900/5 overflow-hidden flex items-center justify-center cursor-pointer group"
                       >
-                        {imgUrl ? (
-                          <div className="relative w-full h-full overflow-hidden flex items-center justify-center bg-slate-100">
-                            <img
-                              src={imgUrl}
-                              alt={item.name}
-                              decoding="async"
-                              className={`relative z-1 w-full h-full transition-transform duration-300 group-hover:scale-103 select-none ${
-                                imageDisplayMode === 'fill'
-                                  ? 'object-fill'
-                                  : imageDisplayMode === 'cover'
-                                  ? 'object-cover object-top'
-                                  : 'object-contain'
-                              }`}
-                              loading="lazy"
-                              onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
-                              }}
-                            />
-                          </div>
+                        {hasImage ? (
+                          <AsyncProductImage
+                            item={item}
+                            alt={item.name}
+                            mode="full"
+                            imageDisplayMode={imageDisplayMode}
+                            className="w-full h-full bg-slate-100 transition-transform duration-300 group-hover:scale-[1.02]"
+                          />
                         ) : (
                           <div className="flex flex-col items-center justify-center text-slate-400">
                             <Package className="w-10 h-10 text-slate-300 group-hover:text-slate-500 transition-colors" />
@@ -158,7 +149,7 @@ export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
                           {totalStock} بالمخزنين
                         </span>
 
-                        {imgUrl && (
+                        {hasImage && (
                           <button
                             type="button"
                             onClick={(e) => {

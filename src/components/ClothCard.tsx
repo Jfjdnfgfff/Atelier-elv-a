@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { ClothItem } from '../types';
 import { getListImage } from '../utils/imageUtils';
+import { AsyncProductImage } from './AsyncProductImage';
 import { Shirt, Tag, Sparkles, Store, Warehouse, ArrowLeftRight, Pencil, Trash2 } from 'lucide-react';
 
 interface ClothCardProps {
@@ -39,19 +40,14 @@ export const ClothCard = memo<ClothCardProps>(({
         className="relative bg-slate-900/5 overflow-hidden cursor-pointer flex items-center justify-center group w-full aspect-[3/4]"
         title="اضغط لعرض الألوان والمقاسات (Déclinaisons)"
       >
-        {getListImage(item) ? (
-          <div className="relative w-full h-full overflow-hidden flex items-center justify-center bg-slate-100">
-            <img
-              src={getListImage(item)}
-              alt={item.name}
-              decoding="async"
-              loading="lazy"
-              className="relative z-1 w-full h-full object-fill transition-transform duration-200 group-hover:scale-102 select-none"
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = 'none';
-              }}
-            />
-          </div>
+        {getListImage(item) || item.hasFullImage ? (
+          <AsyncProductImage
+            item={item}
+            alt={item.name}
+            mode="full"
+            imageDisplayMode="contain"
+            className="w-full h-full bg-slate-100"
+          />
         ) : (
           <div className="flex flex-col items-center justify-center text-slate-400 gap-2 p-4">
             <Shirt className="w-10 h-10 text-slate-300" />

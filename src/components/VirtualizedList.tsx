@@ -20,7 +20,7 @@ export function VirtualizedList<T>({
   overscan = 5,
   className = '',
   emptyMessage = 'لا توجد بيانات مطابقة.',
-  maxHeightClass = 'h-[65vh] sm:h-[72vh]'
+  maxHeightClass = 'h-[65dvh] sm:h-[72dvh]'
 }: VirtualizedListProps<T>) {
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -44,7 +44,7 @@ export function VirtualizedList<T>({
   return (
     <div
       ref={parentRef}
-      className={`w-full overflow-y-auto custom-scrollbar p-1 ${maxHeightClass} ${className}`}
+      className={`w-full min-h-0 overflow-y-auto custom-scrollbar p-1 touch-pan-y ${maxHeightClass} ${className}`}
       style={{ contain: 'layout paint' }}
     >
       <div

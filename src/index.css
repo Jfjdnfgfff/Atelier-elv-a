@@ -5,7 +5,7 @@
     box-sizing: border-box;
   }
   html {
-    overflow-x: hidden !important;
+    overflow-x: clip !important;
     overflow-y: auto;
     -webkit-text-size-adjust: 100%;
     max-width: 100vw;
@@ -21,8 +21,8 @@
     font-family: 'Plus Jakarta Sans', 'Tajawal', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: #f8fafc;
     color: #0f172a;
-    overflow-x: hidden !important;
-    overflow-y: auto;
+    overflow-x: clip !important;
+    overflow-y: visible;
     max-width: 100vw;
     width: 100%;
     -webkit-overflow-scrolling: touch;

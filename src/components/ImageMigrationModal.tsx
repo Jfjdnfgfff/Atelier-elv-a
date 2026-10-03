@@ -58,7 +58,7 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
   };
 
   // Threshold size (in bytes) based on THUMB_MAX_DIM & THUMB_QUALITY
-  // 200px max edge at quality 0.6 produces ~12KB - 15KB base64 strings
+  // 512px max edge at quality 0.84 produces compact, sharper product thumbnails
   const THUMB_BYTES_THRESHOLD = Math.max(12000, Math.round(THUMB_MAX_DIM * THUMB_MAX_DIM * THUMB_QUALITY * 0.5));
 
   // Identify eligible items needing migration: has imageUrl starting with data:image and missing thumbUrl or hasFullImage, or oversized thumb
@@ -93,7 +93,7 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
     });
 
     const estMb = (totalLegacyBytes / (1024 * 1024)).toFixed(2);
-    const estThumbMb = ((eligible.length * 12 * 1024) / (1024 * 1024)).toFixed(2);
+    const estThumbMb = ((eligible.length * 48 * 1024) / (1024 * 1024)).toFixed(2);
 
     setDryRunReport({
       eligibleCount: eligible.length,
@@ -313,7 +313,7 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
     });
 
     const estMb = (totalBytes / (1024 * 1024)).toFixed(2);
-    const estNewMb = ((totalHeavy * 12 * 1024) / (1024 * 1024)).toFixed(2);
+    const estNewMb = ((totalHeavy * 48 * 1024) / (1024 * 1024)).toFixed(2);
 
     setSalesDryRunReport({
       eligibleSalesCount: eligibleSales.length,
@@ -429,7 +429,7 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
             <span>تسريع وتحسين أداء المخزنون (الصور المصغّرة والكاملة)</span>
           </div>
           <p className="text-blue-800 font-medium">
-            يقوم هذا الإجراء بتحويل الصور الضخمة داخل سجلات المنتجات إلى صور مصغّرة خفيفة (Thumbnails ~10KB) لعرض القوائم بسرعة فائقة، مع تخزين الصورة الكاملة الجودة في مسار منفصل يُقرأ عند المعاينة فقط.
+            يقوم هذا الإجراء بتحويل الصور إلى مصغّرات أوضح (حتى 512px) وبحفظ نسخة كاملة بدقة أعلى (حتى 2048px). تُعرض النسخة عالية الجودة تلقائياً في بطاقات المخزون ونقطة البيع، وتبقى المصغّرة للتحميل السريع.
           </p>
         </div>
 

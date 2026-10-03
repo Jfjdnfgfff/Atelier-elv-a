@@ -19,7 +19,7 @@ export async function openFullImagePreview(
   onOpenPreview: (url: string, title: string) => void
 ): Promise<void> {
   if (!item || !onOpenPreview) return;
-  const initialUrl = getListImage(item) || item.imageUrl || '';
+  const initialUrl = item.imageUrl || getListImage(item) || '';
   onOpenPreview(initialUrl, item.name);
   if (item.hasFullImage && item.id) {
     const full = await imageStore.loadFull(item.id);
@@ -32,16 +32,18 @@ export async function openFullImagePreview(
 /**
  * Resizes an image (file or base64 dataUrl) using Canvas.
  * Creates two variants:
- * 1. thumbUrl: max 200px longest edge, JPEG quality 0.6 (~8-15KB)
- * 2. fullUrl: max 1200px longest edge, JPEG quality 0.8
+ * 1. thumbUrl: max 512px longest edge, JPEG quality 0.84
+ * 2. fullUrl: max 2048px longest edge, JPEG quality 0.9
  */
 export interface ImageVariants {
   thumbUrl: string;
   fullUrl: string;
 }
 
-export const THUMB_MAX_DIM = 200;
-export const THUMB_QUALITY = 0.6;
+export const THUMB_MAX_DIM = 512;
+export const THUMB_QUALITY = 0.84;
+export const FULL_MAX_DIM = 2048;
+export const FULL_QUALITY = 0.9;
 
 export function processImageToVariants(input: File | string): Promise<ImageVariants> {
   return new Promise((resolve, reject) => {
@@ -50,7 +52,7 @@ export function processImageToVariants(input: File | string): Promise<ImageVaria
     const processLoadedImage = () => {
       try {
         const thumbUrl = compressCanvas(img, THUMB_MAX_DIM, THUMB_QUALITY);
-        const fullUrl = compressCanvas(img, 1200, 0.8);
+        const fullUrl = compressCanvas(img, FULL_MAX_DIM, FULL_QUALITY);
         resolve({ thumbUrl, fullUrl });
       } catch (err) {
         reject(err);
@@ -74,8 +76,8 @@ export function processImageToVariants(input: File | string): Promise<ImageVaria
 }
 
 function compressCanvas(img: HTMLImageElement, maxDim: number, quality: number): string {
-  let width = img.width || 800;
-  let height = img.height || 800;
+  let width = img.naturalWidth || img.width || 800;
+  let height = img.naturalHeight || img.height || 800;
 
   if (width > maxDim || height > maxDim) {
     if (width > height) {
@@ -97,6 +99,8 @@ function compressCanvas(img: HTMLImageElement, maxDim: number, quality: number):
   // Fill white background for transparent PNGs converted to JPEG
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
   return canvas.toDataURL('image/jpeg', quality);
