@@ -162,7 +162,6 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
 
   return (
     <div className="space-y-4 pb-8" dir="rtl">
-      {/* Top Header */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
@@ -183,7 +182,6 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
           </button>
         </div>
 
-        {/* Financial & Operational Stats Bar (تتبع المداخيل والتكاليف والأرباح والكواء) */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3 pt-3 border-t border-slate-100 text-xs">
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
             <span className="text-slate-500 block font-normal">طلبات بالورشة</span>
@@ -236,7 +234,6 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* Filter and Search Bar with Comprehensive Date Controls (التحكم في التاريخ والكواء) */}
       <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-2xs space-y-3">
         <div className="flex flex-col sm:flex-row gap-2">
           <input
@@ -248,7 +245,6 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
           />
         </div>
 
-        {/* 1. Date Controls Filter (التحكم في التاريخ ومواعيد التسليم) */}
         <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 space-y-1.5">
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-slate-700 flex items-center gap-1.5 text-[11px]">
@@ -289,7 +285,6 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* 2. Service Type Filter (الكواء، التعديل، التصليح، التفصيل) */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 hide-scrollbar text-xs">
           <span className="text-[11px] text-slate-500 font-medium shrink-0 ml-1">نوع الخدمة:</span>
           {[
@@ -314,7 +309,6 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
           ))}
         </div>
 
-        {/* 3. Status Filters */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 hide-scrollbar text-xs pt-1 border-t border-slate-100">
           <span className="text-[11px] text-slate-500 font-medium shrink-0 ml-1">الحالة:</span>
           {[
@@ -340,7 +334,6 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* Orders Grid */}
       {filteredOrders.length === 0 ? (
         <div className="bg-white rounded-2xl p-8 text-center border border-slate-200/80 shadow-2xs space-y-2">
           <p className="text-xs font-medium text-slate-500">لا توجد طلبات خياطة مسجلة</p>
@@ -358,7 +351,6 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
                 key={order.id}
                 className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all flex flex-col justify-between space-y-3 cv-auto"
               >
-                {/* 10-Days Due Alert Notification Banner */}
                 {isDueSoon && (
                   <div className="bg-amber-50/80 border border-amber-200/80 text-amber-900 px-3 py-1.5 rounded-xl flex items-center justify-between text-xs font-medium">
                     <span className="flex items-center gap-1.5">
@@ -381,7 +373,6 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
                   </div>
                 )}
 
-                {/* Header Info */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-start gap-2">
                     <div>
@@ -402,7 +393,6 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
                     </div>
                   </div>
 
-                  {/* Customer row */}
                   {order.customerName && (
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs py-1.5 border-y border-slate-100">
                       <div>
@@ -441,12 +431,10 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
                     </div>
                   )}
 
-                  {/* Description */}
                   <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100 font-normal">
                     {order.description}
                   </p>
 
-                  {/* Measurements & Tailor (if any) */}
                   {(order.measurements || order.tailorName) && (
                     <div className="text-[11px] text-slate-500 space-y-0.5">
                       {order.measurements && <p>المقاسات: <span className="text-slate-700 font-medium">{order.measurements}</span></p>}
@@ -454,9 +442,7 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
                     </div>
                   )}
 
-                  {/* Dates & Financials (التواريخ وقيمة التكليف والمداخيل والربح الصافي) */}
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 space-y-2 text-xs">
-                    {/* Dates row */}
                     <div className="flex items-center justify-between text-[11px] pb-1.5 border-b border-slate-200/60">
                       <div className="flex items-center gap-1 text-slate-500">
                         <Clock className="w-3.5 h-3.5 text-slate-400" />
@@ -468,7 +454,6 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
                       </div>
                     </div>
 
-                    {/* Financial details: Cost vs Price vs Net Profit */}
                     {order.targetType === 'customer_order' && order.price > 0 ? (
                       <div className="grid grid-cols-3 gap-1.5 text-center">
                         <div className="bg-white p-1.5 rounded-lg border border-slate-200">
@@ -497,7 +482,6 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
                       </div>
                     )}
 
-                    {/* Remaining debt if any */}
                     {order.price > 0 && (
                       <div className="space-y-1 pt-1 border-t border-slate-200/60 text-[11px] text-slate-600">
                         <div className="flex justify-between items-center">
@@ -524,9 +508,7 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
                   </div>
                 </div>
 
-                {/* Bottom Actions */}
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                  {/* Status Dropdown/Selector */}
                   <select
                     value={order.status}
                     onChange={(e) => onUpdateStatus(order.id, e.target.value as MaintenanceStatus)}

@@ -423,7 +423,6 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
   return (
     <Modal title="تحسين وتوزيع صور المنتجات (إخراج الصور من السجلات)" onClose={onClose} wide>
       <div className="space-y-5 text-slate-800" dir="rtl">
-        {/* Intro Banner */}
         <div className="bg-blue-50 p-4 rounded-2xl border border-blue-200 text-xs leading-relaxed space-y-2">
           <div className="flex items-center gap-2 text-blue-900 font-black text-sm">
             <Sparkles className="w-5 h-5 text-amber-500" />
@@ -434,7 +433,6 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
           </p>
         </div>
 
-        {/* Action Controls & Dry Run */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <button
             type="button"
@@ -493,7 +491,6 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
           </button>
         </div>
 
-        {/* Dry Run Report Panel */}
         {dryRunReport && (
           <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-2">
             <h4 className="font-black text-slate-900 text-sm flex items-center gap-2">
@@ -520,7 +517,6 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
           </div>
         )}
 
-        {/* Progress Bar */}
         {isRunning && (
           <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
             <div className="flex justify-between items-center text-xs font-black text-slate-800">
@@ -539,7 +535,6 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
           </div>
         )}
 
-        {/* Sales Records Image Migration Section */}
         <div className="pt-4 border-t border-slate-200 space-y-3">
           <div className="flex items-center gap-2 text-slate-900 font-black text-xs">
             <ShoppingBag className="w-4 h-4 text-emerald-600" />
@@ -568,7 +563,6 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
             </button>
           </div>
 
-          {/* Sales Dry Run Report Panel */}
           {salesDryRunReport && (
             <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-1.5">
               <h5 className="font-bold text-emerald-950 flex items-center gap-1.5">
@@ -587,7 +581,6 @@ export const ImageMigrationModal: React.FC<ImageMigrationModalProps> = ({
           )}
         </div>
 
-        {/* Live Logs Window */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs font-bold text-slate-700">
             <span className="flex items-center gap-1">

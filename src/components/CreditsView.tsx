@@ -177,7 +177,6 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
 
   return (
     <div className="space-y-4 pb-8" dir="rtl">
-      {/* Top Banner & Stats */}
       <div className="bg-gradient-to-r from-amber-50/70 via-white to-orange-50/70 p-4 sm:p-5 rounded-2xl border border-amber-100 shadow-2xs space-y-4">
         <div className="flex justify-between items-center">
           <div>
@@ -193,7 +192,6 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* 3 Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
           <div className="bg-white/90 border border-amber-100 p-3.5 rounded-xl shadow-2xs">
             <div className="flex justify-between items-center mb-1">
@@ -247,7 +245,6 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* Add Debt Form */}
       <form onSubmit={handleSubmit} className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div className="flex items-center gap-2">
@@ -411,7 +408,6 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
         </button>
       </form>
 
-      {/* Scanner Modal */}
       {showScanner && (
         <React.Suspense fallback={null}>
           <CustomerIdScannerModal
@@ -422,7 +418,6 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
         </React.Suspense>
       )}
 
-      {/* Settle Credit Modal: المبلغ + التاريخ + الصندوق */}
       {settleCredit && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50" dir="rtl">
           <div className="bg-white rounded-2xl p-5 sm:p-6 max-w-lg w-full shadow-xl border border-slate-200/80 space-y-4">
@@ -567,7 +562,6 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
         </div>
       )}
 
-      {/* Credit List with Filters */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <h3 className="font-bold text-slate-900 text-sm sm:text-base">قائمة الديون المسجلة</h3>
@@ -635,7 +629,6 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
                     </span>
                   </div>
 
-                  {/* سجل دفعات التسديد مع التاريخ والصندوق */}
                   {Array.isArray(credit.payments) && credit.payments.length > 0 && (
                     <div className="mt-1.5 space-y-1">
                       {credit.payments.map(payment => (

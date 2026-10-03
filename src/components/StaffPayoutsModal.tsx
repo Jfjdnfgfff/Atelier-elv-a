@@ -181,7 +181,6 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
 
   return (
     <div className="space-y-4" dir="rtl">
-      {/* Navigation Tabs */}
       <div className="grid grid-cols-4 gap-1.5 p-1 bg-slate-100 rounded-2xl">
         <button
           type="button"
@@ -239,9 +238,6 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
         </button>
       </div>
 
-      {/* ========================================================= */}
-      {/* TAB 1: PAYOUT WITH ABSENCE DEDUCTION (صرف الراتب والخصومات) */}
-      {/* ========================================================= */}
       {activeTab === 'payout' && (
         <form onSubmit={handlePayoutSubmit} className="space-y-3">
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
@@ -257,7 +253,6 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
               )}
             </div>
 
-            {/* Select Staff Member */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 mb-1">اختر العامل/ة المسجل/ة</label>
@@ -304,10 +299,8 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
               </div>
             </div>
 
-            {/* Calculations Breakdown Card */}
             <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2.5">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {/* 1. Base Salary */}
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 mb-1">الراتب الأساسي (دج)</label>
                   <input
@@ -320,7 +313,6 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                   />
                 </div>
 
-                {/* 2. Absence Deduction */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="text-[10px] font-bold text-slate-700">خصم الغيابات (-)</label>
@@ -339,7 +331,6 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                   />
                 </div>
 
-                {/* 3. Advances / Deductions */}
                 <div>
                   <label className="block text-[10px] font-bold text-slate-700 mb-1">خصم تسبيقات سابقة (-)</label>
                   <input
@@ -352,7 +343,6 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                   />
                 </div>
 
-                {/* 4. Bonus */}
                 <div>
                   <label className="block text-[10px] font-bold text-slate-700 mb-1">مكافأة تشجيعية (+)</label>
                   <input
@@ -366,7 +356,6 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                 </div>
               </div>
 
-              {/* Pending Absences Notice */}
               {pendingAbsences.length > 0 ? (
                 <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
                   <div className="font-bold text-slate-800 flex items-center justify-between">
@@ -393,7 +382,6 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
                 )
               )}
 
-              {/* Notes */}
               <div>
                 <input
                   type="text"
@@ -405,7 +393,6 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
               </div>
             </div>
 
-            {/* Net Salary Summary */}
             <div className="flex items-center justify-between p-3.5 bg-slate-100 border border-slate-200 rounded-xl">
               <div>
                 <span className="text-xs font-bold text-slate-900 block">الصافي المستحق للدفع (Net Payout):</span>
@@ -430,12 +417,8 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
         </form>
       )}
 
-      {/* ========================================================= */}
-      {/* TAB 2: ABSENCE TRACKER (تسجيل وإدارة الغيابات) */}
-      {/* ========================================================= */}
       {activeTab === 'absences' && (
         <div className="space-y-3">
-          {/* New Absence Form */}
           <form onSubmit={handleAbsenceSubmit} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
             <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
               <Calendar className="w-4 h-4 text-slate-600" />
@@ -522,7 +505,6 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
             </button>
           </form>
 
-          {/* Absences List */}
           <div className="space-y-2">
             <h5 className="font-bold text-slate-700 text-xs">سجل غيابات العمال:</h5>
             {staffAbsences.length === 0 ? (
@@ -568,12 +550,8 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* TAB 3: STAFF DIRECTORY (إدارة العمال والرواتب الأساسية) */}
-      {/* ========================================================= */}
       {activeTab === 'staff' && (
         <div className="space-y-3">
-          {/* Add Staff Member Form */}
           <form onSubmit={handleNewStaffSubmit} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
             <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
               <UserPlus className="w-4 h-4 text-slate-600" />
@@ -653,7 +631,6 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
             </button>
           </form>
 
-          {/* Staff Members List */}
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <h5 className="font-bold text-slate-800 text-xs">قائمة العمال المسجلين ({staffMembers.length}):</h5>
@@ -728,9 +705,6 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* TAB 4: PAYOUTS HISTORY (سجل المدفوعات السابقة) */}
-      {/* ========================================================= */}
       {activeTab === 'history' && (
         <div className="space-y-2">
           <div className="flex justify-between items-center text-xs font-bold text-slate-500 pb-1 border-b border-slate-100">
@@ -798,7 +772,6 @@ export const StaffPayoutsModal: React.FC<StaffPayoutsModalProps> = ({
         </div>
       )}
 
-      {/* Staff Member Detailed Ledger & Transactions Modal */}
       {inspectingMember && (
         <StaffMemberLedgerModal
           member={inspectingMember}

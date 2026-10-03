@@ -326,7 +326,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
 
   return (
     <div className="space-y-4" dir="rtl">
-      {/* Top Banner & KPI Cards: مجموع السلع الأولية وش عندي */}
       <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
@@ -350,7 +349,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
           </button>
         </div>
 
-        {/* 4 Rich KPI Metric Cards: وش عندي سلعة أولية */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
           <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
             <span className="text-[11px] text-slate-500 font-bold block mb-0.5">إجمالي الرولويات المتوفرة:</span>
@@ -380,7 +378,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
         </div>
       </div>
 
-      {/* Filters and Search */}
       <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
         <div className="flex flex-col sm:flex-row gap-2.5">
           <div className="relative flex-1">
@@ -430,7 +427,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
         </div>
       </div>
 
-      {/* Materials List Grid */}
       {filteredMaterials.length === 0 ? (
         <div className="bg-white p-8 rounded-3xl border border-slate-200 text-center text-slate-400 space-y-2">
           <p className="text-sm font-bold text-slate-600">لا توجد أقمشة أو سلع أولية مسجلة مطابقة للبحث</p>
@@ -452,7 +448,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
                 }`}
               >
                 <div className="space-y-2.5">
-                  {/* Top Bar */}
                   <div className="flex justify-between items-start gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -468,7 +463,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
                       <h4 className="font-black text-slate-900 text-base mt-1 truncate">{item.name}</h4>
                     </div>
 
-                    {/* Color Badge */}
                     <div className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-xl border border-slate-200 shrink-0">
                       <span
                         className="w-3.5 h-3.5 rounded-full border border-slate-300 shrink-0 shadow-xs"
@@ -478,7 +472,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
                     </div>
                   </div>
 
-                  {/* Stock Metrics (الرولو والأمتار) */}
                   <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-2xl border border-slate-100 text-center text-xs">
                     <div>
                       <span className="text-[10px] text-slate-400 font-bold block">عدد الرولويات</span>
@@ -494,7 +487,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
                     </div>
                   </div>
 
-                  {/* Storage, Supplier & Value Details */}
                   <div className="text-xs text-slate-500 space-y-1 pt-0.5">
                     <div className="flex justify-between items-center text-[11px]">
                       <span>القيمة الإجمالية للسلعة:</span>
@@ -510,7 +502,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
                     </div>
                   </div>
 
-                  {/* Low Stock Warning */}
                   {isLow && (
                     <div className="bg-blue-50 border border-blue-200 text-blue-950 px-2.5 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1.5">
                       <AlertTriangle className="w-3.5 h-3.5 text-blue-900 shrink-0" />
@@ -525,7 +516,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
                   )}
                 </div>
 
-                {/* Quick Action Buttons */}
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
                   <div className="flex items-center gap-1">
                     <button
@@ -573,7 +563,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
         </div>
       )}
 
-      {/* Security Password Prompt Modal */}
       {securityModal && (
         <SecurityPasswordModal
           title={securityModal.title}
@@ -583,9 +572,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
         />
       )}
 
-      {/* ==================================================== */}
-      {/* MODAL: ADD / EDIT RAW MATERIAL */}
-      {/* ==================================================== */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/60 backdrop-blur-xs" dir="rtl">
           <div className="bg-white rounded-3xl w-full max-w-xl p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[92vh] overflow-y-auto">
@@ -673,7 +659,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
                 </div>
               </div>
 
-              {/* Quantities & Rolls */}
               <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
                 <span className="text-xs font-bold text-slate-800 block">تفاصيل الرولويات والأمتار:</span>
                 <div className="grid grid-cols-3 gap-2.5">
@@ -718,7 +703,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
                 </div>
               </div>
 
-              {/* Pricing */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">
@@ -743,7 +727,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
                 </div>
               </div>
 
-              {/* Supplier & Storage Location */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">
@@ -819,9 +802,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
         </div>
       )}
 
-      {/* ==================================================== */}
-      {/* MODAL: CONSUME / CUT METERS */}
-      {/* ==================================================== */}
       {consumeModalMaterial && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/60 backdrop-blur-xs" dir="rtl">
           <div className="bg-white rounded-3xl w-full max-w-md p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4">
@@ -890,9 +870,6 @@ export const RawMaterialsSection: React.FC<RawMaterialsSectionProps> = ({
         </div>
       )}
 
-      {/* ==================================================== */}
-      {/* MODAL: ADD ROLLS (RESTOCK) */}
-      {/* ==================================================== */}
       {addRollsModalMaterial && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/60 backdrop-blur-xs" dir="rtl">
           <div className="bg-white rounded-3xl w-full max-w-md p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4">

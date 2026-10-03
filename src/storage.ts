@@ -5,10 +5,10 @@ import {
   Sale, 
   Expense, 
   Credit, 
+  CreditPayment,
   StaffPayout,
   StaffMember,
   StaffAbsence,
-  CustomerProfile,
   MaintenanceOrder,
   Supplier,
   DailyCaisseClosure,
@@ -24,6 +24,7 @@ export const STORAGE_KEYS = {
   SALES: 'boutique_sales',
   EXPENSES: 'boutique_expenses',
   CREDITS: 'boutique_credits',
+  CREDIT_PAYMENTS: 'boutique_credit_payments',
   STAFF_PAYOUTS: 'boutique_staff_payouts',
   STAFF_MEMBERS: 'boutique_staff_members',
   STAFF_ABSENCES: 'boutique_staff_absences',
@@ -36,7 +37,6 @@ export const STORAGE_KEYS = {
   ACTIVITY_LOGS: 'boutique_activity_logs',
   SECURITY_PIN: 'bm_security_pin',
   STORE_CONFIG: 'boutique_store_config',
-  // رصيد الصندوق العام (الخزينة) المخزّن
   GENERAL_FUND_BALANCE: 'boutique_general_fund_balance'
 };
 
@@ -53,6 +53,7 @@ export const DEFAULT_RENTALS: Rental[] = [];
 export const DEFAULT_SALES: Sale[] = [];
 export const DEFAULT_EXPENSES: Expense[] = [];
 export const DEFAULT_CREDITS: Credit[] = [];
+export const DEFAULT_CREDIT_PAYMENTS: CreditPayment[] = [];
 export const DEFAULT_CAISSE_CLOSURES: DailyCaisseClosure[] = [];
 
 // In-memory cache for fast, synchronous lookups without reading localStorage repeatedly
@@ -67,12 +68,6 @@ export interface CacheMeta {
   updatedAt?: string;
 }
 
-export interface CollectionCacheResult<T> {
-  data: T[];
-  isFresh: boolean;
-  timestamp: number;
-}
-
 export interface StorageEnvelope<T> {
   data: T;
   timestamp: number;
@@ -80,10 +75,7 @@ export interface StorageEnvelope<T> {
   updatedAt?: string;
 }
 
-/**
- * Parses and unpacks cache envelope uniformly.
- * Backward compatible: automatically handles legacy raw arrays and converts them without losing records.
- */
+// فك غلاف التخزين مع دعم الصيغة القديمة (مصفوفات مباشرة) دون فقدان السجلات
 export function parseStorageEnvelope<T>(raw: string | null, defaultValue: T): StorageEnvelope<T> {
   if (!raw) {
     return { data: defaultValue, timestamp: Date.now(), version: 1 };
@@ -111,22 +103,8 @@ export function parseStorageEnvelope<T>(raw: string | null, defaultValue: T): St
 }
 
 const cacheMetaStore = new Map<string, CacheMeta>();
-export const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes TTL
 
-export const isCacheFresh = (key: string, ttlMs: number = DEFAULT_CACHE_TTL_MS): boolean => {
-  const meta = cacheMetaStore.get(key);
-  if (!meta) return false;
-  return (Date.now() - meta.timestamp) < ttlMs;
-};
-
-export const getCollectionCacheMeta = (key: string): CacheMeta => {
-  return cacheMetaStore.get(key) || { timestamp: Date.now(), version: 1 };
-};
-
-/**
- * Flushes all pending dirty collections immediately to localStorage synchronously.
- * Called automatically on beforeunload, pagehide, and visibilitychange to prevent data loss.
- */
+// تفريغ فوري للمجموعات المعلّقة إلى التخزين (يُستدعى عند إغلاق أو إخفاء الصفحة)
 export function flushPendingStorageSynchronously(): void {
   if (dirtyKeys.size === 0) return;
 
@@ -257,35 +235,16 @@ export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
   }
 };
 
-export const getCachedCollection = <T>(key: string, defaultValue: T[] = []): CollectionCacheResult<T> => {
-  const loaded = loadFromStorage<T[]>(key, defaultValue);
-  const meta = cacheMetaStore.get(key);
-  const timestamp = meta?.timestamp || Date.now();
-  const isFresh = meta ? (Date.now() - meta.timestamp < DEFAULT_CACHE_TTL_MS) : false;
-  return { data: loaded, isFresh, timestamp };
-};
-
 export const saveToStorage = <T>(key: string, data: T): void => {
   perfMonitor.recordStorageWrite(key);
-  // If the exact same object/array reference is passed, avoid redundant work
-  if (lastWrittenRef.get(key) === data) {
-    return;
-  }
-  if ((import.meta as any).env?.DEV) {
-    console.log(`[Storage Write] Saving collection / key: "${key}"`, { 
-      itemCount: Array.isArray(data) ? data.length : 'non-array',
-      timestamp: new Date().toISOString(),
-      sampleIds: Array.isArray(data) ? data.slice(0, 3).map((item: any) => item?.id || 'no-id') : []
-    });
-  }
+  // نفس المرجع = لا حاجة لإعادة الكتابة
+  if (lastWrittenRef.get(key) === data) return;
   lastWrittenRef.set(key, data);
   cacheMetaStore.set(key, { timestamp: Date.now(), version: 1, updatedAt: new Date().toISOString() });
 
-  // Update in-memory cache instantly with 0ms latency
   memoryStore.set(key, data);
   dirtyKeys.add(key);
 
-  // Schedule disk flush in background without blocking the UI thread
   scheduleIdleStorageFlush();
 };
 
@@ -293,9 +252,6 @@ export const generateId = (): string => {
   return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7);
 };
 
-/**
- * Wipes all stored collections cleanly to empty arrays.
- */
 export const clearAllStorage = () => {
   const collections = [
     STORAGE_KEYS.CLOTHES,
@@ -303,6 +259,7 @@ export const clearAllStorage = () => {
     STORAGE_KEYS.SALES,
     STORAGE_KEYS.EXPENSES,
     STORAGE_KEYS.CREDITS,
+    STORAGE_KEYS.CREDIT_PAYMENTS,
     STORAGE_KEYS.RAW_MATERIALS,
     STORAGE_KEYS.MAINTENANCE,
     STORAGE_KEYS.SUPPLIERS,
@@ -321,9 +278,6 @@ export const clearAllStorage = () => {
   });
 };
 
-/**
- * Initializes Core Data collections cleanly as empty sets.
- */
 export const initializeStorage = () => {
   const RESET_VERSION = 'boutique_wipe_empty_v1';
   if (localStorage.getItem('boutique_empty_data_flag') !== RESET_VERSION) {
@@ -332,12 +286,9 @@ export const initializeStorage = () => {
   }
 };
 
-/**
- * Asynchronously reads all collections from IndexedDB into memoryStore before initial cloud subscription (stale-while-revalidate pattern).
- */
+// تعبئة كل المجموعات من IndexedDB بالتوازي (بدل قراءة تسلسلية بطيئة) قبل الاشتراكات السحابية
 export async function hydrateFromIndexedDB(): Promise<void> {
-  const keys = Object.values(STORAGE_KEYS);
-  for (const key of keys) {
+  await Promise.all(Object.values(STORAGE_KEYS).map(async key => {
     try {
       const idbVal = await get(key);
       if (idbVal && idbVal.data) {
@@ -353,5 +304,5 @@ export async function hydrateFromIndexedDB(): Promise<void> {
     } catch (err) {
       console.warn(`[IndexedDB Hydrate] Error reading ${key}:`, err);
     }
-  }
+  }));
 }

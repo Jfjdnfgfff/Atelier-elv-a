@@ -174,16 +174,15 @@ export interface Seamstress {
   createdAt?: string;
 }
 
-/**
- * دفعة تسديد لكريدي (دين): سُجّلت عند استلام المال من الزبون
- * أو عند دفع دفعة للمورد، مع تحديد الصندوق الذي دخلت أو خرجت منه.
- */
+// دفعة تسديد كريدي: مستند مستقل داخل مجموعة creditPayments مرتبط بالدين عبر creditId
 export interface CreditPayment {
   id: string;
+  creditId?: string;
   amount: number;
-  date: string; // YYYY-MM-DD تاريخ استلام / دفع المال بالضبط
-  fundSource: FundSource; // الصندوق: صندوق اليوم (الدرج) أو الصندوق العام (الخزينة)
+  date: string; // YYYY-MM-DD
+  fundSource: FundSource;
   note?: string;
+  createdAt?: string;
 }
 
 export interface Credit {

@@ -289,7 +289,6 @@ export const StaffMemberLedgerModal: React.FC<StaffMemberLedgerModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto" dir="rtl">
       <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[94vh] animate-in fade-in zoom-in-95 duration-200">
         
-        {/* Header with Member Info & Switcher */}
         <div className="bg-slate-900 text-white p-4 sm:p-5 flex flex-wrap justify-between items-center gap-3">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center font-bold text-white shadow-2xs">
@@ -317,7 +316,6 @@ export const StaffMemberLedgerModal: React.FC<StaffMemberLedgerModalProps> = ({
             </div>
           </div>
 
-          {/* Quick Member Switcher & Close */}
           <div className="flex items-center gap-2">
             {allMembers.length > 1 && (
               <select
@@ -354,10 +352,8 @@ export const StaffMemberLedgerModal: React.FC<StaffMemberLedgerModalProps> = ({
           </div>
         </div>
 
-        {/* Action Toolbar & Period Filter */}
         <div className="p-3.5 sm:p-4 bg-slate-50 border-b border-slate-200/80 space-y-3">
           
-          {/* Period Selection Controls */}
           <div className="flex flex-wrap items-center justify-between gap-2.5">
             <div className="flex items-center bg-white p-1 rounded-2xl border border-slate-200/80 shadow-2xs">
               <button
@@ -400,7 +396,6 @@ export const StaffMemberLedgerModal: React.FC<StaffMemberLedgerModalProps> = ({
               </button>
             </div>
 
-            {/* Date Pickers based on selection */}
             <div className="flex items-center gap-2">
               {periodFilter === 'monthly' && (
                 <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 text-xs font-medium text-slate-800">
@@ -428,7 +423,6 @@ export const StaffMemberLedgerModal: React.FC<StaffMemberLedgerModalProps> = ({
                 </div>
               )}
 
-              {/* Category Filter */}
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
@@ -443,7 +437,6 @@ export const StaffMemberLedgerModal: React.FC<StaffMemberLedgerModalProps> = ({
             </div>
           </div>
 
-          {/* Quick Action Buttons for This Member */}
           <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200/60">
             <span className="text-[11px] font-medium text-slate-500">إجراء سريع للعامل:</span>
             
@@ -473,7 +466,6 @@ export const StaffMemberLedgerModal: React.FC<StaffMemberLedgerModalProps> = ({
           </div>
         </div>
 
-        {/* Quick Action Form if open */}
         {quickAction && (
           <div className="p-4 bg-slate-50 border-b border-slate-200 animate-in slide-in-from-top-2 duration-150">
             <form onSubmit={handleQuickActionSubmit} className="space-y-3">
@@ -574,7 +566,6 @@ export const StaffMemberLedgerModal: React.FC<StaffMemberLedgerModalProps> = ({
           </div>
         )}
 
-        {/* Financial Summary Dashboard for the Selected View */}
         <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white border-b border-slate-100 font-mono">
           <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
             <span className="text-[10px] font-medium text-slate-500 block font-sans">إجمالي المقبوض (المصروف للعامل)</span>
@@ -615,7 +606,6 @@ export const StaffMemberLedgerModal: React.FC<StaffMemberLedgerModalProps> = ({
           </div>
         </div>
 
-        {/* Transactions Table & Ledger List */}
         <div className="p-4 flex-1 overflow-y-auto space-y-2">
           <div className="flex justify-between items-center text-xs font-semibold text-slate-700 pb-1">
             <span>سجل المعاملات والعمليات ({filteredLedger.length}):</span>
@@ -640,7 +630,6 @@ export const StaffMemberLedgerModal: React.FC<StaffMemberLedgerModalProps> = ({
                 return (
                   <div key={item.id} className="p-3.5 flex flex-wrap sm:flex-nowrap justify-between items-center gap-3 hover:bg-slate-50/70 transition-colors">
                     
-                    {/* Icon & Title */}
                     <div className="flex items-start gap-3">
                       <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 font-medium text-xs ${
                         isAbsence 
@@ -676,7 +665,6 @@ export const StaffMemberLedgerModal: React.FC<StaffMemberLedgerModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Financial Amount & Delete */}
                     <div className="flex items-center gap-3 mr-auto sm:mr-0">
                       <div className="text-left font-mono">
                         <span className={`text-sm font-bold block ${
@@ -715,7 +703,6 @@ export const StaffMemberLedgerModal: React.FC<StaffMemberLedgerModalProps> = ({
           )}
         </div>
 
-        {/* Footer */}
         <div className="p-3.5 bg-slate-50 border-t border-slate-200/80 flex justify-between items-center text-xs">
           <span className="text-slate-500 font-medium">
             كشف حساب العامل: <strong className="text-slate-800 font-semibold">{member.name}</strong>

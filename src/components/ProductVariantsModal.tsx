@@ -307,7 +307,6 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
         onClick={(e) => e.stopPropagation()}
         dir="rtl"
       >
-        {/* Header (Top Navigation & Info) */}
         <div className="p-4 sm:p-5 border-b border-slate-100 bg-white sticky top-0 z-10 space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -358,7 +357,6 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
             </button>
           </div>
 
-          {/* Color Selector Tabs (الوان) */}
           {distinctColors.length > 1 && (
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 text-xs">
               <span className="text-[11px] font-bold text-slate-400 shrink-0 flex items-center gap-1">
@@ -406,7 +404,6 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
             </div>
           )}
 
-          {/* Quick Summary Bar */}
           <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-2xl border border-slate-100 text-xs">
             <div className="flex items-center justify-between px-1">
               <span className="text-slate-500 font-medium">المحل (صالة العرض):</span>
@@ -419,7 +416,6 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
           </div>
         </div>
 
-        {/* Variants List (Matching the uploaded image design exactly!) */}
         <div className="flex-1 overflow-y-auto divide-y divide-slate-100 p-2 sm:p-3 space-y-1">
           {displayedVariants.length === 0 ? (
             <div className="py-12 text-center text-slate-400 space-y-2">
@@ -438,12 +434,10 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                   key={variant.id}
                   className="transition-colors rounded-2xl overflow-hidden hover:bg-slate-50/80"
                 >
-                  {/* Row Item (Identical style to the user's reference photo) */}
                   <div 
                     onClick={() => setExpandedVariantId(isExpanded ? null : variant.id)}
                     className="flex items-center justify-between p-3 cursor-pointer group select-none gap-3"
                   >
-                    {/* Left: Product Thumbnail */}
                     <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden bg-slate-100 shrink-0 border border-slate-200/80 shadow-2xs">
                       {(variant.imageUrl || getListImage(item) || item.imageUrl) ? (
                         <AsyncProductImage item={item} mode="thumb" className="w-full h-full p-0.5 group-hover:scale-105 transition-transform" />
@@ -452,7 +446,6 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                           <Shirt className="w-6 h-6 text-blue-400" />
                         </div>
                       )}
-                      {/* Color dot indicator in thumbnail corner */}
                       <span 
                         className="absolute bottom-1 right-1 w-3 h-3 rounded-full border border-white shadow-xs"
                         style={{ backgroundColor: colorHex }}
@@ -460,19 +453,15 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                       />
                     </div>
 
-                    {/* Middle: Reference Code, Big Size (لطاي), and Stock/Price Subtitle */}
                     <div className="flex-1 min-w-0 space-y-0.5" dir="ltr">
-                      {/* Reference code (e.g. #3921) */}
                       <div className="text-xs sm:text-sm font-semibold text-slate-700 tracking-tight">
                         #{variant.code || (item.barcode ? item.barcode : '3921')}
                       </div>
 
-                      {/* Size (لطاي / Taille) - Big bold text */}
                       <div className="text-lg sm:text-xl font-black text-slate-900 leading-tight">
                         {variant.size}
                       </div>
 
-                      {/* Subtitle: "4 en stock • 7,200.00 د.ج" */}
                       <div className="text-xs text-slate-500 font-medium flex items-center gap-1.5 flex-wrap">
                         <span className="font-bold text-slate-700">
                           {variant.stock} en stock
@@ -482,7 +471,6 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                           {displayPrice.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} د.ج
                         </span>
 
-                        {/* Optional color tag */}
                         {distinctColors.length > 1 && (
                           <>
                             <span className="text-slate-300">•</span>
@@ -494,7 +482,6 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Right: Chevron Arrow (>) */}
                     <div className="text-slate-300 group-hover:text-blue-600 transition-colors pl-1">
                       {isExpanded ? (
                         <ChevronLeft className="w-5 h-5 text-blue-600 transition-transform rotate-90" />
@@ -504,7 +491,6 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Expanded Detail Panel for this Size (Actions & Quick Stock Update) */}
                   {isExpanded && (
                     <div className="bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 mx-2 mb-2 space-y-3 animate-in slide-in-from-top-2 duration-150">
                       <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
@@ -525,9 +511,7 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Stock Adjustment Controls */}
                       <div className="grid grid-cols-2 gap-2 text-xs">
-                        {/* Stock 1: المحل */}
                         <div className="bg-white p-2.5 rounded-xl border border-slate-200 space-y-1.5">
                           <span className="text-slate-500 font-medium block">المحل (صالة العرض)</span>
                           <div className="flex items-center justify-between gap-1">
@@ -551,7 +535,6 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                           </div>
                         </div>
 
-                        {/* Stock 2: المستودع */}
                         <div className="bg-white p-2.5 rounded-xl border border-slate-200 space-y-1.5">
                           <span className="text-slate-500 font-medium block">المستودع (التخزين)</span>
                           <div className="flex items-center justify-between gap-1">
@@ -576,7 +559,6 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Edit Reference or Price */}
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
                           <label className="text-[10px] text-slate-500 font-bold block mb-1">المرجع / الكود:</label>
@@ -599,7 +581,6 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Direct Action Buttons: Rent / Sell this size */}
                       <div className="flex gap-2 pt-1">
                         {(item.purpose === 'rent' || item.purpose === 'both') && onQuickRent && (
                           <button
@@ -636,7 +617,6 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
           )}
         </div>
 
-        {/* Add New Variant Form (If toggled) */}
         {isAddingNewVariant && (
           <form 
             onSubmit={handleAddNewVariantSubmit}
@@ -685,7 +665,6 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
                     ))}
                   </datalist>
                 </div>
-                {/* Quick Popular Color Chips */}
                 <div className="flex flex-wrap gap-1 mt-1.5 max-h-16 overflow-y-auto">
                   {['أصفر', 'أصفر كناري', 'ذهبي ملكي', 'أسود', 'أبيض', 'أحمر', 'أزرق ملكي', 'أخضر زمردي', 'بوردو', 'وردي', 'بيج', 'زيتي (كاكي)'].map(colName => (
                     <button
@@ -756,7 +735,6 @@ export const ProductVariantsModal: React.FC<ProductVariantsModalProps> = ({
           </form>
         )}
 
-        {/* Footer Actions */}
         <div className="p-3 sm:p-4 border-t border-slate-100 bg-white flex items-center justify-between gap-2">
           {!isAddingNewVariant ? (
             <button

@@ -57,12 +57,10 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
         </div>
       </div>
 
-      {/* Printable Area */}
       <div 
         id="rentalReceiptPrintArea" 
         className="bg-white p-6 sm:p-8 rounded-2xl border-2 border-slate-800 text-slate-900 space-y-5"
       >
-        {/* Header */}
         <div className="border-b-2 border-slate-900 pb-4 flex justify-between items-start">
           <div>
             <h2 className="text-xl font-black text-blue-600">
@@ -80,7 +78,6 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
           </div>
         </div>
 
-        {/* Customer & Dates Info */}
         <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
           <div>
             <span className="text-slate-400 block text-[10px] font-bold">بيانات الزبون:</span>
@@ -105,7 +102,6 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
           </div>
         </div>
 
-        {/* Table of Rented Items */}
         <table className="w-full text-right text-xs border border-slate-200 rounded-lg overflow-hidden">
           <thead className="bg-slate-100 text-slate-700 font-black border-b border-slate-200">
             <tr>
@@ -148,7 +144,6 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
           </tbody>
         </table>
 
-        {/* Totals & Caution */}
         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1.5 text-xs">
           {rental.hasAccessories && rental.accessoryPrice && rental.accessoryPrice > 0 && (
             <>
@@ -202,7 +197,6 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
           </div>
         </div>
 
-        {/* Terms */}
         <div className="text-[10px] text-slate-500 space-y-1 leading-relaxed border-t border-dashed border-slate-300 pt-3">
           <p className="font-bold text-slate-700">شروط وتعهد الكراء:</p>
           <p>1. يتعهد المستأجر بالمحافظة على القطعة وإرجاعها في تاريخ الإرجاع المحدد أعلاه دون تأخير.</p>
@@ -210,7 +204,6 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
           <p>3. في حالة التأخير عن الموعد المحدد يحق للمحل تطبيق غرامة تأخير عن كل يوم إضافي.</p>
         </div>
 
-        {/* Signatures */}
         <div className="grid grid-cols-2 gap-8 pt-4 text-xs font-black text-slate-800">
           <div className="border-t border-slate-400 pt-2">توقيع المستأجر:</div>
           <div className="border-t border-slate-400 pt-2 text-left">ختم وتوقيع البوتيك:</div>

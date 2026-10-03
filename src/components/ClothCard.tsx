@@ -34,7 +34,6 @@ export const ClothCard = memo<ClothCardProps>(({
       className="bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-2xs hover:shadow-xs transition-colors duration-150 flex flex-col justify-between group cv-auto h-full"
       style={{ contentVisibility: 'auto', containIntrinsicSize: '380px' }}
     >
-      {/* Product Image Box */}
       <div 
         onClick={() => onOpenVariantsModal(item)}
         className="relative bg-slate-900/5 overflow-hidden cursor-pointer flex items-center justify-center group w-full aspect-[3/4]"
@@ -60,7 +59,6 @@ export const ClothCard = memo<ClothCardProps>(({
           </div>
         )}
 
-        {/* Purpose Badge on Top Left - No backdrop-blur for maximum scroll FPS */}
         <div className="absolute top-2.5 left-2.5 flex items-center gap-1">
           {item.purpose === 'both' && (
             <span className="bg-slate-900/90 text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-lg shadow-2xs">
@@ -81,21 +79,18 @@ export const ClothCard = memo<ClothCardProps>(({
           )}
         </div>
 
-        {/* Category Badge on Top Right */}
         <div className="absolute top-2.5 right-2.5">
           <span className="bg-slate-900/80 text-white text-[10px] font-medium px-2 py-0.5 rounded-lg">
             {item.category}
           </span>
         </div>
 
-        {/* Colors & Sizes Badge Prompt on Image */}
         <div className="absolute bottom-2.5 left-2.5 bg-slate-900/90 hover:bg-slate-900 text-white text-[10px] font-medium px-2 py-0.5 rounded-lg shadow-2xs flex items-center gap-1 transition-colors">
           <Sparkles className="w-3 h-3 text-amber-300" />
           <span>الألوان والمقاسات ({itemSizesList.length || 1})</span>
         </div>
       </div>
 
-      {/* Card Body */}
       <div className="p-3.5 space-y-2.5 flex-1 flex flex-col justify-between">
         <div>
           <div className="flex justify-between items-start gap-2">
@@ -112,7 +107,6 @@ export const ClothCard = memo<ClothCardProps>(({
             )}
           </div>
 
-          {/* Location stock distribution pills */}
           <div className="flex items-center justify-between text-xs font-bold mt-2 bg-slate-50 p-2 rounded-xl border border-slate-100">
             <span className="text-slate-800 flex items-center gap-1">
               <Store className="w-3.5 h-3.5 text-indigo-600" />
@@ -129,7 +123,6 @@ export const ClothCard = memo<ClothCardProps>(({
             </span>
           </div>
 
-          {/* Pricing Info */}
           <div className="flex items-center justify-between text-xs pt-1">
             {(item.purpose === 'rent' || item.purpose === 'both') && (
               <div>
@@ -150,7 +143,6 @@ export const ClothCard = memo<ClothCardProps>(({
           </div>
         </div>
 
-        {/* Card Actions */}
         <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100">
           <button
             onClick={() => onOpenQuickTransferModal(item)}

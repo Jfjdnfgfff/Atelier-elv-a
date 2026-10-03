@@ -37,7 +37,6 @@ export const ReturnRentalModal: React.FC<ReturnRentalModalProps> = ({ rental, on
 
   return (
     <form onSubmit={handleConfirm} className="space-y-4" dir="rtl">
-      {/* Summary Card */}
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
         <div className="flex justify-between items-start">
           <div>
@@ -49,7 +48,6 @@ export const ReturnRentalModal: React.FC<ReturnRentalModalProps> = ({ rental, on
           </span>
         </div>
 
-        {/* Accessory Check Reminder */}
         {rental.hasAccessories && (
           <div className="bg-slate-100 border border-slate-300 p-2.5 rounded-xl text-xs font-bold text-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -78,7 +76,6 @@ export const ReturnRentalModal: React.FC<ReturnRentalModalProps> = ({ rental, on
         </div>
       </div>
 
-      {/* Item Condition */}
       <div>
         <label className="block text-xs font-bold text-slate-700 mb-2">حالة القطعة عند الإرجاع *</label>
         <div className="grid grid-cols-3 gap-2">
@@ -129,7 +126,6 @@ export const ReturnRentalModal: React.FC<ReturnRentalModalProps> = ({ rental, on
         </div>
       </div>
 
-      {/* Caution & Settlement */}
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-3">
         <h5 className="text-xs font-bold text-slate-900">تسوية مبلغ الضمان (العربون - {rental.cautionAmount || 0} دج)</h5>
         <div className="grid grid-cols-3 gap-2">
@@ -177,7 +173,6 @@ export const ReturnRentalModal: React.FC<ReturnRentalModalProps> = ({ rental, on
         )}
       </div>
 
-      {/* Collect Remaining Debt */}
       {rental.remainingAmount > 0 && (
         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
           <div className="flex justify-between items-center">
@@ -219,7 +214,6 @@ export const ReturnRentalModal: React.FC<ReturnRentalModalProps> = ({ rental, on
         </div>
       )}
 
-      {/* Cleaning toggle */}
       <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
         <span className="text-xs font-bold text-slate-700">تحويل القطعة مباشرة إلى سجل التنظيف الجاف (Pressing)</span>
         <input

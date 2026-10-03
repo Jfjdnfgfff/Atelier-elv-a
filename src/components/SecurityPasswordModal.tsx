@@ -95,7 +95,6 @@ export const SecurityPasswordModal: React.FC<SecurityPasswordModalProps> = ({
           shake ? 'animate-bounce' : ''
         }`}
       >
-        {/* Header */}
         <div className="flex items-center justify-between pb-3 mb-4 border-b border-blue-50">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shadow-xs">
@@ -124,7 +123,6 @@ export const SecurityPasswordModal: React.FC<SecurityPasswordModalProps> = ({
           {reason}
         </p>
 
-        {/* PIN Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
             <input
@@ -163,7 +161,6 @@ export const SecurityPasswordModal: React.FC<SecurityPasswordModalProps> = ({
             </p>
           )}
 
-          {/* Quick Touch Keypad for Tablet / POS */}
           <div className="grid grid-cols-3 gap-1.5 pt-1">
             {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(num => (
               <button

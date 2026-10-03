@@ -391,9 +391,7 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
 
   return (
     <div className="space-y-4 max-w-full text-slate-800" dir="rtl">
-      {/* Top Action Bar (Controls & Multi-Format Download Buttons) */}
       <div className="bg-white border border-slate-200 p-3 sm:p-4 rounded-2xl shadow-xs space-y-3 no-print">
-        {/* Row 1: Time Filters & Download Buttons */}
         <div className="flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none w-full sm:w-auto">
             <span className="text-xs font-bold text-slate-500 shrink-0 ml-1 flex items-center gap-1">
@@ -427,9 +425,7 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
             })}
           </div>
 
-          {/* Quick Action Download Buttons */}
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
-            {/* Download PNG image */}
             <button
               onClick={exportToImage}
               disabled={isExporting}
@@ -440,7 +436,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
               <span>{isExporting ? 'جاري التنزيل...' : 'تنزيل صورة PNG'}</span>
             </button>
 
-            {/* Print Full Report */}
             <button
               onClick={handlePrint}
               className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-900 text-white hover:bg-slate-800 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-xs"
@@ -451,7 +446,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
           </div>
         </div>
 
-        {/* Row 2: Custom Date Range Pickers (Visible only when custom is selected) */}
         {period === 'custom' && (
           <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-slate-100 text-xs">
             <span className="font-bold text-slate-600">من تاريخ:</span>
@@ -471,7 +465,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
           </div>
         )}
 
-        {/* Row 3: Tab Navigation */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-t border-slate-100 pt-2.5 hide-scrollbar">
           {[
             { id: 'overview_all', label: '📊 الملخص العام الشامل (جميع التقارير)', count: null, isPrimary: true },
@@ -505,7 +498,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
           })}
         </div>
 
-        {/* Row 4: Search & Filters */}
         <div className="flex items-center gap-2 pt-1">
           <div className="relative flex-1">
             <Search className="w-3.5 h-3.5 absolute right-3 top-2.5 text-slate-400" />
@@ -540,12 +532,10 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
         )}
       </div>
 
-      {/* Main Printable & Exportable Mega Container */}
       <div 
         id="boutiqueFullReportDetailedContent" 
         className="space-y-6 text-slate-800 p-4 sm:p-7 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-xs"
       >
-        {/* Report Official Header */}
         <div className="border-b-2 border-slate-900 pb-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
@@ -573,9 +563,7 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
           </div>
         </div>
 
-        {/* Global Financial KPI Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5">
-          {/* Net Profit Card */}
           <div className="p-3.5 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-2xl shadow-xs">
             <div className="flex items-center justify-between opacity-80 mb-1">
               <span className="text-[11px] font-bold">صافي الأرباح الحقيقية</span>
@@ -589,7 +577,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
             </div>
           </div>
 
-          {/* Rental Inflow */}
           <div className="p-3.5 bg-blue-50 border border-blue-100 rounded-2xl">
             <div className="flex items-center justify-between text-blue-800 mb-1">
               <span className="text-[11px] font-bold">مداخيل الكراء</span>
@@ -603,7 +590,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
             </div>
           </div>
 
-          {/* Sales Revenue */}
           <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
             <div className="flex items-center justify-between text-slate-700 mb-1">
               <span className="text-[11px] font-bold">مبيعات الملابس</span>
@@ -617,7 +603,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
             </div>
           </div>
 
-          {/* Total Expenses & Payouts */}
           <div className="p-3.5 bg-rose-50/70 border border-rose-100 rounded-2xl">
             <div className="flex items-center justify-between text-rose-800 mb-1">
               <span className="text-[11px] font-bold">المصاريف والرواتب</span>
@@ -632,7 +617,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
           </div>
         </div>
 
-        {/* Secondary Financial Badges */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-slate-50 p-3 rounded-2xl border border-slate-200">
           <div className="flex flex-col">
             <span className="text-[10px] font-bold text-slate-500">الضمانات المالية المحجوزة:</span>
@@ -652,7 +636,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
           </div>
         </div>
 
-        {/* 1. EXECUTIVE FINANCIAL BALANCE TABLE */}
         <div className="border border-slate-200 rounded-2xl overflow-hidden">
           <div className="bg-slate-100 px-4 py-2.5 border-b border-slate-200 font-black text-xs text-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -693,9 +676,7 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
           </div>
         </div>
 
-        {/* ================= ALL COMPREHENSIVE TABLES IN OVERVIEW ================= */}
 
-        {/* 2. RENTALS REPORT TABLE (Visible in Overview or Rentals Tab) */}
         {(activeTab === 'overview_all' || activeTab === 'rentals') && (
           <div className="space-y-2.5 pt-2">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
@@ -768,7 +749,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
           </div>
         )}
 
-        {/* 3. SALES REPORT TABLE (Visible in Overview or Sales Tab) */}
         {(activeTab === 'overview_all' || activeTab === 'sales') && (
           <div className="space-y-2.5 pt-2">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
@@ -829,7 +809,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
           </div>
         )}
 
-        {/* 4. EXPENSES REPORT TABLE (Visible in Overview or Expenses Tab) */}
         {(activeTab === 'overview_all' || activeTab === 'expenses') && (
           <div className="space-y-2.5 pt-2">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
@@ -880,7 +859,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
           </div>
         )}
 
-        {/* 5. TAILORING REPORT TABLE (Visible in Overview or Tailoring Tab) */}
         {(activeTab === 'overview_all' || activeTab === 'tailoring') && (
           <div className="space-y-2.5 pt-2">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
@@ -949,7 +927,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
           </div>
         )}
 
-        {/* 6. CREDITS REPORT TABLE (Visible in Overview or Credits Tab) */}
         {(activeTab === 'overview_all' || activeTab === 'credits') && (
           <div className="space-y-2.5 pt-2">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
@@ -999,7 +976,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
           </div>
         )}
 
-        {/* 7. STAFF PAYOUTS TABLE (Visible in Overview or Staff Tab) */}
         {(activeTab === 'overview_all' || activeTab === 'staff') && (
           <div className="space-y-2.5 pt-2">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
@@ -1057,7 +1033,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
           </div>
         )}
 
-        {/* 8. INVENTORY VALUATION TABLE (Visible in Overview or Inventory Tab) */}
         {(activeTab === 'overview_all' || activeTab === 'inventory') && (
           <div className="space-y-2.5 pt-2">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
@@ -1119,7 +1094,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
           </div>
         )}
 
-        {/* Report Official Footer */}
         <div className="border-t border-slate-200 pt-4 flex flex-col sm:flex-row justify-between sm:items-center gap-1 text-[11px] text-slate-400 font-medium">
           <span>بوتيك مانجر برو - نظام إدارة وتأجير الملابس والأزياء والمحاسبة</span>
           <span>صفحة التقرير الشامل والمفصل • تم توليد البيانات آلياً من قاعدة البيانات</span>

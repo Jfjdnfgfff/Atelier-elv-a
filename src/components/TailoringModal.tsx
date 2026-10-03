@@ -135,7 +135,6 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
   return (
     <Modal title={order ? 'تعديل طلب خياطة وصيانة' : 'تسجيل طلب خياطة وصيانة جديد'} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4" dir="rtl">
-        {/* Target Type Selector */}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1.5">نوع الطلب والجهة *</label>
           <div className="grid grid-cols-2 gap-2">
@@ -176,7 +175,6 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
           </div>
         </div>
 
-        {/* Item Selection / Input */}
         {targetType === 'internal_stock' ? (
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">اختر القطعة من المخزن *</label>
@@ -206,7 +204,6 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
           </div>
         )}
 
-        {/* Customer Details (If customer order) */}
         {targetType === 'customer_order' && (
           <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 space-y-2.5">
             <div className="flex justify-between items-center">
@@ -248,7 +245,6 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
           </div>
         )}
 
-        {/* Service Type & Tailor */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">نوع الصيانة / الخدمة *</label>
@@ -284,7 +280,6 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
           </div>
         </div>
 
-        {/* Description & Measurements */}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1">تفاصيل وملاحظات الخياطة *</label>
           <textarea
@@ -308,13 +303,11 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
           />
         </div>
 
-        {/* Dates Controls (التحكم في التواريخ ومواعيد التسليم والاستلام) */}
         <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-2.5">
           <div className="flex flex-wrap items-center justify-between gap-1.5 pb-1 border-b border-slate-200/60">
             <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
               <span>📅 مواعيد الاستلام والتسليم والمدة</span>
             </span>
-            {/* Quick date control chips */}
             <div className="flex flex-wrap items-center gap-1">
               <span className="text-[10px] text-slate-500 font-medium">تسليم سريع:</span>
               {[
@@ -394,7 +387,6 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
           </div>
         </div>
 
-        {/* Financial Fields & Cost Tracking (قيمة التكليف وسعر الخدمة والأرباح) */}
         <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
           <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60">
             <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
@@ -474,7 +466,6 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
                   </span>
                 </div>
 
-                {/* Date of Receiving Money / Payment (تاريخ استلام المال والعربون للدخول الدقيق في الصندوق) */}
                 <div className="col-span-1 sm:col-span-3 p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-2 text-right">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
@@ -491,7 +482,6 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Quick Date Presets */}
                     <div className="flex flex-wrap items-center gap-1">
                       <button
                         type="button"
@@ -550,7 +540,6 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
           </div>
         </div>
 
-        {/* Status (when editing) */}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1">حالة الطلب *</label>
           <select
@@ -565,7 +554,6 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
           </select>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex gap-2 pt-3">
           <button
             type="submit"
@@ -583,7 +571,6 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
         </div>
       </form>
 
-      {/* Smart Customer ID Scanner */}
       {showCustomerIdScanner && (
         <React.Suspense fallback={null}>
           <CustomerIdScannerModal

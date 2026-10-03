@@ -802,7 +802,6 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
       dir="rtl"
     >
       <div className="bg-white rounded-3xl w-full max-w-lg p-4 sm:p-5 shadow-2xl border border-slate-100 relative overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-slate-800">
-        {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
           <div className="flex items-center gap-2.5">
             <span className="w-10 h-10 rounded-2xl bg-blue-900 text-white flex items-center justify-center text-xl font-bold shadow-xs">
@@ -835,7 +834,6 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
           </button>
         </div>
 
-        {/* Tab Selection */}
         {!extractedData && (
           <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-2xl mb-3 text-center">
             <button
@@ -888,7 +886,6 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
           </div>
         )}
 
-        {/* Fast Manual Tab */}
         {activeTab === 'manual' && !extractedData && (
           <form onSubmit={handleManualSubmit} className="space-y-3 p-3 bg-slate-50 rounded-2xl border border-slate-200">
             <div>
@@ -931,7 +928,6 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
           </form>
         )}
 
-        {/* Camera Error message */}
         {cameraError && !extractedData && activeTab !== 'manual' && (
           <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-center space-y-2 mb-3">
             <p className="text-xs font-bold text-blue-900">{cameraError}</p>
@@ -952,7 +948,6 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
           </div>
         )}
 
-        {/* Extracted Data Review Form */}
         {extractedData ? (
           <form
             onSubmit={(e) => {
@@ -975,7 +970,6 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
               </div>
             )}
 
-            {/* Photo Thumbnail if taken */}
             {previewPhoto && (
               <div className="relative w-full h-24 bg-slate-950 rounded-2xl overflow-hidden border border-slate-200 shadow-xs">
                 <img src={previewPhoto} alt="بطاقة الهوية" className="w-full h-full object-contain" />
@@ -985,7 +979,6 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
               </div>
             )}
 
-            {/* Quick Summary Cards */}
             <div className="space-y-3 bg-white p-3.5 rounded-2xl border border-blue-100 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
@@ -1017,7 +1010,6 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                 </div>
               </div>
 
-              {/* Dedicated Phone Input with High-Visibility Highlight */}
               <div className="p-3 bg-blue-50 border-2 border-blue-400 rounded-2xl shadow-xs">
                 <div className="flex justify-between items-center mb-1">
                   <label className="block text-xs font-black text-blue-950 flex items-center gap-1.5">
@@ -1060,7 +1052,6 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
               )}
             </div>
 
-            {/* Action Buttons */}
             <div className="grid grid-cols-2 gap-2 pt-1">
               <button
                 type="submit"
@@ -1108,7 +1099,6 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                 }}
               />
 
-              {/* Viewfinder Target Box with Live Scanning Laser */}
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                 {activeTab === 'id_card' ? (
                   /* ID Card Framing Rectangle */
@@ -1165,7 +1155,6 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                 )}
               </div>
 
-              {/* Ultra-Fast Processing Indicator Overlay */}
               {(isInitializing || isProcessingAI) && (
                 <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center text-white text-xs font-bold gap-2.5 z-30 p-4 text-center">
                   <div className="relative flex items-center justify-center">
@@ -1184,7 +1173,6 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                 </div>
               )}
 
-              {/* Switch Camera Top Button */}
               <div className="absolute top-2.5 right-2.5 z-20 pointer-events-auto">
                 <button
                   type="button"
@@ -1196,7 +1184,6 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                 </button>
               </div>
 
-              {/* Bottom Controls (Zoom & Torch) */}
               <div className="absolute bottom-2.5 right-2.5 left-2.5 flex items-center justify-between gap-2 z-20">
                 <div className="flex items-center gap-1.5">
                   <button
@@ -1235,7 +1222,6 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
               </div>
             </div>
 
-            {/* Bottom Actions */}
             <div className="space-y-2">
               <button
                 type="button"
@@ -1248,7 +1234,6 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
               </button>
 
               <div className="grid grid-cols-2 gap-2">
-                {/* Native HD Camera Input */}
                 <input
                   ref={nativeCameraInputRef}
                   type="file"
@@ -1268,7 +1253,6 @@ export const CustomerIdScannerModal: React.FC<CustomerIdScannerModalProps> = ({
                   <span>تصوير ثابت عالي الدقة HD</span>
                 </button>
 
-                {/* File Upload from Gallery / Paper Copy */}
                 <input
                   ref={fileInputRef}
                   type="file"

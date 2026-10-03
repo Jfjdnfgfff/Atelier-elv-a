@@ -17,6 +17,9 @@
     "credits": {
       ".indexOn": ["date", "createdAt", "relatedRentalId", "relatedExpenseId"]
     },
+    "creditPayments": {
+      ".indexOn": ["creditId", "date", "createdAt"]
+    },
     "clothes": {
       ".indexOn": ["barcode", "category", "createdAt", "updatedAt", "purpose", "name"]
     },

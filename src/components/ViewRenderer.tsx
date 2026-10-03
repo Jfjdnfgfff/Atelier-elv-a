@@ -1,5 +1,6 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { perfMonitor } from '../utils/performanceMonitor';
+import { attachCreditPayments } from '../utils/fundBalance';
 import {
   ViewType,
   Rental,
@@ -9,6 +10,7 @@ import {
   Expense,
   StaffPayout,
   Credit,
+  CreditPayment,
   MaintenanceOrder,
   Supplier,
   Seamstress,
@@ -18,7 +20,7 @@ import {
   FundSource,
 } from '../types';
 
-// Directly imported Views for instant zero-latency section navigation
+// الأقسام تُحمَّل مباشرة ضمن الحزمة الرئيسية لتنقّل فوري بدون أي تأخير
 import { DashboardView } from './DashboardView';
 import { RentalsView } from './RentalsView';
 import { InventoryView } from './InventoryView';
@@ -38,6 +40,7 @@ export interface ViewRendererProps {
   sales: Sale[];
   expenses: Expense[];
   credits: Credit[];
+  creditPayments: CreditPayment[];
   staffPayouts: StaffPayout[];
   maintenanceOrders: MaintenanceOrder[];
   caisseClosures: DailyCaisseClosure[];
@@ -150,9 +153,11 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
       return prev.expenses === next.expenses && 
              prev.suppliers === next.suppliers && 
              prev.credits === next.credits &&
+             prev.creditPayments === next.creditPayments &&
              prev.generalFundBalance === next.generalFundBalance;
     case 'credits':
       return prev.credits === next.credits && 
+             prev.creditPayments === next.creditPayments &&
              prev.suppliers === next.suppliers &&
              prev.generalFundBalance === next.generalFundBalance;
     case 'partners':
@@ -169,6 +174,7 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
              prev.staffPayouts === next.staffPayouts && 
              prev.maintenanceOrders === next.maintenanceOrders &&
              prev.credits === next.credits &&
+             prev.creditPayments === next.creditPayments &&
              prev.generalFundBalance === next.generalFundBalance;
     case 'logs':
       return prev.activityLogs === next.activityLogs;
@@ -181,6 +187,7 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
              prev.staffPayouts === next.staffPayouts &&
              prev.maintenanceOrders === next.maintenanceOrders &&
              prev.credits === next.credits &&
+             prev.creditPayments === next.creditPayments &&
              prev.activityLogs === next.activityLogs;
     default:
       return false;
@@ -194,6 +201,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   sales,
   expenses,
   credits,
+  creditPayments,
   staffPayouts,
   maintenanceOrders,
   caisseClosures,
@@ -260,6 +268,12 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
 }) => {
   perfMonitor.recordViewRender(currentView);
 
+  // ديون مع دفعاتها المدموجة (مستندات مجموعة الدفعات + المضمّنة القديمة)
+  const creditsWithPayments = useMemo(
+    () => attachCreditPayments(credits, creditPayments),
+    [credits, creditPayments]
+  );
+
   return (
     <>
       {currentView === 'dashboard' && (
@@ -271,7 +285,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           sales={sales}
           expenses={expenses}
           staffPayouts={staffPayouts}
-          credits={credits}
+          credits={creditsWithPayments}
           activityLogs={activityLogs}
           hideFinances={hideFinances}
           onPrivacyToggle={onPrivacyToggle}
@@ -354,7 +368,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
         <ExpensesView
           expenses={expenses}
           suppliers={suppliers}
-          credits={credits}
+          credits={creditsWithPayments}
           onAddExpense={onAddExpense}
           onDeleteExpense={onDeleteExpense}
           onSettleSupplierCredit={onSettleSupplierCredit}
@@ -365,7 +379,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
 
       {currentView === 'credits' && (
         <CreditsView
-          credits={credits}
+          credits={creditsWithPayments}
           suppliers={suppliers}
           onAddCredit={onAddCredit}
           onSettleCredit={onSettleCredit}
@@ -379,7 +393,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           sales={sales}
           rentals={rentals}
           expenses={expenses}
-          credits={credits}
+          credits={creditsWithPayments}
           staffPayouts={staffPayouts}
           maintenanceOrders={maintenanceOrders}
           caisseClosures={caisseClosures}
@@ -404,7 +418,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           seamstresses={seamstresses}
           expenses={expenses}
           maintenanceOrders={maintenanceOrders}
-          credits={credits}
+          credits={creditsWithPayments}
           onAddSupplier={onAddSupplier}
           onUpdateSupplier={onUpdateSupplier}
           onDeleteSupplier={onDeleteSupplier}
@@ -421,9 +435,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           onDeleteLog={onDeleteLog}
           onClearAllLogs={onClearAllLogs}
           onAddManualLog={onAddManualLog}
-          showToast={(msg, type) => {
-            // LogsView provides toast notifications
-          }}
+          showToast={() => {}}
         />
       )}
     </>

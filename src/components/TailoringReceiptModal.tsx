@@ -52,9 +52,7 @@ export const TailoringReceiptModal: React.FC<TailoringReceiptModalProps> = ({
   return (
     <Modal title="وصل الصيانة والخياطة" onClose={onClose}>
       <div className="space-y-4" dir="rtl">
-        {/* Printable Receipt Card */}
         <div id="tailoring-receipt-print" className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4 text-slate-800 text-sm">
-          {/* Header */}
           <div className="text-center border-b border-dashed border-slate-200 pb-3">
             <h2 className="text-lg font-bold text-blue-600">بوتيك الأزياء والأناقة</h2>
             <p className="text-xs text-slate-500 font-medium mt-0.5">قسم الصيانة، التعديل والخياطة</p>
@@ -63,7 +61,6 @@ export const TailoringReceiptModal: React.FC<TailoringReceiptModalProps> = ({
             </div>
           </div>
 
-          {/* Details Grid */}
           <div className="space-y-2 text-xs">
             <div className="flex justify-between py-1 border-b border-slate-100">
               <span className="text-slate-500 font-medium">نوع الخدمة:</span>
@@ -108,7 +105,6 @@ export const TailoringReceiptModal: React.FC<TailoringReceiptModalProps> = ({
               </div>
             )}
 
-            {/* Description & Measurements */}
             <div className="bg-slate-50 p-2.5 rounded-xl mt-2 border border-slate-100">
               <span className="text-[11px] font-bold text-slate-600 block mb-1">تفاصيل ومقاسات العمل:</span>
               <p className="text-xs text-slate-800 font-medium whitespace-pre-wrap">{order.description}</p>
@@ -119,7 +115,6 @@ export const TailoringReceiptModal: React.FC<TailoringReceiptModalProps> = ({
               )}
             </div>
 
-            {/* Financials (if customer order) */}
             {order.targetType === 'customer_order' && order.price > 0 && (
               <div className="bg-slate-50 p-2.5 rounded-xl space-y-1.5 border border-slate-200 mt-2 font-medium">
                 <div className="flex justify-between text-xs">
@@ -138,14 +133,12 @@ export const TailoringReceiptModal: React.FC<TailoringReceiptModalProps> = ({
             )}
           </div>
 
-          {/* Footer note */}
           <div className="text-center pt-2 border-t border-dashed border-slate-200 text-[10px] text-slate-400 font-medium">
             <p>يرجى إحضار هذا الوصل عند استلام القطعة بعد الصيانة.</p>
             <p className="mt-0.5">شكراً لثقتكم واختياركم لنا.</p>
           </div>
         </div>
 
-        {/* Action Buttons */}
         {downloadNote && <p className="text-[11px] font-bold text-slate-600">{downloadNote}</p>}
         <div className="flex gap-2">
           <button
