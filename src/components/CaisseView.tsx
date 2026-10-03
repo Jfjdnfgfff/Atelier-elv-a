@@ -47,9 +47,9 @@ import {
 } from 'lucide-react';
 import {
   isGeneralFundExpense,
-  sumGeneralFundExpenses,
-  summarizeCreditPaymentsOn
+  sumGeneralFundExpenses
 } from '../utils/fundBalance';
+import { summarizeDailyCaisse } from '../utils/dailyCaisseSummary';
 
 interface CaisseViewProps {
   sales: Sale[];
@@ -263,100 +263,20 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
     dateStaffPayoutsPaid,
     totalDailyInflow,
     totalDailyOutflow,
-    theoreticalAmount
-  } = useMemo(() => {
-    const dSales: Sale[] = [];
-    let salesInc = 0;
-    for (let i = 0; i < sales.length; i++) {
-      const s = sales[i];
-      if (s.date && s.date.startsWith(selectedDate)) {
-        dSales.push(s);
-        salesInc += (s.paidAmount !== undefined ? s.paidAmount : s.totalAmount || 0);
-      }
-    }
-
-    const dRentals: Rental[] = [];
-    let rentalsInc = 0;
-    let cautionsRec = 0;
-    for (let i = 0; i < rentals.length; i++) {
-      const r = rentals[i];
-      const rentPaymentDate = r.paymentDate || (r.createdAt ? r.createdAt.split('T')[0] : r.startDate);
-      if (rentPaymentDate === selectedDate) {
-        dRentals.push(r);
-        rentalsInc += (r.paidAmount || 0);
-        if (r.cautionStatus === 'held') {
-          cautionsRec += (r.cautionAmount || 0);
-        }
-      }
-    }
-
-    const dTailoring: MaintenanceOrder[] = [];
-    let tailoringInc = 0;
-    for (let i = 0; i < maintenanceOrders.length; i++) {
-      const o = maintenanceOrders[i];
-      const tailoringPaymentDate = o.paymentDate || (o.createdAt ? o.createdAt.split('T')[0] : o.receivedDate);
-      if (tailoringPaymentDate === selectedDate) {
-        dTailoring.push(o);
-        tailoringInc += (o.paidAmount || 0);
-      }
-    }
-
-    const dExpenses: Expense[] = [];
-    let expensesPaid = 0;
-    let generalSourceExpensesToday = 0;
-    for (let i = 0; i < expenses.length; i++) {
-      const e = expenses[i];
-      if (e.date && e.date.startsWith(selectedDate)) {
-        dExpenses.push(e);
-        // المصاريف المسددة من الصندوق العام لا تُخصم من درج اليوم
-        if (isGeneralFundExpense(e)) {
-          generalSourceExpensesToday += Number(e.amount || 0);
-        } else {
-          expensesPaid += Number(e.amount || 0);
-        }
-      }
-    }
-
-    const dStaffPayouts: StaffPayout[] = [];
-    let staffPayoutsPaid = 0;
-    for (let i = 0; i < staffPayouts.length; i++) {
-      const p = staffPayouts[i];
-      if (p.date && p.date.startsWith(selectedDate)) {
-        dStaffPayouts.push(p);
-        staffPayoutsPaid += Number(p.amount || 0);
-      }
-    }
-
-    // دفعات الكريدي المسجلة في هذا التاريخ: تحصيل ديون الزبائن (داخل) ودفعات الموردين (خارج)
-    const creditPayments = summarizeCreditPaymentsOn(credits, selectedDate);
-
-    const totalInflow = salesInc + rentalsInc + tailoringInc + cautionsRec + creditPayments.inflow;
-    const totalOutflow = expensesPaid + staffPayoutsPaid + creditPayments.outflow;
-    const theoretical = openingBalance + totalInflow - totalOutflow;
-
-    return {
-      dateSales: dSales,
-      dateSalesIncome: salesInc,
-      dateRentals: dRentals,
-      dateRentalsIncome: rentalsInc,
-      dateCautionsReceived: cautionsRec,
-      dateTailoring: dTailoring,
-      dateTailoringIncome: tailoringInc,
-      dateExpenses: dExpenses,
-      dateExpensesPaid: expensesPaid,
-      dateGeneralSourceExpenses: generalSourceExpensesToday,
-      dateCreditInflow: creditPayments.inflow,
-      dateCreditOutflow: creditPayments.outflow,
-      dateCreditGeneralInflow: creditPayments.generalInflow,
-      dateCreditGeneralOutflow: creditPayments.generalOutflow,
-      dateCreditPaymentsCount: creditPayments.count,
-      dateStaffPayouts: dStaffPayouts,
-      dateStaffPayoutsPaid: staffPayoutsPaid,
-      totalDailyInflow: totalInflow,
-      totalDailyOutflow: totalOutflow,
-      theoreticalAmount: theoretical
-    };
-  }, [sales, rentals, maintenanceOrders, expenses, credits, staffPayouts, selectedDate, openingBalance]);
+  } = useMemo(
+    () =>
+      summarizeDailyCaisse({
+        date: selectedDate,
+        sales,
+        rentals,
+        maintenanceOrders,
+        expenses,
+        credits,
+        staffPayouts,
+      }),
+    [sales, rentals, maintenanceOrders, expenses, credits, staffPayouts, selectedDate],
+  );
+  const theoreticalAmount = openingBalance + totalDailyInflow - totalDailyOutflow;
 
   // Actual counted amount in drawer
   const actualAmount = Number(actualInput) || 0;
@@ -1006,10 +926,16 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
           <div className="mt-2 text-2xl font-bold text-slate-900 font-mono">
             {hideFinances ? '••••••' : `${totalDailyInflow.toLocaleString()} دج`}
           </div>
-          <div className="mt-2 text-[11px] font-medium text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
-            <span>مبيعات: {hideFinances ? '••' : `${dateSalesIncome.toLocaleString()}`}</span>
-            <span>كراء: {hideFinances ? '••' : `${dateRentalsIncome.toLocaleString()}`}</span>
-            <span>خياطة: {hideFinances ? '••' : `${dateTailoringIncome.toLocaleString()}`}</span>
+          <div className="mt-2 text-[11px] font-medium text-slate-500 flex flex-wrap gap-x-2.5 gap-y-1 border-t border-slate-100 pt-2">
+            <span>مبيعات: {hideFinances ? '••' : dateSalesIncome.toLocaleString()}</span>
+            <span>كراء: {hideFinances ? '••' : dateRentalsIncome.toLocaleString()}</span>
+            <span>خياطة: {hideFinances ? '••' : dateTailoringIncome.toLocaleString()}</span>
+            {dateCautionsReceived > 0 && (
+              <span>ضمانات: {hideFinances ? '••' : dateCautionsReceived.toLocaleString()}</span>
+            )}
+            {dateCreditInflow > 0 && (
+              <span>تحصيل ديون: {hideFinances ? '••' : dateCreditInflow.toLocaleString()}</span>
+            )}
           </div>
         </div>
 

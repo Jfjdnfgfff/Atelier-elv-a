@@ -56,6 +56,7 @@ import {
 } from '../types';
 import { StatCard, Modal } from './Shared';
 import { useDashboardStats } from '../hooks/dashboardStatsHook';
+import { summarizeDailyCaisse } from '../utils/dailyCaisseSummary';
 import { verifyAdminPin, getAdminPin, setAdminPin } from '../utils/security';
 
 interface DashboardViewProps {
@@ -338,28 +339,29 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
     ? (stats.yearlyNetProfit || 0)
     : (stats.netProfit || 0);
 
-  // Today's Caisse calculations for dashboard banner
+  // Use the same cashflow calculation as the Caisse view, so both daily totals agree.
   const { todayIncome, todayExpectedCash, todayClosure, monthVariance } = useMemo(() => {
-    const todaySales = sales.filter(s => s.date && s.date.startsWith(today)).reduce((sum, s) => sum + (s.paidAmount !== undefined ? s.paidAmount : s.totalAmount || 0), 0);
-    const todayRentals = rentals.filter(r => (r.createdAt && r.createdAt.startsWith(today)) || (r.startDate && r.startDate.startsWith(today))).reduce((sum, r) => sum + (r.paidAmount || 0), 0);
-    const todayTailoring = maintenanceOrders.filter(o => (o.receivedDate && o.receivedDate.startsWith(today)) || (o.createdAt && o.createdAt.startsWith(today))).reduce((sum, o) => sum + (o.paidAmount || 0), 0);
-    const todayExp = expenses.filter(e => e.date && e.date.startsWith(today)).reduce((sum, e) => sum + Number(e.amount || 0), 0);
-    const todayStf = staffPayouts.filter(p => p.date && p.date.startsWith(today)).reduce((sum, p) => sum + Number(p.amount || 0), 0);
-    const inc = todaySales + todayRentals + todayTailoring;
-    const expCash = inc - (todayExp + todayStf);
-
+    const dailyCaisse = summarizeDailyCaisse({
+      date: today,
+      sales,
+      rentals,
+      maintenanceOrders,
+      expenses,
+      credits,
+      staffPayouts,
+    });
     const closure = caisseClosures.find(c => c.date === today);
     const currentMonth = today.substring(0, 7);
     const mClosures = caisseClosures.filter(c => c.date.startsWith(currentMonth));
-    const mVariance = mClosures.reduce((s, c) => s + (c.difference || 0), 0);
+    const mVariance = mClosures.reduce((sum, c) => sum + (c.difference || 0), 0);
 
     return {
-      todayIncome: inc,
-      todayExpectedCash: expCash,
+      todayIncome: dailyCaisse.totalDailyInflow,
+      todayExpectedCash: dailyCaisse.totalDailyInflow - dailyCaisse.totalDailyOutflow,
       todayClosure: closure,
-      monthVariance: mVariance
+      monthVariance: mVariance,
     };
-  }, [sales, rentals, maintenanceOrders, expenses, staffPayouts, caisseClosures, today]);
+  }, [sales, rentals, maintenanceOrders, expenses, credits, staffPayouts, caisseClosures, today]);
 
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6" dir="rtl">

@@ -933,15 +933,26 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                     <div className="text-base font-bold text-slate-900 font-mono">{totalAmount.toLocaleString()} دج</div>
                   </div>
                   <div>
-                    <div className="flex justify-between items-center mb-1">
+                    <div className="flex flex-wrap justify-between items-center gap-1 mb-1">
                       <label className="block text-[10px] text-slate-500 font-medium">المبلغ المستلم</label>
-                      <button
-                        type="button"
-                        onClick={() => setPaidAmount(totalAmount)}
-                        className="text-[10px] text-slate-700 font-bold underline hover:text-slate-900"
-                      >
-                        خالص كامل
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPaidAmount(totalAmount)}
+                          className="text-[10px] text-slate-700 font-bold underline hover:text-slate-900"
+                        >
+                          دفع كامل
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaidAmount(0)}
+                          className="inline-flex items-center gap-1 text-[10px] text-rose-700 font-bold hover:text-rose-800"
+                          title="تسجيل كامل المبلغ المتبقي كدين في قسم الكريدي"
+                        >
+                          <CreditCard className="w-3 h-3" />
+                          بيع بالكريدي
+                        </button>
+                      </div>
                     </div>
                     <input
                       type="number"
@@ -956,8 +967,8 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                 </div>
 
                 {debtAmount > 0 && (
-                  <div className="p-2.5 bg-rose-50 border border-rose-200/60 text-rose-800 rounded-xl font-medium flex justify-between items-center text-xs">
-                    <span>المتبقي دين على الزبون:</span>
+                  <div className="p-2.5 bg-rose-50 border border-rose-200/60 text-rose-800 rounded-xl font-medium flex flex-wrap justify-between items-center gap-1 text-xs">
+                    <span>المتبقي دين على الزبون وسيُسجَّل في قسم الكريدي:</span>
                     <span className="font-bold font-mono">{debtAmount.toLocaleString()} دج</span>
                   </div>
                 )}

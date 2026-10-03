@@ -619,8 +619,13 @@ export default function App() {
   // Precise mapping of required LocalStorage collections per view
   const VIEW_STORAGE_MAP: Record<ViewType, readonly string[]> = {
     dashboard: [
-      STORAGE_KEYS.CLOTHES, 
-      STORAGE_KEYS.RENTALS, 
+      STORAGE_KEYS.CLOTHES,
+      STORAGE_KEYS.RENTALS,
+      STORAGE_KEYS.SALES,
+      STORAGE_KEYS.EXPENSES,
+      STORAGE_KEYS.CREDITS,
+      STORAGE_KEYS.STAFF_PAYOUTS,
+      STORAGE_KEYS.MAINTENANCE,
       STORAGE_KEYS.CAISSE_CLOSURES,
       STORAGE_KEYS.ACTIVITY_LOGS
     ],
@@ -659,10 +664,11 @@ export default function App() {
       STORAGE_KEYS.CREDITS
     ],
     caisse: [
-      STORAGE_KEYS.CAISSE_CLOSURES, 
-      STORAGE_KEYS.SALES, 
-      STORAGE_KEYS.RENTALS, 
-      STORAGE_KEYS.EXPENSES, 
+      STORAGE_KEYS.CAISSE_CLOSURES,
+      STORAGE_KEYS.SALES,
+      STORAGE_KEYS.RENTALS,
+      STORAGE_KEYS.EXPENSES,
+      STORAGE_KEYS.CREDITS,
       STORAGE_KEYS.STAFF_PAYOUTS,
       STORAGE_KEYS.MAINTENANCE
     ],
@@ -675,8 +681,13 @@ export default function App() {
   // Precise mapping of required Firebase collections per view
   const VIEW_COLLECTIONS_MAP: Record<ViewType, readonly string[]> = {
     dashboard: [
-      FIREBASE_COLLECTIONS.CLOTHES, 
-      FIREBASE_COLLECTIONS.RENTALS, 
+      FIREBASE_COLLECTIONS.CLOTHES,
+      FIREBASE_COLLECTIONS.RENTALS,
+      FIREBASE_COLLECTIONS.SALES,
+      FIREBASE_COLLECTIONS.EXPENSES,
+      FIREBASE_COLLECTIONS.CREDITS,
+      FIREBASE_COLLECTIONS.STAFF_PAYOUTS,
+      FIREBASE_COLLECTIONS.MAINTENANCE,
       FIREBASE_COLLECTIONS.CAISSE_CLOSURES,
       FIREBASE_COLLECTIONS.ACTIVITY_LOGS
     ],
@@ -715,10 +726,11 @@ export default function App() {
       FIREBASE_COLLECTIONS.CREDITS
     ],
     caisse: [
-      FIREBASE_COLLECTIONS.CAISSE_CLOSURES, 
-      FIREBASE_COLLECTIONS.SALES, 
-      FIREBASE_COLLECTIONS.RENTALS, 
-      FIREBASE_COLLECTIONS.EXPENSES, 
+      FIREBASE_COLLECTIONS.CAISSE_CLOSURES,
+      FIREBASE_COLLECTIONS.SALES,
+      FIREBASE_COLLECTIONS.RENTALS,
+      FIREBASE_COLLECTIONS.EXPENSES,
+      FIREBASE_COLLECTIONS.CREDITS,
       FIREBASE_COLLECTIONS.STAFF_PAYOUTS,
       FIREBASE_COLLECTIONS.MAINTENANCE
     ],
@@ -1135,6 +1147,7 @@ export default function App() {
   // ==========================
   const handleAddRental = useCallback((rentalData: any) => {
     const newRental: Rental = { ...rentalData, id: generateId() };
+    const rentalDebt = Math.max(0, Number(rentalData.remainingAmount) || 0);
     
     // Add rental to state and Firebase
     setRentals(prev => [newRental, ...prev]);
@@ -1158,20 +1171,24 @@ export default function App() {
         }
         return c;
       }));
-      showToast('تم تسجيل الكراء الفوري بنجاح');
+      showToast(rentalDebt > 0
+        ? `تم تسجيل الكراء الفوري، والمتبقي ${rentalDebt.toLocaleString()} دج سُجِّل في قسم الكريدي`
+        : 'تم تسجيل الكراء الفوري بنجاح');
     } else {
-      showToast('تم تسجيل حجز الفستان مستقبلاً بنجاح (سيدخل في الكراء عند إتمام الصفقة وتسليمه)');
+      showToast(rentalDebt > 0
+        ? `تم تسجيل الحجز، والمتبقي ${rentalDebt.toLocaleString()} دج سُجِّل ككريدي للحجز`
+        : 'تم تسجيل حجز الفستان مستقبلاً بنجاح (سيدخل في الكراء عند إتمام الصفقة وتسليمه)');
     }
 
-    // If remaining amount > 0, add to credits/debts
-    if (rentalData.remainingAmount > 0) {
+    // Automatically register unpaid rent as a customer debt.
+    if (rentalDebt > 0) {
       const newCredit: Credit = {
         id: generateId(),
         name: rentalData.customerName,
         phone: rentalData.customerPhone,
         type: newRental.status === 'reserved' ? 'متبقي حجز فستان' : 'دين كراء فستان',
         desc: `${newRental.status === 'reserved' ? 'متبقي حجز' : 'متبقي كراء'}: ${rentalData.itemName}`,
-        amount: rentalData.remainingAmount,
+        amount: rentalDebt,
         date: new Date().toISOString(),
         relatedRentalId: newRental.id
       };
@@ -1474,6 +1491,7 @@ export default function App() {
   // SALES HANDLERS
   // ==========================
   const handleCompleteSale = useCallback((saleData: any) => {
+    const saleDebt = Math.max(0, Number(saleData.debtAmount) || 0);
     // Sanitize items so no heavy/redundant imageUrl is stored in the new sale record (Task 1)
     const sanitizedItems = (saleData.items || []).map((item: any) => {
       const { imageUrl, ...rest } = item;
@@ -1525,21 +1543,23 @@ export default function App() {
     });
 
     // If debt exists, add to credits
-    if (saleData.debtAmount > 0) {
+    if (saleDebt > 0) {
       const newCredit: Credit = {
         id: generateId(),
         name: saleData.customerName,
         phone: saleData.customerPhone,
         type: 'دين شراء ملابس',
         desc: `متبقي فاتورة بيع ملابس`,
-        amount: saleData.debtAmount,
+        amount: saleDebt,
         date: new Date().toISOString()
       };
       setCredits(prev => [newCredit, ...prev]);
       saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCredit);
     }
 
-    showToast('تم إتمام عملية البيع بنجاح');
+    showToast(saleDebt > 0
+      ? `تم البيع بنجاح، وسُجِّل المتبقي ${saleDebt.toLocaleString()} دج في قسم الكريدي`
+      : 'تم إتمام عملية البيع بنجاح');
   }, []);
 
   const handleDeleteSale = useCallback((sale: Sale) => {

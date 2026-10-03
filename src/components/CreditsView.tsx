@@ -65,12 +65,14 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
   // نافذة تسديد الكريدي: المبلغ + التاريخ + الصندوق
   const [settleCredit, setSettleCredit] = useState<Credit | null>(null);
   const [settleAmount, setSettleAmount] = useState<number | ''>('');
+  const [settlementMode, setSettlementMode] = useState<'partial' | 'full'>('full');
   const [settleDate, setSettleDate] = useState<string>(todayDateString());
   const [settleFund, setSettleFund] = useState<FundSource>('daily');
 
-  const openSettleModal = (credit: Credit) => {
+  const openSettleModal = (credit: Credit, mode: 'partial' | 'full') => {
     setSettleCredit(credit);
-    setSettleAmount(creditRemaining(credit));
+    setSettlementMode(mode);
+    setSettleAmount(mode === 'full' ? creditRemaining(credit) : '');
     setSettleDate(todayDateString());
     setSettleFund('daily');
   };
@@ -428,7 +430,11 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
               <div>
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-600" />
-                  <span>{settleCredit.supplierDebt ? 'تسديد دفعة للمورد' : 'تحصيل وتسديد الكريدي'}</span>
+                  <span>
+                    {settleCredit.supplierDebt
+                      ? settlementMode === 'partial' ? 'تسديد جزء من دين المورد' : 'تسديد كامل دين المورد'
+                      : settlementMode === 'partial' ? 'تحصيل جزء من دين الزبون' : 'تحصيل كامل دين الزبون'}
+                  </span>
                 </h3>
                 <p className="text-xs text-slate-500 font-normal mt-0.5">
                   {settleCredit.supplierDebt
@@ -475,7 +481,10 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
                     <label className="block text-xs font-medium text-slate-700">المبلغ (دج) *</label>
                     <button
                       type="button"
-                      onClick={() => setSettleAmount(creditRemaining(settleCredit))}
+                      onClick={() => {
+                        setSettlementMode('full');
+                        setSettleAmount(creditRemaining(settleCredit));
+                      }}
                       className="text-[10px] text-slate-600 hover:text-slate-900 font-medium underline"
                     >
                       تسديد كامل المتبقي
@@ -486,7 +495,13 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
                     required
                     min="1"
                     value={settleAmount}
-                    onChange={(e) => setSettleAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? '' : Number(e.target.value);
+                      setSettleAmount(value);
+                      setSettlementMode(
+                        value !== '' && value >= creditRemaining(settleCredit) ? 'full' : 'partial',
+                      );
+                    }}
                     placeholder="0"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400 focus:bg-white"
                   />
@@ -659,20 +674,39 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {isCreditSettled(credit) ? (
                       <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1">
                         <Check className="w-3.5 h-3.5" />
                         <span>مسدّد بالكامل</span>
                       </span>
                     ) : (
-                      <button
-                        onClick={() => openSettleModal(credit)}
-                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-medium transition-all text-xs flex items-center gap-1 active:scale-95"
-                      >
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>تسديد</span>
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => openSettleModal(credit, 'partial')}
+                          className={`px-2.5 py-1.5 rounded-lg font-semibold transition-all text-[11px] sm:text-xs flex items-center gap-1 active:scale-95 ${
+                            isSupplierDebt
+                              ? 'bg-rose-50 hover:bg-rose-100 text-rose-700'
+                              : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
+                          }`}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>تسديد جزء</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openSettleModal(credit, 'full')}
+                          className={`px-2.5 py-1.5 rounded-lg font-semibold transition-all text-[11px] sm:text-xs flex items-center gap-1 active:scale-95 ${
+                            isSupplierDebt
+                              ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                          }`}
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>تسديد بالكامل</span>
+                        </button>
+                      </>
                     )}
 
                     <button
