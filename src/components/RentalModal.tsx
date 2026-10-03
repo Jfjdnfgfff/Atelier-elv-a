@@ -21,7 +21,8 @@ import {
   Info,
   Barcode,
   Trash2,
-  RotateCcw
+  RotateCcw,
+  CreditCard
 } from 'lucide-react';
 
 interface RentalModalProps {
@@ -941,17 +942,30 @@ export const RentalModal: React.FC<RentalModalProps> = ({
 
           {/* 3. Paid Amount / Deposit */}
           <div>
-            <div className="flex justify-between items-center mb-1">
+            <div className="flex flex-wrap justify-between items-center gap-1 mb-1">
               <label className="block text-[11px] font-bold text-slate-700">
                 {bookingType === 'reserved' ? 'العربون / التسبيق (دج) *' : 'المدفوع مسبقاً (دج) *'}
               </label>
-              <button
-                type="button"
-                onClick={() => setPaidAmount(totalRentPrice)}
-                className="text-[10px] text-slate-700 font-bold underline hover:text-slate-900"
-              >
-                دفع كامل
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaidAmount(totalRentPrice)}
+                  className="text-[10px] text-slate-700 font-bold underline hover:text-slate-900"
+                >
+                  دفع كامل
+                </button>
+                {!rental && (
+                  <button
+                    type="button"
+                    onClick={() => setPaidAmount(0)}
+                    className="inline-flex items-center gap-1 text-[10px] text-rose-700 font-bold hover:text-rose-800"
+                    title="تسجيل كامل مبلغ الكراء كدين في قسم الكريدي"
+                  >
+                    <CreditCard className="w-3 h-3" />
+                    كراء بالكريدي
+                  </button>
+                )}
+              </div>
             </div>
             <input
               type="number"
@@ -985,6 +999,11 @@ export const RentalModal: React.FC<RentalModalProps> = ({
                 )}
               </span>
             </div>
+            {remainingAmount > 0 && !rental && (
+              <span className="mt-1 block text-[10px] font-medium text-rose-700">
+                سيُسجَّل هذا المبلغ تلقائيًا في قسم الكريدي عند حفظ الكراء.
+              </span>
+            )}
           </div>
         </div>
 

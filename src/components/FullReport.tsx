@@ -332,19 +332,51 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
     );
   }, [clothes, searchTerm]);
 
-  // Export handlers
+  // Export the report at a comfortable desktop width, even when the app is open on a phone.
+  // This keeps the downloaded PNG from inheriting the modal's narrow, tall mobile layout.
   const exportToImage = async () => {
     const element = document.getElementById('boutiqueFullReportDetailedContent');
     if (!element) return;
     setIsExporting(true);
-    setDownloadNote('جاري إنشاء صورة عالية الدقة للملخص العام وجميع التقارير...');
+    setDownloadNote('جاري تجهيز التقرير بصورة عريضة ومتجاوبة...');
+
+    let exportHost: HTMLDivElement | null = null;
     try {
-      await downloadElementAsPng(element, fileName);
-      setDownloadNote('تم تنزيل التقرير الشامل كاملاً كصورة PNG بنجاح');
+      const exportWidth = Math.min(1600, Math.max(1200, window.innerWidth));
+      exportHost = document.createElement('div');
+      exportHost.dir = 'rtl';
+      Object.assign(exportHost.style, {
+        position: 'fixed',
+        top: '0',
+        left: `-${exportWidth + 32}px`,
+        width: `${exportWidth}px`,
+        maxWidth: 'none',
+        zIndex: '-1',
+        pointerEvents: 'none',
+        backgroundColor: '#ffffff',
+      });
+
+      const exportElement = element.cloneNode(true) as HTMLElement;
+      exportElement.removeAttribute('id');
+      Object.assign(exportElement.style, {
+        width: `${exportWidth}px`,
+        minWidth: `${exportWidth}px`,
+        maxWidth: 'none',
+        boxSizing: 'border-box',
+        margin: '0',
+      });
+      exportHost.appendChild(exportElement);
+      document.body.appendChild(exportHost);
+
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      await document.fonts.ready;
+      await downloadElementAsPng(exportElement, fileName);
+      setDownloadNote('تم تنزيل التقرير الشامل كصورة PNG عريضة ومتجاوبة بنجاح');
     } catch (error) {
       console.error('Error exporting report to image:', error);
       setDownloadNote('تعذر تنزيل الصورة، يرجى المحاولة لاحقاً');
     } finally {
+      exportHost?.remove();
       setIsExporting(false);
     }
   };
@@ -402,7 +434,7 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
               onClick={exportToImage}
               disabled={isExporting}
               className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
-              title="تنزيل التقرير الشامل كصورة PNG عالية الدقة"
+              title="تنزيل التقرير الشامل كصورة PNG بعرض متجاوب مناسب للهاتف والكمبيوتر"
             >
               <Download className="w-3.5 h-3.5" />
               <span>{isExporting ? 'جاري التنزيل...' : 'تنزيل صورة PNG'}</span>

@@ -271,6 +271,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           sales={sales}
           expenses={expenses}
           staffPayouts={staffPayouts}
+          credits={credits}
           activityLogs={activityLogs}
           hideFinances={hideFinances}
           onPrivacyToggle={onPrivacyToggle}
