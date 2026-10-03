@@ -113,7 +113,6 @@ export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
                         inCartCount > 0 ? 'border-slate-900 ring-2 ring-slate-900/10' : 'border-slate-200/80 hover:border-slate-300'
                       }`}
                     >
-                      {/* Photo Container */}
                       <div 
                         onClick={() => onSelectItem(item)}
                         className="relative aspect-[3/4] bg-slate-900/5 overflow-hidden flex items-center justify-center cursor-pointer group"
@@ -143,19 +142,16 @@ export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
                           </div>
                         )}
 
-                        {/* Quantity Badge in Cart */}
                         {inCartCount > 0 && (
                           <span className="absolute top-2 left-2 bg-slate-900 text-white text-[11px] font-bold font-mono w-6 h-6 rounded-full flex items-center justify-center shadow-xs">
                             {inCartCount}
                           </span>
                         )}
 
-                        {/* Stock Tag on Top Right */}
                         <span className="absolute top-2 right-2 text-[9px] font-medium px-1.5 py-0.5 rounded-md bg-slate-900/90 text-white">
                           {totalStock} بالمخزنين
                         </span>
 
-                        {/* Quick Image Zoom button */}
                         {imgUrl && (
                           <button
                             type="button"
@@ -171,7 +167,6 @@ export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
                         )}
                       </div>
 
-                      {/* Details */}
                       <div className="p-2.5 flex-1 flex flex-col justify-between space-y-2">
                         <div>
                           <span className="text-[10px] text-slate-400 font-normal block truncate">{item.category}</span>
@@ -186,7 +181,6 @@ export const VirtualizedPosGrid: React.FC<VirtualizedPosGridProps> = ({
                           </div>
                         </div>
 
-                        {/* Stock 1 & Stock 2 badges with 1-click add */}
                         <div className="pt-1.5 border-t border-slate-100 space-y-1">
                           <div className="flex items-center justify-between text-xs font-bold text-slate-900">
                             <span className="text-slate-400 font-medium">السعر:</span>

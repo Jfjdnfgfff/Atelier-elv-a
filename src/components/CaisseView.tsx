@@ -240,9 +240,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
     setActualInput(String(totalDenom));
   };
 
-  // ==========================================
-  // 1. CALCULATIONS FOR SELECTED DATE (FI NHAR)
-  // ==========================================
   const {
     dateSales,
     dateSalesIncome,
@@ -289,9 +286,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
   const dailyStatus: 'balanced' | 'shortage' | 'surplus' = 
     dailyDifference < 0 ? 'shortage' : dailyDifference > 0 ? 'surplus' : 'balanced';
 
-  // ==========================================
-  // 2. CUMULATIVE MONTH STATS (FI CHHAR)
-  // ==========================================
   const currentMonthPrefix = selectedDate.substring(0, 7); // YYYY-MM
   const currentYearPrefix = selectedDate.substring(0, 4); // YYYY
 
@@ -328,9 +322,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
     };
   }, [caisseClosures, currentMonthPrefix, selectedDate, existingClosure, hasEnteredActual, theoreticalAmount, actualAmount, dailyDifference]);
 
-  // ==========================================
-  // 3. CUMULATIVE YEAR STATS (FI L3AM)
-  // ==========================================
   const yearStats = useMemo(() => {
     const pastClosuresInYear = caisseClosures.filter(c => 
       c.date.startsWith(currentYearPrefix) && c.date !== selectedDate
@@ -361,9 +352,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
     };
   }, [caisseClosures, currentYearPrefix, selectedDate, existingClosure, hasEnteredActual, theoreticalAmount, actualAmount, dailyDifference]);
 
-  // ==========================================
-  // 4. GENERAL FUND (الصندوق العام / الخزينة)
-  // ==========================================
   const [isEditingFund, setIsEditingFund] = useState(false);
   const [fundInput, setFundInput] = useState<string>(generalFundBalance ? String(generalFundBalance) : '');
   const [feedInput, setFeedInput] = useState<string>('');
@@ -451,9 +439,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
     return { totalTh, totalAc, totalDf };
   }, [filteredHistory]);
 
-  // ==========================================
-  // 4. CONSOLIDATED TRANSACTIONS & DELETION
-  // ==========================================
   const allTransactions = useMemo(() => {
     const list: Array<{
       id: string;
@@ -745,7 +730,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
               </p>
             )}
 
-            {/* Quick numeric touch keypad */}
             <div className="grid grid-cols-3 gap-1.5 pt-1">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(num => (
                 <button
@@ -795,7 +779,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
 
   return (
     <div className="space-y-4 sm:space-y-5 p-3 sm:p-6" dir="rtl">
-      {/* Top Header Card */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-2.5">
@@ -813,7 +796,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* View Tabs & Privacy Toggle & Lock Button */}
         <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end flex-wrap">
           <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-medium border border-slate-200/60">
             <button
@@ -875,7 +857,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* Date Bar for Today's view */}
       {viewTab === 'today' && (
         <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/80 flex flex-wrap items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-2">
@@ -896,7 +877,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
             )}
           </div>
 
-          {/* Status Badge */}
           <div>
             {existingClosure ? (
               <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200/80 px-3 py-1 rounded-full text-xs font-medium">
@@ -913,9 +893,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
         </div>
       )}
 
-      {/* 4 PRIMARY KPI CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* 1. MADKHOUL TE3 LA JOURNEE (مدخول اليوم) */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden transition-all">
           <div className="flex justify-between items-start">
             <span className="text-xs font-medium text-slate-500">إجمالي مدخول اليوم (المقبوضات)</span>
@@ -939,7 +917,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* 2. MANQUE TE3 LA CAISSE FI NHAR (فارق وعجز اليوم) */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden transition-all">
           <div className="flex justify-between items-start">
             <div>
@@ -983,7 +960,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* 3. MANQUE TE3 LA CAISSE FI CHHAR (فارق وعجز الشهر) */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden transition-all">
           <div className="flex justify-between items-start">
             <div>
@@ -1011,7 +987,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* 4. MANQUE TE3 LA CAISSE FI L3AM (فارق وعجز السنة) */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden transition-all">
           <div className="flex justify-between items-start">
             <div>
@@ -1040,9 +1015,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* ==================================================== */}
-      {/* GENERAL FUND CARD (الصندوق العام / الخزينة)          */}
-      {/* ==================================================== */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-indigo-200/70 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className="flex items-center gap-2.5">
@@ -1084,7 +1056,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* Manual adjust / feed the general fund */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/80 border border-slate-200/80 rounded-xl p-2.5">
           <div className="flex items-center gap-2">
             <Wallet className="w-3.5 h-3.5 text-slate-500" />
@@ -1162,11 +1133,8 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
         </p>
       </div>
 
-      {/* MAIN CONTENT: VIEW TAB 1 = TODAY'S CAISSE            */}
-      {/* ==================================================== */}
       {viewTab === 'today' ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
-          {/* LEFT/RIGHT COLUMN: CASH INPUT & DENOMINATIONS (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
             <form onSubmit={handleSaveCaisse} className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
               <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
@@ -1179,7 +1147,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 </span>
               </div>
 
-              {/* Theoretical Summary Box */}
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-xs space-y-1.5">
                 <div className="flex justify-between text-slate-600 font-medium">
                   <span>رصيد بداية اليوم (فوند دو كيس):</span>
@@ -1226,7 +1193,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 </div>
               </div>
 
-              {/* Opening Balance Field (Optional) */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   رصيد بداية اليوم الافتتاحي (Fond de caisse) - اختياري:
@@ -1245,7 +1211,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 </div>
               </div>
 
-              {/* PRIMARY ACTUAL CASH INPUT */}
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="text-xs font-bold text-slate-900">
@@ -1280,7 +1245,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 )}
               </div>
 
-              {/* Denomination Counter Drawer */}
               {showDenominations && (
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2.5">
                   <div className="flex justify-between items-center text-xs font-semibold text-slate-800 pb-1 border-b border-slate-200/80">
@@ -1334,7 +1298,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 </div>
               )}
 
-              {/* LIVE DISCREPANCY PREVIEW BOX */}
               {hasEnteredActual && (
                 <div className="p-3 rounded-xl border border-slate-200 text-center bg-slate-50">
                   <div className="text-xs font-medium text-slate-600">
@@ -1353,7 +1316,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 </div>
               )}
 
-              {/* Notes Field */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   ملاحظات أو تبرير الفارق (اختياري):
@@ -1367,7 +1329,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 />
               </div>
 
-              {/* Save / Close Action Buttons */}
               <div className="pt-2 flex flex-col gap-2">
                 <button
                   type="submit"
@@ -1391,9 +1352,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
             </form>
           </div>
 
-          {/* RIGHT/LEFT COLUMN: DETAILED BREAKDOWN OF TODAY'S TRANSACTIONS (7 cols) */}
           <div className="lg:col-span-7 space-y-4">
-            {/* Daily Cash Breakdown Cards */}
             <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
               <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
                 <h3 className="font-bold text-sm sm:text-base text-slate-900 flex items-center gap-2">
@@ -1405,7 +1364,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 </span>
               </div>
 
-              {/* Inflow Section */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-xs font-bold text-slate-800 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200/70">
                   <span className="flex items-center gap-1.5">
@@ -1441,7 +1399,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                   </div>
                 </div>
 
-                {/* List of Today's Sales */}
                 {dateSales.length > 0 && (
                   <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
                     <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px] flex justify-between items-center">
@@ -1479,7 +1436,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                   </div>
                 )}
 
-                {/* List of Today's Rentals */}
                 {dateRentals.length > 0 && (
                   <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
                     <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px] flex justify-between items-center">
@@ -1519,7 +1475,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                   </div>
                 )}
 
-                {/* List of Today's Tailoring */}
                 {dateTailoring.length > 0 && (
                   <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
                     <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px] flex justify-between items-center">
@@ -1560,7 +1515,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 )}
               </div>
 
-              {/* Outflow Section */}
               <div className="space-y-2 pt-2 border-t border-slate-100">
                 <div className="flex justify-between items-center text-xs font-bold text-slate-800 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200/70">
                   <span className="flex items-center gap-1.5">
@@ -1602,7 +1556,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                   </div>
                 </div>
 
-                {/* List of Today's Expenses */}
                 {dateExpenses.length > 0 && (
                   <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
                     <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px] flex justify-between items-center">
@@ -1649,7 +1602,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                   </div>
                 )}
 
-                {/* List of Today's Staff Payouts */}
                 {dateStaffPayouts.length > 0 && (
                   <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
                     <div className="bg-slate-100/70 px-3 py-1 font-semibold text-slate-700 text-[11px] flex justify-between items-center">
@@ -1695,7 +1647,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
         /* VIEW TAB 2 = LIVE ALL TRANSACTIONS & DELETIONS       */
         /* ==================================================== */
         <div className="space-y-4">
-          {/* Summary Pills */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
               <div>
@@ -1734,7 +1685,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
             </div>
           </div>
 
-          {/* Search & Filter Toolbar */}
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
             <div className="flex-1 min-w-[240px] relative">
               <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
@@ -1792,7 +1742,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
             </div>
           </div>
 
-          {/* Transactions Table */}
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
             {filteredTransactions.length === 0 ? (
               <div className="p-12 text-center text-slate-400">
@@ -1867,7 +1816,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
         /* VIEW TAB 2 = HISTORY & PREVIOUS CLOSURES             */
         /* ==================================================== */
         <div className="space-y-4">
-          {/* History Filter Bar */}
           <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="text-xs font-semibold text-slate-700">تصفية حسب الفترة:</span>
@@ -1905,7 +1853,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
               </div>
             </div>
 
-            {/* Filtered summary pills */}
             <div className="flex items-center gap-3 text-xs">
               <span className="text-slate-600">
                 عدد الإقفالات: <strong className="text-slate-900 font-mono">{filteredHistory.length}</strong>
@@ -1918,7 +1865,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
             </div>
           </div>
 
-          {/* Closures Table */}
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
             {filteredHistory.length === 0 ? (
               <div className="p-12 text-center text-slate-400">
@@ -2029,7 +1975,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
         </div>
       )}
 
-      {/* Printable Receipt Modal */}
       {selectedClosureForReceipt && (
         <Modal 
           title={`وصل إقفال الصندوق - ${selectedClosureForReceipt.date}`} 
@@ -2042,7 +1987,6 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
         </Modal>
       )}
 
-      {/* Clear/Reset Caisse Modal */}
       {showClearConfirmModal && (
         <Modal
           title="تفريغ وتصفير الصندوق"

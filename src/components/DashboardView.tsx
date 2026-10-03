@@ -111,9 +111,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   const internalStats = useDashboardStats(rentals, sales, expenses, credits, staffPayouts, maintenanceOrders);
   const stats = externalStats || internalStats;
 
-  // ==========================
-  // ACTIVITY LOGS STATE & PIN
-  // ==========================
   const [logSearchTerm, setLogSearchTerm] = useState('');
   const [logCategoryFilter, setLogCategoryFilter] = useState<ActivityCategory | 'all'>('all');
   const [logActionFilter, setLogActionFilter] = useState<ActivityActionType | 'all'>('all');
@@ -365,7 +362,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
 
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6" dir="rtl">
-      {/* Top Welcome & Controls Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-blue-50/70 via-white to-indigo-50/70 p-4 sm:p-5 rounded-2xl border border-blue-100 shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
@@ -382,7 +378,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          {/* Period Selector Toggle */}
           <div className="flex items-center bg-slate-100/90 p-1 rounded-xl text-xs font-medium border border-slate-200/60">
             <button
               onClick={() => setFinancePeriod('monthly')}
@@ -433,7 +428,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* Daily Cash Register & Shortage Monitoring Banner (La Caisse du Jour) */}
       <div className="bg-white text-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -458,7 +452,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           </p>
         </div>
 
-        {/* 3 Quick stats and CTA button */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/80 text-center min-w-[95px]">
             <div className="text-[10px] text-slate-500 font-medium">مدخول اليوم:</div>
@@ -503,9 +496,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* Main Income & Financial StatCards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* 1. مداخيل الكراء والتأجير */}
         <StatCard
           title="مداخيل الكراء والتأجير"
           value={currentRentalIncome}
@@ -516,7 +507,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           icon={<Sparkles className="w-4 h-4 text-sky-700" />}
         />
 
-        {/* 2. مداخيل الخياطة الشهرية */}
         <StatCard
           title="مداخيل الخياطة الشهرية"
           value={stats.monthlyTailoringIncome || 0}
@@ -527,7 +517,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           icon={<Scissors className="w-4 h-4 text-purple-700" />}
         />
 
-        {/* 3. مداخيل الخياطة السنوية */}
         <StatCard
           title="مداخيل الخياطة السنوية"
           value={stats.yearlyTailoringIncome || 0}
@@ -538,7 +527,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           icon={<Scissors className="w-4 h-4 text-purple-700" />}
         />
 
-        {/* 4. مداخيل مبيعات الملابس */}
         <StatCard
           title="مبيعات الملابس (الكاشير)"
           value={currentSalesRevenue}
@@ -549,7 +537,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           icon={<ShoppingBag className="w-4 h-4 text-emerald-700" />}
         />
 
-        {/* 5. المصاريف والغسيل */}
         <StatCard
           title="المصاريف والغسيل (Pressing)"
           value={currentExpenses}
@@ -560,7 +547,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           icon={<Receipt className="w-4 h-4 text-rose-700" />}
         />
 
-        {/* 6. الديون والكريدي المتبقي */}
         <StatCard
           title="الكريدي والديون المتبقية"
           value={stats.totalDebt}
@@ -571,7 +557,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           icon={<CreditCard className="w-4 h-4 text-amber-700" />}
         />
 
-        {/* 7. رواتب ومستحقات العمال */}
         <StatCard
           title="رواتب ومسحوبات العمال"
           value={currentStaffPayouts}
@@ -588,7 +573,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           icon={<Users className="w-4 h-4 text-violet-700" />}
         />
 
-        {/* 8. صافي الأرباح الكلية */}
         <StatCard
           title="صافي الأرباح الصافية"
           value={currentNetProfit}
@@ -606,7 +590,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         />
       </div>
 
-      {/* التفصيل المالي الدقيق لكل نشاط (كراء، بيع، خياطة) شهرياً وسنوياً */}
       <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
           <div>
@@ -623,7 +606,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* 1. نشاط كراء الفساتين */}
           <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
               <div className="flex items-center gap-2">
@@ -643,7 +625,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
               </button>
             </div>
 
-            {/* Monthly Rentals */}
             <div className="bg-white p-3 rounded-xl border border-slate-200/80 space-y-2">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-semibold text-slate-700 flex items-center gap-1">
@@ -674,7 +655,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
               </div>
             </div>
 
-            {/* Yearly Rentals */}
             <div className="bg-white p-3 rounded-xl border border-slate-200/80 space-y-2">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-semibold text-slate-700 flex items-center gap-1">
@@ -706,7 +686,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
             </div>
           </div>
 
-          {/* 2. نشاط بيع الفساتين والملابس */}
           <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
               <div className="flex items-center gap-2">
@@ -726,7 +705,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
               </button>
             </div>
 
-            {/* Monthly Sales */}
             <div className="bg-white p-3 rounded-xl border border-slate-200/80 space-y-2">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-semibold text-slate-700 flex items-center gap-1">
@@ -757,7 +735,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
               </div>
             </div>
 
-            {/* Yearly Sales */}
             <div className="bg-white p-3 rounded-xl border border-slate-200/80 space-y-2">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-semibold text-slate-700 flex items-center gap-1">
@@ -789,7 +766,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
             </div>
           </div>
 
-          {/* 3. نشاط الخياطة والتفصيل والصيانة */}
           <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
               <div className="flex items-center gap-2">
@@ -809,7 +785,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
               </button>
             </div>
 
-            {/* Monthly Tailoring */}
             <div className="bg-white p-3 rounded-xl border border-slate-200/80 space-y-2">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-semibold text-slate-700 flex items-center gap-1">
@@ -840,7 +815,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
               </div>
             </div>
 
-            {/* Yearly Tailoring */}
             <div className="bg-white p-3 rounded-xl border border-slate-200/80 space-y-2">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-semibold text-slate-700 flex items-center gap-1">
@@ -874,7 +848,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* Urgent Returns Alert Banner */}
       {urgentRentals.length > 0 && (
         <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
           <div className="flex justify-between items-center">
@@ -959,7 +932,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         </div>
       )}
 
-      {/* Urgent Tailoring Orders Alert Banner (Within 10 Days) */}
       {urgentTailoringOrders.length > 0 && (
         <div className="bg-sky-50/70 border border-sky-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
           <div className="flex justify-between items-center">
@@ -1030,7 +1002,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         </div>
       )}
 
-      {/* Active Rentals Summary Table */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs space-y-4">
         <div className="flex justify-between items-center">
           <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
@@ -1090,11 +1061,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         )}
       </div>
 
-      {/* ========================================================================= */}
-      {/* ACTIVITY LOG SECTION (سجل العمليات والنشاطات الشامل والمحمي بكلمة مرور) */}
-      {/* ========================================================================= */}
       <div className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-6 shadow-xs mt-6 space-y-4">
-        {/* Section Header */}
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-3 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
@@ -1146,9 +1113,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* Filter & Search Bar */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2.5 pt-1">
-          {/* Search Box */}
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -1168,7 +1133,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
             )}
           </div>
 
-          {/* Action Filter */}
           <div className="shrink-0 flex items-center gap-2">
             <select
               value={logActionFilter}
@@ -1187,7 +1151,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* Category Filter Chips */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
           {[
             { id: 'all', label: 'الكل' },
@@ -1225,7 +1188,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           })}
         </div>
 
-        {/* Logs List Table / Cards */}
         {filteredLogs.length === 0 ? (
           <div className="text-center py-10 bg-slate-50/60 rounded-xl border border-dashed border-slate-200">
             <History className="w-8 h-8 text-slate-300 mx-auto mb-2" />
@@ -1279,7 +1241,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
                     </div>
                   </div>
 
-                  {/* Lock Protected Delete Log Button */}
                   <div className="flex items-center justify-end shrink-0 pt-1 sm:pt-0">
                     <button
                       onClick={() => {
@@ -1301,7 +1262,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           </div>
         )}
 
-        {/* Load More / Footer Actions */}
         {filteredLogs.length > visibleLogsCount && (
           <div className="pt-2 text-center border-t border-slate-100">
             <button
@@ -1314,9 +1274,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         )}
       </div>
 
-      {/* ========================================================================= */}
-      {/* MODAL: SECURITY PIN VERIFICATION (حذف سجل محمي بكلمة مرور) */}
-      {/* ========================================================================= */}
       {pinModalOpen && (
         <Modal
           isOpen={true}
@@ -1402,9 +1359,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         </Modal>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL: CHANGE SECURITY PIN (تغيير كلمة المرور) */}
-      {/* ========================================================================= */}
       {isChangePinOpen && (
         <Modal
           isOpen={true}
@@ -1487,9 +1441,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         </Modal>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL: ADD MANUAL LOG ENTRY (إضافة قيد يدوي في السجل) */}
-      {/* ========================================================================= */}
       {isAddManualLogOpen && (
         <Modal
           isOpen={true}

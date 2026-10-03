@@ -40,7 +40,6 @@ export const CaisseReceiptModal: React.FC<CaisseReceiptModalProps> = ({ closure,
 
   return (
     <div className="space-y-4" dir="rtl">
-      {/* Top Action Controls */}
       <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200 no-print">
         <span className="text-xs font-bold text-slate-600">{downloadNote || 'تنزيل الوصل صورة PNG، أو الانتقال إلى واجهة الطباعة'}</span>
         <div className="flex gap-2">
@@ -61,12 +60,10 @@ export const CaisseReceiptModal: React.FC<CaisseReceiptModalProps> = ({ closure,
         </div>
       </div>
 
-      {/* Printable Receipt Area */}
       <div 
         id="caisseReceiptPrintArea" 
         className="bg-white p-6 rounded-2xl border-2 border-slate-200 shadow-sm max-w-md mx-auto text-slate-900 font-sans print:border-none print:shadow-none print:p-2"
       >
-        {/* Receipt Header */}
         <div className="text-center pb-4 border-b-2 border-dashed border-slate-300">
           <div className="w-12 h-12 bg-slate-100 text-slate-700 rounded-2xl mx-auto flex items-center justify-center text-xl font-bold mb-1 border border-slate-200">
             <Scale className="w-6 h-6 text-slate-700" />
@@ -79,7 +76,6 @@ export const CaisseReceiptModal: React.FC<CaisseReceiptModalProps> = ({ closure,
           </div>
         </div>
 
-        {/* Status Banner */}
         <div className={`mt-4 p-3 rounded-xl text-center border ${
           isShortage ? 'bg-slate-50 border-slate-300 text-slate-900' :
           isSurplus ? 'bg-slate-50 border-slate-300 text-slate-900' :
@@ -108,7 +104,6 @@ export const CaisseReceiptModal: React.FC<CaisseReceiptModalProps> = ({ closure,
           </div>
         </div>
 
-        {/* Cash Breakdown Table */}
         <div className="mt-4 space-y-2 text-xs">
           <div className="font-black text-slate-700 pb-1 border-b border-slate-200">
             1. حركة المداخيل والمقبوضات (Entrées)
@@ -182,7 +177,6 @@ export const CaisseReceiptModal: React.FC<CaisseReceiptModalProps> = ({ closure,
             <span className="font-mono">{closure.totalOutflow.toLocaleString()} دج</span>
           </div>
 
-          {/* Balance Comparison */}
           <div className="mt-4 pt-3 border-t-2 border-dashed border-slate-300 space-y-1.5">
             <div className="flex justify-between items-center text-xs">
               <span className="text-slate-600 font-bold">المبلغ النظري المتوقع (Théorique):</span>
@@ -212,7 +206,6 @@ export const CaisseReceiptModal: React.FC<CaisseReceiptModalProps> = ({ closure,
           )}
         </div>
 
-        {/* Footer & Signatures */}
         <div className="mt-6 pt-4 border-t border-slate-200 grid grid-cols-2 gap-4 text-center text-[10px] text-slate-500">
           <div>
             <div className="font-bold text-slate-700 mb-6">توقيع أمين الصندوق / البائع</div>

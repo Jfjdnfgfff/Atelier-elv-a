@@ -365,7 +365,6 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
   return (
     <div className="space-y-4 sm:space-y-5" dir="rtl">
       
-      {/* Top Header Card */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 flex items-center justify-center shrink-0 shadow-2xs">
@@ -385,7 +384,6 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* Header Action Buttons */}
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
             onClick={() => setIsAddManualLogOpen(true)}
@@ -424,7 +422,6 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* Metric Cards Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 border border-slate-200/60 flex items-center justify-center shrink-0">
@@ -467,11 +464,8 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* Filter and Search Controls Card */}
       <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
-        {/* Search Bar + Quick Category Select */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-          {/* Search Input */}
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
@@ -491,7 +485,6 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
             )}
           </div>
 
-          {/* Action Type Filter */}
           <div className="flex items-center gap-2">
             <select
               value={selectedActionType}
@@ -505,7 +498,6 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
               <option value="delete">عمليات الحذف فقط</option>
             </select>
 
-            {/* Date Range Selector */}
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value as any)}
@@ -519,7 +511,6 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* Category Horizontal Chips */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 custom-scrollbar text-xs">
           {[
             { id: 'all', label: 'كافة الأقسام', count: logs.length },
@@ -553,7 +544,6 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* Selected Items Bulk Bar */}
       {selectedLogIds.length > 0 && (
         <div className="bg-slate-900 text-white p-3 rounded-xl flex items-center justify-between shadow-md animate-in fade-in">
           <div className="flex items-center gap-2">
@@ -582,7 +572,6 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
         </div>
       )}
 
-      {/* Logs Table / List */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         <VirtualizedList<ActivityLog>
           items={filteredLogs}
@@ -597,7 +586,6 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
                   isSelected ? 'bg-slate-50' : ''
                 }`}
               >
-                {/* Left Column: Checkbox & Category Icon */}
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <input
                     type="checkbox"
@@ -616,9 +604,7 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
                     {getCategoryIcon(log.category)}
                   </div>
 
-                  {/* Middle Column: Details & Content */}
                   <div className="flex-1 min-w-0 space-y-1">
-                    {/* Top Row: Title, Action Badge, Category Badge */}
                     <div className="flex flex-wrap items-center gap-2">
                       <h4 className="font-bold text-xs sm:text-sm text-slate-900">
                         {log.title}
@@ -634,12 +620,10 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
                       )}
                     </div>
 
-                    {/* Detailed Description */}
                     <p className="text-xs text-slate-600 leading-relaxed break-words font-normal">
                       {log.details}
                     </p>
 
-                    {/* Footer Info: Timestamp, Code, User */}
                     <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 pt-0.5 font-normal">
                       <span className="flex items-center gap-1 font-mono text-slate-600">
                         <Clock className="w-3 h-3 text-slate-400" />
@@ -657,7 +641,6 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
                   </div>
                 </div>
 
-                {/* Right Column: Delete Button with Lock Indicator */}
                 <div className="shrink-0 flex items-center gap-1">
                   <button
                     onClick={() => {
@@ -677,9 +660,7 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
         />
       </div>
 
-      {/* ================= MODALS ================= */}
 
-      {/* PIN Verification Modal for Deletion */}
       {pendingDeleteAction && (
         <Modal 
           title="التحقق من كلمة السر لحذف السجل" 
@@ -707,7 +688,6 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
               </p>
             </div>
 
-            {/* PIN Input */}
             <div className="relative max-w-xs mx-auto">
               <input
                 type={showPinText ? 'text' : 'password'}
@@ -760,7 +740,6 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
         </Modal>
       )}
 
-      {/* Change Security PIN Modal */}
       {isChangePasswordModalOpen && (
         <Modal 
           title="تغيير كلمة سر الأمان وحذف السجلات" 
@@ -835,7 +814,6 @@ export const LogsView: React.FC<LogsViewProps> = React.memo(({
         </Modal>
       )}
 
-      {/* Add Manual Log Modal */}
       {isAddManualLogOpen && (
         <Modal 
           title="تسجيل قيد أو ملاحظة يدوية في السجل" 

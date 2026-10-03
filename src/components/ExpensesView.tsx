@@ -320,7 +320,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
 
   return (
     <div className="space-y-6 p-3 sm:p-6" dir="rtl">
-      {/* Top Banner & Financial Metrics */}
       <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
@@ -361,7 +360,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* 4 Financial Stat Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
           <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl">
             <span className="text-[11px] text-slate-500 font-normal block mb-0.5">مشتريات الموردين (كاش):</span>
@@ -398,7 +396,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* Detailed Breakdown for General Expenses (تفصيل المصاريف التشغيلية: إيجار، فواتير، أجور، تنظيف) */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-100 text-xs">
           <div className="bg-indigo-50/70 border border-indigo-100 p-2.5 rounded-xl">
             <span className="text-indigo-800 text-[11px] font-bold block flex items-center gap-1">
@@ -442,7 +439,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* Main Interactive Add Form */}
       {activeFormTab === 'supplier' ? (
         /* Form 1: Supplier Purchase & Payout (خلاص وشراء السلعة من المورد) */
         <form onSubmit={handleSupplierSubmit} className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
@@ -462,7 +458,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Supplier Selection */}
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 اسم المورد *
@@ -494,7 +489,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
               </div>
             </div>
 
-            {/* Supplier Phone */}
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 هاتف المورد (أرقام فقط)
@@ -508,7 +502,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
               />
             </div>
 
-            {/* Date & Invoice Number */}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">تاريخ المعاملة</label>
@@ -532,7 +525,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             </div>
           </div>
 
-          {/* Goods Description (ماذا شريت عليه) */}
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="block text-xs font-medium text-slate-800">
@@ -548,7 +540,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
               placeholder="مثال: 5 فساتين سهرة تركية موديل 2026 + 3 قفاطين ملكية مطرزة باليد + 10 حقائب سهرة..."
               className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal focus:outline-none focus:border-slate-400"
             />
-            {/* Quick Chips */}
             <div className="flex flex-wrap gap-1.5 mt-1.5">
               {quickGoodsSuggestions.map(item => (
                 <button
@@ -563,7 +554,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             </div>
           </div>
 
-          {/* Financial Calculation Box: Total vs Paid vs Credit */}
           <div className="bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 space-y-3">
             <div className="text-xs font-medium text-slate-800 flex items-center justify-between">
               <span>الحساب المالي للسلعة (الخلاص والكريدي):</span>
@@ -573,7 +563,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Total Invoice */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   1. إجمالي مبلغ السلعة / الفاتورة (دج) *
@@ -595,7 +584,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                 />
               </div>
 
-              {/* Amount Paid Now (شحال خلصته) */}
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="block text-xs font-bold text-slate-700">
@@ -622,7 +610,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                 />
               </div>
 
-              {/* Remaining Credit (شحال كريدي) */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   3. شحال كريدي (دين متبقي للمورد)
@@ -646,7 +633,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             )}
           </div>
 
-          {/* Payment Source: صندوق اليوم أو الصندوق العام */}
           <FundSourcePicker
             value={supplierFundSource}
             onChange={setSupplierFundSource}
@@ -732,7 +718,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             </div>
           </div>
 
-          {/* Quick Category Chips */}
           <div>
             <span className="block text-[11px] font-bold text-slate-500 mb-1.5">اختيار تصنيف سريع:</span>
             <div className="flex flex-wrap gap-1.5">
@@ -758,7 +743,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             </div>
           </div>
 
-          {/* Rent Period Helper (Loyer) */}
           {(generalCategory.includes('كراء') || generalCategory.includes('إيجار')) && (
             <div className="p-3 bg-indigo-50/70 border border-indigo-200/80 rounded-2xl space-y-2">
               <div className="flex items-center justify-between">
@@ -794,7 +778,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             </div>
           )}
 
-          {/* Payment Source: صندوق اليوم أو الصندوق العام */}
           <FundSourcePicker
             value={generalFundSource}
             onChange={setGeneralFundSource}
@@ -802,7 +785,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             amount={generalAmount}
           />
 
-          {/* Date Selector */}
           <div className="flex items-center gap-3">
             <div className="w-48">
               <label className="block text-[11px] font-bold text-slate-600 mb-1">تاريخ دفع المصروف</label>
@@ -832,7 +814,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
         </form>
       )}
 
-      {/* Expenses History & Supplier Log */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
@@ -840,7 +821,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
             <p className="text-xs text-slate-500 font-normal">تتبع كافة المدفوعات، تفاصيل السلع المشتراة، والكريدي المتبقي.</p>
           </div>
 
-          {/* Filter Pills */}
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               onClick={() => setFilterTab('all')}
@@ -880,7 +860,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* Search input and Category Filter */}
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <input
@@ -924,7 +903,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                   className="p-4 rounded-2xl border border-slate-200/80 bg-white transition-all hover:border-slate-300"
                 >
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    {/* Main Details */}
                     <div className="space-y-1.5 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         {isSupplier ? (
@@ -972,7 +950,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                         </span>
                       </div>
 
-                      {/* Description / Goods */}
                       {isSupplier ? (
                         <div>
                           <div className="text-xs font-bold text-slate-900 mt-1">
@@ -998,7 +975,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                       )}
                     </div>
 
-                    {/* Financial Summary & Actions */}
                     <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
                       {isSupplier ? (
                         <div className="flex items-center gap-3 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/80">
@@ -1035,7 +1011,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
                         </div>
                       )}
 
-                      {/* Action Buttons */}
                       <div className="flex items-center gap-1.5">
                         {isSupplier && hasCredit && (
                           <button
@@ -1074,7 +1049,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
           </div>
         )}
 
-        {/* Pagination Controls */}
         {totalPages > 1 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 mt-4">
             <div className="text-xs text-slate-500 font-medium">
@@ -1112,7 +1086,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
         )}
       </div>
 
-      {/* Settle Supplier Debt Modal */}
       {settleModalExpense && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50" dir="rtl">
           <div className="bg-white rounded-2xl p-5 sm:p-6 max-w-md w-full shadow-xl border border-slate-200/80 space-y-4">
@@ -1205,7 +1178,6 @@ export const ExpensesView: React.FC<ExpensesViewProps> = React.memo(({
         </div>
       )}
 
-      {/* Supplier Purchase Voucher Print Modal */}
       {voucherExpense && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50" dir="rtl">
           <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-xl border border-slate-200/80 space-y-4">

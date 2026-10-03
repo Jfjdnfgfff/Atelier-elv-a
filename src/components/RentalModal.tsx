@@ -305,7 +305,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-slate-800" dir="rtl">
-      {/* Booking Mode Selector (كراء فوري مباشر vs مستأجرة مستقبلاً) */}
       <div className="bg-blue-900 text-white p-3.5 rounded-3xl shadow-xs space-y-2">
         <div className="flex justify-between items-center">
           <span className="text-xs font-bold text-blue-200">نوع العملية والتسليم:</span>
@@ -361,7 +360,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
         )}
       </div>
 
-      {/* Dress Selector with Quick Barcode Scan */}
       <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl space-y-2.5">
         <div className="flex justify-between items-center">
           <label className="block text-xs font-bold text-slate-900">اختر الفستان أو الزي للكراء *</label>
@@ -371,7 +369,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           </span>
         </div>
 
-        {/* Quick Barcode/Search Input + Camera Scanner Button */}
         <div className="flex gap-1.5">
           <NumbersInput
             value={quickBarcodeInput}
@@ -403,7 +400,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           </button>
         </div>
 
-        {/* Scanned notification */}
         {scanNotice && (
           <div className="bg-slate-900 text-white text-xs font-bold p-2 rounded-xl text-center">
             {scanNotice}
@@ -447,7 +443,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           </div>
         )}
 
-        {/* Stock Source Selection Buttons */}
         <div className="pt-2 border-t border-slate-200 flex items-center justify-between gap-2">
           <span className="text-[11px] font-bold text-slate-700">المخزن المراد الكراء منه:</span>
           <div className="flex gap-2">
@@ -478,7 +473,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           </div>
         </div>
 
-        {/* Available Sizes & Colors Selection for this specific item */}
         {selectedItem && (
           <div className="pt-2 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             <div>
@@ -544,7 +538,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
         )}
       </div>
 
-      {/* Date & Duration Controls (التحكم في تاريخ ومدة الكراء) */}
       <div className="bg-slate-50 p-3.5 sm:p-4 rounded-3xl border border-slate-200/80 shadow-2xs space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200/60">
           <div className="flex items-center gap-2">
@@ -557,7 +550,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
             </div>
           </div>
 
-          {/* Quick Date Presets */}
           <div className="flex flex-wrap items-center gap-1">
             <button
               type="button"
@@ -595,7 +587,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           </div>
         </div>
 
-        {/* Date Inputs */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -643,7 +634,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           </div>
         </div>
 
-        {/* Quick Duration Buttons */}
         <div>
           <span className="block text-[10px] font-bold text-slate-500 mb-1">اختيار مدة الكراء سريعة:</span>
           <div className="flex flex-wrap gap-1.5">
@@ -670,7 +660,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           </div>
         </div>
 
-        {/* Timeline Summary Box */}
         <div className="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs font-medium text-slate-700">
           <div className="flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-slate-500" />
@@ -682,7 +671,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
         </div>
       </div>
 
-      {/* Customer Information Section */}
       <div className="bg-slate-50 p-4 rounded-3xl border border-slate-200 shadow-xs space-y-3">
         <div className="flex flex-wrap justify-between items-center gap-2">
           <div className="flex items-center gap-2">
@@ -780,7 +768,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
         </div>
       </div>
 
-      {/* Accessories & Extras Section (كراء إكسسوار مع الفستان) */}
       <div className={`p-4 rounded-3xl border transition-all ${
         hasAccessories 
           ? 'bg-slate-50 border-slate-300 shadow-xs' 
@@ -859,7 +846,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
               </div>
             </div>
 
-            {/* Quick Accessory Suggestions */}
             <div>
               <span className="text-[10px] text-slate-600 font-bold block mb-1">اقتراحات سريعة للإكسسوارات:</span>
               <div className="flex flex-wrap gap-1.5">
@@ -879,9 +865,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
         )}
       </div>
 
-      {/* Dynamic Financial Calculation Summary Box (سعر الفستان + الإكسسوار = السعر الكلي) */}
       <div className="p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3">
-        {/* Dynamic Formula Header */}
         <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-slate-200">
           <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
             <DollarSign className="w-4 h-4 text-slate-600" />
@@ -899,9 +883,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           </div>
         </div>
 
-        {/* Detailed inputs: Dress Price, Accessory Price, Discount, Total, Paid, Remaining */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {/* 1. Dress Base Price */}
           <div>
             <label className="block text-[11px] font-bold text-slate-700 mb-1">
               سعر كراء الفستان (دج) *
@@ -916,7 +898,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
             />
           </div>
 
-          {/* 2. Accessory Price (Read or Edit) */}
           <div>
             <label className="block text-[11px] font-bold text-slate-700 mb-1">
               سعر الإكسسوار (دج)
@@ -940,7 +921,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
             />
           </div>
 
-          {/* 3. Paid Amount / Deposit */}
           <div>
             <div className="flex flex-wrap justify-between items-center gap-1 mb-1">
               <label className="block text-[11px] font-bold text-slate-700">
@@ -977,7 +957,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
             />
           </div>
 
-          {/* 4. Remaining Amount (المتبقي) */}
           <div>
             <label className="block text-[11px] font-bold text-slate-700 mb-1">
               {bookingType === 'reserved' ? 'المتبقي عند استلام الفستان' : 'المتبقي (دين/كريدي)'}
@@ -1007,7 +986,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           </div>
         </div>
 
-        {/* Date of Receiving Money / Payment (تاريخ استلام المال والعربون للدخول الدقيق في الصندوق) */}
         <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -1024,7 +1002,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
               </div>
             </div>
 
-            {/* Quick Date Presets */}
             <div className="flex flex-wrap items-center gap-1">
               <button
                 type="button"
@@ -1079,7 +1056,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           </div>
         </div>
 
-        {/* Discount / Price Reduction Control for Rentals (إنقاص سعر الكراء والتخفيض) */}
         <div className="p-3 bg-white rounded-2xl border border-slate-200/80 space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
@@ -1122,7 +1098,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
               />
             </div>
 
-            {/* Quick reduction chips */}
             <div className="sm:col-span-2">
               <span className="block text-[10px] font-bold text-slate-500 mb-1">تخفيضات جاهزة سريعة:</span>
               <div className="flex flex-wrap gap-1.5">
@@ -1160,7 +1135,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           )}
         </div>
 
-        {/* Breakdown Calculation Banner */}
         {hasAccessories && safeAccPrice > 0 && (
           <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-xs flex flex-wrap items-center justify-between gap-2">
             <span className="text-slate-600 font-bold">تفاصيل مجموع الكراء:</span>
@@ -1176,7 +1150,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
           </div>
         )}
 
-        {/* Caution Amount (الضمان المالي) */}
         <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div>
             <span className="text-xs font-bold text-slate-800 block">الضمان المالي (Caution):</span>
@@ -1194,7 +1167,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
         </div>
       </div>
 
-      {/* Notes / Special Requests */}
       <div>
         <label className="block text-xs font-bold text-slate-700 mb-1">ملاحظات أو تعديلات خاصة (خياطة/تنظيف...)</label>
         <textarea
@@ -1220,7 +1192,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
         </span>
       </button>
 
-      {/* Embedded Barcode Scanner Camera Modal for Clothes */}
       {showBarcodeScanner && (
         <React.Suspense fallback={null}>
           <BarcodeScanner
@@ -1231,7 +1202,6 @@ export const RentalModal: React.FC<RentalModalProps> = ({
         </React.Suspense>
       )}
 
-      {/* Smart Customer ID & Barcode Scanner Modal */}
       {showCustomerIdScanner && (
         <React.Suspense fallback={null}>
           <CustomerIdScannerModal

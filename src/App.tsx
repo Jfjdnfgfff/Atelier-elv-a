@@ -5,6 +5,7 @@ import {
   Sale, 
   Expense, 
   Credit, 
+  CreditPayment,
   StaffPayout, 
   StaffMember,
   StaffAbsence,
@@ -16,8 +17,7 @@ import {
   RawMaterial,
   Seamstress,
   ActivityLog,
-  FundSource,
-  CreditPayment
+  FundSource
 } from './types';
 import { 
   loadFromStorage, 
@@ -29,6 +29,7 @@ import {
   DEFAULT_SALES,
   DEFAULT_EXPENSES,
   DEFAULT_CREDITS,
+  DEFAULT_CREDIT_PAYMENTS,
   DEFAULT_STAFF,
   DEFAULT_STAFF_PAYOUTS,
   DEFAULT_STAFF_ABSENCES,
@@ -39,16 +40,13 @@ import {
   DEFAULT_SEAMSTRESSES,
   DEFAULT_ACTIVITY_LOGS,
   initializeStorage,
-  getCachedCollection,
   hydrateFromIndexedDB
 } from './storage';
 import { perfMonitor } from './utils/performanceMonitor';
 import {
   isGeneralFundExpense,
-  creditRemaining,
-  creditTotalPaid,
-  generalFundEffectOfPayment,
-  generalFundEffectOfCredit
+  paymentsForCredit,
+  generalFundEffectOfPayment
 } from './utils/fundBalance';
 import { 
   FIREBASE_COLLECTIONS, 
@@ -57,13 +55,13 @@ import {
   deleteItemFromFirebase, 
   fetchCollectionPage,
   syncCollectionToCloud, 
+  migrateEmbeddedCreditPayments,
   SubscriptionManager, 
   areArraysEqual,
   firebaseConfig,
   downloadFullFirebaseBackupDirect
 } from './firebase';
 
-// Components
 import { Modal } from './components/Shared';
 import AppNavigation from './components/AppNavigation';
 import { TrashModal } from './components/TrashModal';
@@ -72,7 +70,7 @@ import { AsyncProductImage } from './components/AsyncProductImage';
 import { getListImage } from './utils/imageUtils';
 import { imageStore } from './utils/imageStore';
 
-// Lazy-loaded Modals with idle background preloading
+// النوافذ المنبثقة تُحمَّل كسلاً وتُجهَّز مسبقاً في وقت الخمول لفتح فوري
 const BarcodeScanner = React.lazy(() => import('./components/BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
 const FullReport = React.lazy(() => import('./components/FullReport').then(m => ({ default: m.FullReport })));
 const RentalModal = React.lazy(() => import('./components/RentalModal').then(m => ({ default: m.RentalModal })));
@@ -82,7 +80,6 @@ const StaffPayoutsModal = React.lazy(() => import('./components/StaffPayoutsModa
 const TailoringModal = React.lazy(() => import('./components/TailoringModal').then(m => ({ default: m.TailoringModal })));
 const TailoringReceiptModal = React.lazy(() => import('./components/TailoringReceiptModal').then(m => ({ default: m.TailoringReceiptModal })));
 
-// Background preloading of all modal chunks in idle time for zero-latency clicks
 if (typeof window !== 'undefined') {
   const preloadModals = () => {
     import('./components/RentalModal');
@@ -100,6 +97,7 @@ if (typeof window !== 'undefined') {
     setTimeout(preloadModals, 1000);
   }
 }
+
 import { 
   Scale, 
   Shirt, 
@@ -121,7 +119,6 @@ import {
   Database
 } from 'lucide-react';
 
-// Run storage initialization once to guarantee 50 items dataset is present
 initializeStorage();
 
 const PAGE_SIZE = 5;
@@ -146,7 +143,7 @@ function mergeRecordsById<T extends { id?: string; createdAt?: string; updatedAt
 export default function App() {
   perfMonitor.recordAppRender();
 
-  // Priority Startup Collections: Initialized immediately from browser storage cache for instant rendering
+  // مجموعات أساسية تُهيأ فوراً من التخزين المحلي للعرض السريع
   const [clothes, setClothes] = useState<ClothItem[]>(() => loadFromStorage(STORAGE_KEYS.CLOTHES, DEFAULT_CLOTHES));
   const [rentals, setRentals] = useState<Rental[]>(() => loadFromStorage(STORAGE_KEYS.RENTALS, DEFAULT_RENTALS));
   const [caisseClosures, setCaisseClosures] = useState<DailyCaisseClosure[]>(() => loadFromStorage(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES));
@@ -154,13 +151,14 @@ export default function App() {
   const [sales, setSales] = useState<Sale[]>(() => loadFromStorage(STORAGE_KEYS.SALES, DEFAULT_SALES));
   const [expenses, setExpenses] = useState<Expense[]>(() => loadFromStorage(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES));
   const [credits, setCredits] = useState<Credit[]>(() => loadFromStorage(STORAGE_KEYS.CREDITS, DEFAULT_CREDITS));
-  // رصيد الصندوق العام (الخزينة) — مخزّن ومشترك بين كل الأجهزة عبر إعدادات Firebase
+  // رصيد الصندوق العام (الخزينة) — مشترك بين كل الأجهزة عبر إعدادات Firebase
   const [generalFundBalance, setGeneralFundBalance] = useState<number>(() => {
     const stored = Number(loadFromStorage<number>(STORAGE_KEYS.GENERAL_FUND_BALANCE, 0));
     return Number.isFinite(stored) ? stored : 0;
   });
 
-  // Secondary Collections: Lazy-loaded from browser storage cache on-demand when view/modal opens!
+  // مجموعات ثانوية تُحمَّل فقط عند فتح القسم أو النافذة التي تحتاجها
+  const [creditPayments, setCreditPayments] = useState<CreditPayment[]>([]);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [staffAbsences, setStaffAbsences] = useState<StaffAbsence[]>([]);
   const [staffPayouts, setStaffPayouts] = useState<StaffPayout[]>([]);
@@ -169,7 +167,7 @@ export default function App() {
   const [seamstresses, setSeamstresses] = useState<Seamstress[]>([]);
   const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
 
-  // Track collections that have been loaded into React state from LocalStorage cache
+  // المجموعات المحمّلة حالياً في حالة التطبيق
   const loadedCollectionsRef = useRef<Set<string>>(new Set([
     STORAGE_KEYS.CLOTHES,
     STORAGE_KEYS.RENTALS,
@@ -180,9 +178,6 @@ export default function App() {
     STORAGE_KEYS.CREDITS
   ]));
 
-  // Inventory and sales use cursor pagination. The app keeps only the pages
-  // needed by the active screen in React state instead of downloading a whole
-  // collection on every navigation.
   const paginationRef = useRef<Record<PaginatedCollection, {
     cursor: string | null;
     hasMore: boolean;
@@ -197,7 +192,7 @@ export default function App() {
   const [hasMoreSales, setHasMoreSales] = useState(true);
   const [isLoadingMoreSales, setIsLoadingMoreSales] = useState(false);
 
-  // Cache-First On-Demand Storage Loader
+  // تحميل مجموعة من التخزين المحلي عند الحاجة فقط
   const ensureCollectionLoaded = useCallback((storageKey: string) => {
     if (loadedCollectionsRef.current.has(storageKey)) return;
     loadedCollectionsRef.current.add(storageKey);
@@ -210,6 +205,9 @@ export default function App() {
         break;
       case STORAGE_KEYS.CREDITS:
         setCredits(loadFromStorage<Credit[]>(STORAGE_KEYS.CREDITS, DEFAULT_CREDITS));
+        break;
+      case STORAGE_KEYS.CREDIT_PAYMENTS:
+        setCreditPayments(loadFromStorage<CreditPayment[]>(STORAGE_KEYS.CREDIT_PAYMENTS, DEFAULT_CREDIT_PAYMENTS));
         break;
       case STORAGE_KEYS.STAFF_PAYOUTS:
         setStaffPayouts(loadFromStorage<StaffPayout[]>(STORAGE_KEYS.STAFF_PAYOUTS, DEFAULT_STAFF_PAYOUTS));
@@ -247,9 +245,7 @@ export default function App() {
     }
   }, []);
 
-  // Secondary collections are intentionally loaded only when their view or modal
-  // opens. This avoids several full collection reads during the first paint.
-  // Firebase Realtime Connection & Sync State
+  // حالة الاتصال والمزامنة السحابية
   const [isFirebaseConnected, setIsFirebaseConnected] = useState(false);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [lastCloudSyncTime, setLastCloudSyncTime] = useState<string | null>(null);
@@ -262,10 +258,8 @@ export default function App() {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
   }, []);
 
-  // UI state
   const [activeModal, setActiveModal] = useState<string | null>(null);
 
-  // Navigation callback refs
   const navRef = useRef<(view: ViewType) => void>(() => {});
   const getCurrentViewRef = useRef<() => ViewType>(() => 'dashboard');
 
@@ -303,33 +297,11 @@ export default function App() {
     addActivityLog(log);
   }, [addActivityLog]);
 
-  const handleLoad50BenchmarkData = useCallback(async () => {
-    const { generateFullDataset } = await import('./utils/mockDataGenerator');
-    const dataset = generateFullDataset();
-    setClothes(dataset.clothes);
-    setRentals(dataset.rentals);
-    setSales(dataset.sales);
-    setExpenses(dataset.expenses);
-    setCredits(dataset.credits);
-    setRawMaterials(dataset.rawMaterials);
-    setMaintenanceOrders(dataset.maintenanceOrders);
-    setSuppliers(dataset.suppliers);
-    setSeamstresses(dataset.seamstresses);
-    setStaffMembers(dataset.staffMembers);
-    setStaffPayouts(dataset.staffPayouts);
-    setStaffAbsences(dataset.staffAbsences);
-    setCaisseClosures(dataset.caisseClosures);
-    setActivityLogs(dataset.activityLogs);
-    showToast('تم تحميل 50 بياناً في كل قسم بنجاح لاختبار السرعة والتحمل!', 'success');
-  }, [showToast]);
-
-  // First usable UI instrumentation
   useEffect(() => {
     const coreRecords = clothes.length + rentals.length + caisseClosures.length + activityLogs.length;
     perfMonitor.markFirstUsableUI(coreRecords);
   }, []);
 
-  // Performance monitor active listener hookup
   useEffect(() => {
     perfMonitor.setFirebaseListenerQuery(() => ({
       count: SubscriptionManager.getActiveSubscriptionsCount(),
@@ -337,93 +309,36 @@ export default function App() {
     }));
   }, []);
 
-  // Local Storage Persistence (Scheduled via non-blocking requestIdleCallback)
-  // Safe: only persists collections that are loaded to avoid overwriting with initial empty state
+  // حفظ محلي للمجموعات المحمّلة فقط (الكتابة على القرص تتم في وقت الخمول دون تعطيل الواجهة)
   useEffect(() => {
-    if (loadedCollectionsRef.current.has(STORAGE_KEYS.CLOTHES)) {
-      saveToStorage(STORAGE_KEYS.CLOTHES, clothes);
+    const loaded = loadedCollectionsRef.current;
+    const collections: Array<[string, unknown]> = [
+      [STORAGE_KEYS.CLOTHES, clothes],
+      [STORAGE_KEYS.RENTALS, rentals],
+      [STORAGE_KEYS.SALES, sales],
+      [STORAGE_KEYS.EXPENSES, expenses],
+      [STORAGE_KEYS.CREDITS, credits],
+      [STORAGE_KEYS.CREDIT_PAYMENTS, creditPayments],
+      [STORAGE_KEYS.STAFF_PAYOUTS, staffPayouts],
+      [STORAGE_KEYS.STAFF_MEMBERS, staffMembers],
+      [STORAGE_KEYS.STAFF_ABSENCES, staffAbsences],
+      [STORAGE_KEYS.MAINTENANCE, maintenanceOrders],
+      [STORAGE_KEYS.SUPPLIERS, suppliers],
+      [STORAGE_KEYS.SEAMSTRESSES, seamstresses],
+      [STORAGE_KEYS.RAW_MATERIALS, rawMaterials],
+      [STORAGE_KEYS.CAISSE_CLOSURES, caisseClosures],
+      [STORAGE_KEYS.ACTIVITY_LOGS, activityLogs]
+    ];
+    for (const [key, data] of collections) {
+      if (loaded.has(key)) saveToStorage(key, data);
     }
-  }, [clothes]);
+  }, [
+    clothes, rentals, sales, expenses, credits, creditPayments, staffPayouts,
+    staffMembers, staffAbsences, maintenanceOrders, suppliers, seamstresses,
+    rawMaterials, caisseClosures, activityLogs
+  ]);
 
-  useEffect(() => {
-    if (loadedCollectionsRef.current.has(STORAGE_KEYS.RENTALS)) {
-      saveToStorage(STORAGE_KEYS.RENTALS, rentals);
-    }
-  }, [rentals]);
-
-  useEffect(() => {
-    if (loadedCollectionsRef.current.has(STORAGE_KEYS.SALES)) {
-      saveToStorage(STORAGE_KEYS.SALES, sales);
-    }
-  }, [sales]);
-
-  useEffect(() => {
-    if (loadedCollectionsRef.current.has(STORAGE_KEYS.EXPENSES)) {
-      saveToStorage(STORAGE_KEYS.EXPENSES, expenses);
-    }
-  }, [expenses]);
-
-  useEffect(() => {
-    if (loadedCollectionsRef.current.has(STORAGE_KEYS.CREDITS)) {
-      saveToStorage(STORAGE_KEYS.CREDITS, credits);
-    }
-  }, [credits]);
-
-  useEffect(() => {
-    if (loadedCollectionsRef.current.has(STORAGE_KEYS.STAFF_PAYOUTS)) {
-      saveToStorage(STORAGE_KEYS.STAFF_PAYOUTS, staffPayouts);
-    }
-  }, [staffPayouts]);
-
-  useEffect(() => {
-    if (loadedCollectionsRef.current.has(STORAGE_KEYS.STAFF_MEMBERS)) {
-      saveToStorage(STORAGE_KEYS.STAFF_MEMBERS, staffMembers);
-    }
-  }, [staffMembers]);
-
-  useEffect(() => {
-    if (loadedCollectionsRef.current.has(STORAGE_KEYS.STAFF_ABSENCES)) {
-      saveToStorage(STORAGE_KEYS.STAFF_ABSENCES, staffAbsences);
-    }
-  }, [staffAbsences]);
-
-  useEffect(() => {
-    if (loadedCollectionsRef.current.has(STORAGE_KEYS.MAINTENANCE)) {
-      saveToStorage(STORAGE_KEYS.MAINTENANCE, maintenanceOrders);
-    }
-  }, [maintenanceOrders]);
-
-  useEffect(() => {
-    if (loadedCollectionsRef.current.has(STORAGE_KEYS.SUPPLIERS)) {
-      saveToStorage(STORAGE_KEYS.SUPPLIERS, suppliers);
-    }
-  }, [suppliers]);
-
-  useEffect(() => {
-    if (loadedCollectionsRef.current.has(STORAGE_KEYS.SEAMSTRESSES)) {
-      saveToStorage(STORAGE_KEYS.SEAMSTRESSES, seamstresses);
-    }
-  }, [seamstresses]);
-
-  useEffect(() => {
-    if (loadedCollectionsRef.current.has(STORAGE_KEYS.RAW_MATERIALS)) {
-      saveToStorage(STORAGE_KEYS.RAW_MATERIALS, rawMaterials);
-    }
-  }, [rawMaterials]);
-
-  useEffect(() => {
-    if (loadedCollectionsRef.current.has(STORAGE_KEYS.CAISSE_CLOSURES)) {
-      saveToStorage(STORAGE_KEYS.CAISSE_CLOSURES, caisseClosures);
-    }
-  }, [caisseClosures]);
-
-  useEffect(() => {
-    if (loadedCollectionsRef.current.has(STORAGE_KEYS.ACTIVITY_LOGS)) {
-      saveToStorage(STORAGE_KEYS.ACTIVITY_LOGS, activityLogs);
-    }
-  }, [activityLogs]);
-
-  // Firebase Realtime Database: Connection Status Listener & IndexedDB Async Hydration
+  // قراءة مخزون المتصفح ثم مراقبة حالة الاتصال السحابي
   useEffect(() => {
     hydrateFromIndexedDB().then(() => {
       setClothes(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.CLOTHES, DEFAULT_CLOTHES) : prev));
@@ -431,6 +346,7 @@ export default function App() {
       setSales(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.SALES, DEFAULT_SALES) : prev));
       setExpenses(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES) : prev));
       setCredits(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.CREDITS, DEFAULT_CREDITS) : prev));
+      setCreditPayments(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.CREDIT_PAYMENTS, DEFAULT_CREDIT_PAYMENTS) : prev));
       setStaffPayouts(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.STAFF_PAYOUTS, DEFAULT_STAFF_PAYOUTS) : prev));
       setStaffMembers(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.STAFF_MEMBERS, DEFAULT_STAFF) : prev));
       setStaffAbsences(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.STAFF_ABSENCES, DEFAULT_STAFF_ABSENCES) : prev));
@@ -448,7 +364,33 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // Individual collection subscription helper returning an idempotent unsubscribe function
+  // ترحيل الدفعات المضمّنة داخل الديون القديمة إلى مجموعة مستندات الدفعات المستقلة
+  const migratedCreditsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (credits.length === 0) return;
+    const legacy = credits.filter(c =>
+      Array.isArray(c.payments) && c.payments.length > 0 && !migratedCreditsRef.current.has(c.id)
+    );
+    if (legacy.length === 0) return;
+    legacy.forEach(c => migratedCreditsRef.current.add(c.id));
+
+    const docs: CreditPayment[] = [];
+    for (const credit of legacy) {
+      for (const payment of credit.payments || []) {
+        if (payment?.id) docs.push({ ...payment, creditId: credit.id, createdAt: (payment as any).createdAt || new Date().toISOString() });
+      }
+    }
+
+    setCreditPayments(prev => {
+      const seen = new Set(prev.map(p => p.id));
+      const fresh = docs.filter(d => !seen.has(d.id));
+      return fresh.length > 0 ? [...fresh, ...prev] : prev;
+    });
+    setCredits(prev => prev.map(c => (migratedCreditsRef.current.has(c.id) && Array.isArray(c.payments) && c.payments.length > 0 ? { ...c, payments: undefined } : c)));
+
+    migrateEmbeddedCreditPayments(legacy);
+  }, [credits]);
+
   const subscribeToCollection = useCallback((collection: string, options?: { limit?: number; sort?: boolean }): () => void => {
     switch (collection) {
       case FIREBASE_COLLECTIONS.CLOTHES: {
@@ -460,8 +402,6 @@ export default function App() {
             const pageState = paginationRef.current.clothes;
             const wasInitialized = pageState.initialized;
             if (!wasInitialized || !pageState.cursor) {
-              // The limited clothes listener is ordered by RTDB key (ascending),
-              // therefore the first item is the cursor for the next older page.
               pageState.cursor = items[0]?.id || pageState.cursor;
             }
             pageState.initialized = true;
@@ -514,8 +454,6 @@ export default function App() {
             const pageState = paginationRef.current.sales;
             const wasInitialized = pageState.initialized;
             if (!wasInitialized || !pageState.cursor) {
-              // Keep the RTDB key cursor stable; the first item is the oldest
-              // record in the current newest page.
               pageState.cursor = items[0]?.id || pageState.cursor;
             }
             pageState.initialized = true;
@@ -551,6 +489,13 @@ export default function App() {
             setCredits(prev => areArraysEqual(prev, items) ? prev : items);
           }
         }, { limit: 150, ...options });
+      case FIREBASE_COLLECTIONS.CREDIT_PAYMENTS:
+        return SubscriptionManager.subscribe<CreditPayment>(FIREBASE_COLLECTIONS.CREDIT_PAYMENTS, (items) => {
+          if (Array.isArray(items)) {
+            loadedCollectionsRef.current.add(STORAGE_KEYS.CREDIT_PAYMENTS);
+            setCreditPayments(prev => areArraysEqual(prev, items) ? prev : items);
+          }
+        }, { limit: 500, ...options });
       case FIREBASE_COLLECTIONS.STAFF_PAYOUTS:
         return SubscriptionManager.subscribe<StaffPayout>(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, (items) => {
           if (Array.isArray(items)) {
@@ -616,7 +561,7 @@ export default function App() {
     }
   }, []);
 
-  // Precise mapping of required LocalStorage collections per view
+  // ما يحتاجه كل قسم من مجموعات التخزين المحلي
   const VIEW_STORAGE_MAP: Record<ViewType, readonly string[]> = {
     dashboard: [
       STORAGE_KEYS.CLOTHES,
@@ -624,6 +569,7 @@ export default function App() {
       STORAGE_KEYS.SALES,
       STORAGE_KEYS.EXPENSES,
       STORAGE_KEYS.CREDITS,
+      STORAGE_KEYS.CREDIT_PAYMENTS,
       STORAGE_KEYS.STAFF_PAYOUTS,
       STORAGE_KEYS.MAINTENANCE,
       STORAGE_KEYS.CAISSE_CLOSURES,
@@ -650,10 +596,12 @@ export default function App() {
     expenses: [
       STORAGE_KEYS.EXPENSES, 
       STORAGE_KEYS.SUPPLIERS, 
-      STORAGE_KEYS.CREDITS
+      STORAGE_KEYS.CREDITS,
+      STORAGE_KEYS.CREDIT_PAYMENTS
     ],
     credits: [
       STORAGE_KEYS.CREDITS, 
+      STORAGE_KEYS.CREDIT_PAYMENTS,
       STORAGE_KEYS.SUPPLIERS
     ],
     partners: [
@@ -661,7 +609,8 @@ export default function App() {
       STORAGE_KEYS.SEAMSTRESSES,
       STORAGE_KEYS.EXPENSES,
       STORAGE_KEYS.MAINTENANCE,
-      STORAGE_KEYS.CREDITS
+      STORAGE_KEYS.CREDITS,
+      STORAGE_KEYS.CREDIT_PAYMENTS
     ],
     caisse: [
       STORAGE_KEYS.CAISSE_CLOSURES,
@@ -669,6 +618,7 @@ export default function App() {
       STORAGE_KEYS.RENTALS,
       STORAGE_KEYS.EXPENSES,
       STORAGE_KEYS.CREDITS,
+      STORAGE_KEYS.CREDIT_PAYMENTS,
       STORAGE_KEYS.STAFF_PAYOUTS,
       STORAGE_KEYS.MAINTENANCE
     ],
@@ -678,7 +628,7 @@ export default function App() {
     ]
   };
 
-  // Precise mapping of required Firebase collections per view
+  // ما يحتاجه كل قسم من مجموعات السحابة (اشتراكات عند الدخول للقسم فقط)
   const VIEW_COLLECTIONS_MAP: Record<ViewType, readonly string[]> = {
     dashboard: [
       FIREBASE_COLLECTIONS.CLOTHES,
@@ -686,6 +636,7 @@ export default function App() {
       FIREBASE_COLLECTIONS.SALES,
       FIREBASE_COLLECTIONS.EXPENSES,
       FIREBASE_COLLECTIONS.CREDITS,
+      FIREBASE_COLLECTIONS.CREDIT_PAYMENTS,
       FIREBASE_COLLECTIONS.STAFF_PAYOUTS,
       FIREBASE_COLLECTIONS.MAINTENANCE,
       FIREBASE_COLLECTIONS.CAISSE_CLOSURES,
@@ -712,10 +663,12 @@ export default function App() {
     expenses: [
       FIREBASE_COLLECTIONS.EXPENSES, 
       FIREBASE_COLLECTIONS.SUPPLIERS, 
-      FIREBASE_COLLECTIONS.CREDITS
+      FIREBASE_COLLECTIONS.CREDITS,
+      FIREBASE_COLLECTIONS.CREDIT_PAYMENTS
     ],
     credits: [
       FIREBASE_COLLECTIONS.CREDITS, 
+      FIREBASE_COLLECTIONS.CREDIT_PAYMENTS,
       FIREBASE_COLLECTIONS.SUPPLIERS
     ],
     partners: [
@@ -723,7 +676,8 @@ export default function App() {
       FIREBASE_COLLECTIONS.SEAMSTRESSES,
       FIREBASE_COLLECTIONS.EXPENSES,
       FIREBASE_COLLECTIONS.MAINTENANCE,
-      FIREBASE_COLLECTIONS.CREDITS
+      FIREBASE_COLLECTIONS.CREDITS,
+      FIREBASE_COLLECTIONS.CREDIT_PAYMENTS
     ],
     caisse: [
       FIREBASE_COLLECTIONS.CAISSE_CLOSURES,
@@ -731,6 +685,7 @@ export default function App() {
       FIREBASE_COLLECTIONS.RENTALS,
       FIREBASE_COLLECTIONS.EXPENSES,
       FIREBASE_COLLECTIONS.CREDITS,
+      FIREBASE_COLLECTIONS.CREDIT_PAYMENTS,
       FIREBASE_COLLECTIONS.STAFF_PAYOUTS,
       FIREBASE_COLLECTIONS.MAINTENANCE
     ],
@@ -792,14 +747,10 @@ export default function App() {
   const loadMoreClothes = useCallback(() => loadMorePaginatedCollection('clothes'), [loadMorePaginatedCollection]);
   const loadMoreSales = useCallback(() => loadMorePaginatedCollection('sales'), [loadMorePaginatedCollection]);
 
-  // Map of active view subscription cleanup functions: collectionKey -> unsubscribeFn
   const activeViewUnsubsMapRef = useRef<Map<string, () => void>>(new Map());
   const currentActiveViewRef = useRef<ViewType | null>(null);
 
-  // Dynamic on-demand collection subscription per View:
-  // Subscribes ONLY to needed Firebase collections for the currently active view on-demand
   const handleEnsureCollection = useCallback((view: ViewType) => {
-    // 1. Ensure required collections are loaded into React state from LocalStorage cache
     const neededStorageKeys = VIEW_STORAGE_MAP[view] || [];
     for (const key of neededStorageKeys) {
       ensureCollectionLoaded(key);
@@ -822,8 +773,6 @@ export default function App() {
 
     const activeMap = activeViewUnsubsMapRef.current;
 
-    // Unsubscribe from collections that are no longer needed by the active view
-    // and recreate paginated listeners when entering inventory/POS.
     const neededSet = new Set(neededCollections);
     const existingCols = Array.from(activeMap.keys()) as string[];
     for (const col of existingCols) {
@@ -844,7 +793,6 @@ export default function App() {
       }
     }
 
-    // Subscribe ONLY to newly needed collections for active view.
     for (const col of neededCollections) {
       if (!activeMap.has(col)) {
         const options = (
@@ -857,7 +805,6 @@ export default function App() {
     }
   }, [subscribeToCollection, ensureCollectionLoaded, resetPaginatedCollection]);
 
-  // Initial load: subscribe ONLY to dashboard view (NO pre-warm of other views)
   useEffect(() => {
     handleEnsureCollection('dashboard');
 
@@ -866,7 +813,6 @@ export default function App() {
         try {
           unsub();
         } catch (e) {
-          // ignore
         }
       }
       activeViewUnsubsMapRef.current.clear();
@@ -874,9 +820,6 @@ export default function App() {
     };
   }, [handleEnsureCollection]);
 
-  // ==========================
-  // GENERAL FUND (الصندوق العام / الخزينة)
-  // ==========================
   // هل تم استلام رصيد الخزينة المشترك من Firebase؟ (نمنع الكتابة قبله حتى لا نطمس قيمة أحدث من جهاز آخر)
   const [isSettingsSynced, setIsSettingsSynced] = useState(false);
 
@@ -944,7 +887,6 @@ export default function App() {
       : `تم خصم ${Math.abs(safeAmount).toLocaleString()} دج من الصندوق العام`);
   }, [addActivityLog, showToast]);
 
-  // Modal-specific subscriptions & cache loaders: only active while the modal is open, auto-unsubscribes on close!
   useEffect(() => {
     if (activeModal === 'staffPayouts') {
       ensureCollectionLoaded(STORAGE_KEYS.STAFF_PAYOUTS);
@@ -988,6 +930,7 @@ export default function App() {
         syncCollectionToCloud(FIREBASE_COLLECTIONS.SALES, sales),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.EXPENSES, expenses),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.CREDITS, credits),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.CREDIT_PAYMENTS, creditPayments),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, staffPayouts),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_MEMBERS, staffMembers),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.STAFF_ABSENCES, staffAbsences),
@@ -1009,17 +952,15 @@ export default function App() {
       setIsCloudSyncing(false);
     }
   }, [
-    clothes, rentals, sales, expenses, credits, staffPayouts, 
+    clothes, rentals, sales, expenses, credits, creditPayments, staffPayouts, 
     staffMembers, staffAbsences, maintenanceOrders, suppliers, 
     seamstresses, rawMaterials, caisseClosures, activityLogs, generalFundBalance, showToast
   ]);
 
-  // UI state
   const [hideFinances, setHideFinances] = useState(() => localStorage.getItem('bm_hideFinances') !== 'false');
   const [isScanning, setIsScanning] = useState(false);
   const [posScannedBarcode, setPosScannedBarcode] = useState<string | null>(null);
 
-  // Modal active subjects
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [selectedTailoringOrder, setSelectedTailoringOrder] = useState<MaintenanceOrder | null>(null);
   const [preselectedRentalItemId, setPreselectedRentalItemId] = useState<string | undefined>(undefined);
@@ -1031,7 +972,6 @@ export default function App() {
     onConfirm: () => void;
   } | null>(null);
 
-  // Overdue count calculation (Only active handed-over rentals can be overdue; future reserved bookings do not count)
   const overdueCount = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     return rentals.filter(r => {
@@ -1042,17 +982,14 @@ export default function App() {
     }).length;
   }, [rentals]);
 
-  // Pending absences count for staff badge
   const pendingAbsencesCount = useMemo(() => {
     return staffAbsences.filter(a => !a.isDeducted).length;
   }, [staffAbsences]);
 
-  // Active maintenance count
   const activeMaintenanceCount = useMemo(() => {
     return maintenanceOrders.filter(o => o.status !== 'delivered').length;
   }, [maintenanceOrders]);
 
-  // Memoized clothes barcode and ID index for O(1) instantaneous scanning lookups
   const clothesBarcodeIndex = useMemo(() => {
     const map = new Map<string, ClothItem>();
     for (let i = 0; i < clothes.length; i++) {
@@ -1093,7 +1030,6 @@ export default function App() {
     }
   }, [hideFinances]);
 
-  // Stable Modal and Navigation Callback Handlers
   const handleOpenAddRental = useCallback(() => {
     setPreselectedRentalItemId(undefined);
     setActiveModal('addRental');
@@ -1142,14 +1078,10 @@ export default function App() {
     setPosScannedBarcode(null);
   }, []);
 
-  // ==========================
-  // RENTAL HANDLERS
-  // ==========================
   const handleAddRental = useCallback((rentalData: any) => {
     const newRental: Rental = { ...rentalData, id: generateId() };
     const rentalDebt = Math.max(0, Number(rentalData.remainingAmount) || 0);
     
-    // Add rental to state and Firebase
     setRentals(prev => [newRental, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.RENTALS, newRental);
 
@@ -1161,7 +1093,6 @@ export default function App() {
       amount: newRental.rentPrice
     });
 
-    // If active, increment rented count. If reserved (future booking), DO NOT deduct stock until handover/deal finalization!
     if (newRental.status === 'active') {
       setClothes(prev => prev.map(c => {
         if (c.id === rentalData.itemId) {
@@ -1180,7 +1111,6 @@ export default function App() {
         : 'تم تسجيل حجز الفستان مستقبلاً بنجاح (سيدخل في الكراء عند إتمام الصفقة وتسليمه)');
     }
 
-    // Automatically register unpaid rent as a customer debt.
     if (rentalDebt > 0) {
       const newCredit: Credit = {
         id: generateId(),
@@ -1213,7 +1143,6 @@ export default function App() {
       notes: notesStr
     };
 
-    // 1. Activate rental and update payments
     setRentals(prev => prev.map(r => {
       if (r.id === rental.id) {
         return {
@@ -1225,7 +1154,6 @@ export default function App() {
     }));
     updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, rental.id, rentalUpdates);
 
-    // 2. DEDUCT INVENTORY: Increment rented count upon deal finalization/handover!
     setClothes(prev => prev.map(c => {
       if (c.id === rental.itemId) {
         const updatedCount = (c.rentedCount || 0) + (rental.qty || 1);
@@ -1235,7 +1163,6 @@ export default function App() {
       return c;
     }));
 
-    // 3. Update or clear credit
     setCredits(prev => {
       const filtered = prev.filter(c => {
         if (c.relatedRentalId === rental.id) {
@@ -1286,7 +1213,6 @@ export default function App() {
         const isNowActive = updatedData.status === 'active';
         
         if (!wasActive && isNowActive) {
-          // Transitioned to active -> increment item rentedCount
           setClothes(clothesPrev => clothesPrev.map(c => {
             if (c.id === updatedData.itemId) {
               const updatedCount = (c.rentedCount || 0) + (updatedData.qty || 1);
@@ -1296,7 +1222,6 @@ export default function App() {
             return c;
           }));
         } else if (wasActive && !isNowActive) {
-          // Transitioned from active to reserved or returned -> decrement item rentedCount
           setClothes(clothesPrev => clothesPrev.map(c => {
             if (c.id === prevRental.itemId) {
               const updatedCount = Math.max(0, (c.rentedCount || 0) - (prevRental.qty || 1));
@@ -1327,7 +1252,6 @@ export default function App() {
           : 'هل أنت متأكد من حذف عملية الكراء؟ سيتم استرجاع القطعة إلى المخزن.',
         onConfirm: () => {
           if (target.status === 'active' || target.status === 'overdue') {
-            // Return item count to inventory only if it was active
             setClothes(prev => prev.map(c => {
               if (c.id === target.itemId) {
                 const updatedCount = Math.max(0, (c.rentedCount || 0) - (target.qty || 1));
@@ -1376,7 +1300,6 @@ export default function App() {
 
       updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, rentalId, returnUpdates);
 
-      // Update inventory: decrease rentedCount, add to inCleaningCount if requested
       setClothes(prev => prev.map(c => {
         if (c.id === target.itemId) {
           const newRented = Math.max(0, (c.rentedCount || 0) - (target.qty || 1));
@@ -1394,14 +1317,12 @@ export default function App() {
         return c;
       }));
 
-      // If penalty was deducted or caution kept as revenue/compensation
       if (returnData.penaltyAmount > 0) {
         showToast(`تم استرجاع الفستان وخصم غرامة بقيمة ${returnData.penaltyAmount} دج`);
       } else {
         showToast('تم تأكيد استرجاع الفستان وتسوية الحساب بنجاح');
       }
 
-      // Auto clear linked credit if collected
       if (returnData.collectedRemaining > 0) {
         setCredits(prev => {
           prev.filter(c => c.relatedRentalId === rentalId).forEach(c => deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id));
@@ -1422,9 +1343,6 @@ export default function App() {
     setActiveModal(null);
   }, []);
 
-  // ==========================
-  // CLOTHES & INVENTORY HANDLERS
-  // ==========================
   const handleAddCloth = useCallback((itemData: any, pendingFullUrl?: string) => {
     const newCloth: ClothItem = { ...itemData, id: generateId() };
     setClothes(prev => [newCloth, ...prev]);
@@ -1487,12 +1405,8 @@ export default function App() {
     });
   }, []);
 
-  // ==========================
-  // SALES HANDLERS
-  // ==========================
   const handleCompleteSale = useCallback((saleData: any) => {
     const saleDebt = Math.max(0, Number(saleData.debtAmount) || 0);
-    // Sanitize items so no heavy/redundant imageUrl is stored in the new sale record (Task 1)
     const sanitizedItems = (saleData.items || []).map((item: any) => {
       const { imageUrl, ...rest } = item;
       return rest;
@@ -1510,7 +1424,6 @@ export default function App() {
       amount: saleData.totalAmount
     });
 
-    // Decrease inventory stock accurately from stock1 or stock2
     saleData.items.forEach((item: any) => {
       setClothes(prev => prev.map(c => {
         if (c.id === item.itemId) {
@@ -1542,7 +1455,6 @@ export default function App() {
       }));
     });
 
-    // If debt exists, add to credits
     if (saleDebt > 0) {
       const newCredit: Credit = {
         id: generateId(),
@@ -1613,9 +1525,6 @@ export default function App() {
     });
   }, []);
 
-  // ==========================
-  // EXPENSES, SUPPLIERS & CREDITS
-  // ==========================
   const handleAddExpense = useCallback((expData: any) => {
     const newExpId = generateId();
     const newExp: Expense = { ...expData, id: newExpId };
@@ -1638,7 +1547,6 @@ export default function App() {
       amount: expData.amount
     });
 
-    // If this is a supplier purchase with credit/debt remaining, auto-create a credit record
     if (expData.isSupplierPurchase && expData.creditAmount > 0) {
       const newCredit: Credit = {
         id: generateId(),
@@ -1698,7 +1606,6 @@ export default function App() {
       setGeneralFundBalance(prev => Math.round((prev - paidAmount) * 100) / 100);
     }
 
-    // 1. Update expense record
     setExpenses(prev => prev.map(exp => {
       if (exp.id === expenseId) {
         const currentPaid = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
@@ -1719,7 +1626,6 @@ export default function App() {
       return exp;
     }));
 
-    // 2. Update or settle linked credit record
     setCredits(prev => {
       return prev.map(c => {
         if (c.relatedExpenseId === expenseId) {
@@ -1801,9 +1707,6 @@ export default function App() {
     });
   }, []);
 
-  // ==========================
-  // SEAMSTRESSES & RAW MATERIALS HANDLERS
-  // ==========================
   const handleAddSeamstress = useCallback((seam: Seamstress) => {
     setSeamstresses(prev => [seam, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.SEAMSTRESSES, seam);
@@ -1923,12 +1826,7 @@ export default function App() {
     showToast(credData.supplierDebt ? 'تم تسجيل دين للمورد' : 'تم تسجيل الدين على الزبون');
   }, []);
 
-  /**
-   * تسديد كريدي (دفعة كاملة أو جزئية):
-   * - دين على الزبون → يُضاف المبلغ إلى الصندوق المختار (درج اليوم أو الصندوق العام).
-   * - دين للمورد → يُخصم المبلغ من الصندوق المختص.
-   * - يُسجَّل تاريخ استلام/دفع المال، ويظهر الأثر في صندوق ذلك التاريخ.
-   */
+  // تسديد كريدي: الدفعة تُحفظ كمستند مستقل في مجموعة الدفعات مرتبطة بالدين عبر creditId
   const handleSettleCredit = useCallback((
     creditId: string,
     paymentData: { amount: number; date: string; fundSource: FundSource; note?: string }
@@ -1944,21 +1842,18 @@ export default function App() {
 
     const payment: CreditPayment = {
       id: generateId(),
+      creditId,
       amount,
       date: paymentDate,
       fundSource,
-      note: paymentData?.note
+      note: paymentData?.note,
+      createdAt: new Date().toISOString()
     };
 
-    const updatedCredit: Credit = {
-      ...credit,
-      payments: [...(credit.payments || []), payment]
-    };
+    setCreditPayments(prev => [payment, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.CREDIT_PAYMENTS, payment);
 
-    setCredits(prev => prev.map(c => (c.id === creditId ? updatedCredit : c)));
-    saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, updatedCredit);
-
-    // الأثر المالي على الصندوق العام (إضافة عند التحصيل من الزبون، خصم عند الدفع للمورد)
+    // الأثر على الصندوق العام (إضافة عند التحصيل من الزبون، خصم عند الدفع للمورد)
     if (fundSource === 'general') {
       const effect = generalFundEffectOfPayment(credit, amount);
       setGeneralFundBalance(prev => Math.round((prev + effect) * 100) / 100);
@@ -1977,7 +1872,8 @@ export default function App() {
       }));
     }
 
-    const remaining = creditRemaining(updatedCredit);
+    const totalPaid = paymentsForCredit(credit, creditPayments).reduce((sum, p) => sum + (Number(p.amount) || 0), 0) + amount;
+    const remaining = Math.max(0, (Number(credit.amount) || 0) - totalPaid);
     const isCustomer = !credit.supplierDebt;
 
     addActivityLog({
@@ -1995,20 +1891,25 @@ export default function App() {
     } else {
       showToast(`تم تسجيل دفعة ${amount.toLocaleString()} دج • المتبقي: ${remaining.toLocaleString()} دج`);
     }
-  }, [credits, addActivityLog, showToast]);
+  }, [credits, creditPayments, addActivityLog, showToast]);
 
   const handleDeleteCredit = useCallback((id: string) => {
     const target = credits.find(c => c.id === id);
     if (target) {
-      // حذف قيد دين كان قد سُدِّد من/إلى الصندوق العام → عكس أثره على الرصيد
-      const effect = generalFundEffectOfCredit(target);
+      // عكس أثر الدفعات المسددة من/إلى الصندوق العام
+      const mergedPayments = paymentsForCredit(target, creditPayments);
+      let effect = 0;
+      let paidViaCredit = 0;
+      for (const payment of mergedPayments) {
+        const paymentAmount = Number(payment.amount) || 0;
+        paidViaCredit += paymentAmount;
+        if (payment.fundSource === 'general') effect += generalFundEffectOfPayment(target, paymentAmount);
+      }
       if (effect !== 0) {
         setGeneralFundBalance(prev => Math.round((prev - effect) * 100) / 100);
       }
 
-      // دين مورد مرتبط بمصروف شراء: نُعيد المدفوع في المصروف إلى ما كان عليه
-      // حتى لا يُحسب نفس المبلغ مرتين عند حذف المصروف لاحقاً
-      const paidViaCredit = creditTotalPaid(target);
+      // دين مورد مرتبط بمصروف شراء: إرجاع المدفوع في المصروف حتى لا يُحتسب مرتين
       if (target.supplierDebt && target.relatedExpenseId && paidViaCredit > 0) {
         setExpenses(prev => prev.map(exp => {
           if (exp.id !== target.relatedExpenseId) return exp;
@@ -2023,6 +1924,10 @@ export default function App() {
           return { ...exp, ...updates };
         }));
       }
+
+      // حذف مستندات دفعات الدين من مجموعة الدفعات
+      creditPayments.filter(p => p.creditId === id).forEach(p => deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDIT_PAYMENTS, p.id));
+      setCreditPayments(prev => prev.filter(p => p.creditId !== id));
     }
 
     setCredits(prev => prev.filter(c => c.id !== id));
@@ -2036,11 +1941,8 @@ export default function App() {
     });
 
     showToast('تم حذف السجل');
-  }, [credits, addActivityLog, showToast]);
+  }, [credits, creditPayments, addActivityLog, showToast]);
 
-  // ==========================
-  // CAISSE (CASH REGISTER) HANDLERS
-  // ==========================
   const handleSaveCaisseClosure = useCallback((closure: DailyCaisseClosure) => {
     setCaisseClosures(prev => {
       const filtered = prev.filter(c => c.date !== closure.date);
@@ -2080,16 +1982,12 @@ export default function App() {
     });
   }, []);
 
-  // ==========================
-  // STAFF & ABSENCES HANDLERS
-  // ==========================
   const handleAddStaffPayout = useCallback((data: any, deductedAbsenceIds?: string[]) => {
     const payoutId = generateId();
     const newPayout: StaffPayout = { ...data, id: payoutId };
     setStaffPayouts(prev => [newPayout, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, newPayout);
 
-    // If absences were deducted in this payout, mark them as deducted
     if (deductedAbsenceIds && deductedAbsenceIds.length > 0) {
       setStaffAbsences(prev => prev.map(a => {
         if (deductedAbsenceIds.includes(a.id)) {
@@ -2115,7 +2013,6 @@ export default function App() {
     setStaffPayouts(prev => prev.filter(p => p.id !== id));
     deleteItemFromFirebase(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, id);
 
-    // Restore deducted status if payout is deleted
     setStaffAbsences(prev => prev.map(a => {
       if (a.payoutId === id) {
         updateItemInFirebase(FIREBASE_COLLECTIONS.STAFF_ABSENCES, a.id, { isDeducted: false, payoutId: null });
@@ -2215,9 +2112,6 @@ export default function App() {
     showToast('تم حذف سجل الغياب');
   }, []);
 
-  // ==========================
-  // TAILORING & MAINTENANCE HANDLERS
-  // ==========================
   const handleAddTailoringOrder = useCallback((data: Partial<MaintenanceOrder>) => {
     const newOrder: MaintenanceOrder = {
       id: generateId(),
@@ -2334,9 +2228,6 @@ export default function App() {
     });
   }, []);
 
-  // ==========================
-  // MESSAGING (WHATSAPP / SMS)
-  // ==========================
   const handleSendMessage = (rental: Rental, method: 'whatsapp' | 'sms') => {
     const phone = rental.customerPhone.replace(/[^0-9]/g, '');
     const cleanPhone = phone.startsWith('0') ? '213' + phone.substring(1) : phone;
@@ -2360,9 +2251,6 @@ export default function App() {
     }
   };
 
-  // ==========================
-  // BACKUP & RESTORE
-  // ==========================
   const handleExportBackup = async () => {
     try {
       showToast('جاري قراءة جميع المجموعات مباشرة من Firebase...');
@@ -2385,7 +2273,6 @@ export default function App() {
       reader.onload = async (ev) => {
         try {
           const parsed = JSON.parse(ev.target?.result as string);
-          // Support both direct root format and wrapped report.data format
           const raw = parsed.data || parsed;
           const collectionsToMerge: { key: string; name: string; items: any[] }[] = [];
 
@@ -2394,6 +2281,7 @@ export default function App() {
           if (Array.isArray(raw.sales) && raw.sales.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.SALES, name: 'المبيعات', items: raw.sales });
           if (Array.isArray(raw.expenses) && raw.expenses.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.EXPENSES, name: 'المصاريف', items: raw.expenses });
           if (Array.isArray(raw.credits) && raw.credits.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.CREDITS, name: 'الديون والمستحقات', items: raw.credits });
+          if (Array.isArray(raw.creditPayments) && raw.creditPayments.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.CREDIT_PAYMENTS, name: 'دفعات تسديد الديون', items: raw.creditPayments });
           if (Array.isArray(raw.staffPayouts) && raw.staffPayouts.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.STAFF_PAYOUTS, name: 'رواتب الموظفين', items: raw.staffPayouts });
           if (Array.isArray(raw.staffMembers) && raw.staffMembers.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.STAFF_MEMBERS, name: 'الموظفين', items: raw.staffMembers });
           if (Array.isArray(raw.staffAbsences) && raw.staffAbsences.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.STAFF_ABSENCES, name: 'غيابات الموظفين', items: raw.staffAbsences });
@@ -2418,9 +2306,8 @@ export default function App() {
             return;
           }
 
-          for (const col of collectionsToMerge) {
-            await syncCollectionToCloud(col.key, col.items);
-          }
+          // دمج المجموعات بالتوازي بدل الرفع التسلسلي
+          await Promise.all(collectionsToMerge.map(col => syncCollectionToCloud(col.key, col.items)));
 
           showToast('تم دمج البيانات السحابية بنجاح دون حذف السجلات القديمة!', 'success');
           setActiveModal(null);
@@ -2435,7 +2322,6 @@ export default function App() {
 
   return (
     <div className="text-blue-900 w-full min-h-screen flex flex-col bg-white font-['Tajawal']" dir="rtl">
-      {/* Toast Notification Container */}
       <div className="fixed bottom-4 left-4 z-[100] flex flex-col gap-2 pointer-events-none">
         {toasts.map(t => (
           <div 
@@ -2449,7 +2335,6 @@ export default function App() {
         ))}
       </div>
 
-      {/* Main Navigation & View Container */}
       <AppNavigation
         onInitNav={handleInitNav}
         onEnsureCollection={handleEnsureCollection}
@@ -2470,6 +2355,7 @@ export default function App() {
         sales={sales}
         expenses={expenses}
         credits={credits}
+        creditPayments={creditPayments}
         staffPayouts={staffPayouts}
         maintenanceOrders={maintenanceOrders}
         caisseClosures={caisseClosures}
@@ -2529,9 +2415,7 @@ export default function App() {
         onDeleteSeamstress={handleDeleteSeamstress}
       />
 
-      {/* ================= MODALS ================= */}
 
-      {/* Add Tailoring Modal */}
       {activeModal === 'addTailoring' && (
         <TailoringModal
           clothes={clothes}
@@ -2541,7 +2425,6 @@ export default function App() {
         />
       )}
 
-      {/* Edit Tailoring Modal */}
       {activeModal === 'editTailoring' && selectedTailoringOrder && (
         <TailoringModal
           order={selectedTailoringOrder}
@@ -2552,7 +2435,6 @@ export default function App() {
         />
       )}
 
-      {/* Tailoring Receipt Modal */}
       {activeModal === 'tailoringReceipt' && selectedTailoringOrder && (
         <TailoringReceiptModal
           order={selectedTailoringOrder}
@@ -2560,7 +2442,6 @@ export default function App() {
         />
       )}
 
-      {/* Add Rental Modal */}
       {activeModal === 'addRental' && (
         <Modal title="تسجيل عملية كراء أو حجز مستقبلي" onClose={() => { setActiveModal(null); setPreselectedRentalItemId(undefined); }}>
           <RentalModal 
@@ -2575,7 +2456,6 @@ export default function App() {
         </Modal>
       )}
 
-      {/* Edit Rental Modal */}
       {activeModal === 'editRental' && selectedRental && (
         <Modal title="تعديل بيانات ومواعيد الكراء" onClose={() => setActiveModal(null)}>
           <RentalModal 
@@ -2587,7 +2467,6 @@ export default function App() {
         </Modal>
       )}
 
-      {/* Return Rental Modal */}
       {activeModal === 'returnRental' && selectedRental && (
         <Modal title="استرجاع فستان / قطعة كراء" onClose={() => setActiveModal(null)}>
           <ReturnRentalModal 
@@ -2598,7 +2477,6 @@ export default function App() {
         </Modal>
       )}
 
-      {/* Rental Receipt Modal */}
       {activeModal === 'receiptModal' && selectedRental && (
         <Modal title="وصل وعقد الكراء" onClose={() => setActiveModal(null)} wide>
           <RentalReceiptModal 
@@ -2608,7 +2486,6 @@ export default function App() {
         </Modal>
       )}
 
-      {/* WhatsApp / SMS Messaging Modal */}
       {activeModal === 'messageModal' && selectedRental && (
         <Modal title="إرسال تذكير للزبون" onClose={() => setActiveModal(null)}>
           <div className="space-y-4 text-right">
@@ -2638,7 +2515,6 @@ export default function App() {
         </Modal>
       )}
 
-      {/* Staff Payouts & Absences Modal */}
       {activeModal === 'staffPayouts' && (
         <Modal title="رواتب، غيابات وخلاص عمال البوتيك" onClose={() => setActiveModal(null)} wide>
           <StaffPayoutsModal 
@@ -2657,7 +2533,6 @@ export default function App() {
         </Modal>
       )}
 
-      {/* Privacy Password Modal */}
       {activeModal === 'privacyPassword' && (
         <Modal title="كلمة المرور لإظهار الحسابات" onClose={() => setActiveModal(null)}>
           <form 
@@ -2712,7 +2587,6 @@ export default function App() {
         </Modal>
       )}
 
-      {/* Backup & Restore Modal */}
       {activeModal === 'backupModal' && (
         <Modal title="النسخ الاحتياطي واستعادة البيانات" onClose={() => setActiveModal(null)}>
           <div className="space-y-4">
@@ -2770,7 +2644,6 @@ export default function App() {
         </Modal>
       )}
 
-      {/* Trash Soft Delete Modal */}
       {activeModal === 'trash' && (
         <TrashModal 
           onClose={() => setActiveModal(null)} 
@@ -2780,11 +2653,9 @@ export default function App() {
         />
       )}
 
-      {/* Firebase Cloud Sync Modal */}
       {activeModal === 'cloudSync' && (
         <Modal title="مزامنة وسحابة Firebase" onClose={() => setActiveModal(null)}>
           <div className="space-y-4">
-            {/* Status Card */}
             <div className={`p-4 rounded-2xl border ${
               isFirebaseConnected 
                 ? 'bg-emerald-50/70 border-emerald-200' 
@@ -2815,7 +2686,6 @@ export default function App() {
               )}
             </div>
 
-            {/* Cloud Config Details */}
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-slate-500 font-bold">معرف المشروع:</span>
@@ -2829,7 +2699,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Collection Records Summary */}
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
                 <span className="text-slate-600 font-medium">الفساتين والمخزون</span>
@@ -2849,7 +2718,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Image Migration & Optimization Button */}
             <button
               onClick={() => setActiveModal('imageMigration')}
               className="w-full py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 active:scale-95"
@@ -2858,7 +2726,6 @@ export default function App() {
               <span>تحسين وترحيل صور المنتجات (إخراج الصور من السجلات)</span>
             </button>
 
-            {/* Manual Sync Button */}
             <button
               onClick={handleSyncAllToCloud}
               disabled={isCloudSyncing}
@@ -2871,7 +2738,6 @@ export default function App() {
         </Modal>
       )}
 
-      {/* Image Optimization & Migration Modal */}
       {activeModal === 'imageMigration' && (
         <ImageMigrationModal
           clothes={clothes}
@@ -2881,7 +2747,6 @@ export default function App() {
         />
       )}
 
-      {/* Full Financial Report */}
       {activeModal === 'fullReport' && (
         <Modal title="التقرير المالي والإداري المفصل للبوتيك" onClose={() => setActiveModal(null)} wide>
           <FullReport 
@@ -2898,7 +2763,6 @@ export default function App() {
         </Modal>
       )}
 
-      {/* Barcode Scanner */}
       {isScanning && (
         <BarcodeScanner 
           onScan={(code) => {
@@ -2915,11 +2779,9 @@ export default function App() {
                 setPreselectedRentalItemId(item.id);
                 setActiveModal('addRental');
               } else {
-                // Open action chooser for this scanned item
                 setScannedItemAction(item);
               }
             } else {
-              // Code not in database -> prompt to add
               setUnknownScannedCode(code.trim());
             }
           }} 
@@ -2927,14 +2789,12 @@ export default function App() {
         />
       )}
 
-      {/* Scanned Item Action Modal (When scanned from Dashboard / Top Bar) */}
       {scannedItemAction && (
         <Modal 
           title="إجراءات سريعة للقطعة الممسوحة" 
           onClose={() => setScannedItemAction(null)}
         >
           <div className="space-y-4 py-1 text-slate-800" dir="rtl">
-            {/* Item Card */}
             <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
               {(getListImage(scannedItemAction) || scannedItemAction.imageUrl) ? (
                 <AsyncProductImage item={scannedItemAction} mode="thumb" className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shrink-0" />
@@ -2962,9 +2822,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* 3 Main Action Choices */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              {/* Rent Action */}
               {(scannedItemAction.purpose === 'rent' || scannedItemAction.purpose === 'both') && (
                 <button
                   onClick={() => {
@@ -2984,7 +2842,6 @@ export default function App() {
                 </button>
               )}
 
-              {/* Sell Action */}
               {(scannedItemAction.purpose === 'sell' || scannedItemAction.purpose === 'both') && (
                 <button
                   onClick={() => {
@@ -3021,7 +2878,6 @@ export default function App() {
                 </button>
               )}
 
-              {/* Stock Management */}
               <button
                 onClick={() => {
                   setScannedItemAction(null);
@@ -3040,7 +2896,6 @@ export default function App() {
         </Modal>
       )}
 
-      {/* Unknown Barcode Scanned Modal */}
       {unknownScannedCode && (
         <Modal 
           title="الباركود غير مسجل في المخزن" 
@@ -3081,7 +2936,6 @@ export default function App() {
         </Modal>
       )}
 
-      {/* Mobile More Sheet Modal */}
       {activeModal === 'mobileMore' && (
         <Modal title="المزيد من الأقسام والخدمات" onClose={() => setActiveModal(null)}>
           <div className="grid grid-cols-2 gap-3 py-2">
@@ -3155,7 +3009,6 @@ export default function App() {
         </Modal>
       )}
 
-      {/* In-App Delete Confirmation Modal */}
       {confirmDelete && (
         <Modal title={confirmDelete.title} onClose={() => setConfirmDelete(null)}>
           <div className="space-y-4 py-2 text-center sm:text-right" dir="rtl">

@@ -529,9 +529,7 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
 
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6" dir="rtl">
-      {/* Top Split Layout: POS Selector and Cart */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
-        {/* Mobile Cart Summary Sticky Pill */}
         {cart.length > 0 && (
           <div className="lg:hidden bg-slate-900 text-white p-3 rounded-2xl flex justify-between items-center shadow-md">
             <div className="flex items-center gap-2">
@@ -553,7 +551,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
           </div>
         )}
 
-        {/* Product Selection with Photo Grid */}
         <div className="lg:col-span-7 space-y-3 sm:space-y-4">
           <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-3">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
@@ -567,7 +564,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                 <p className="text-xs text-slate-500 font-normal">البيع من المخزون 1 أو المخزون 2 مع المسح بالباركود.</p>
               </div>
 
-              {/* Laser Barcode Quick Input Form & Camera Scanner Button */}
               <div className="w-full sm:w-auto flex items-center gap-1.5 flex-wrap">
                 <button
                   type="button"
@@ -599,7 +595,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               </div>
             </div>
 
-            {/* Scan Success Notice */}
             {lastScannedItem && (
               <div className="p-2 bg-slate-100 border border-slate-200 text-slate-800 text-xs font-medium rounded-xl text-center flex items-center justify-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-slate-700" />
@@ -607,7 +602,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               </div>
             )}
 
-            {/* Search Input */}
             <div className="relative">
               <input
                 type="text"
@@ -619,7 +613,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               <Search className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
             </div>
 
-            {/* Category Filter Pills */}
             <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 text-xs hide-scrollbar">
               <div className="flex gap-1.5 shrink-0">
                 {categories.map(cat => (
@@ -635,7 +628,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                 ))}
               </div>
 
-              {/* Image Mode Switcher */}
               <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[11px] shrink-0">
                 <button
                   type="button"
@@ -671,7 +663,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
             </div>
           </div>
 
-          {/* Grid of Sellable Products with Virtualization */}
           <VirtualizedPosGrid
             clothes={visibleClothes}
             cart={cart}
@@ -706,7 +697,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
           )}
         </div>
 
-        {/* Cart & Checkout Panel */}
         <div className="lg:col-span-5" id="checkout-card">
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs space-y-4 sticky top-20">
             <div className="flex justify-between items-center pb-3 border-b border-slate-100">
@@ -727,7 +717,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               )}
             </div>
 
-            {/* Cart Items with Stock 1 / Stock 2 selectors */}
             {cart.length === 0 ? (
               <div className="py-8 sm:py-12 text-center text-slate-400 space-y-2">
                 <ShoppingBag className="w-8 h-8 text-slate-300 mx-auto" />
@@ -743,7 +732,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                   return (
                     <div key={`${item.itemId}_${source}_${idx}`} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-xs space-y-2">
                       <div className="flex justify-between items-center gap-2">
-                        {/* Item Photo / Icon */}
                         <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
                           {itemPhoto ? (
                             <img src={itemPhoto} alt={item.name} className="w-full h-full object-contain" />
@@ -761,7 +749,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                           </div>
                         </div>
 
-                        {/* Quantity controls */}
                         <div className="flex items-center gap-1.5 shrink-0">
                           <button
                             onClick={() => updateQty(item.itemId, item.stockSource, item.qty - 1)}
@@ -782,7 +769,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                         </div>
                       </div>
 
-                      {/* Stock Source Toggle Badge */}
                       <div className="flex items-center justify-between pt-1.5 border-t border-slate-200/60 text-[10px]">
                         <span className="text-slate-500 font-medium">الخصم من المخزن:</span>
                         <button
@@ -801,7 +787,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               </div>
             )}
 
-            {/* Checkout Form */}
             {cart.length > 0 && (
               <form onSubmit={handleCheckout} className="space-y-3 pt-3 border-t border-slate-100 text-xs">
                 <div className="flex justify-between items-center">
@@ -832,7 +817,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                   />
                 </div>
 
-                {/* Sale Date Selector */}
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 space-y-1.5">
                   <div className="flex justify-between items-center">
                     <label className="text-[11px] font-medium text-slate-600 flex items-center gap-1.5">
@@ -872,14 +856,12 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                   />
                 </div>
 
-                {/* Pricing & Discount (إنقاص السعر والتخفيض) */}
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-500 font-medium">المجموع قبل التخفيض:</span>
                     <span className="font-bold text-slate-800 font-mono">{rawSubtotal.toLocaleString()} دج</span>
                   </div>
 
-                  {/* Discount input */}
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <label className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
@@ -906,7 +888,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                       className="w-full bg-white border border-emerald-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-emerald-900 focus:outline-none focus:border-emerald-500 font-mono"
                     />
 
-                    {/* Quick discount chips */}
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {[200, 500, 1000, 1500, 2000].map(amt => (
                         <button
@@ -985,7 +966,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* Customer ID & Barcode Scanner Modal */}
       {showCustomerIdScanner && (
         <CustomerIdScannerModal
           title="مسح بطاقة تعريف أو باركود الزبون"
@@ -994,7 +974,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
         />
       )}
 
-      {/* Barcode Camera Scanner Modal */}
       {showCameraScanner && (
         <BarcodeScanner
           title="مسح باركود القطعة للبيع"
@@ -1006,11 +985,9 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
         />
       )}
 
-      {/* Barcode Scanned Item Quantity Selection Modal */}
       {scannedItemModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" dir="rtl">
           <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 space-y-5 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
-            {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0">
@@ -1030,7 +1007,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               </button>
             </div>
 
-            {/* Item Card */}
             <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center gap-3">
               {(getListImage(scannedItemModal.item) || scannedItemModal.item.imageUrl) ? (
                 <AsyncProductImage item={scannedItemModal.item} mode="thumb" className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-200 shrink-0 p-0.5" />
@@ -1056,7 +1032,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               </div>
             </div>
 
-            {/* Stock Source Selection */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-700 block">مصدر المخزون للبيع:</label>
               <div className="grid grid-cols-2 gap-2">
@@ -1108,7 +1083,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               </div>
             </div>
 
-            {/* Quantity Picker */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-700">الكمية المراد بيعها:</label>
@@ -1151,7 +1125,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                 </button>
               </div>
 
-              {/* Quick Presets */}
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {[1, 2, 3, 5, 10].map(n => {
                   const maxAvailable = scannedItemModal.stockSource === 'stock1' 
@@ -1188,7 +1161,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               </div>
             </div>
 
-            {/* Total Calculation */}
             <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-500 font-medium block">إجمالي السعر:</span>
@@ -1201,7 +1173,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               </span>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
@@ -1227,7 +1198,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
         </div>
       )}
 
-      {/* Recent Sales History */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs space-y-4">
         <div className="flex justify-between items-center">
           <h3 className="font-bold text-slate-900 text-base">سجل المبيعات السابقة</h3>
@@ -1256,7 +1226,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               return (
                 <div key={sale.id} className="py-3 flex justify-between items-center text-xs gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    {/* First item photo thumbnail if available */}
                     <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
                       {itemPhoto ? (
                         <img src={itemPhoto} alt="صورة" className="w-full h-full object-contain" />
@@ -1295,7 +1264,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               );
             })}
 
-            {/* Bottom Progressive Load Button for Sales History */}
             <div className="pt-3 flex justify-between items-center text-xs">
               {((visibleSalesCount < sales.length) || hasMoreSales) ? (
                 <button
@@ -1335,7 +1303,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
         />
       )}
 
-      {/* Camera Barcode Scanner Modal */}
       {showCameraScanner && (
         <BarcodeScanner 
           onScan={(code) => {
@@ -1347,11 +1314,9 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
         />
       )}
 
-      {/* Scanned Barcode Item Quantity Selection Modal */}
       {scannedItemModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 space-y-5 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200" dir="rtl">
-            {/* Header */}
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5 text-blue-600">
                 <div className="p-2 bg-blue-50 rounded-xl">
@@ -1370,7 +1335,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               </button>
             </div>
 
-            {/* Item Card */}
             <div className="flex gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 items-center">
               {(getListImage(scannedItemModal.item) || scannedItemModal.item.imageUrl) ? (
                 <AsyncProductImage item={scannedItemModal.item} mode="thumb" className="w-16 h-16 rounded-xl bg-white border border-slate-200 shrink-0 p-0.5" />
@@ -1391,7 +1355,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               </div>
             </div>
 
-            {/* Stock Source Choice */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 block">مصدر المخزون للبيع:</label>
               <div className="grid grid-cols-2 gap-2">
@@ -1443,7 +1406,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               </div>
             </div>
 
-            {/* Size (الطاي / المقاس) Selection */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 block">اختر المقاس (الطاي):</label>
               <div className="flex flex-wrap gap-1.5">
@@ -1474,7 +1436,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               </div>
             </div>
 
-            {/* Color (اللون) Selection */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 block">اختر اللون:</label>
               <div className="flex flex-wrap gap-1.5">
@@ -1505,7 +1466,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               </div>
             </div>
 
-            {/* Quantity Selector */}
             {(() => {
               const maxStock = scannedItemModal.stockSource === 'stock1' 
                 ? getItemStock1(scannedItemModal.item) 
@@ -1551,7 +1511,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
                     </button>
                   </div>
 
-                  {/* Preset Buttons */}
                   <div className="flex gap-1.5 justify-center pt-1">
                     {[1, 2, 3, 5, 10].map(q => (
                       q <= maxStock && (
@@ -1583,7 +1542,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               );
             })()}
 
-            {/* Total Display */}
             <div className="p-3 bg-blue-50/80 border border-blue-200/60 rounded-2xl flex justify-between items-center">
               <span className="text-xs font-bold text-slate-700">الإجمالي النهائي:</span>
               <span className="text-base font-black text-blue-700">
@@ -1591,7 +1549,6 @@ export const SalesPOSView: React.FC<SalesPOSViewProps> = React.memo(({
               </span>
             </div>
 
-            {/* Buttons */}
             <div className="flex gap-2 pt-1">
               <button
                 type="button"

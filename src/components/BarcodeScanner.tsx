@@ -383,7 +383,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     >
       <div className="relative w-full max-w-md bg-white p-4 sm:p-5 rounded-3xl shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
         
-        {/* Close Top Button */}
         <button
           onClick={async () => {
             await closeBarcodeCamera();
@@ -397,7 +396,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           </svg>
         </button>
 
-        {/* Title */}
         <div className="text-center mb-3">
           <h2 id="barcodeModalTitle" className="text-base font-bold text-slate-800 leading-tight">
             {title || 'وجّه الخطوط داخل الإطار — جاري البحث تلقائيًا'}
@@ -407,7 +405,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           </p>
         </div>
 
-        {/* Camera Container */}
         <div className="relative w-full rounded-2xl overflow-hidden bg-black border border-slate-200 mb-3 shadow-inner flex items-center justify-center min-h-[260px] max-h-[350px]">
           
           {errorMsg ? (
@@ -424,7 +421,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             </div>
           ) : (
             <>
-              {/* Real Video Element */}
               <video
                 ref={videoRef}
                 id="barcodeVideo"
@@ -435,7 +431,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                 style={{ minHeight: '260px', background: '#000' }}
               />
 
-              {/* Exact Green Focus Bounding Box Overlay */}
                   <div
                     style={{
                       width: '92%',
@@ -453,7 +448,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                     />
                   </div>
 
-              {/* Loading Indicator */}
               {isInitializing && (
                 <div className="absolute inset-0 bg-black/80 flex items-center justify-center text-white text-xs font-bold gap-2 z-20">
                   <svg className="w-5 h-5 animate-spin text-blue-400" fill="none" viewBox="0 0 24 24">
@@ -464,7 +458,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                 </div>
               )}
 
-              {/* Scanned Badge */}
               {recentScanned && (
                 <div className="absolute top-3 inset-x-4 bg-slate-900 text-white text-xs font-bold p-2 rounded-xl text-center shadow-xl flex items-center justify-center gap-1.5 z-30 border border-slate-700">
                   <Check className="w-4 h-4 text-blue-400" />
@@ -473,7 +466,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                 </div>
               )}
 
-              {/* Top Camera Switch button */}
               <div className="absolute top-2.5 right-2.5 z-20 pointer-events-auto">
                 <button
                   type="button"
@@ -485,12 +477,10 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                 </button>
               </div>
 
-              {/* Bottom Controls: Zoom & Torch */}
               <div
                 id="barcodeControls"
                 className="absolute bottom-2 right-2 left-2 flex items-center justify-between gap-2 pointer-events-none z-20"
               >
-                {/* Zoom Buttons */}
                 <div className="flex items-center gap-1.5 pointer-events-auto bg-black/70 backdrop-blur-xs px-2 py-1 rounded-xl border border-white/10">
                   <button
                     type="button"
@@ -511,7 +501,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                   </button>
                 </div>
 
-                {/* Torch Button */}
                 {torchAvailable && (
                   <div className="flex items-center gap-1.5 pointer-events-auto">
                     <button
@@ -532,7 +521,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           )}
         </div>
 
-        {/* Manual Barcode Input Form */}
         <form onSubmit={handleManualSubmit} className="flex gap-2 mb-3">
           <input
             type="text"
@@ -550,7 +538,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           </button>
         </form>
 
-        {/* 3 Action Buttons Grid */}
         <div className="grid grid-cols-3 gap-2">
           <button
             type="button"

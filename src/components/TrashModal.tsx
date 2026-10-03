@@ -89,7 +89,6 @@ export const TrashModal: React.FC<TrashModalProps> = ({ onClose, onRestored }) =
           </div>
         </div>
 
-        {/* Confirmation Modal for Purging Items Older Than 30 Days */}
         {showPurgeConfirm && (
           <div className="bg-red-50/90 border border-red-200 p-4 rounded-2xl space-y-3 animate-in fade-in">
             <div className="flex items-start gap-2.5 text-red-900 text-xs">

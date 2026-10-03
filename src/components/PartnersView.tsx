@@ -324,7 +324,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
 
   return (
     <div className="space-y-4 pb-8" dir="rtl">
-      {/* Top Banner */}
       <div className="bg-gradient-to-r from-teal-50/70 via-white to-cyan-50/70 p-4 sm:p-5 rounded-2xl border border-teal-100 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
@@ -342,7 +341,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            {/* Toggle Tabs */}
             <div className="flex items-center bg-slate-100/90 p-1 rounded-xl text-xs font-semibold w-full sm:w-auto border border-slate-200/60">
               <button
                 onClick={() => {
@@ -408,7 +406,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* Financial KPI Summary Cards */}
         {activeTab === 'suppliers' ? (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
             <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
@@ -462,7 +459,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
         )}
       </div>
 
-      {/* Search Input Bar */}
       <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs">
         <div className="relative">
           <input
@@ -476,9 +472,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* ==================================================== */}
-      {/* SUPPLIERS TAB CONTENT */}
-      {/* ==================================================== */}
       {activeTab === 'suppliers' && (
         <div className="space-y-3">
           {filteredSuppliers.length === 0 ? (
@@ -520,7 +513,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                       )}
                     </div>
 
-                    {/* Contact & Location */}
                     <div className="text-xs text-slate-500 space-y-1">
                       {sup.phone && (
                         <div className="flex items-center gap-1.5">
@@ -542,7 +534,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                       </p>
                     )}
 
-                    {/* Financial Snapshot */}
                     <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center text-xs">
                       <div>
                         <span className="text-[9px] text-slate-400 block font-normal">الفواتير</span>
@@ -559,7 +550,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                     </div>
                   </div>
 
-                  {/* Actions Bar */}
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1">
                       {sup.phone && (
@@ -613,9 +603,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
         </div>
       )}
 
-      {/* ==================================================== */}
-      {/* SEAMSTRESSES TAB CONTENT */}
-      {/* ==================================================== */}
       {activeTab === 'seamstresses' && (
         <div className="space-y-3">
           {filteredSeamstresses.length === 0 ? (
@@ -657,7 +644,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                       )}
                     </div>
 
-                    {/* Contact & Location */}
                     <div className="text-xs text-slate-500 space-y-1">
                       {seam.phone && (
                         <div className="flex items-center gap-1.5">
@@ -684,7 +670,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                       </p>
                     )}
 
-                    {/* Orders Snapshot */}
                     <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center text-xs">
                       <div>
                         <span className="text-[9px] text-slate-400 block font-normal">إجمالي الطلبيات</span>
@@ -701,7 +686,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                     </div>
                   </div>
 
-                  {/* Actions Bar */}
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1">
                       {seam.phone && (
@@ -755,9 +739,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
         </div>
       )}
 
-      {/* ==================================================== */}
-      {/* MODAL: ADD / EDIT SUPPLIER */}
-      {/* ==================================================== */}
       {showAddSupplierModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/40 backdrop-blur-xs" dir="rtl">
           <div className="bg-white rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-xl border border-slate-200/80 space-y-4 max-h-[92vh] overflow-y-auto">
@@ -865,9 +846,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
         </div>
       )}
 
-      {/* ==================================================== */}
-      {/* MODAL: ADD / EDIT SEAMSTRESS */}
-      {/* ==================================================== */}
       {showAddSeamstressModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/40 backdrop-blur-xs" dir="rtl">
           <div className="bg-white rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-xl border border-slate-200/80 space-y-4 max-h-[92vh] overflow-y-auto">
@@ -986,9 +964,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
         </div>
       )}
 
-      {/* ==================================================== */}
-      {/* MODAL: SUPPLIER INVOICES & PURCHASES HISTORY */}
-      {/* ==================================================== */}
       {selectedSupplierHistory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/40 backdrop-blur-xs" dir="rtl">
           <div className="bg-white rounded-2xl w-full max-w-2xl p-5 sm:p-6 shadow-xl border border-slate-200/80 space-y-4 max-h-[92vh] overflow-y-auto">
@@ -1009,7 +984,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
               </button>
             </div>
 
-            {/* List of expenses / invoices for this supplier */}
             <div className="space-y-2.5">
               {(() => {
                 const supData = supplierAnalytics.find(s => s.id === selectedSupplierHistory.id);
@@ -1076,9 +1050,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
         </div>
       )}
 
-      {/* ==================================================== */}
-      {/* MODAL: SEAMSTRESS ORDERS HISTORY */}
-      {/* ==================================================== */}
       {selectedSeamstressHistory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/40 backdrop-blur-xs" dir="rtl">
           <div className="bg-white rounded-2xl w-full max-w-2xl p-5 sm:p-6 shadow-xl border border-slate-200/80 space-y-4 max-h-[92vh] overflow-y-auto">
@@ -1099,7 +1070,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
               </button>
             </div>
 
-            {/* List of tailoring orders assigned to this seamstress */}
             <div className="space-y-2.5">
               {(() => {
                 const seamData = seamstressAnalytics.find(s => s.id === selectedSeamstressHistory.id);
@@ -1161,9 +1131,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
         </div>
       )}
 
-      {/* ==================================================== */}
-      {/* MODAL: SETTLE SUPPLIER DEBT */}
-      {/* ==================================================== */}
       {settleExpense && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/40 backdrop-blur-xs" dir="rtl">
           <div className="bg-white rounded-2xl w-full max-w-md p-5 sm:p-6 shadow-xl border border-slate-200/80 space-y-4">

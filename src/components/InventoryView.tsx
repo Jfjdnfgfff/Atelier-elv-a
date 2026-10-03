@@ -579,7 +579,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
 
   return (
     <div className="space-y-4 sm:space-y-5 p-3 sm:p-6" dir="rtl">
-      {/* Top Header & Tab Switcher */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-indigo-50/70 via-white to-purple-50/70 p-4 sm:p-5 rounded-2xl border border-indigo-100 shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
@@ -596,7 +595,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          {/* Main Tab Switcher */}
           <div className="flex items-center bg-slate-100/90 p-1 rounded-xl text-xs font-semibold w-full sm:w-auto border border-slate-200/60">
             <button
               onClick={() => setInventoryTab('clothes')}
@@ -644,7 +642,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* Global Financial Valuation Cards: ثمن القيمة، ثمن البيع، والسلع الأولية */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
           <div className="flex items-center justify-between mb-1">
@@ -683,7 +680,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* Render Subview: Raw Materials vs Clothes */}
       {inventoryTab === 'raw_materials' ? (
         <RawMaterialsSection
           rawMaterials={rawMaterials}
@@ -694,7 +690,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         />
       ) : (
         <>
-          {/* Stock 1 & Stock 2 Location Quantities */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
               <div className="flex items-center justify-between mb-1">
@@ -733,18 +728,15 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
             </div>
           </div>
 
-      {/* Notice Pill */}
       {barcodeActionNotice && (
         <div className="bg-slate-900 text-white text-xs font-bold p-3 rounded-xl text-center shadow-xs">
           {barcodeActionNotice}
         </div>
       )}
 
-      {/* Filters and Search */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-3">
         <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
           <div className="flex gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 hide-scrollbar">
-            {/* Purpose Filters */}
             <button
               onClick={() => setFilterPurpose('all')}
               className={`px-3 py-1.5 rounded-xl text-xs transition-all shrink-0 font-medium ${
@@ -774,7 +766,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
 
             <span className="w-px h-5 bg-slate-200 self-center mx-1 shrink-0" />
 
-            {/* Stock Location Filters */}
             <button
               onClick={() => setFilterStockLoc('all')}
               className={`px-3 py-1.5 rounded-xl text-xs transition-all shrink-0 font-medium flex items-center gap-1.5 ${
@@ -813,9 +804,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
             </button>
           </div>
 
-          {/* Dual Search Area: Barcode Search & General Search */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-            {/* 1. Barcode Search Input with Camera button */}
             <div className="relative flex-1 sm:w-64">
               <div className="absolute right-2.5 top-2.5 text-indigo-600 flex items-center pointer-events-none">
                 <Barcode className="w-4 h-4" />
@@ -850,7 +839,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
               </div>
             </div>
 
-            {/* 2. General Name / Color / Size search */}
             <div className="relative flex-1 sm:w-60">
               <input
                 type="text"
@@ -875,7 +863,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* Barcode Search Match Banner */}
         {barcodeSearch && (
           <div className="p-2.5 bg-indigo-50 border border-indigo-200/80 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-2">
@@ -900,7 +887,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           </div>
         )}
 
-        {/* Categories Bar */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs hide-scrollbar">
           <button
             onClick={() => setFilterCategory('all')}
@@ -923,9 +909,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           ))}
         </div>
 
-        {/* Sizes and Colors Filter Rows */}
         <div className="pt-2 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-          {/* Size Filter */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 hide-scrollbar">
             <span className="text-[11px] font-medium text-slate-500 shrink-0 flex items-center gap-1">
               <Ruler className="w-3.5 h-3.5 text-slate-400" />
@@ -956,7 +940,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
             ))}
           </div>
 
-          {/* Color Filter */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 hide-scrollbar">
             <span className="text-[11px] font-medium text-slate-500 shrink-0 flex items-center gap-1">
               <Palette className="w-3.5 h-3.5 text-slate-400" />
@@ -994,7 +977,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         </div>
       </div>
 
-      {/* Grid of Clothes Items using VirtualizedClothGrid for 60fps scrolling */}
       <div className="flex items-center justify-between gap-2.5 pt-1 pb-2">
         <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
           <Shirt className="w-4 h-4 text-blue-900" />
@@ -1047,7 +1029,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         />
       )}
 
-      {/* Colors & Sizes Variants Modal (نافذة الألوان والمقاسات عند الضغط على صورة المنتج) */}
       {variantsModalItem && (
         <ProductVariantsModal
           item={variantsModalItem}
@@ -1062,7 +1043,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         />
       )}
 
-      {/* Add / Edit Cloth Modal */}
       {(showAddModal || editingItem) && (
         <ClothFormModal
           item={editingItem}
@@ -1082,7 +1062,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         />
       )}
 
-      {/* Quick Stock Modal (Stock 1 & Stock 2) */}
       {stockModalItem && (
         <QuickStockModal
           item={stockModalItem}
@@ -1104,7 +1083,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         />
       )}
 
-      {/* Quick Transfer Modal (Stock 1 <-> Stock 2) */}
       {quickTransferItem && (
         <QuickTransferModal
           item={quickTransferItem}
@@ -1113,7 +1091,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         />
       )}
 
-      {/* Embedded Barcode Scanner Camera for Adding Stock */}
       {showScannerModal && (
         <BarcodeScanner
           title="مسح باركود لإضافة المخزون"
@@ -1122,7 +1099,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         />
       )}
 
-      {/* Embedded Barcode Scanner Camera for Searching Inventory */}
       {showSearchBarcodeCamera && (
         <BarcodeScanner
           title="مسح باركود للبحث المباشر في المخزون"
@@ -1134,7 +1110,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         />
       )}
 
-      {/* Security Password Prompt Modal */}
       {securityModal && (
         <SecurityPasswordModal
           title={securityModal.title}
@@ -1149,9 +1124,6 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   );
 });
 
-// ==========================================
-// Quick Stock Modal (إضافة وتحديث المخزون 1 والمخزون 2)
-// ==========================================
 interface QuickStockModalProps {
   item: ClothItem;
   onClose: () => void;
@@ -1237,7 +1209,6 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
           </button>
         </div>
 
-        {/* Item Info Summary */}
         <div className="flex items-center gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200 mb-4">
           {(getListImage(item) || item.imageUrl) ? (
             <AsyncProductImage item={item} mode="thumb" className="w-14 h-14 rounded-xl bg-white border border-slate-200 shrink-0 p-0.5 shadow-2xs" />
@@ -1264,7 +1235,6 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Variant Selector if item has multiple sizes/colors */}
           {currentVariants.length > 0 && (
             <div className="space-y-1 bg-blue-50/50 p-2.5 rounded-2xl border border-blue-100">
               <label className="block text-[11px] font-bold text-blue-900">اختر المقاس واللون المراد تزويده (اختياري):</label>
@@ -1283,7 +1253,6 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
             </div>
           )}
 
-          {/* Choose which stock to add to */}
           <div>
             <label className="block text-xs font-black text-slate-700 mb-2">المخزن المراد التزويد إليه:</label>
             <div className="grid grid-cols-2 gap-2">
@@ -1315,7 +1284,6 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
             </div>
           </div>
 
-          {/* Quick Add Buttons (+1, +2, +5, +10) */}
           <div>
             <label className="block text-xs font-black text-slate-700 mb-1.5">
               إضافة سريعة إلى {targetStock === 'stock1' ? 'المخزون 1' : 'المخزون 2'}:
@@ -1333,7 +1301,6 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
               ))}
             </div>
 
-            {/* Direct Quantities inputs for both stocks */}
             <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200">
               <div>
                 <label className="block text-[11px] font-black text-blue-900 mb-1">الكمية في المخزون 1</label>
@@ -1358,7 +1325,6 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
             </div>
           </div>
 
-          {/* Pricing Adjustments */}
           <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 mb-1">سعر الشراء</label>
@@ -1405,9 +1371,6 @@ const QuickStockModal: React.FC<QuickStockModalProps> = ({ item, onClose, onSave
   );
 };
 
-// ==========================================
-// Quick Transfer Modal (تحويل بين المخزن 1 والمخزن 2)
-// ==========================================
 interface QuickTransferModalProps {
   item: ClothItem;
   onClose: () => void;
@@ -1457,7 +1420,6 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
           </button>
         </div>
 
-        {/* Item Info */}
         <div className="flex items-center gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200 mb-4">
           <div className="flex-1">
             <h4 className="font-bold text-slate-900 text-sm">{item.name}</h4>
@@ -1470,7 +1432,6 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Direction Select */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-2">اتجاه التحويل:</label>
             <div className="space-y-2">
@@ -1510,7 +1471,6 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
             </div>
           </div>
 
-          {/* Transfer Qty */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">الكمية المراد تحويلها:</label>
             <div className="flex items-center gap-2">
@@ -1548,7 +1508,6 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
             </div>
           )}
 
-          {/* Password Authorization Input */}
           <div className="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-200">
             <label className="block text-xs font-black text-blue-950 mb-1.5 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
@@ -1603,9 +1562,6 @@ const QuickTransferModal: React.FC<QuickTransferModalProps> = ({ item, onClose, 
   );
 };
 
-// ==========================================
-// Full Add/Edit Cloth Form Modal with Barcode Camera Button & Variant Stock Matrix
-// ==========================================
 interface ClothFormModalProps {
   item?: ClothItem | null;
   initialBarcode?: string;
@@ -1959,7 +1915,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Main Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">اسم القطعة أو الفستان * (حروف فقط)</label>
@@ -2003,7 +1958,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
             </div>
           </div>
 
-          {/* Category & Purpose */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">التصنيف</label>
@@ -2043,7 +1997,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
             </div>
           </div>
 
-          {/* Image Upload */}
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
             <div className="flex justify-between items-center">
               <label className="block text-xs font-black text-slate-800">صورة الفستان / القطعة</label>
@@ -2105,7 +2058,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
             </div>
           </div>
 
-          {/* SIZES SELECTION SECTION (المقاسات المتوفرة / لطاي) */}
           <div className="bg-blue-50/40 p-3.5 rounded-2xl border border-blue-100 space-y-2.5">
             <div className="flex justify-between items-center">
               <label className="text-xs font-black text-blue-900 flex items-center gap-1.5">
@@ -2138,7 +2090,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
               })}
             </div>
 
-            {/* Add Custom Size */}
             <div className="flex gap-2 pt-1 border-t border-blue-100/60">
               <input
                 type="text"
@@ -2164,7 +2115,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
             </div>
           </div>
 
-          {/* COLORS SELECTION SECTION (الألوان المتوفرة) */}
           <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-3">
             <div className="flex justify-between items-center">
               <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
@@ -2176,7 +2126,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
               </span>
             </div>
 
-            {/* Currently Selected Color Chips with One-click Remove */}
             <div className="flex flex-wrap items-center gap-1.5 p-2 bg-white rounded-xl border border-slate-200 min-h-[38px]">
               <span className="text-[10px] text-slate-500 font-bold ml-1">الألوان المختارة:</span>
               {selectedColors.map((colName) => (
@@ -2203,9 +2152,7 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
               ))}
             </div>
 
-            {/* Category Filter Tabs & Quick Search */}
             <div className="space-y-2">
-              {/* Category Filter Pills */}
               <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar text-xs">
                 {[
                   { id: 'all', label: `الكل (${POPULAR_COLORS.length})` },
@@ -2232,7 +2179,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                 ))}
               </div>
 
-              {/* Quick Search */}
               <div className="relative">
                 <Search className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
@@ -2254,7 +2200,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
               </div>
             </div>
 
-            {/* Color Swatch Badges Grid */}
             <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto p-1.5 bg-white/70 rounded-xl border border-slate-200/80">
               {POPULAR_COLORS.filter((col) => {
                 const matchesCat = colorCategoryFilter === 'all' || col.category === colorCategoryFilter;
@@ -2285,7 +2230,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
               })}
             </div>
 
-            {/* Add Custom Color (بدرجة مخصصة أو اسم حر) */}
             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 pt-2 border-t border-slate-200">
               <div className="flex items-center gap-1.5 shrink-0 bg-white border border-slate-200 rounded-xl px-2 py-1 shadow-2xs">
                 <span className="text-[10px] text-slate-500 font-bold">الدرجة:</span>
@@ -2320,7 +2264,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
             </div>
           </div>
 
-          {/* QUANTITY MATRIX PER COLOR & SIZE (الكمية المتوفرة في كل لون ومقاس) */}
           <div className="bg-gradient-to-b from-blue-50/70 to-slate-50 p-3.5 sm:p-4 rounded-3xl border-2 border-blue-200/80 space-y-3 shadow-xs">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 pb-2 border-b border-blue-200/60">
               <div>
@@ -2333,7 +2276,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                 </p>
               </div>
 
-              {/* Total Stock Summary Pill */}
               <div className="flex items-center gap-2 self-start sm:self-auto bg-white px-3 py-1.5 rounded-2xl border border-blue-200 shadow-xs">
                 <span className="text-[11px] font-bold text-slate-500">المجموع:</span>
                 <span className="text-xs font-black text-blue-900 flex items-center gap-1.5">
@@ -2346,7 +2288,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
               </div>
             </div>
 
-            {/* Quick Bulk Action Bar */}
             <div className="flex flex-wrap items-center justify-between gap-2 bg-white/90 p-2.5 rounded-2xl border border-blue-100">
               <div className="flex items-center gap-2">
                 <button
@@ -2359,7 +2300,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                 </button>
               </div>
 
-              {/* Color filter tabs if multiple colors */}
               {Object.keys(colorGroups).length > 1 && (
                 <div className="flex items-center gap-1 overflow-x-auto max-w-full py-0.5">
                   <span className="text-[10px] font-bold text-slate-400 shrink-0">تصفية:</span>
@@ -2389,7 +2329,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
               )}
             </div>
 
-            {/* Bulk Fill Popdown Bar */}
             {showBulkFillBar && (
               <div className="bg-blue-900 text-white p-3 rounded-2xl space-y-2 animate-in fade-in zoom-in-95 duration-150">
                 <div className="flex justify-between items-center">
@@ -2444,7 +2383,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
               </div>
             )}
 
-            {/* List of Colors and their Sizes with Stock Controls */}
             <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
               {(Object.entries(colorGroups) as [string, ClothVariant[]][])
                 .filter(([col]) => activeColorFilter === 'all' || activeColorFilter === col)
@@ -2456,7 +2394,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
 
                   return (
                     <div key={col} className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-                      {/* Color Header Banner */}
                       <div className="bg-slate-50/90 px-3 py-2 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <span
@@ -2469,7 +2406,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                           </span>
                         </div>
 
-                        {/* Quick stock badge for this color */}
                         <div className="flex items-center gap-2">
                           <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
                             <span>مجموع اللون:</span>
@@ -2498,7 +2434,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                         </div>
                       </div>
 
-                      {/* Sizes for this Color */}
                       <div className="p-2.5 divide-y divide-slate-100">
                         {colorVariants.map((v) => {
                           const vS1 = Number(v.stock1) || 0;
@@ -2507,7 +2442,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
 
                           return (
                             <div key={v.id} className="py-2 first:pt-1 last:pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                              {/* Size Badge & Details */}
                               <div className="flex items-center gap-2">
                                 <span className="w-11 text-center bg-blue-50 border border-blue-200 text-blue-900 font-black text-xs py-1 rounded-xl shrink-0">
                                   {v.size}
@@ -2522,9 +2456,7 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                                 </div>
                               </div>
 
-                              {/* Quantity Adjusters for Stock 1 & Stock 2 */}
                               <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap justify-end">
-                                {/* Stock 1 (Store) */}
                                 <div className="flex items-center gap-1 bg-blue-50/60 border border-blue-200/80 px-2 py-1 rounded-xl">
                                   <span className="text-[10px] font-bold text-blue-900 shrink-0 flex items-center gap-1">
                                     <Store className="w-3 h-3 text-blue-600" />
@@ -2553,7 +2485,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                                   </button>
                                 </div>
 
-                                {/* Stock 2 (Warehouse) */}
                                 <div className="flex items-center gap-1 bg-slate-100 border border-slate-200 px-2 py-1 rounded-xl">
                                   <span className="text-[10px] font-bold text-slate-700 shrink-0 flex items-center gap-1">
                                     <Warehouse className="w-3 h-3 text-slate-500" />
@@ -2582,14 +2513,12 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
                                   </button>
                                 </div>
 
-                                {/* Variant Total Pill */}
                                 <span className={`text-[11px] font-black px-2 py-1 rounded-lg border shrink-0 ${
                                   vTotal > 0 ? 'bg-blue-50 text-blue-900 border-blue-200' : 'bg-slate-100 text-slate-400 border-slate-200'
                                 }`}>
                                   = {vTotal}
                                 </span>
 
-                                {/* Delete variant button if not available */}
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteVariant(v.id)}
@@ -2609,7 +2538,6 @@ const ClothFormModal: React.FC<ClothFormModalProps> = ({ item, initialBarcode, c
             </div>
           </div>
 
-          {/* Pricing Section */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 mb-1">سعر الشراء/التكلفة</label>
