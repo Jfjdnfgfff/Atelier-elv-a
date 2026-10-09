@@ -72,6 +72,7 @@ export interface Rental {
   handoverDate?: string; // Date when deal is finalized and dress is physically handed over
   bookingDate?: string; // Date of reservation
   paymentDate?: string; // تاريخ استلام المال / العربون / الدفعة بالضبط
+  fundSource?: FundSource; // صندوق تسجيل مدخول الكراء: صندوق اليوم (الدرج) أو الصندوق العام (الخزينة)
   conditionOnReturn?: 'perfect' | 'needs_cleaning' | 'damaged';
   penaltyAmount?: number;
   notes?: string;
@@ -287,19 +288,21 @@ export interface DailyCaisseClosure {
   date: string; // YYYY-MM-DD
   openingBalance: number; // رصيد بداية اليوم (فوند دو كيس - Fond de caisse)
   salesIncome: number; // مدخول مبيعات اليوم
-  rentalsIncome: number; // مدخول كراء اليوم
+  rentalsIncome: number; // مدخول كراء اليوم في صندوق اليوم (الدرج)
+  rentalsGeneralIncome?: number; // مدخول كراء اليوم المسجل في الصندوق العام (الخزينة) - لا يدخل في حساب الدرج
   tailoringIncome: number; // مدخول خياطة وتعديل اليوم
-  cautionsReceived: number; // مبالغ الضمان المستلمة كاش
+  cautionsReceived: number; // مبالغ الضمان المستلمة كاش في الدرج
+  cautionsGeneralReceived?: number; // ضمانات مستلمة في الصندوق العام
   expensesPaid: number; // مصاريف المحل المسددة كاش اليوم من الدرج
   generalFundExpenses?: number; // مصاريف مسددة اليوم من الصندوق العام (لا تدخل في حساب الدرج)
   creditsCollected?: number; // مبالغ ديون الزبائن المحصلة كاش في الدرج اليوم
   creditSettlementsPaid?: number; // دفعات ديون الموردين المسددة كاش من الدرج اليوم
   staffPayoutsPaid: number; // دفعات العمال المسددة كاش اليوم
   cautionsRefunded: number; // ضمانات تم إرجاعها للزبائن كاش
-  totalInflow: number; // إجمالي المدخول
-  totalOutflow: number; // إجمالي المصاريف
-  theoreticalAmount: number; // المبلغ النظري المتوقع في الصندوق
-  actualAmount: number; // المبلغ الفعلي الموجود في الصندوق (compté)
+  totalInflow: number; // إجمالي المدخول في صندوق اليوم
+  totalOutflow: number; // إجمالي المصاريف من صندوق اليوم
+  theoreticalAmount: number; // المبلغ النظري المتوقع في صندوق اليوم
+  actualAmount: number; // المبلغ الفعلي الموجود في صندوق اليوم (compté)
   difference: number; // الفارق: actualAmount - theoreticalAmount (سالب = عجز / manque، موجب = فائض / excédent)
   status: 'balanced' | 'shortage' | 'surplus'; // مطابق | عجز | فائض
   notes?: string;

@@ -1,25 +1,29 @@
 import React, { useState } from 'react';
-import { Rental } from '../types';
+import { Rental, FundSource } from '../types';
+import { FundSourcePicker } from './FundSourcePicker';
 import { Sparkles, AlertTriangle, Check, Crown, Droplets, CheckCircle2 } from 'lucide-react';
 
 interface ReturnRentalModalProps {
   rental: Rental;
+  generalFundBalance?: number;
   onConfirmReturn: (rentalId: string, returnData: {
     condition: 'perfect' | 'needs_cleaning' | 'damaged';
     cautionAction: 'refund' | 'deduct' | 'keep';
     penaltyAmount: number;
     collectedRemaining: number;
+    fundSource?: FundSource;
     sendToCleaning: boolean;
     notes: string;
   }) => void;
   onCancel: () => void;
 }
 
-export const ReturnRentalModal: React.FC<ReturnRentalModalProps> = ({ rental, onConfirmReturn, onCancel }) => {
+export const ReturnRentalModal: React.FC<ReturnRentalModalProps> = ({ rental, generalFundBalance = 0, onConfirmReturn, onCancel }) => {
   const [condition, setCondition] = useState<'perfect' | 'needs_cleaning' | 'damaged'>('perfect');
   const [cautionAction, setCautionAction] = useState<'refund' | 'deduct' | 'keep'>('refund');
   const [penaltyAmount, setPenaltyAmount] = useState<number>(0);
   const [collectedRemaining, setCollectedRemaining] = useState<number>(rental.remainingAmount || 0);
+  const [fundSource, setFundSource] = useState<FundSource>((rental.fundSource as FundSource) || 'daily');
   const [sendToCleaning, setSendToCleaning] = useState<boolean>(true);
   const [notes, setNotes] = useState<string>('');
 
@@ -30,6 +34,7 @@ export const ReturnRentalModal: React.FC<ReturnRentalModalProps> = ({ rental, on
       cautionAction,
       penaltyAmount: Number(penaltyAmount),
       collectedRemaining: Number(collectedRemaining),
+      fundSource,
       sendToCleaning,
       notes
     });
@@ -205,6 +210,19 @@ export const ReturnRentalModal: React.FC<ReturnRentalModalProps> = ({ rental, on
             onChange={(e) => setCollectedRemaining(Number(e.target.value))}
             className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-slate-800 font-mono"
           />
+          {collectedRemaining > 0 && (
+            <FundSourcePicker
+              value={fundSource}
+              onChange={setFundSource}
+              generalFundBalance={generalFundBalance}
+              amount={collectedRemaining}
+              question="أين يتم تسجيل المبلغ المحصل عند الإرجاع؟ *"
+              dailyHint={`سيُضاف مبلغ ${Number(collectedRemaining || 0).toLocaleString()} دج إلى صندوق اليوم (الدرج).`}
+              generalHint={`سيُضاف مبلغ ${Number(collectedRemaining || 0).toLocaleString()} دج إلى الصندوق العام (الخزينة).`}
+              warnOnInsufficient={false}
+              compact
+            />
+          )}
           {collectedRemaining < rental.remainingAmount && (
             <p className="text-[11px] text-emerald-700 font-medium">
               تم إنقاص السعر وتخفيض مبلغ: {(rental.remainingAmount - collectedRemaining).toLocaleString()} دج لصالح الزبونة.

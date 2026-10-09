@@ -45,6 +45,7 @@ import {
 import { perfMonitor } from './utils/performanceMonitor';
 import {
   isGeneralFundExpense,
+  isGeneralFundRental,
   paymentsForCredit,
   generalFundEffectOfPayment
 } from './utils/fundBalance';
@@ -1101,11 +1102,22 @@ export default function App() {
     setRentals(prev => [newRental, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.RENTALS, newRental);
 
+    // مدخول الكراء المسجل في الصندوق العام → يُضاف مباشرة إلى رصيد الخزينة
+    if (isGeneralFundRental(newRental)) {
+      const income = Number(newRental.paidAmount) || 0;
+      const caution = newRental.cautionStatus === 'held' ? (Number(newRental.cautionAmount) || 0) : 0;
+      const totalToGeneral = income + caution;
+      if (totalToGeneral > 0) {
+        setGeneralFundBalance(prev => Math.round((prev + totalToGeneral) * 100) / 100);
+      }
+    }
+
+    const fundLabel = newRental.fundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)';
     addActivityLog({
       actionType: newRental.status === 'active' ? 'deal' : 'create',
       category: 'rentals',
       title: newRental.status === 'active' ? 'تسجيل كراء فستان جديد' : 'تسجيل حجز فستان مستقبلي',
-      details: `كراء القطعة: ${newRental.itemName} (مقاس ${newRental.itemSize}) للزبونة ${newRental.customerName} بمبلغ ${newRental.rentPrice} دج`,
+      details: `كراء القطعة: ${newRental.itemName} (مقاس ${newRental.itemSize}) للزبونة ${newRental.customerName} بمبلغ ${newRental.rentPrice} دج — الصندوق: ${fundLabel} — المدفوع: ${(newRental.paidAmount || 0).toLocaleString()} دج`,
       amount: newRental.rentPrice
     });
 
@@ -1145,19 +1157,33 @@ export default function App() {
     setActiveModal(null);
   }, []);
 
-  const handleActivateRental = useCallback((rental: Rental, collectedAmount: number = 0, handoverNotes: string = '') => {
-    const newPaid = (rental.paidAmount || 0) + (collectedAmount || 0);
+  const handleActivateRental = useCallback((rental: Rental, collectedAmount: number = 0, handoverNotes: string = '', handoverFundSource?: FundSource) => {
+    const safeCollected = Number(collectedAmount) || 0;
+    const newPaid = (rental.paidAmount || 0) + safeCollected;
     const newRemaining = Math.max(0, rental.rentPrice - newPaid);
     const todayStr = new Date().toISOString().split('T')[0];
     const notesStr = handoverNotes ? `${rental.notes ? rental.notes + ' | ' : ''}تسليم: ${handoverNotes}` : rental.notes;
 
-    const rentalUpdates = {
+    // صندوق تسجيل المبلغ المحصل عند التسليم (إن وُجد)
+    const handoverSource: FundSource = handoverFundSource || (rental.fundSource as FundSource) || 'daily';
+
+    // إذا كان المبلغ المحصل مسجلاً في الصندوق العام → يُضاف إلى رصيد الخزينة
+    if (handoverSource === 'general' && safeCollected > 0) {
+      setGeneralFundBalance(prev => Math.round((prev + safeCollected) * 100) / 100);
+    }
+
+    const rentalUpdates: any = {
       status: 'active' as const,
       paidAmount: newPaid,
       remainingAmount: newRemaining,
       handoverDate: todayStr,
       notes: notesStr
     };
+    // إذا كان الحجز الأصلي على الصندوق العام والمحصل الآن على الصندوق العام نبقي الصنف عاماً، وإلا نحتفظ بالأصل
+    // نحفظ صندوق التسليم إذا اختلف عن الأصل عبر تحديث fundSource عند الحاجة
+    if (handoverSource === 'general' && rental.fundSource !== 'general') {
+      // نحتفظ بالأصل لكن المبلغ الجديد دخل الخزينة بالفعل عبر الرصيد
+    }
 
     setRentals(prev => prev.map(r => {
       if (r.id === rental.id) {
@@ -1204,27 +1230,39 @@ export default function App() {
       return filtered;
     });
 
+    const handoverFundLabel = handoverSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)';
     addActivityLog({
       actionType: 'deal',
       category: 'rentals',
       title: 'تسليم وتفعيل حجز فستان',
-      details: `تسليم الفستان ${rental.itemName} للزبونة ${rental.customerName} وتفعيل عقد الكراء`,
-      amount: rental.rentPrice
+      details: `تسليم الفستان ${rental.itemName} للزبونة ${rental.customerName} وتفعيل عقد الكراء${safeCollected > 0 ? ` — محصل عند التسليم: ${safeCollected.toLocaleString()} دج (${handoverFundLabel})` : ''}`,
+      amount: safeCollected > 0 ? safeCollected : rental.rentPrice
     });
 
-    showToast('تمت الصفقة وتسليم الفستان بنجاح! دخل الفستان في الكراء الجاري وتم خصمه من المخزن');
+    if (handoverSource === 'general' && safeCollected > 0) {
+      showToast(`تمت الصفقة وتسليم الفستان بنجاح! ${safeCollected.toLocaleString()} دج أُضيفت إلى الصندوق العام`);
+    } else {
+      showToast('تمت الصفقة وتسليم الفستان بنجاح! دخل الفستان في الكراء الجاري وتم خصمه من المخزن');
+    }
   }, []);
 
   const handleUpdateRental = useCallback((id: string, updatedData: any) => {
-    addActivityLog({
-      actionType: 'update',
-      category: 'rentals',
-      title: 'تعديل بيانات كراء فستان',
-      details: `تحديث بيانات الكراء للقطعة أو الحجز`
-    });
     setRentals(prev => {
       const prevRental = prev.find(r => r.id === id);
       if (prevRental) {
+        // تعديل أثر الصندوق العام عند تغيير صندوق الكراء أو مبلغ المدفوع
+        const prevWasGeneral = isGeneralFundRental(prevRental);
+        const nextIsGeneral = isGeneralFundRental(updatedData as Rental);
+        const prevTotal = (Number(prevRental.paidAmount) || 0) + (prevRental.cautionStatus === 'held' ? (Number(prevRental.cautionAmount) || 0) : 0);
+        const nextTotal = (Number((updatedData as any).paidAmount) || 0) + ((updatedData as any).cautionStatus === 'held' ? (Number((updatedData as any).cautionAmount) || 0) : 0);
+        let fundDelta = 0;
+        if (prevWasGeneral && nextIsGeneral) fundDelta = nextTotal - prevTotal;
+        else if (prevWasGeneral && !nextIsGeneral) fundDelta = -prevTotal;
+        else if (!prevWasGeneral && nextIsGeneral) fundDelta = nextTotal;
+        if (fundDelta !== 0) {
+          setGeneralFundBalance(b => Math.round((b + fundDelta) * 100) / 100);
+        }
+
         const wasActive = prevRental.status === 'active';
         const isNowActive = updatedData.status === 'active';
         
@@ -1252,6 +1290,13 @@ export default function App() {
     });
     updateItemInFirebase(FIREBASE_COLLECTIONS.RENTALS, id, updatedData);
 
+    const fundLabel = (updatedData as any).fundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)';
+    addActivityLog({
+      actionType: 'update',
+      category: 'rentals',
+      title: 'تعديل بيانات كراء فستان',
+      details: `تحديث بيانات الكراء — الصندوق الجديد: ${fundLabel}`
+    });
     showToast('تم تحديث بيانات الكراء');
     setActiveModal(null);
   }, []);
@@ -1267,6 +1312,11 @@ export default function App() {
           ? 'هل أنت متأكد من إلغاء وحذف حجز الفستان المستقبلي؟'
           : 'هل أنت متأكد من حذف عملية الكراء؟ سيتم استرجاع القطعة إلى المخزن.',
         onConfirm: () => {
+          // عكس أثر الصندوق العام عند حذف كراء مسجل في الخزينة
+          if (isGeneralFundRental(target)) {
+            const total = (Number(target.paidAmount) || 0) + (target.cautionStatus === 'held' ? (Number(target.cautionAmount) || 0) : 0);
+            if (total > 0) setGeneralFundBalance(prev => Math.round((prev - total) * 100) / 100);
+          }
           if (target.status === 'active' || target.status === 'overdue') {
             setClothes(prev => prev.map(c => {
               if (c.id === target.itemId) {
@@ -1299,6 +1349,11 @@ export default function App() {
   }, []);
 
   const handleConfirmReturn = useCallback((rentalId: string, returnData: any) => {
+    const collected = Number(returnData.collectedRemaining) || 0;
+    const retFundSource: FundSource = returnData.fundSource === 'general' ? 'general' : 'daily';
+    if (retFundSource === 'general' && collected > 0) {
+      setGeneralFundBalance(prev => Math.round((prev + collected) * 100) / 100);
+    }
     setRentals(currentRentals => {
       const target = currentRentals.find(r => r.id === rentalId);
       if (!target) return currentRentals;
@@ -1309,8 +1364,8 @@ export default function App() {
         conditionOnReturn: returnData.condition,
         cautionStatus: (returnData.cautionAction === 'refund' ? 'refunded' : 'deducted') as ('refunded' | 'deducted'),
         penaltyAmount: returnData.penaltyAmount,
-        paidAmount: target.paidAmount + (returnData.collectedRemaining || 0),
-        remainingAmount: Math.max(0, (target.remainingAmount || 0) - (returnData.collectedRemaining || 0)),
+        paidAmount: target.paidAmount + collected,
+        remainingAmount: Math.max(0, (target.remainingAmount || 0) - collected),
         notes: returnData.notes ? `${target.notes ? target.notes + ' | ' : ''}إرجاع: ${returnData.notes}` : target.notes
       };
 
@@ -1333,13 +1388,16 @@ export default function App() {
         return c;
       }));
 
+      const fundLabel = retFundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)';
       if (returnData.penaltyAmount > 0) {
         showToast(`تم استرجاع الفستان وخصم غرامة بقيمة ${returnData.penaltyAmount} دج`);
+      } else if (collected > 0) {
+        showToast(`تم تأكيد استرجاع الفستان — ${collected.toLocaleString()} دج سُجّلت في ${fundLabel}`);
       } else {
         showToast('تم تأكيد استرجاع الفستان وتسوية الحساب بنجاح');
       }
 
-      if (returnData.collectedRemaining > 0) {
+      if (collected > 0) {
         setCredits(prev => {
           prev.filter(c => c.relatedRentalId === rentalId).forEach(c => deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, c.id));
           return prev.filter(c => c.relatedRentalId !== rentalId);
@@ -1353,7 +1411,8 @@ export default function App() {
       actionType: 'return',
       category: 'rentals',
       title: 'استرجاع فستان من الكراء',
-      details: `استرجاع الفستان للزبونة وتسوية الحساب`,
+      details: `استرجاع الفستان وتسوية الحساب${collected > 0 ? ` — محصل: ${collected.toLocaleString()} دج (${retFundSource === 'general' ? 'الصندوق العام' : 'صندوق اليوم'})` : ''}`,
+      amount: collected > 0 ? collected : undefined
     });
 
     setActiveModal(null);
@@ -2464,6 +2523,7 @@ export default function App() {
             clothes={clothes} 
             initialItemId={preselectedRentalItemId}
             existingRentals={rentals}
+            generalFundBalance={generalFundBalance}
             onSubmit={(data) => {
               handleAddRental(data);
               setPreselectedRentalItemId(undefined);
@@ -2478,6 +2538,7 @@ export default function App() {
             clothes={clothes} 
             rental={selectedRental}
             existingRentals={rentals}
+            generalFundBalance={generalFundBalance}
             onSubmit={(data) => handleUpdateRental(selectedRental.id, data)} 
           />
         </Modal>
@@ -2487,6 +2548,7 @@ export default function App() {
         <Modal title="استرجاع فستان / قطعة كراء" onClose={() => setActiveModal(null)}>
           <ReturnRentalModal 
             rental={selectedRental}
+            generalFundBalance={generalFundBalance}
             onConfirmReturn={handleConfirmReturn}
             onCancel={() => setActiveModal(null)}
           />

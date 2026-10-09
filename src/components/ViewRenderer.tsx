@@ -94,7 +94,7 @@ export interface ViewRendererProps {
   onAddRentalWithItem: (itemId?: string) => void;
   onEditRentalModal: (rental: Rental) => void;
   onDeleteRental: (id: string) => void;
-  onActivateRental: (rental: Rental, collectedAmount?: number, handoverNotes?: string) => void;
+  onActivateRental: (rental: Rental, collectedAmount?: number, handoverNotes?: string, fundSource?: FundSource) => void;
   onOpenReceiptModal: (rental: Rental) => void;
   onScanBarcode: () => void;
 
@@ -157,7 +157,8 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
              prev.isLoadingMoreClothes === next.isLoadingMoreClothes;
     case 'rentals':
       return prev.rentals === next.rentals && 
-             prev.clothes === next.clothes;
+             prev.clothes === next.clothes &&
+             prev.generalFundBalance === next.generalFundBalance;
     case 'sales':
       return prev.sales === next.sales &&
              prev.clothes === next.clothes &&
@@ -333,6 +334,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           onOpenReceiptModal={onOpenReceiptModal}
           onSendMessage={onSendMessage}
           onScanBarcode={onScanBarcode}
+          generalFundBalance={generalFundBalance}
         />
       )}
 

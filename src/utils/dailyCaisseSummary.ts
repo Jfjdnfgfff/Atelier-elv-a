@@ -6,7 +6,7 @@ import {
   Sale,
   StaffPayout,
 } from '../types';
-import { isGeneralFundExpense, summarizeCreditPaymentsOn } from './fundBalance';
+import { isGeneralFundExpense, isGeneralFundRental, summarizeCreditPaymentsOn } from './fundBalance';
 
 export interface DailyCaisseSummaryInput {
   date: string;
@@ -23,7 +23,10 @@ export interface DailyCaisseSummary {
   dateSalesIncome: number;
   dateRentals: Rental[];
   dateRentalsIncome: number;
+  dateRentalsGeneral: Rental[];
+  dateRentalsGeneralIncome: number;
   dateCautionsReceived: number;
+  dateCautionsGeneralReceived: number;
   dateTailoring: MaintenanceOrder[];
   dateTailoringIncome: number;
   dateExpenses: Expense[];
@@ -73,17 +76,28 @@ export function summarizeDailyCaisse({
   }
 
   const dateRentals: Rental[] = [];
+  const dateRentalsGeneral: Rental[] = [];
   let dateRentalsIncome = 0;
+  let dateRentalsGeneralIncome = 0;
   let dateCautionsReceived = 0;
+  let dateCautionsGeneralReceived = 0;
   for (const rental of rentals) {
     const paymentDate = toDateKey(
       rental.paymentDate || rental.createdAt || rental.startDate,
     );
     if (paymentDate === date) {
-      dateRentals.push(rental);
-      dateRentalsIncome += toAmount(rental.paidAmount);
-      if (rental.cautionStatus === 'held') {
-        dateCautionsReceived += toAmount(rental.cautionAmount);
+      if (isGeneralFundRental(rental)) {
+        dateRentalsGeneral.push(rental);
+        dateRentalsGeneralIncome += toAmount(rental.paidAmount);
+        if (rental.cautionStatus === 'held') {
+          dateCautionsGeneralReceived += toAmount(rental.cautionAmount);
+        }
+      } else {
+        dateRentals.push(rental);
+        dateRentalsIncome += toAmount(rental.paidAmount);
+        if (rental.cautionStatus === 'held') {
+          dateCautionsReceived += toAmount(rental.cautionAmount);
+        }
       }
     }
   }
@@ -136,7 +150,10 @@ export function summarizeDailyCaisse({
     dateSalesIncome,
     dateRentals,
     dateRentalsIncome,
+    dateRentalsGeneral,
+    dateRentalsGeneralIncome,
     dateCautionsReceived,
+    dateCautionsGeneralReceived,
     dateTailoring,
     dateTailoringIncome,
     dateExpenses,
