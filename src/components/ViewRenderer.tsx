@@ -14,6 +14,7 @@ import {
   MaintenanceOrder,
   Supplier,
   Seamstress,
+  SeamstressWork,
   RawMaterial,
   MaintenanceStatus,
   ActivityLog,
@@ -66,6 +67,7 @@ export interface ViewRendererProps {
   caisseClosures: DailyCaisseClosure[];
   suppliers: Supplier[];
   seamstresses: Seamstress[];
+  seamstressWorks: SeamstressWork[];
   rawMaterials: RawMaterial[];
   activityLogs?: ActivityLog[];
   hideFinances: boolean;
@@ -142,6 +144,8 @@ export interface ViewRendererProps {
   onAddSeamstress: (seam: Seamstress) => void;
   onUpdateSeamstress: (id: string, data: Partial<Seamstress>) => void;
   onDeleteSeamstress: (id: string) => void;
+  onAddSeamstressWork: (work: Omit<SeamstressWork, 'id' | 'createdAt' | 'pricePerPiece'>) => void;
+  onDeleteSeamstressWork: (id: string) => void;
 }
 
 function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererProps): boolean {
@@ -184,6 +188,7 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
     case 'partners':
       return prev.suppliers === next.suppliers && 
              prev.seamstresses === next.seamstresses && 
+             prev.seamstressWorks === next.seamstressWorks &&
              prev.expenses === next.expenses && 
              prev.maintenanceOrders === next.maintenanceOrders && 
              prev.credits === next.credits;
@@ -228,6 +233,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   caisseClosures,
   suppliers,
   seamstresses,
+  seamstressWorks,
   rawMaterials,
   activityLogs = [],
   hideFinances,
@@ -286,6 +292,8 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   onAddSeamstress,
   onUpdateSeamstress,
   onDeleteSeamstress,
+  onAddSeamstressWork,
+  onDeleteSeamstressWork,
 }) => {
   perfMonitor.recordViewRender(currentView);
 
@@ -438,6 +446,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
         <PartnersView
           suppliers={suppliers}
           seamstresses={seamstresses}
+          seamstressWorks={seamstressWorks}
           expenses={expenses}
           maintenanceOrders={maintenanceOrders}
           credits={creditsWithPayments}
@@ -447,6 +456,8 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           onAddSeamstress={onAddSeamstress}
           onUpdateSeamstress={onUpdateSeamstress}
           onDeleteSeamstress={onDeleteSeamstress}
+          onAddSeamstressWork={onAddSeamstressWork}
+          onDeleteSeamstressWork={onDeleteSeamstressWork}
           onSettleSupplierCredit={onSettleSupplierCredit}
         />
       )}

@@ -175,6 +175,22 @@ export interface Seamstress {
   createdAt?: string;
 }
 
+// سجل «فرسمو»: عملية خياطة مسجلة للخياطة (مبلغ إجمالي + عدد القطع)
+export interface SeamstressWork {
+  id: string;
+  seamstressId: string;
+  seamstressName: string;
+  amount: number; // المبلغ الإجمالي للعملية (دج)
+  piecesCount: number; // عدد القطع المنجزة
+  pricePerPiece: number; // سعر القطعة الواحدة = المبلغ ÷ عدد القطع
+  date: string; // YYYY-MM-DD
+  note?: string;
+  deductedFromFund: boolean; // هل خُصم المبلغ من الصندوق؟
+  fundSource?: FundSource; // صندوق اليوم (الدرج) أو الصندوق العام (الخزينة)
+  expenseId?: string; // المصروف المرتبط عند الخصم من الصندوق
+  createdAt: string;
+}
+
 // دفعة تسديد كريدي: مستند مستقل داخل مجموعة creditPayments مرتبط بالدين عبر creditId
 export interface CreditPayment {
   id: string;

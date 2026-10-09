@@ -14,6 +14,7 @@ import {
   DailyCaisseClosure,
   RawMaterial,
   Seamstress,
+  SeamstressWork,
   ActivityLog
 } from './types';
 import { perfMonitor } from './utils/performanceMonitor';
@@ -32,6 +33,7 @@ export const STORAGE_KEYS = {
   MAINTENANCE: 'boutique_maintenance',
   SUPPLIERS: 'boutique_suppliers',
   SEAMSTRESSES: 'boutique_seamstresses',
+  SEAMSTRESS_WORKS: 'boutique_seamstress_works',
   RAW_MATERIALS: 'boutique_raw_materials',
   CAISSE_CLOSURES: 'boutique_caisse_closures',
   ACTIVITY_LOGS: 'boutique_activity_logs',
@@ -43,6 +45,7 @@ export const STORAGE_KEYS = {
 export const DEFAULT_ACTIVITY_LOGS: ActivityLog[] = [];
 export const DEFAULT_RAW_MATERIALS: RawMaterial[] = [];
 export const DEFAULT_SEAMSTRESSES: Seamstress[] = [];
+export const DEFAULT_SEAMSTRESS_WORKS: SeamstressWork[] = [];
 export const DEFAULT_SUPPLIERS: Supplier[] = [];
 export const DEFAULT_MAINTENANCE: MaintenanceOrder[] = [];
 export const DEFAULT_STAFF: StaffMember[] = [];
@@ -264,6 +267,7 @@ export const clearAllStorage = () => {
     STORAGE_KEYS.MAINTENANCE,
     STORAGE_KEYS.SUPPLIERS,
     STORAGE_KEYS.SEAMSTRESSES,
+    STORAGE_KEYS.SEAMSTRESS_WORKS,
     STORAGE_KEYS.STAFF_MEMBERS,
     STORAGE_KEYS.STAFF_PAYOUTS,
     STORAGE_KEYS.STAFF_ABSENCES,

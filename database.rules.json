@@ -32,6 +32,9 @@
     "maintenanceOrders": {
       ".indexOn": ["status", "createdAt", "receivedDate", "expectedDeliveryDate"]
     },
+    "seamstressWorks": {
+      ".indexOn": ["seamstressId", "date", "createdAt"]
+    },
     "caisseClosures": {
       ".indexOn": ["date", "createdAt"]
     }

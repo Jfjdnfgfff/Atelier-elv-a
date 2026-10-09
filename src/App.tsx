@@ -16,6 +16,7 @@ import {
   DailyCaisseClosure,
   RawMaterial,
   Seamstress,
+  SeamstressWork,
   ActivityLog,
   FundSource
 } from './types';
@@ -38,6 +39,7 @@ import {
   DEFAULT_CAISSE_CLOSURES,
   DEFAULT_RAW_MATERIALS,
   DEFAULT_SEAMSTRESSES,
+  DEFAULT_SEAMSTRESS_WORKS,
   DEFAULT_ACTIVITY_LOGS,
   initializeStorage,
   hydrateFromIndexedDB
@@ -182,6 +184,7 @@ export default function App() {
   const [maintenanceOrders, setMaintenanceOrders] = useState<MaintenanceOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [seamstresses, setSeamstresses] = useState<Seamstress[]>([]);
+  const [seamstressWorks, setSeamstressWorks] = useState<SeamstressWork[]>([]);
   const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
 
   // المجموعات المحمّلة حالياً في حالة التطبيق
@@ -243,6 +246,9 @@ export default function App() {
         break;
       case STORAGE_KEYS.SEAMSTRESSES:
         setSeamstresses(loadFromStorage<Seamstress[]>(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES));
+        break;
+      case STORAGE_KEYS.SEAMSTRESS_WORKS:
+        setSeamstressWorks(loadFromStorage<SeamstressWork[]>(STORAGE_KEYS.SEAMSTRESS_WORKS, DEFAULT_SEAMSTRESS_WORKS));
         break;
       case STORAGE_KEYS.RAW_MATERIALS:
         setRawMaterials(loadFromStorage<RawMaterial[]>(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS));
@@ -342,6 +348,7 @@ export default function App() {
       [STORAGE_KEYS.MAINTENANCE, maintenanceOrders],
       [STORAGE_KEYS.SUPPLIERS, suppliers],
       [STORAGE_KEYS.SEAMSTRESSES, seamstresses],
+      [STORAGE_KEYS.SEAMSTRESS_WORKS, seamstressWorks],
       [STORAGE_KEYS.RAW_MATERIALS, rawMaterials],
       [STORAGE_KEYS.CAISSE_CLOSURES, caisseClosures],
       [STORAGE_KEYS.ACTIVITY_LOGS, activityLogs]
@@ -352,7 +359,7 @@ export default function App() {
   }, [
     clothes, rentals, sales, expenses, credits, creditPayments, staffPayouts,
     staffMembers, staffAbsences, maintenanceOrders, suppliers, seamstresses,
-    rawMaterials, caisseClosures, activityLogs
+    seamstressWorks, rawMaterials, caisseClosures, activityLogs
   ]);
 
   // قراءة مخزون المتصفح ثم مراقبة حالة الاتصال السحابي
@@ -370,6 +377,7 @@ export default function App() {
       setMaintenanceOrders(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE) : prev));
       setSuppliers(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS) : prev));
       setSeamstresses(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES) : prev));
+      setSeamstressWorks(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.SEAMSTRESS_WORKS, DEFAULT_SEAMSTRESS_WORKS) : prev));
       setRawMaterials(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS) : prev));
       setCaisseClosures(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES) : prev));
       setActivityLogs(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS) : prev));
@@ -555,6 +563,13 @@ export default function App() {
             setSeamstresses(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
+      case FIREBASE_COLLECTIONS.SEAMSTRESS_WORKS:
+        return SubscriptionManager.subscribe<SeamstressWork>(FIREBASE_COLLECTIONS.SEAMSTRESS_WORKS, (items) => {
+          if (Array.isArray(items)) {
+            loadedCollectionsRef.current.add(STORAGE_KEYS.SEAMSTRESS_WORKS);
+            setSeamstressWorks(prev => areArraysEqual(prev, items) ? prev : items);
+          }
+        });
       case FIREBASE_COLLECTIONS.RAW_MATERIALS:
         return SubscriptionManager.subscribe<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
           if (Array.isArray(items)) {
@@ -624,6 +639,7 @@ export default function App() {
     partners: [
       STORAGE_KEYS.SUPPLIERS, 
       STORAGE_KEYS.SEAMSTRESSES,
+      STORAGE_KEYS.SEAMSTRESS_WORKS,
       STORAGE_KEYS.EXPENSES,
       STORAGE_KEYS.MAINTENANCE,
       STORAGE_KEYS.CREDITS,
@@ -691,6 +707,7 @@ export default function App() {
     partners: [
       FIREBASE_COLLECTIONS.SUPPLIERS, 
       FIREBASE_COLLECTIONS.SEAMSTRESSES,
+      FIREBASE_COLLECTIONS.SEAMSTRESS_WORKS,
       FIREBASE_COLLECTIONS.EXPENSES,
       FIREBASE_COLLECTIONS.MAINTENANCE,
       FIREBASE_COLLECTIONS.CREDITS,
@@ -954,6 +971,7 @@ export default function App() {
         syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, maintenanceOrders),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, suppliers),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, seamstresses),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESS_WORKS, seamstressWorks),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, rawMaterials),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, caisseClosures),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, activityLogs),
@@ -971,7 +989,7 @@ export default function App() {
   }, [
     clothes, rentals, sales, expenses, credits, creditPayments, staffPayouts, 
     staffMembers, staffAbsences, maintenanceOrders, suppliers, 
-    seamstresses, rawMaterials, caisseClosures, activityLogs, generalFundBalance, showToast
+    seamstresses, seamstressWorks, rawMaterials, caisseClosures, activityLogs, generalFundBalance, showToast
   ]);
 
   const [hideFinances, setHideFinances] = useState(() => localStorage.getItem('bm_hideFinances') !== 'false');
@@ -1834,6 +1852,91 @@ export default function App() {
     });
   }, []);
 
+  // === «فرسمو»: تسجيل عملية خياطة للخياطة (مبلغ + عدد القطع) ===
+  const handleAddSeamstressWork = useCallback((workData: Omit<SeamstressWork, 'id' | 'createdAt' | 'pricePerPiece'>) => {
+    const amount = Number(workData.amount) || 0;
+    const pieces = Math.max(0, Math.trunc(Number(workData.piecesCount) || 0));
+    const pricePerPiece = pieces > 0 ? Math.round((amount / pieces) * 100) / 100 : 0;
+
+    let expenseId: string | undefined = undefined;
+
+    if (workData.deductedFromFund && amount > 0) {
+      expenseId = generateId();
+      const newExpense: Expense = {
+        id: expenseId,
+        category: 'أتعاب خياطة (فرسمو)',
+        desc: `فرسمو: ${pieces} قطعة — ${workData.seamstressName}`,
+        amount,
+        date: workData.date,
+        fundSource: workData.fundSource || 'daily',
+        expenseScope: 'tailoring',
+        notes: workData.note
+      };
+      setExpenses(prev => [newExpense, ...prev]);
+      saveItemToFirebase(FIREBASE_COLLECTIONS.EXPENSES, newExpense);
+
+      // مصروف من الصندوق العام (الخزينة) → يُخصم مبلغه مباشرة من الرصيد
+      if ((workData.fundSource || 'daily') === 'general') {
+        setGeneralFundBalance(prev => Math.round((prev - amount) * 100) / 100);
+      }
+    }
+
+    const newWork: SeamstressWork = {
+      ...workData,
+      amount,
+      piecesCount: pieces,
+      pricePerPiece,
+      expenseId,
+      id: generateId(),
+      createdAt: new Date().toISOString()
+    };
+
+    setSeamstressWorks(prev => [newWork, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.SEAMSTRESS_WORKS, newWork);
+
+    addActivityLog({
+      actionType: 'create',
+      category: 'partners',
+      title: 'تسجيل فرسمو (عملية خياطة)',
+      details: `الخياطة: ${workData.seamstressName} — ${pieces} قطعة بـ ${amount.toLocaleString()} دج (سعر القطعة: ${pricePerPiece.toLocaleString()} دج)${workData.deductedFromFund ? ' — خصم من ' + (workData.fundSource === 'general' ? 'الصندوق العام' : 'صندوق اليوم') : ''}`,
+      amount
+    });
+
+    showToast(`تم تسجيل فرسمو: ${pieces} قطعة بـ ${amount.toLocaleString()} دج`);
+  }, [addActivityLog, showToast]);
+
+  const handleDeleteSeamstressWork = useCallback((id: string) => {
+    setConfirmDelete({
+      title: 'حذف عملية فرسمو',
+      message: 'هل تريد حذف هذه العملية من سجل الخياطة؟',
+      onConfirm: () => {
+        const target = seamstressWorks.find(w => w.id === id);
+
+        if (target?.deductedFromFund && target.expenseId) {
+          setExpenses(prev => prev.filter(e => e.id !== target.expenseId));
+          deleteItemFromFirebase(FIREBASE_COLLECTIONS.EXPENSES, target.expenseId!);
+          if (target.fundSource === 'general') {
+            setGeneralFundBalance(prev => Math.round((prev + target.amount) * 100) / 100);
+          }
+        }
+
+        setSeamstressWorks(prev => prev.filter(w => w.id !== id));
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.SEAMSTRESS_WORKS, id);
+
+        addActivityLog({
+          actionType: 'delete',
+          category: 'partners',
+          title: 'حذف عملية فرسمو',
+          details: target ? `حذف فرسمو: ${target.seamstressName} (${target.piecesCount} قطعة — ${target.amount.toLocaleString()} دج)` : 'حذف عملية فرسمو',
+          amount: target?.amount
+        });
+
+        showToast('تم حذف عملية فرسمو');
+        setConfirmDelete(null);
+      }
+    });
+  }, [seamstressWorks, addActivityLog, showToast]);
+
   const handleAddRawMaterial = useCallback((mat: RawMaterial) => {
     setRawMaterials(prev => [mat, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, mat);
@@ -2363,6 +2466,7 @@ export default function App() {
           if (Array.isArray(raw.maintenanceOrders) && raw.maintenanceOrders.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.MAINTENANCE, name: 'طلبات الخياطة والتعديل', items: raw.maintenanceOrders });
           if (Array.isArray(raw.suppliers) && raw.suppliers.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.SUPPLIERS, name: 'الموردين', items: raw.suppliers });
           if (Array.isArray(raw.seamstresses) && raw.seamstresses.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.SEAMSTRESSES, name: 'الخياطات', items: raw.seamstresses });
+          if (Array.isArray(raw.seamstressWorks) && raw.seamstressWorks.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.SEAMSTRESS_WORKS, name: 'سجل فرسمو (الخياطات)', items: raw.seamstressWorks });
           if (Array.isArray(raw.rawMaterials) && raw.rawMaterials.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.RAW_MATERIALS, name: 'الأقمشة والمواد الخام', items: raw.rawMaterials });
           if (Array.isArray(raw.caisseClosures) && raw.caisseClosures.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.CAISSE_CLOSURES, name: 'إغلاقات الصندوق', items: raw.caisseClosures });
 
@@ -2436,6 +2540,7 @@ export default function App() {
         caisseClosures={caisseClosures}
         suppliers={suppliers}
         seamstresses={seamstresses}
+        seamstressWorks={seamstressWorks}
         rawMaterials={rawMaterials}
         activityLogs={activityLogs}
         posScannedBarcode={posScannedBarcode}
@@ -2488,6 +2593,8 @@ export default function App() {
         onAddSeamstress={handleAddSeamstress}
         onUpdateSeamstress={handleUpdateSeamstress}
         onDeleteSeamstress={handleDeleteSeamstress}
+        onAddSeamstressWork={handleAddSeamstressWork}
+        onDeleteSeamstressWork={handleDeleteSeamstressWork}
       />
 
 

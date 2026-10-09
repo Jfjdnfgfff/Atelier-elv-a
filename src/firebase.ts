@@ -49,6 +49,7 @@ export const FIREBASE_COLLECTIONS = {
   MAINTENANCE: 'maintenanceOrders',
   SUPPLIERS: 'suppliers',
   SEAMSTRESSES: 'seamstresses',
+  SEAMSTRESS_WORKS: 'seamstressWorks',
   RAW_MATERIALS: 'rawMaterials',
   CAISSE_CLOSURES: 'caisseClosures',
   ACTIVITY_LOGS: 'activityLogs',

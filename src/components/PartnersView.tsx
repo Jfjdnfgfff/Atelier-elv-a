@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Supplier, Seamstress, Expense, MaintenanceOrder, Credit } from '../types';
+import { Supplier, Seamstress, SeamstressWork, Expense, MaintenanceOrder, Credit } from '../types';
 import { LettersInput, NumbersInput } from './Shared';
 import { 
   Building2, 
@@ -20,12 +20,15 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
+  Layers,
+  Calculator,
   X
 } from 'lucide-react';
 
 interface PartnersViewProps {
   suppliers: Supplier[];
   seamstresses: Seamstress[];
+  seamstressWorks: SeamstressWork[];
   expenses: Expense[];
   maintenanceOrders: MaintenanceOrder[];
   credits?: Credit[];
@@ -35,12 +38,15 @@ interface PartnersViewProps {
   onAddSeamstress: (seam: Seamstress) => void;
   onUpdateSeamstress: (id: string, seam: Partial<Seamstress>) => void;
   onDeleteSeamstress: (id: string) => void;
+  onAddSeamstressWork: (work: Omit<SeamstressWork, 'id' | 'createdAt' | 'pricePerPiece'>) => void;
+  onDeleteSeamstressWork: (id: string) => void;
   onSettleSupplierCredit?: (expenseId: string, paidNow: number) => void;
 }
 
 export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
   suppliers,
   seamstresses,
+  seamstressWorks,
   expenses,
   maintenanceOrders,
   credits = [],
@@ -50,6 +56,8 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
   onAddSeamstress,
   onUpdateSeamstress,
   onDeleteSeamstress,
+  onAddSeamstressWork,
+  onDeleteSeamstressWork,
   onSettleSupplierCredit
 }) => {
   const [activeTab, setActiveTab] = useState<'suppliers' | 'seamstresses'>('suppliers');
@@ -81,6 +89,18 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
   // Settle Debt Modal State
   const [settleExpense, setSettleExpense] = useState<Expense | null>(null);
   const [settleAmount, setSettleAmount] = useState<string>('');
+
+  // «فرسمو» Modal State (مبلغ + عدد القطع)
+  const [forsamoSeamstress, setForsamoSeamstress] = useState<Seamstress | null>(null);
+  const [forsamoAmount, setForsamoAmount] = useState<string>('');
+  const [forsamoPieces, setForsamoPieces] = useState<string>('');
+  const [forsamoDate, setForsamoDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [forsamoNote, setForsamoNote] = useState<string>('');
+  const [forsamoDeduct, setForsamoDeduct] = useState<boolean>(true);
+  const [forsamoFund, setForsamoFund] = useState<'daily' | 'general'>('daily');
+
+  // تبويب داخل نافذة سجل الخياطة: الطلبيات أو سجل فرسمو
+  const [seamHistoryTab, setSeamHistoryTab] = useState<'orders' | 'forsamo'>('orders');
 
   // --- Calculations for Suppliers ---
   const supplierAnalytics = useMemo(() => {
@@ -157,9 +177,35 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
       }
     }
 
+    // فهرسة سجلات «فرسمو» بمعرف الخياطة أو باسمها
+    const worksMap = new Map<string, SeamstressWork[]>();
+    for (let i = 0; i < seamstressWorks.length; i++) {
+      const w = seamstressWorks[i];
+      const keys: string[] = [];
+      if (w.seamstressId) keys.push('id:' + w.seamstressId);
+      if (w.seamstressName) keys.push('name:' + w.seamstressName.trim().toLowerCase());
+      for (const k of keys) {
+        let list = worksMap.get(k);
+        if (!list) { list = []; worksMap.set(k, list); }
+        list.push(w);
+      }
+    }
+
     return seamstresses.map(seam => {
       const nameKey = seam.name ? seam.name.trim().toLowerCase() : '';
       const orders = ordersMap.get(nameKey) || [];
+
+      // سجلات فرسمو الخاصة بهذه الخياطة (بدون تكرار)
+      const worksById = new Map<string, SeamstressWork>();
+      const rawWorks = [
+        ...(worksMap.get('id:' + seam.id) || []),
+        ...(nameKey ? (worksMap.get('name:' + nameKey) || []) : [])
+      ];
+      for (const w of rawWorks) worksById.set(w.id, w);
+      const works = Array.from(worksById.values()).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+      const totalPieces = works.reduce((s, w) => s + (w.piecesCount || 0), 0);
+      const totalWorkAmount = works.reduce((s, w) => s + (w.amount || 0), 0);
 
       const totalOrders = orders.length;
       let activeOrders = 0;
@@ -185,13 +231,18 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
         deliveredOrders,
         totalOrdersValue,
         totalTailorCost,
-        orders
+        orders,
+        works,
+        totalPieces,
+        totalWorkAmount
       };
     });
-  }, [seamstresses, maintenanceOrders]);
+  }, [seamstresses, maintenanceOrders, seamstressWorks]);
 
   const totalTailoringOrdersCount = seamstressAnalytics.reduce((s, seam) => s + seam.totalOrders, 0);
   const totalActiveTailoringCount = seamstressAnalytics.reduce((s, seam) => s + seam.activeOrders, 0);
+  const totalForsamoPieces = seamstressAnalytics.reduce((s, seam) => s + seam.totalPieces, 0);
+  const totalForsamoAmount = seamstressAnalytics.reduce((s, seam) => s + seam.totalWorkAmount, 0);
 
   // Filtered Suppliers
   const filteredSuppliers = supplierAnalytics.filter(sup => {
@@ -314,6 +365,43 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
     setSettleAmount('');
   };
 
+  // --- «فرسمو»: تسجيل مبلغ وعدد القطع للخياطة ---
+  const openForsamoModal = (seam: Seamstress) => {
+    setForsamoSeamstress(seam);
+    setForsamoAmount('');
+    setForsamoPieces('');
+    setForsamoDate(new Date().toISOString().split('T')[0]);
+    setForsamoNote('');
+    setForsamoDeduct(true);
+    setForsamoFund('daily');
+  };
+
+  const forsamoPiecesNumber = Number(forsamoPieces) || 0;
+  const forsamoAmountNumber = Number(forsamoAmount) || 0;
+  const forsamoPricePerPiece = forsamoPiecesNumber > 0 ? Math.round((forsamoAmountNumber / forsamoPiecesNumber) * 100) / 100 : 0;
+  const isForsamoValid = forsamoAmountNumber > 0 && forsamoPiecesNumber > 0;
+
+  const handleSaveForsamo = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forsamoSeamstress || !isForsamoValid) return;
+
+    onAddSeamstressWork({
+      seamstressId: forsamoSeamstress.id,
+      seamstressName: forsamoSeamstress.name,
+      amount: forsamoAmountNumber,
+      piecesCount: forsamoPiecesNumber,
+      date: forsamoDate || new Date().toISOString().split('T')[0],
+      note: forsamoNote.trim() || undefined,
+      deductedFromFund: forsamoDeduct,
+      fundSource: forsamoDeduct ? forsamoFund : undefined
+    });
+
+    setForsamoSeamstress(null);
+    setForsamoAmount('');
+    setForsamoPieces('');
+    setForsamoNote('');
+  };
+
   const handleWhatsApp = (phone?: string, name?: string) => {
     if (!phone) return;
     const cleanPhone = phone.replace(/[^0-9]/g, '');
@@ -432,7 +520,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-1">
             <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
               <span className="text-[11px] text-slate-500 font-medium block mb-0.5">عدد الخياطات في الفريق:</span>
               <span className="text-lg sm:text-xl font-bold text-slate-900">{seamstresses.length} خياطات</span>
@@ -454,6 +542,18 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                 {seamstressAnalytics.reduce((s, seam) => s + seam.totalTailorCost, 0).toLocaleString()} دج
               </span>
               <span className="text-[10px] text-slate-400 block mt-0.5">أتعاب الخياطة المسجلة</span>
+            </div>
+            <div className="bg-teal-50/70 p-3.5 rounded-xl border border-teal-200/70">
+              <span className="text-[11px] text-teal-700 font-medium block mb-0.5 flex items-center gap-1">
+                <Layers className="w-3.5 h-3.5" />
+                <span>إجمالي «فرسمو»:</span>
+              </span>
+              <span className="text-lg sm:text-xl font-bold text-teal-900 font-mono">
+                {totalForsamoPieces} قطعة
+              </span>
+              <span className="text-[10px] text-teal-700 block mt-0.5 font-mono">
+                {totalForsamoAmount.toLocaleString()} دج
+              </span>
             </div>
           </div>
         )}
@@ -684,6 +784,18 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                         <span className="font-bold text-slate-900 font-mono">{seam.totalTailorCost.toLocaleString()} دج</span>
                       </div>
                     </div>
+
+                    {seam.totalPieces > 0 && (
+                      <div className="flex items-center justify-between bg-teal-50/70 border border-teal-100 rounded-xl px-2.5 py-1.5 text-[11px]">
+                        <span className="text-teal-800 font-bold flex items-center gap-1">
+                          <Layers className="w-3 h-3" />
+                          <span>فرسمو</span>
+                        </span>
+                        <span className="font-mono font-bold text-teal-950">
+                          {seam.totalPieces} قطعة • {seam.totalWorkAmount.toLocaleString()} دج
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
@@ -710,11 +822,22 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
 
                     <div className="flex items-center gap-1.5">
                       <button
-                        onClick={() => setSelectedSeamstressHistory(seam)}
+                        onClick={() => openForsamoModal(seam)}
+                        className="px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-xs active:scale-95"
+                        title="فرسمو: إدخال المبلغ وعدد القطع"
+                      >
+                        <Layers className="w-3.5 h-3.5" />
+                        <span>فرسمو</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSeamHistoryTab('orders');
+                          setSelectedSeamstressHistory(seam);
+                        }}
                         className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-medium transition-all flex items-center gap-1"
                       >
                         <Scissors className="w-3.5 h-3.5" />
-                        <span>سجل الطلبيات ({seam.totalOrders})</span>
+                        <span>السجل ({seam.totalOrders + seam.works.length})</span>
                       </button>
                       <button
                         onClick={() => handleOpenEditSeamstress(seam)}
@@ -964,6 +1087,153 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
         </div>
       )}
 
+      {forsamoSeamstress && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/40 backdrop-blur-xs" dir="rtl">
+          <div className="bg-white rounded-2xl w-full max-w-md p-5 sm:p-6 shadow-xl border border-slate-200/80 space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                <Layers className="w-4 h-4 text-teal-600" />
+                <span>فرسمو — {forsamoSeamstress.name}</span>
+              </h3>
+              <button
+                onClick={() => setForsamoSeamstress(null)}
+                className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveForsamo} className="space-y-3.5">
+              <div className="bg-teal-50/70 p-3 rounded-xl border border-teal-100 text-xs space-y-1">
+                <div>الخياطة: <span className="font-bold text-slate-900">{forsamoSeamstress.name}</span></div>
+                {forsamoSeamstress.ratePerPieceOrSalary && (
+                  <div className="text-slate-600">
+                    نظام التسعير: <span className="font-semibold text-slate-800">{forsamoSeamstress.ratePerPieceOrSalary}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    المبلغ (دج) <span className="text-rose-500">*</span>
+                  </label>
+                  <NumbersInput
+                    value={forsamoAmount}
+                    onChange={setForsamoAmount}
+                    placeholder="مثال: 15000"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 font-mono focus:bg-white focus:border-slate-400 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    عدد القطع <span className="text-rose-500">*</span>
+                  </label>
+                  <NumbersInput
+                    value={forsamoPieces}
+                    onChange={setForsamoPieces}
+                    placeholder="مثال: 6"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 font-mono focus:bg-white focus:border-slate-400 focus:outline-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                <span className="text-xs text-slate-600 font-medium flex items-center gap-1.5">
+                  <Calculator className="w-3.5 h-3.5 text-slate-400" />
+                  <span>سعر القطعة الواحدة:</span>
+                </span>
+                <span className="font-bold font-mono text-slate-900">
+                  {forsamoPricePerPiece.toLocaleString()} دج
+                </span>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  التاريخ
+                </label>
+                <input
+                  type="date"
+                  value={forsamoDate}
+                  onChange={(e) => setForsamoDate(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-normal text-slate-900 font-mono focus:bg-white focus:border-slate-400 focus:outline-none"
+                />
+              </div>
+
+              <label className="flex items-start gap-2 bg-slate-50 border border-slate-200 rounded-xl p-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={forsamoDeduct}
+                  onChange={(e) => setForsamoDeduct(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-teal-600"
+                />
+                <span className="text-[11px] text-slate-700 font-medium">
+                  خصم المبلغ من الصندوق وتسجيله كمصروف «أتعاب خياطة»
+                </span>
+              </label>
+
+              {forsamoDeduct && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    يُخصم من
+                  </label>
+                  <select
+                    value={forsamoFund}
+                    onChange={(e) => setForsamoFund(e.target.value as 'daily' | 'general')}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-normal text-slate-900 focus:bg-white focus:border-slate-400 focus:outline-none"
+                  >
+                    <option value="daily">صندوق اليوم (الدرج)</option>
+                    <option value="general">الصندوق العام (الخزينة)</option>
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  ملاحظات
+                </label>
+                <textarea
+                  value={forsamoNote}
+                  onChange={(e) => setForsamoNote(e.target.value)}
+                  rows={2}
+                  placeholder="نوع القطع، المقاسات، أي تفاصيل..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-normal text-slate-900 focus:bg-white focus:border-slate-400 focus:outline-none"
+                />
+              </div>
+
+              {isForsamoValid && (
+                <div className="bg-slate-900 text-white rounded-xl px-3 py-2 text-xs font-bold flex items-center justify-between">
+                  <span>الإجمالي</span>
+                  <span className="font-mono">
+                    {forsamoPiecesNumber} قطعة • {forsamoAmountNumber.toLocaleString()} دج
+                  </span>
+                </div>
+              )}
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForsamoSeamstress(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={!isForsamoValid}
+                  className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold shadow-xs transition-colors"
+                >
+                  تأكيد فرسمو
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {selectedSupplierHistory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/40 backdrop-blur-xs" dir="rtl">
           <div className="bg-white rounded-2xl w-full max-w-2xl p-5 sm:p-6 shadow-xl border border-slate-200/80 space-y-4 max-h-[92vh] overflow-y-auto">
@@ -1056,7 +1326,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
             <div className="flex justify-between items-center pb-3 border-b border-slate-100">
               <div>
                 <span className="text-[10px] bg-slate-100 text-slate-700 font-medium px-2 py-0.5 rounded-md border border-slate-200/70">
-                  سجل طلبيات الخياطة
+                  سجل الخياطة: الطلبيات و«فرسمو»
                 </span>
                 <h3 className="font-bold text-slate-900 text-base mt-1">
                   {selectedSeamstressHistory.name}
@@ -1070,8 +1340,109 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
               </button>
             </div>
 
+            {(() => {
+              const seamData = seamstressAnalytics.find(s => s.id === selectedSeamstressHistory.id);
+              return (
+                <div className="flex items-center gap-1.5 bg-slate-100/90 p-1 rounded-xl text-xs font-semibold border border-slate-200/60">
+                  <button
+                    onClick={() => setSeamHistoryTab('orders')}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                      seamHistoryTab === 'orders' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    <Scissors className="w-3.5 h-3.5" />
+                    <span>الطلبيات ({seamData?.totalOrders || 0})</span>
+                  </button>
+                  <button
+                    onClick={() => setSeamHistoryTab('forsamo')}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                      seamHistoryTab === 'forsamo' ? 'bg-teal-600 text-white shadow-xs font-bold' : 'text-slate-500 hover:text-teal-700'
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>فرسمو ({seamData?.works.length || 0})</span>
+                  </button>
+                </div>
+              );
+            })()}
+
             <div className="space-y-2.5">
-              {(() => {
+              {seamHistoryTab === 'forsamo' ? (
+                (() => {
+                  const seamData = seamstressAnalytics.find(s => s.id === selectedSeamstressHistory.id);
+                  const works = seamData?.works || [];
+
+                  if (works.length === 0) {
+                    return (
+                      <div className="text-center py-8 space-y-2">
+                        <p className="text-xs text-slate-400">
+                          لا توجد عمليات «فرسمو» مسجلة لهذه الخياطة حتى الآن.
+                        </p>
+                        <button
+                          onClick={() => {
+                            setSelectedSeamstressHistory(null);
+                            openForsamoModal(seamData || selectedSeamstressHistory);
+                          }}
+                          className="text-xs text-teal-700 font-bold hover:underline"
+                        >
+                          + تسجيل فرسمو (المبلغ وعدد القطع)
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between bg-teal-50/70 border border-teal-100 rounded-xl px-3 py-2 text-xs">
+                        <span className="text-teal-800 font-bold">الإجمالي</span>
+                        <span className="font-mono font-bold text-teal-950">
+                          {seamData?.totalPieces || 0} قطعة • {(seamData?.totalWorkAmount || 0).toLocaleString()} دج
+                        </span>
+                      </div>
+
+                      <div className="divide-y divide-slate-100">
+                        {works.map(w => (
+                          <div key={w.id} className="py-3 flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-xs">
+                            <div>
+                              <div className="font-bold text-slate-900 flex items-center gap-2">
+                                <span className="font-mono bg-teal-50 text-teal-800 border border-teal-100 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                  {w.piecesCount} قطعة
+                                </span>
+                                <span className="font-mono text-slate-500 text-[11px]">{w.date}</span>
+                              </div>
+                              <div className="text-slate-500 text-[11px] mt-0.5 font-mono">
+                                سعر القطعة: {(w.pricePerPiece || 0).toLocaleString()} دج
+                                {w.deductedFromFund && (
+                                  <span className="text-teal-700 font-bold mr-1.5">
+                                    • خُصم من {w.fundSource === 'general' ? 'الصندوق العام' : 'صندوق اليوم'}
+                                  </span>
+                                )}
+                              </div>
+                              {w.note && (
+                                <p className="text-slate-600 text-[11px] mt-1 bg-slate-50 p-1.5 rounded-lg">{w.note}</p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="font-bold text-slate-900 font-mono">
+                                {(w.amount || 0).toLocaleString()} دج
+                              </span>
+                              <button
+                                onClick={() => onDeleteSeamstressWork(w.id)}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-all"
+                                title="حذف العملية"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+              (() => {
                 const seamData = seamstressAnalytics.find(s => s.id === selectedSeamstressHistory.id);
                 const seamOrders = seamData?.orders || [];
 
@@ -1125,7 +1496,8 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                     ))}
                   </div>
                 );
-              })()}
+              })()
+              )}
             </div>
           </div>
         </div>

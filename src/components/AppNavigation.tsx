@@ -12,6 +12,7 @@ import {
   DailyCaisseClosure, 
   Supplier, 
   Seamstress, 
+  SeamstressWork,
   RawMaterial, 
   MaintenanceStatus,
   ActivityLog,
@@ -52,6 +53,7 @@ export interface AppNavigationProps {
   caisseClosures: DailyCaisseClosure[];
   suppliers: Supplier[];
   seamstresses: Seamstress[];
+  seamstressWorks: SeamstressWork[];
   rawMaterials: RawMaterial[];
   activityLogs?: ActivityLog[];
   posScannedBarcode: string | null;
@@ -103,6 +105,8 @@ export interface AppNavigationProps {
   onAddSeamstress: (seam: Seamstress) => void;
   onUpdateSeamstress: (id: string, data: Partial<Seamstress>) => void;
   onDeleteSeamstress: (id: string) => void;
+  onAddSeamstressWork: (work: Omit<SeamstressWork, 'id' | 'createdAt' | 'pricePerPiece'>) => void;
+  onDeleteSeamstressWork: (id: string) => void;
 
   // Firebase Cloud Sync
   isFirebaseConnected?: boolean;
@@ -139,6 +143,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
   caisseClosures,
   suppliers,
   seamstresses,
+  seamstressWorks,
   rawMaterials,
   activityLogs,
   posScannedBarcode,
@@ -191,6 +196,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
   onAddSeamstress,
   onUpdateSeamstress,
   onDeleteSeamstress,
+  onAddSeamstressWork,
+  onDeleteSeamstressWork,
   onInitNav,
   onEnsureCollection,
 }) => {
@@ -446,6 +453,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
           caisseClosures={caisseClosures}
           suppliers={suppliers}
           seamstresses={seamstresses}
+          seamstressWorks={seamstressWorks}
           rawMaterials={rawMaterials}
           activityLogs={activityLogs}
           hideFinances={hideFinances}
@@ -504,6 +512,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
           onAddSeamstress={onAddSeamstress}
           onUpdateSeamstress={onUpdateSeamstress}
           onDeleteSeamstress={onDeleteSeamstress}
+          onAddSeamstressWork={onAddSeamstressWork}
+          onDeleteSeamstressWork={onDeleteSeamstressWork}
         />
       </main>
     </div>
