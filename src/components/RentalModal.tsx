@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { ClothItem, Rental } from '../types';
+import { ClothItem, Rental, FundSource } from '../types';
+import { FundSourcePicker } from './FundSourcePicker';
 const BarcodeScanner = React.lazy(() => import('./BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
 const CustomerIdScannerModal = React.lazy(() => import('./CustomerIdScannerModal').then(m => ({ default: m.CustomerIdScannerModal })));
 import type { ExtractedCustomerData } from './CustomerIdScannerModal';
@@ -30,6 +31,7 @@ interface RentalModalProps {
   rental?: Rental | null;
   initialItemId?: string;
   existingRentals?: Rental[];
+  generalFundBalance?: number;
   onSubmit: (data: any) => void;
 }
 
@@ -38,6 +40,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
   rental, 
   initialItemId,
   existingRentals = [], 
+  generalFundBalance = 0,
   onSubmit 
 }) => {
   const rentalClothes = clothes.filter(c => c.purpose === 'rent' || c.purpose === 'both');
@@ -186,6 +189,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
   const [paymentDate, setPaymentDate] = useState<string>(
     rental?.paymentDate || (rental?.createdAt ? rental.createdAt.split('T')[0] : today)
   );
+  const [fundSource, setFundSource] = useState<FundSource>(rental?.fundSource || 'daily');
 
   const remainingAmount = Math.max(0, totalRentPrice - paidAmount);
 
@@ -287,6 +291,7 @@ export const RentalModal: React.FC<RentalModalProps> = ({
       status: bookingType === 'reserved' ? 'reserved' : 'active',
       bookingDate: rental?.bookingDate || today,
       paymentDate: paymentDate || today,
+      fundSource: fundSource,
       handoverDate: bookingType === 'active' ? (rental?.handoverDate || today) : undefined,
       notes: notes.trim(),
       createdAt: rental?.createdAt || new Date().toISOString()
@@ -997,7 +1002,9 @@ export const RentalModal: React.FC<RentalModalProps> = ({
                   تاريخ استلام المال / العربون (تاريخ دخول المبلغ في الصندوق) *
                 </label>
                 <span className="text-[10px] text-blue-700 font-medium">
-                  يدخل هذا المبلغ ({paidAmount.toLocaleString()} دج) في حساب الصندوق اليومي (La Caisse) في هذا التاريخ المختار بالضبط
+                  {fundSource === 'general'
+                    ? `سيدخل هذا المبلغ (${paidAmount.toLocaleString()} دج) في الصندوق العام (الخزينة) في هذا التاريخ بالضبط`
+                    : `يدخل هذا المبلغ (${paidAmount.toLocaleString()} دج) في حساب صندوق اليوم (الدرج) في هذا التاريخ المختار بالضبط`}
                 </span>
               </div>
             </div>
@@ -1054,6 +1061,17 @@ export const RentalModal: React.FC<RentalModalProps> = ({
               <span>مبلغ العربون/المدفوع: <strong>{paidAmount.toLocaleString()} دج</strong> مسجل بتاريخ <strong>{paymentDate}</strong></span>
             </div>
           </div>
+
+          <FundSourcePicker
+            value={fundSource}
+            onChange={setFundSource}
+            generalFundBalance={generalFundBalance}
+            amount={paidAmount}
+            question="أين تريد تسجيل مدخول هذا الكراء؟ *"
+            dailyHint={`سيُضاف مبلغ ${paidAmount.toLocaleString()} دج إلى صندوق اليوم (الدرج) بتاريخ ${paymentDate} وسيظهر ضمن حساب الدرج اليومي.`}
+            generalHint={`سيُضاف مبلغ ${paidAmount.toLocaleString()} دج مباشرة إلى رصيد الصندوق العام (الخزينة) بتاريخ ${paymentDate}، ولن يدخل في حساب فارق صندوق اليوم.`}
+            warnOnInsufficient={false}
+          />
         </div>
 
         <div className="p-3 bg-white rounded-2xl border border-slate-200/80 space-y-2">

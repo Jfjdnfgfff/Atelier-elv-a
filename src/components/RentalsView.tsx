@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
-import { Rental, ClothItem } from '../types';
+import { Rental, ClothItem, FundSource } from '../types';
+import { FundSourcePicker } from './FundSourcePicker';
 import { VirtualizedList } from './VirtualizedList';
 import { getListImage } from '../utils/imageUtils';
 import { 
@@ -24,11 +25,12 @@ interface RentalsViewProps {
   onAddRental: (preselectedItemId?: string) => void;
   onEditRental: (rental: Rental) => void;
   onDeleteRental: (id: string) => void;
-  onActivateRental?: (rental: Rental, collectedAmount?: number, notes?: string) => void;
+  onActivateRental?: (rental: Rental, collectedAmount?: number, notes?: string, fundSource?: FundSource) => void;
   onOpenReturnModal: (rental: Rental) => void;
   onOpenReceiptModal: (rental: Rental) => void;
   onSendMessage: (rental: Rental) => void;
   onScanBarcode?: () => void;
+  generalFundBalance?: number;
 }
 
 export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
@@ -41,7 +43,8 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
   onOpenReturnModal,
   onOpenReceiptModal,
   onSendMessage,
-  onScanBarcode
+  onScanBarcode,
+  generalFundBalance = 0
 }) => {
   const [filter, setFilter] = useState<'all' | 'reserved' | 'active' | 'overdue' | 'returned'>('all');
   const [dateFilter, setDateFilter] = useState<'all' | 'returns_today' | 'starts_today' | 'this_week' | 'custom'>('all');
@@ -50,6 +53,7 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
   const [handoverModalRental, setHandoverModalRental] = useState<Rental | null>(null);
   const [handoverCollectedAmount, setHandoverCollectedAmount] = useState<number>(0);
   const [handoverNotes, setHandoverNotes] = useState<string>('');
+  const [handoverFundSource, setHandoverFundSource] = useState<FundSource>('daily');
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
@@ -76,13 +80,14 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
     setHandoverModalRental(rental);
     setHandoverCollectedAmount(rental.remainingAmount || 0);
     setHandoverNotes('');
+    setHandoverFundSource((rental.fundSource as FundSource) || 'daily');
   };
 
   const confirmHandover = (e: React.FormEvent) => {
     e.preventDefault();
     if (!handoverModalRental) return;
     if (onActivateRental) {
-      onActivateRental(handoverModalRental, Number(handoverCollectedAmount) || 0, handoverNotes.trim());
+      onActivateRental(handoverModalRental, Number(handoverCollectedAmount) || 0, handoverNotes.trim(), handoverFundSource);
     }
     setHandoverModalRental(null);
   };
@@ -415,6 +420,15 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
                         <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-tight">
                           {rental.itemName}
                         </h3>
+                        {rental.fundSource === 'general' ? (
+                          <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <span>الصندوق العام</span>
+                          </span>
+                        ) : (
+                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <span>صندوق اليوم</span>
+                          </span>
+                        )}
                         {rental.hasAccessories && (
                           <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
                             <Crown className="w-3 h-3 text-slate-600" />
@@ -648,6 +662,18 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
                   إذا لم يتم دفع كامل المتبقي، سيُسجل الباقي كدين متبقي في السجل تلقائياً.
                 </span>
               </div>
+
+              <FundSourcePicker
+                value={handoverFundSource}
+                onChange={setHandoverFundSource}
+                generalFundBalance={generalFundBalance}
+                amount={handoverCollectedAmount}
+                question="أين يتم تسجيل المبلغ المحصل الآن؟ *"
+                dailyHint={`سيُضاف مبلغ ${Number(handoverCollectedAmount || 0).toLocaleString()} دج إلى صندوق اليوم (الدرج) ضمن حساب اليوم.`}
+                generalHint={`سيُضاف مبلغ ${Number(handoverCollectedAmount || 0).toLocaleString()} دج إلى الصندوق العام (الخزينة) مباشرة.`}
+                warnOnInsufficient={false}
+                compact
+              />
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">

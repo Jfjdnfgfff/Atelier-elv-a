@@ -7,6 +7,25 @@ export function isGeneralFundExpense(expense: Expense): boolean {
   return expense?.fundSource === 'general';
 }
 
+/** هل مدخول الكراء مُسجل في الصندوق العام؟ */
+export function isGeneralFundRental(rental: { fundSource?: FundSource }): boolean {
+  return rental?.fundSource === 'general';
+}
+
+/** مجموع مداخيل الكراء المسجلة في الصندوق العام */
+export function sumGeneralFundRentals(rentals: { fundSource?: FundSource; paidAmount?: number }[]): { total: number; count: number } {
+  let total = 0;
+  let count = 0;
+  for (let i = 0; i < rentals.length; i++) {
+    const r = rentals[i] as any;
+    if (isGeneralFundRental(r)) {
+      total += Number(r.paidAmount) || 0;
+      count += 1;
+    }
+  }
+  return { total, count };
+}
+
 /** تسمية عربية لمصدر الدفع */
 export function fundSourceLabel(source: FundSource | undefined): string {
   return source === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)';

@@ -245,7 +245,10 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
     dateSalesIncome,
     dateRentals,
     dateRentalsIncome,
+    dateRentalsGeneral,
+    dateRentalsGeneralIncome,
     dateCautionsReceived,
+    dateCautionsGeneralReceived,
     dateTailoring,
     dateTailoringIncome,
     dateExpenses,
@@ -398,8 +401,10 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       openingBalance,
       salesIncome: dateSalesIncome,
       rentalsIncome: dateRentalsIncome,
+      rentalsGeneralIncome: dateRentalsGeneralIncome,
       tailoringIncome: dateTailoringIncome,
       cautionsReceived: dateCautionsReceived,
+      cautionsGeneralReceived: dateCautionsGeneralReceived,
       expensesPaid: dateExpensesPaid,
       generalFundExpenses: dateGeneralSourceExpenses,
       creditsCollected: dateCreditInflow,
@@ -473,11 +478,12 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       });
     });
 
-    // Rentals (inflow)
+    // Rentals (inflow) — صندوق اليوم أو الصندوق العام
     rentals.forEach(r => {
       const rentPaymentDate = r.paymentDate || (r.createdAt ? r.createdAt.split('T')[0] : r.startDate) || '';
       const timePart = r.createdAt && r.createdAt.includes('T') ? r.createdAt.split('T')[1]?.substring(0, 5) : '';
       const amount = r.paidAmount || 0;
+      const rentalFund = (r as any).fundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)';
       list.push({
         id: r.id,
         type: 'rental',
@@ -486,7 +492,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
         time: timePart,
         direction: 'inflow',
         title: r.customerName || 'زبون كراء',
-        subtitle: `${r.itemName} (${r.status === 'reserved' ? 'عربون حجز' : 'دفع كراء'}: ${(r.paidAmount || 0).toLocaleString()} دج • استلام المال: ${rentPaymentDate})`,
+        subtitle: `${r.itemName} (${r.status === 'reserved' ? 'عربون حجز' : 'دفع كراء'}: ${(r.paidAmount || 0).toLocaleString()} دج • استلام المال: ${rentPaymentDate} • الصندوق: ${rentalFund})`,
         amount,
         originalItem: r
       });
@@ -1383,11 +1389,11 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                   </div>
 
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-xs">
-                    <div className="text-slate-500 font-medium">مقبوضات كراء:</div>
+                    <div className="text-slate-500 font-medium">مقبوضات كراء (الدرج):</div>
                     <div className="font-bold text-slate-900 font-mono text-sm mt-0.5">
                       {dateRentalsIncome.toLocaleString()} دج
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">{dateRentals.length} صفقة كراء</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">{dateRentals.length} كراء في الدرج</div>
                   </div>
 
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-xs">
@@ -1398,6 +1404,24 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                     <div className="text-[10px] text-slate-400 mt-0.5">{dateTailoring.length} طلب خياطة</div>
                   </div>
                 </div>
+                {dateRentalsGeneralIncome > 0 && (
+                  <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-2.5 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5 text-indigo-700 font-bold">
+                      <Landmark className="w-3.5 h-3.5" />
+                      <span>كراء مسجل في الصندوق العام (الخزينة) — خارج الدرج:</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-indigo-800 font-mono">+{dateRentalsGeneralIncome.toLocaleString()} دج</div>
+                      <div className="text-[10px] text-indigo-500">{dateRentalsGeneral.length} كراء</div>
+                    </div>
+                  </div>
+                )}
+                {dateCautionsGeneralReceived > 0 && (
+                  <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-2.5 flex items-center justify-between text-xs">
+                    <span className="text-indigo-700 font-medium">ضمانات كراء في الصندوق العام:</span>
+                    <span className="font-bold text-indigo-800 font-mono">+{dateCautionsGeneralReceived.toLocaleString()} دج</span>
+                  </div>
+                )}
 
                 {dateSales.length > 0 && (
                   <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
@@ -1463,6 +1487,45 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                                   }
                                 }}
                                 title="حذف عملية الكراء"
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-80 group-hover:opacity-100"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {dateRentalsGeneral.length > 0 && (
+                  <div className="border border-indigo-200/80 rounded-xl overflow-hidden text-xs">
+                    <div className="bg-indigo-50 px-3 py-1 font-semibold text-indigo-700 text-[11px] flex justify-between items-center">
+                      <span className="flex items-center gap-1.5"><Landmark className="w-3 h-3" /> <span>كراء مسجل في الصندوق العام اليوم ({dateRentalsGeneral.length}) — خارج حساب الدرج</span></span>
+                      <span className="font-mono">+{dateRentalsGeneralIncome.toLocaleString()} دج</span>
+                    </div>
+                    <div className="divide-y divide-slate-100 max-h-40 overflow-y-auto">
+                      {dateRentalsGeneral.map(r => (
+                        <div key={r.id} className="p-2 flex justify-between items-center hover:bg-indigo-50/40 transition-colors group">
+                          <div className="flex-1 min-w-0 pr-1">
+                            <span className="font-semibold text-slate-800 block truncate">{r.customerName}</span>
+                            <span className="text-[10px] text-indigo-600">
+                              ({r.itemName}) • <span className="font-bold">الصندوق العام (الخزينة)</span> • استلام المال: <span className="font-mono font-bold text-slate-700">{r.paymentDate || (r.createdAt ? r.createdAt.split('T')[0] : r.startDate)}</span>
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono font-bold text-indigo-700">
+                              +{(r.paidAmount || 0).toLocaleString()} دج
+                            </span>
+                            {onDeleteRental && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(`هل أنت متأكد من حذف عملية كراء (${r.customerName} - ${r.itemName}) من الصندوق العام؟`)) {
+                                    onDeleteRental(r.id);
+                                  }
+                                }}
+                                title="حذف عملية الكراء من الصندوق العام"
                                 className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-80 group-hover:opacity-100"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />

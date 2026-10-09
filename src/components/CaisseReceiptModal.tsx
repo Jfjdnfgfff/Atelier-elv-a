@@ -117,9 +117,15 @@ export const CaisseReceiptModal: React.FC<CaisseReceiptModalProps> = ({ closure,
             <span className="font-bold text-blue-700 font-mono">+{(closure.salesIncome || 0).toLocaleString()} دج</span>
           </div>
           <div className="flex justify-between py-1 border-b border-slate-100">
-            <span className="text-slate-600">مقبوضات كراء (Locations):</span>
+            <span className="text-slate-600">مقبوضات كراء — صندوق اليوم (Locations - Caisse jour):</span>
             <span className="font-bold text-blue-700 font-mono">+{(closure.rentalsIncome || 0).toLocaleString()} دج</span>
           </div>
+          {(closure.rentalsGeneralIncome || 0) > 0 && (
+            <div className="flex justify-between py-1 border-b border-slate-100">
+              <span className="text-slate-600">مقبوضات كراء — الصندوق العام (خارج الدرج):</span>
+              <span className="font-bold text-indigo-700 font-mono">+{(closure.rentalsGeneralIncome || 0).toLocaleString()} دج</span>
+            </div>
+          )}
           <div className="flex justify-between py-1 border-b border-slate-100">
             <span className="text-slate-600">مقبوضات خياطة وصيانة (Retouches):</span>
             <span className="font-bold text-blue-700 font-mono">+{(closure.tailoringIncome || 0).toLocaleString()} دج</span>
