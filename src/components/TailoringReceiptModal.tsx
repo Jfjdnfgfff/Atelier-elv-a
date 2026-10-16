@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { MaintenanceOrder } from '../types';
 import { Modal } from './Shared';
 import { Download, Printer } from 'lucide-react';
+import { getTailoringPaidTotal, getTailoringPayments, tailoringPaymentMethodLabel } from '../utils/tailoringPayments';
 import { downloadElementAsPng } from '../utils/pngDownload';
 import { openPrintInterface } from '../utils/printInterface';
 
@@ -122,12 +123,33 @@ export const TailoringReceiptModal: React.FC<TailoringReceiptModalProps> = ({
                   <span className="font-bold text-slate-900">{order.price.toLocaleString()} دج</span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-slate-600">المدفوع (العربون):</span>
-                  <span className="font-bold text-slate-800">{order.paidAmount.toLocaleString()} دج</span>
+                  <span className="text-slate-600">إجمالي المدفوع:</span>
+                  <span className="font-bold text-slate-800">{getTailoringPaidTotal(order).toLocaleString()} دج</span>
                 </div>
                 <div className="flex justify-between text-xs pt-1 border-t border-slate-200">
                   <span className="text-slate-600">المتبقي عند الاستلام:</span>
                   <span className="font-bold text-slate-900">{order.remainingAmount.toLocaleString()} دج</span>
+                </div>
+              </div>
+            )}
+
+            {order.targetType === 'customer_order' && order.price > 0 && getTailoringPayments(order).length > 0 && (
+              <div className="bg-white p-2.5 rounded-xl border border-dashed border-slate-300 mt-2">
+                <span className="text-[11px] font-bold text-slate-700 block mb-1">
+                  سجل الفارمسوات (الدفعات) — {getTailoringPayments(order).length}
+                </span>
+                <div className="space-y-1">
+                  {getTailoringPayments(order).map(payment => (
+                    <div key={payment.id} className="flex justify-between items-center text-[11px] text-slate-700 border-b border-slate-100 last:border-0 pb-0.5">
+                      <span className="font-mono">{payment.date}</span>
+                      <span className="text-slate-500">{tailoringPaymentMethodLabel(payment.method)}</span>
+                      <span className="font-bold text-slate-900">{payment.amount.toLocaleString()} دج</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between items-center text-[11px] font-black text-slate-900 pt-1 mt-1 border-t border-slate-200">
+                  <span>مجموع المدفوع</span>
+                  <span>{getTailoringPaidTotal(order).toLocaleString()} دج</span>
                 </div>
               </div>
             )}

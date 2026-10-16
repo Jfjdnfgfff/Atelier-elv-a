@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { MaintenanceOrder, MaintenanceServiceType, MaintenanceTargetType, MaintenanceStatus, ClothItem, StaffMember } from '../types';
 import { Modal, LettersInput, NumbersInput } from './Shared';
+import { getTailoringPaidTotal, getTailoringPayments, getTailoringRemaining, tailoringPaymentMethodLabel } from '../utils/tailoringPayments';
 const CustomerIdScannerModal = React.lazy(() => import('./CustomerIdScannerModal').then(m => ({ default: m.CustomerIdScannerModal })));
 import type { ExtractedCustomerData } from './CustomerIdScannerModal';
 import { User, Tag, CreditCard, Calendar, Check } from 'lucide-react';
@@ -12,6 +13,8 @@ interface TailoringModalProps {
   staffMembers: StaffMember[];
   onSave: (orderData: Partial<MaintenanceOrder>) => void;
   onClose: () => void;
+  /** تسجيل فارسمو (دفعة) على الطلب المعدّل — يُمرَّر من الأعلى لفتح نافذة الدفعات فوق هذه النافذة */
+  onRecordPayment?: (order: MaintenanceOrder) => void;
 }
 
 export const TailoringModal: React.FC<TailoringModalProps> = ({
@@ -19,7 +22,8 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
   clothes,
   staffMembers,
   onSave,
-  onClose
+  onClose,
+  onRecordPayment
 }) => {
   const today = new Date().toISOString().split('T')[0];
 
@@ -72,10 +76,18 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
   };
 
 
+  // سجل الفارمسوات: إن كان للطلب دفعات مسجلة فالتحكم في المبالغ يصير من نافذة تسجيل فارسمو
+  const ledgerPayments = useMemo(() => getTailoringPayments(order), [order]);
+  const hasPaymentLedger = ledgerPayments.length > 0;
+  const ledgerPaidTotal = hasPaymentLedger ? getTailoringPaidTotal(order) : 0;
+  const ledgerRemaining = hasPaymentLedger ? getTailoringRemaining(order) : 0;
+
   // Calculate remaining amount
   const effectivePrice = targetType === 'internal_stock' ? 0 : price;
-  const effectivePaid = targetType === 'internal_stock' ? 0 : Math.min(paidAmount, effectivePrice);
-  const remainingAmount = Math.max(0, effectivePrice - effectivePaid);
+  const effectivePaid = hasPaymentLedger
+    ? ledgerPaidTotal
+    : (targetType === 'internal_stock' ? 0 : Math.min(paidAmount, effectivePrice));
+  const remainingAmount = hasPaymentLedger ? ledgerRemaining : Math.max(0, effectivePrice - effectivePaid);
 
   const handleDurationChange = (days: number) => {
     const safeDays = Math.max(1, Number(days) || 1);
@@ -122,8 +134,13 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
       tailorName,
       cost: Number(cost) || 0,
       price: targetType === 'internal_stock' ? 0 : (Number(price) || 0),
-      paidAmount: targetType === 'internal_stock' ? 0 : (Number(paidAmount) || 0),
-      paymentDate: (targetType === 'customer_order' && paidAmount > 0) ? (paymentDate || today) : (paymentDate || receivedDate || today),
+      // عند وجود سجل فارمسوات يبقى المدفوع محسوباً من السجل نفسه ولا يُلمس من هذه النافذة
+      paidAmount: hasPaymentLedger
+        ? ledgerPaidTotal
+        : (targetType === 'internal_stock' ? 0 : (Number(paidAmount) || 0)),
+      paymentDate: hasPaymentLedger
+        ? (order?.paymentDate || today)
+        : ((targetType === 'customer_order' && paidAmount > 0) ? (paymentDate || today) : (paymentDate || receivedDate || today)),
       remainingAmount,
       receivedDate,
       expectedDeliveryDate,
@@ -442,99 +459,153 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
                 </div>
 
                 <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="block text-xs font-bold text-slate-700">المبلغ المدفوع (عربون)</label>
-                    <button
-                      type="button"
-                      onClick={() => setPaidAmount(price)}
-                      className="text-[10px] text-slate-600 hover:text-slate-900 font-bold underline"
-                    >
-                      دفع كامل
-                    </button>
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    max={price}
-                    value={paidAmount}
-                    onChange={(e) => setPaidAmount(Number(e.target.value))}
-                    placeholder="1000"
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none font-mono"
-                  />
-                  <span className="text-[10px] text-slate-500 mt-0.5 block">
-                    {remainingAmount > 0 ? `المتبقي: ${remainingAmount.toLocaleString()} دج` : 'خالص بالكامل'}
-                  </span>
-                </div>
-
-                <div className="col-span-1 sm:col-span-3 p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-2 text-right">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
-                        <Calendar className="w-3 h-3" />
-                      </span>
-                      <div>
-                        <label className="block text-xs font-black text-blue-950">
-                          تاريخ استلام المال / العربون للخياطة (تاريخ دخول المبلغ في الصندوق) *
+                  {hasPaymentLedger ? (
+                    <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="block text-xs font-black text-emerald-950">
+                          سجل الفارمسوات (الدفعات) — {ledgerPayments.length}
                         </label>
-                        <span className="text-[10px] text-blue-700 font-medium">
-                          يدخل هذا المبلغ ({(paidAmount || 0).toLocaleString()} دج) في حساب الصندوق اليومي (La Caisse) في هذا التاريخ المختار بالضبط
+                        {onRecordPayment && order && (
+                          <button
+                            type="button"
+                            onClick={() => onRecordPayment(order)}
+                            className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded-lg transition-all"
+                          >
+                            + تسجيل فارسمو
+                          </button>
+                        )}
+                      </div>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {ledgerPayments.map(payment => (
+                          <div key={payment.id} className="flex items-center justify-between text-[11px] bg-white border border-emerald-100 rounded-lg px-2 py-1">
+                            <span className="font-mono font-bold text-emerald-900">+{payment.amount.toLocaleString()} دج</span>
+                            <span className="text-[10px] text-slate-500">
+                              <span className="font-mono">{payment.date}</span> • {tailoringPaymentMethodLabel(payment.method)}
+                              {payment.countsInCaisse === false ? ' • عبر الديون' : ''}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] font-bold pt-1 border-t border-emerald-200">
+                        <span className="text-emerald-900">المدفوع: {ledgerPaidTotal.toLocaleString()} دج</span>
+                        <span className={ledgerRemaining > 0 ? 'text-rose-700' : 'text-emerald-700'}>
+                          {ledgerRemaining > 0 ? `المتبقي: ${ledgerRemaining.toLocaleString()} دج` : 'خالص بالكامل ✓'}
                         </span>
                       </div>
+                      <span className="text-[10px] text-emerald-800 block">
+                        تُعدَّل مبالغ الدفعات من زر «تسجيل فارسمو» فقط، حتى لا تختل أرصدة الصندوق اليومي.
+                      </span>
                     </div>
-
-                    <div className="flex flex-wrap items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentDate(today)}
-                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all border ${
-                          paymentDate === today
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                            : 'bg-white text-blue-900 border-blue-200 hover:bg-blue-100'
-                        }`}
-                      >
-                        اليوم
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPaymentDate(addDays(today, -1))}
-                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all border ${
-                          paymentDate === addDays(today, -1)
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                            : 'bg-white text-blue-900 border-blue-200 hover:bg-blue-100'
-                        }`}
-                      >
-                        أمس
-                      </button>
-                      {receivedDate !== today && (
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="block text-xs font-bold text-slate-700">المبلغ المدفوع (عربون)</label>
                         <button
                           type="button"
-                          onClick={() => setPaymentDate(receivedDate)}
+                          onClick={() => setPaidAmount(price)}
+                          className="text-[10px] text-slate-600 hover:text-slate-900 font-bold underline"
+                        >
+                          دفع كامل
+                        </button>
+                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        max={price}
+                        value={paidAmount}
+                        onChange={(e) => setPaidAmount(Number(e.target.value))}
+                        placeholder="1000"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none font-mono"
+                      />
+                      <span className="text-[10px] text-slate-500 mt-0.5 block">
+                        {remainingAmount > 0 ? `المتبقي: ${remainingAmount.toLocaleString()} دج` : 'خالص بالكامل'}
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                {!hasPaymentLedger && (
+                  <div className="col-span-1 sm:col-span-3 p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-2 text-right">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+                          <Calendar className="w-3 h-3" />
+                        </span>
+                        <div>
+                          <label className="block text-xs font-black text-blue-950">
+                            تاريخ استلام المال / العربون للخياطة (تاريخ دخول المبلغ في الصندوق) *
+                          </label>
+                          <span className="text-[10px] text-blue-700 font-medium">
+                            يدخل هذا المبلغ ({(paidAmount || 0).toLocaleString()} دج) في حساب الصندوق اليومي (La Caisse) في هذا التاريخ المختار بالضبط
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentDate(today)}
                           className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all border ${
-                            paymentDate === receivedDate
+                            paymentDate === today
                               ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
                               : 'bg-white text-blue-900 border-blue-200 hover:bg-blue-100'
                           }`}
                         >
-                          تاريخ الاستلام ({receivedDate})
+                          اليوم
                         </button>
-                      )}
+                        <button
+                          type="button"
+                          onClick={() => setPaymentDate(addDays(today, -1))}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all border ${
+                            paymentDate === addDays(today, -1)
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                              : 'bg-white text-blue-900 border-blue-200 hover:bg-blue-100'
+                          }`}
+                        >
+                          أمس
+                        </button>
+                        {receivedDate !== today && (
+                          <button
+                            type="button"
+                            onClick={() => setPaymentDate(receivedDate)}
+                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all border ${
+                              paymentDate === receivedDate
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                                : 'bg-white text-blue-900 border-blue-200 hover:bg-blue-100'
+                            }`}
+                          >
+                            تاريخ الاستلام ({receivedDate})
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-center pt-1">
-                    <input
-                      type="date"
-                      required
-                      value={paymentDate}
-                      onChange={(e) => setPaymentDate(e.target.value)}
-                      className="w-full bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 font-black"
-                    />
-                    <div className="text-[11px] font-bold text-blue-900 bg-white/80 border border-blue-200 px-3 py-2 rounded-xl flex items-center gap-1.5">
-                      <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>مبلغ العربون/المدفوع: <strong>{(paidAmount || 0).toLocaleString()} دج</strong> مسجل بتاريخ <strong>{paymentDate}</strong></span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-center pt-1">
+                      <input
+                        type="date"
+                        required
+                        value={paymentDate}
+                        onChange={(e) => setPaymentDate(e.target.value)}
+                        className="w-full bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 font-black"
+                      />
+                      <div className="text-[11px] font-bold text-blue-900 bg-white/80 border border-blue-200 px-3 py-2 rounded-xl flex items-center gap-1.5">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>مبلغ العربون/المدفوع: <strong>{(paidAmount || 0).toLocaleString()} دج</strong> مسجل بتاريخ <strong>{paymentDate}</strong></span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
+
+                {hasPaymentLedger && (
+                  <div className="col-span-1 sm:col-span-3 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-right">
+                    <span className="text-[11px] font-black text-slate-800 block">
+                      هذا الطلب يحتوي على سجل فارمسوات ({ledgerPayments.length} دفعة)
+                    </span>
+                    <span className="text-[10px] text-slate-600 block">
+                      كل دفعة مسجلة بتاريخ استلامها الخاص وتُحتسب في صندوق يومها بالضبط — استعمل زر «تسجيل فارسمو» لإضافة دفعة جديدة أو تصحيح دفعة سابقة.
+                    </span>
+                  </div>
+                )}
               </>
             )}
           </div>

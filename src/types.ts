@@ -196,6 +196,7 @@ export interface Credit {
   date: string;
   relatedRentalId?: string;
   relatedExpenseId?: string;
+  relatedTailoringOrderId?: string; // ربط الدين بطلب خياطة/صيانة (لتجنب الاحتساب المزدوج في الصندوق)
   supplierDebt?: boolean; // هل هو دين للمورد (علينا للمورد)
   supplierName?: string;
   goodsDescription?: string;
@@ -258,6 +259,23 @@ export type MaintenanceStatus = 'pending' | 'in_progress' | 'ready' | 'delivered
 export type MaintenanceServiceType = 'alteration' | 'repair' | 'custom_sewing' | 'ironing_prep' | 'other';
 export type MaintenanceTargetType = 'internal_stock' | 'customer_order';
 
+export type TailoringPaymentMethod = 'cash' | 'transfer' | 'check' | 'other';
+
+/**
+ * فارسمو (دفعة / قسط) مستلمة على طلب خياطة أو صيانة.
+ * كل دفعة تحمل تاريخها الخاص حتى تُحتسب في صندوق اليوم (La Caisse) في يومها بالضبط.
+ */
+export interface TailoringPayment {
+  id: string;
+  amount: number; // المبلغ المستلم في هذه الدفعة
+  date: string; // YYYY-MM-DD تاريخ استلام المال (يوم دخوله إلى الصندوق)
+  method?: TailoringPaymentMethod; // طريقة الدفع: كاش، تحويل، شيك...
+  note?: string; // ملاحظة أو مرجع الوصل
+  countsInCaisse?: boolean; // false = محصّلة مسبقاً عبر سجل الديون (لا تُحتسب مرة ثانية في الصندوق)
+  legacy?: boolean; // دفعة أصلية (عربون أولي) مُستخرجة من السجلات القديمة
+  createdAt: string;
+}
+
 export interface MaintenanceOrder {
   id: string;
   orderNumber: string;
@@ -277,7 +295,8 @@ export interface MaintenanceOrder {
   receivedDate: string;
   expectedDeliveryDate: string;
   actualDeliveryDate?: string;
-  paymentDate?: string; // تاريخ استلام المال / العربون للخياطة بالضبط
+  paymentDate?: string; // تاريخ استلام المال / العربون للخياطة بالضبط (آخر دفعة مستلمة)
+  payments?: TailoringPayment[]; // سجل الفارمسوات (الدفعات/الأقساط) المستلمة على الطلب
   status: MaintenanceStatus;
   notes?: string;
   createdAt: string;

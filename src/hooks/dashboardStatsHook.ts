@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Rental, Sale, Expense, Credit, StaffPayout, MaintenanceOrder } from '../types';
+import { getTailoringPayments } from '../utils/tailoringPayments';
 
 export function useDashboardStats(
   rentals: Rental[],
@@ -76,20 +77,30 @@ export function useDashboardStats(
 
     for (let i = 0; i < maintenanceOrders.length; i++) {
       const o = maintenanceOrders[i];
-      const paid = o.paidAmount || 0;
+      const payments = getTailoringPayments(o);
+      const paidTotal = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
       const cost = o.cost || 0;
 
-      totalTailoringIncome += paid;
+      totalTailoringIncome += paidTotal;
       totalTailoringCost += cost;
 
-      const dateStr = o.paymentDate || (o.createdAt ? o.createdAt.split('T')[0] : o.receivedDate) || '';
-      if (dateStr.startsWith(currentMonthStr)) {
-        monthlyTailoringIncome += paid;
-        monthlyTailoringProfit += (paid - cost);
-      }
-      if (dateStr.startsWith(currentYearStr)) {
-        yearlyTailoringIncome += paid;
-        yearlyTailoringProfit += (paid - cost);
+      // نسبة الربح تُوزّع على الدفعات (فارمسوات) حسب يوم استلام كل مبلغ
+      const marginRatio = paidTotal > 0 ? (paidTotal - cost) / paidTotal : 0;
+
+      for (let p = 0; p < payments.length; p++) {
+        const payment = payments[p];
+        const amount = Number(payment.amount) || 0;
+        if (amount <= 0) continue;
+        const dateStr = (payment.date || '').trim().slice(0, 10);
+        const profitShare = amount * marginRatio;
+        if (dateStr.startsWith(currentMonthStr)) {
+          monthlyTailoringIncome += amount;
+          monthlyTailoringProfit += profitShare;
+        }
+        if (dateStr.startsWith(currentYearStr)) {
+          yearlyTailoringIncome += amount;
+          yearlyTailoringProfit += profitShare;
+        }
       }
 
       if (o.status !== 'delivered') {

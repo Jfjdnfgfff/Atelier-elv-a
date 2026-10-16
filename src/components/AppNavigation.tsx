@@ -88,6 +88,8 @@ export interface AppNavigationProps {
   onDeleteTailoringOrder: (id: string) => void;
   onUpdateTailoringStatus: (id: string, status: MaintenanceStatus) => void;
   onOpenTailoringReceiptModal: (order: MaintenanceOrder) => void;
+  onRecordTailoringPayment: (order: MaintenanceOrder) => void;
+  onOpenTailoringDetails: (order: MaintenanceOrder) => void;
   onAddExpense: (expData: any) => void;
   onDeleteExpense: (id: string) => void;
   onSettleSupplierCredit: (expenseId: string, paidNow: number) => void;
@@ -173,6 +175,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
   onDeleteTailoringOrder,
   onUpdateTailoringStatus,
   onOpenTailoringReceiptModal,
+  onRecordTailoringPayment,
+  onOpenTailoringDetails,
   onAddExpense,
   onDeleteExpense,
   onSettleSupplierCredit,
@@ -486,6 +490,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
           onDeleteTailoringOrder={onDeleteTailoringOrder}
           onUpdateTailoringStatus={onUpdateTailoringStatus}
           onOpenTailoringReceiptModal={onOpenTailoringReceiptModal}
+          onRecordTailoringPayment={onRecordTailoringPayment}
+          onOpenTailoringDetails={onOpenTailoringDetails}
           onAddExpense={onAddExpense}
           onDeleteExpense={onDeleteExpense}
           onSettleSupplierCredit={onSettleSupplierCredit}

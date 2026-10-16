@@ -1,6 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { MaintenanceOrder, MaintenanceStatus, MaintenanceTargetType, ClothItem } from '../types';
-import { Plus, AlertTriangle, AlertCircle, MessageSquare, Mail, Phone, Trash2, FileText, Edit3, Calendar, DollarSign, Sparkles, Scissors, Clock, TrendingUp } from 'lucide-react';
+import { Plus, AlertTriangle, AlertCircle, MessageSquare, Mail, Phone, Trash2, FileText, Edit3, Calendar, DollarSign, Sparkles, Scissors, Clock, TrendingUp, Wallet, Eye, Landmark } from 'lucide-react';
+import {
+  getTailoringPaidPercent,
+  getTailoringPaidTotal,
+  getTailoringPayments,
+  getTailoringRemaining,
+  tailoringPriceOf,
+} from '../utils/tailoringPayments';
 
 interface TailoringViewProps {
   orders: MaintenanceOrder[];
@@ -10,6 +17,8 @@ interface TailoringViewProps {
   onDeleteOrder: (id: string) => void;
   onUpdateStatus: (id: string, newStatus: MaintenanceStatus) => void;
   onOpenReceiptModal: (order: MaintenanceOrder) => void;
+  onRecordPayment: (order: MaintenanceOrder) => void;
+  onOpenDetails: (order: MaintenanceOrder) => void;
 }
 
 export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
@@ -19,7 +28,9 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
   onEditOrder,
   onDeleteOrder,
   onUpdateStatus,
-  onOpenReceiptModal
+  onOpenReceiptModal,
+  onRecordPayment,
+  onOpenDetails
 }) => {
   const [filter, setFilter] = useState<'all' | 'due_soon' | 'pending' | 'in_progress' | 'ready' | 'delivered'>('all');
   const [serviceFilter, setServiceFilter] = useState<'all' | 'ironing_prep' | 'alteration' | 'repair' | 'custom_sewing'>('all');
@@ -99,7 +110,7 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
     const totalRevenue = orders.reduce((s, o) => s + (o.price || 0), 0);
     const totalCost = orders.reduce((s, o) => s + (o.cost || 0), 0);
     const netProfit = totalRevenue - totalCost;
-    const totalRemaining = orders.reduce((s, o) => s + (o.remainingAmount || 0), 0);
+    const totalRemaining = orders.reduce((s, o) => s + getTailoringRemaining(o), 0);
 
     return {
       activeCount: active.length,
@@ -375,7 +386,11 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
 
                 <div className="space-y-2">
                   <div className="flex justify-between items-start gap-2">
-                    <div>
+                    <div
+                      onClick={() => onOpenDetails(order)}
+                      className="cursor-pointer group/det"
+                      title="اضغط لعرض كامل تفاصيل المعاملة"
+                    >
                       <div className="flex items-center gap-1.5 text-xs text-slate-500 font-normal">
                         <span className="font-mono font-bold text-slate-800">{order.orderNumber}</span>
                         <span>•</span>
@@ -383,7 +398,7 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
                         <span>•</span>
                         <span>{order.targetType === 'customer_order' ? 'زبونة' : 'المحل'}</span>
                       </div>
-                      <h3 className="font-bold text-sm text-slate-900 mt-1">
+                      <h3 className="font-bold text-sm text-slate-900 mt-1 group-hover/det:text-blue-700 transition-colors">
                         {order.itemName}
                       </h3>
                     </div>
@@ -483,32 +498,67 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
                     )}
 
                     {order.price > 0 && (
-                      <div className="space-y-1 pt-1 border-t border-slate-200/60 text-[11px] text-slate-600">
-                        <div className="flex justify-between items-center">
-                          <span className="text-slate-500">المدفوع / المتبقي:</span>
-                          <span className="font-mono font-bold">
-                            {order.paidAmount?.toLocaleString() || 0} دج مدفوع 
-                            {order.remainingAmount > 0 ? (
-                              <span className="text-rose-600 font-bold mr-1.5">({order.remainingAmount.toLocaleString()} دج متبقي دين)</span>
-                            ) : (
-                              <span className="text-emerald-700 mr-1 font-bold"> (تم الخلاص بالكامل ✓)</span>
-                            )}
-                          </span>
-                        </div>
-                        {order.paidAmount > 0 && (
-                          <div className="flex justify-between items-center text-[10px]">
-                            <span className="text-blue-700 font-medium">تاريخ استلام المال/العربون:</span>
-                            <span className="font-bold font-mono text-blue-950">
-                              {order.paymentDate || (order.createdAt ? order.createdAt.split('T')[0] : order.receivedDate)}
-                            </span>
-                          </div>
-                        )}
+                      <div className="space-y-1.5 pt-1 border-t border-slate-200/60 text-[11px] text-slate-600">
+                        {(() => {
+                          const payments = getTailoringPayments(order);
+                          const paidTotal = getTailoringPaidTotal(order);
+                          const remainingOpen = getTailoringRemaining(order);
+                          const percent = getTailoringPaidPercent(order);
+                          const lastPayment = payments[payments.length - 1];
+
+                          return (
+                            <>
+                              <div className="flex justify-between items-center">
+                                <span className="text-slate-500 flex items-center gap-1">
+                                  <Wallet className="w-3 h-3 text-emerald-600" />
+                                  <span>المدفوع / المتبقي:</span>
+                                </span>
+                                <span className="font-mono font-bold">
+                                  {paidTotal.toLocaleString()} دج مدفوع
+                                  {remainingOpen > 0 ? (
+                                    <span className="text-rose-600 font-bold mr-1.5">({remainingOpen.toLocaleString()} دج متبقي دين)</span>
+                                  ) : (
+                                    <span className="text-emerald-700 mr-1 font-bold"> (تم الخلاص بالكامل ✓)</span>
+                                  )}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-1.5">
+                                <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full ${percent >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                                    style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+                                  />
+                                </div>
+                                <span className="font-mono font-bold text-[10px] text-slate-600 shrink-0">{percent}%</span>
+                              </div>
+
+                              <div className="flex flex-wrap items-center justify-between gap-1 text-[10px]">
+                                <span className="text-slate-500 flex items-center gap-1">
+                                  <Landmark className="w-3 h-3 text-slate-400" />
+                                  <span>
+                                    {payments.length === 0
+                                      ? 'لا دفعات مسجلة'
+                                      : `${payments.length} ${payments.length === 1 ? 'دفعة' : 'فارمسوات'}`}
+                                    {lastPayment ? ` • آخر استلام: ` : ''}
+                                  </span>
+                                  {lastPayment && <span className="font-mono font-bold text-slate-700">{lastPayment.date}</span>}
+                                </span>
+                                {payments.length > 1 && (
+                                  <span className="text-[10px] text-slate-400 font-mono">
+                                    {payments.map(p => p.amount.toLocaleString()).join(' + ')} دج
+                                  </span>
+                                )}
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
                   <select
                     value={order.status}
                     onChange={(e) => onUpdateStatus(order.id, e.target.value as MaintenanceStatus)}
@@ -520,7 +570,25 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
                     <option value="delivered">تم التسليم</option>
                   </select>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      onClick={() => onOpenDetails(order)}
+                      className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1"
+                      title="عرض كامل تفاصيل المعاملة"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>التفاصيل</span>
+                    </button>
+                    {tailoringPriceOf(order) > 0 && getTailoringRemaining(order) > 0 && (
+                      <button
+                        onClick={() => onRecordPayment(order)}
+                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1"
+                        title="تسجيل فارسمو (دفعة جديدة) على هذا الطلب"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>فارسمو</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => onOpenReceiptModal(order)}
                       className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-all flex items-center gap-1"

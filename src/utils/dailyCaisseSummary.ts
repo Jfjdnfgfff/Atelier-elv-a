@@ -7,6 +7,7 @@ import {
   StaffPayout,
 } from '../types';
 import { isGeneralFundExpense, isGeneralFundRental, summarizeCreditPaymentsOn } from './fundBalance';
+import { getTailoringIncomeOn, getTailoringPaymentsOn } from './tailoringPayments';
 
 export interface DailyCaisseSummaryInput {
   date: string;
@@ -105,13 +106,11 @@ export function summarizeDailyCaisse({
   const dateTailoring: MaintenanceOrder[] = [];
   let dateTailoringIncome = 0;
   for (const order of maintenanceOrders) {
-    const paymentDate = toDateKey(
-      order.paymentDate || order.createdAt || order.receivedDate,
-    );
-    if (paymentDate === date) {
-      dateTailoring.push(order);
-      dateTailoringIncome += toAmount(order.paidAmount);
-    }
+    // كل فارسمو (دفعة) يُحتسب في يوم استلامه بالضبط، لا في يوم العربون الأول
+    const paymentsToday = getTailoringPaymentsOn(order, date);
+    if (paymentsToday.length === 0) continue;
+    dateTailoring.push(order);
+    dateTailoringIncome += getTailoringIncomeOn(order, date);
   }
 
   const dateExpenses = expenses.filter(

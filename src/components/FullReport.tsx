@@ -11,6 +11,7 @@ import {
 } from '../types';
 import { downloadElementAsPng } from '../utils/pngDownload';
 import { openPrintInterface } from '../utils/printInterface';
+import { getTailoringLastPaymentDate, getTailoringPayments } from '../utils/tailoringPayments';
 import { 
   Calendar, 
   Download, 
@@ -916,7 +917,14 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
                           </span>
                         </td>
                         <td className="p-2 text-left font-mono font-bold text-slate-800">{renderMoney(o.price)}</td>
-                        <td className="p-2 text-left font-mono font-black text-blue-900">{renderMoney(o.paidAmount || 0)}</td>
+                        <td className="p-2 text-left font-mono font-black text-blue-900">
+                          {renderMoney(o.paidAmount || 0)}
+                          {getTailoringPayments(o).length > 1 && (
+                            <div className="text-[10px] font-normal text-slate-500 font-sans">
+                              {getTailoringPayments(o).length} دفعات (فارمسوات) • آخر استلام: {getTailoringLastPaymentDate(o)}
+                            </div>
+                          )}
+                        </td>
                         <td className="p-2 text-left font-mono font-bold text-rose-600">{renderMoney(o.remainingAmount || 0)}</td>
                       </tr>
                     ))

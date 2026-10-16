@@ -11,6 +11,8 @@ import {
   StaffAbsence,
   MaintenanceOrder,
   MaintenanceStatus,
+  TailoringPayment,
+  TailoringPaymentMethod,
   Supplier,
   ViewType,
   DailyCaisseClosure,
@@ -49,6 +51,14 @@ import {
   paymentsForCredit,
   generalFundEffectOfPayment
 } from './utils/fundBalance';
+import {
+  buildPaymentAddedUpdate,
+  buildPaymentRemovedUpdate,
+  getTailoringLastPaymentDate,
+  getTailoringPaidTotal,
+  getTailoringPayments,
+  tailoringPriceOf
+} from './utils/tailoringPayments';
 import { 
   FIREBASE_COLLECTIONS, 
   saveItemToFirebase, 
@@ -81,6 +91,8 @@ const RentalReceiptModal = React.lazy(() => import('./components/RentalReceiptMo
 const StaffPayoutsModal = React.lazy(() => import('./components/StaffPayoutsModal').then(m => ({ default: m.StaffPayoutsModal })));
 const TailoringModal = React.lazy(() => import('./components/TailoringModal').then(m => ({ default: m.TailoringModal })));
 const TailoringReceiptModal = React.lazy(() => import('./components/TailoringReceiptModal').then(m => ({ default: m.TailoringReceiptModal })));
+const TailoringPaymentModal = React.lazy(() => import('./components/TailoringPaymentModal').then(m => ({ default: m.TailoringPaymentModal })));
+const TailoringDetailsModal = React.lazy(() => import('./components/TailoringDetailsModal').then(m => ({ default: m.TailoringDetailsModal })));
 
 // ---------------------------------------------------------------------------
 // استراتيجية التحميل المسبق (Preloading Strategy)
@@ -97,6 +109,8 @@ if (typeof window !== 'undefined') {
     void import('./components/RentalReceiptModal');
     void import('./components/TailoringModal');
     void import('./components/TailoringReceiptModal');
+    void import('./components/TailoringPaymentModal');
+    void import('./components/TailoringDetailsModal');
     void import('./components/StaffPayoutsModal');
     void import('./components/FullReport');
   };
@@ -980,6 +994,33 @@ export default function App() {
 
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [selectedTailoringOrder, setSelectedTailoringOrder] = useState<MaintenanceOrder | null>(null);
+
+  // طبقة تسجيل الفارسمو: تُعرض فوق أي نافذة مفتوحة (تفاصيل المعاملة أو التعديل) دون إغلاقها
+  const [tailoringPaymentOrderId, setTailoringPaymentOrderId] = useState<string | null>(null);
+  const tailoringPaymentOrder = useMemo(
+    () => (tailoringPaymentOrderId ? maintenanceOrders.find(o => o.id === tailoringPaymentOrderId) || null : null),
+    [tailoringPaymentOrderId, maintenanceOrders]
+  );
+
+  // نافذة الخياطة المرتبطة بالطلب المحدد — تُشتق دائماً من الحالة الحية حتى تظهر الدفعات الجديدة فوراً
+  const activeTailoringOrder = useMemo(
+    () => (selectedTailoringOrder ? maintenanceOrders.find(o => o.id === selectedTailoringOrder.id) || selectedTailoringOrder : null),
+    [selectedTailoringOrder, maintenanceOrders]
+  );
+
+  // الدين المرتبط بالطلب في سجل الديون (إن وُجد) — لعرضه في نافذة الفارسمو وخصمه دون احتساب مزدوج
+  const activeTailoringLinkedCreditRemaining = useMemo(() => {
+    if (!activeTailoringOrder) return null;
+    const linked = credits.find(c =>
+      !c.supplierDebt && (
+        c.relatedTailoringOrderId === activeTailoringOrder.id ||
+        (c.type === 'دين خياطة وصيانة' && c.desc?.includes(`#${activeTailoringOrder.orderNumber}`))
+      )
+    );
+    if (!linked) return null;
+    const paidViaCredit = paymentsForCredit(linked, creditPayments).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    return Math.max(0, (Number(linked.amount) || 0) - paidViaCredit);
+  }, [activeTailoringOrder, credits, creditPayments]);
   const [preselectedRentalItemId, setPreselectedRentalItemId] = useState<string | undefined>(undefined);
   const [scannedItemAction, setScannedItemAction] = useState<ClothItem | null>(null);
   const [unknownScannedCode, setUnknownScannedCode] = useState<string | null>(null);
@@ -1089,6 +1130,20 @@ export default function App() {
   const handleOpenTailoringReceiptModal = useCallback((order: MaintenanceOrder) => {
     setSelectedTailoringOrder(order);
     setActiveModal('tailoringReceipt');
+  }, []);
+
+  const handleOpenTailoringDetails = useCallback((order: MaintenanceOrder) => {
+    setSelectedTailoringOrder(order);
+    setActiveModal('tailoringDetails');
+  }, []);
+
+  const handleOpenTailoringPayment = useCallback((order: MaintenanceOrder) => {
+    setSelectedTailoringOrder(order);
+    setTailoringPaymentOrderId(order.id);
+  }, []);
+
+  const handleCloseTailoringPayment = useCallback(() => {
+    setTailoringPaymentOrderId(null);
   }, []);
 
   const handleClearPosScannedBarcode = useCallback(() => {
@@ -1934,6 +1989,32 @@ export default function App() {
       setGeneralFundBalance(prev => Math.round((prev + effect) * 100) / 100);
     }
 
+    // دين زبون مرتبط بطلب خياطة → يُسجَّل تسديده أيضاً في سجل فارمسوات الطلب
+    // (بدون احتسابه في صندوق اليوم مرة ثانية، لأن دفعة الدين محتسبة أصلاً كتحصيل كريدي)
+    if (!credit.supplierDebt) {
+      const linkedOrder = maintenanceOrders.find(o =>
+        o.id === credit.relatedTailoringOrderId ||
+        (credit.type === 'دين خياطة وصيانة' && !!credit.desc?.includes(`#${o.orderNumber}`))
+      );
+      if (linkedOrder) {
+        const orderUpdate = buildPaymentAddedUpdate(linkedOrder, {
+          amount,
+          date: paymentDate,
+          method: 'cash',
+          note: `محصّلة عبر سجل الديون (${credit.name})`,
+          countsInCaisse: false
+        });
+        const orderFields = {
+          payments: orderUpdate.payments,
+          paidAmount: orderUpdate.paidAmount,
+          remainingAmount: orderUpdate.remainingAmount,
+          paymentDate: orderUpdate.paymentDate
+        };
+        setMaintenanceOrders(prev => prev.map(o => o.id === linkedOrder.id ? { ...o, ...orderFields } : o));
+        updateItemInFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, linkedOrder.id, orderFields);
+      }
+    }
+
     // دين مورد مرتبط بمصروف شراء → تحديث المدفوع والمتبقي في المصروف أيضاً
     if (credit.supplierDebt && credit.relatedExpenseId) {
       setExpenses(prev => prev.map(exp => {
@@ -1966,7 +2047,7 @@ export default function App() {
     } else {
       showToast(`تم تسجيل دفعة ${amount.toLocaleString()} دج • المتبقي: ${remaining.toLocaleString()} دج`);
     }
-  }, [credits, creditPayments, addActivityLog, showToast]);
+  }, [credits, creditPayments, maintenanceOrders, addActivityLog, showToast]);
 
   const handleDeleteCredit = useCallback((id: string) => {
     const target = credits.find(c => c.id === id);
@@ -2188,6 +2269,24 @@ export default function App() {
   }, []);
 
   const handleAddTailoringOrder = useCallback((data: Partial<MaintenanceOrder>) => {
+    const createdAt = new Date().toISOString();
+    const receivedDate = data.receivedDate || createdAt.split('T')[0];
+    const paymentDate = data.paymentDate || receivedDate;
+    const firstPaymentAmount = Number(data.paidAmount) || 0;
+
+    // العربون الأول يُسجَّل كأول فارسمو في سجل الدفعات بتاريخ استلام المال بالضبط
+    const firstPayment: TailoringPayment | undefined = firstPaymentAmount > 0
+      ? {
+          id: generateId(),
+          amount: firstPaymentAmount,
+          date: (paymentDate || receivedDate).substring(0, 10),
+          method: 'cash',
+          note: 'العربون الأول عند تسجيل الطلب',
+          countsInCaisse: true,
+          createdAt
+        }
+      : undefined;
+
     const newOrder: MaintenanceOrder = {
       id: generateId(),
       orderNumber: `TAIL-${Math.floor(100 + Math.random() * 900)}`,
@@ -2202,14 +2301,15 @@ export default function App() {
       tailorName: data.tailorName,
       cost: Number(data.cost) || 0,
       price: Number(data.price) || 0,
-      paidAmount: Number(data.paidAmount) || 0,
+      paidAmount: firstPaymentAmount,
       remainingAmount: Number(data.remainingAmount) || 0,
-      receivedDate: data.receivedDate || new Date().toISOString().split('T')[0],
-      expectedDeliveryDate: data.expectedDeliveryDate || new Date().toISOString().split('T')[0],
-      paymentDate: data.paymentDate || data.receivedDate || new Date().toISOString().split('T')[0],
+      payments: firstPayment ? [firstPayment] : [],
+      receivedDate,
+      expectedDeliveryDate: data.expectedDeliveryDate || receivedDate,
+      paymentDate,
       status: data.status || 'pending',
       notes: data.notes,
-      createdAt: new Date().toISOString()
+      createdAt
     };
 
     setMaintenanceOrders(prev => [newOrder, ...prev]);
@@ -2223,7 +2323,8 @@ export default function App() {
         type: 'دين خياطة وصيانة',
         desc: `متبقي خياطة: ${newOrder.itemName} (طلب #${newOrder.orderNumber})`,
         amount: newOrder.remainingAmount,
-        date: new Date().toISOString()
+        date: createdAt,
+        relatedTailoringOrderId: newOrder.id
       };
       setCredits(prev => [newCredit, ...prev]);
       saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCredit);
@@ -2242,8 +2343,25 @@ export default function App() {
   }, []);
 
   const handleUpdateTailoringOrder = useCallback((id: string, data: Partial<MaintenanceOrder>) => {
-    setMaintenanceOrders(prev => prev.map(o => o.id === id ? { ...o, ...data } : o));
-    updateItemInFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, id, data);
+    // لا نلمس سجل الفارمسوات عند التعديل: الإجماليات تُحسب دائماً من السجل نفسه
+    const { payments: _ignoredPayments, ...rest } = data;
+    const current = maintenanceOrders.find(o => o.id === id);
+    let syncedUpdates: Partial<MaintenanceOrder> = { ...rest };
+
+    if (current) {
+      const merged: MaintenanceOrder = { ...current, ...rest };
+      const price = tailoringPriceOf(merged);
+      const paidTotal = getTailoringPaidTotal(merged);
+      syncedUpdates = {
+        ...rest,
+        paidAmount: paidTotal,
+        remainingAmount: Math.max(0, price - paidTotal),
+        paymentDate: getTailoringLastPaymentDate(merged) || merged.paymentDate
+      };
+    }
+
+    setMaintenanceOrders(prev => prev.map(o => o.id === id ? { ...o, ...syncedUpdates } : o));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, id, syncedUpdates);
 
     addActivityLog({
       actionType: 'update',
@@ -2254,7 +2372,101 @@ export default function App() {
 
     showToast('تم تحديث بيانات طلب الخياطة');
     setActiveModal(null);
-  }, []);
+  }, [maintenanceOrders, addActivityLog, showToast]);
+
+  /**
+   * تسجيل فارسمو (دفعة/قسط) على طلب خياطة:
+   * - تُضاف الدفعة إلى سجل دفعات الطلب بتاريخ استلامها بالضبط.
+   * - يُحتسب المبلغ في صندوق اليوم (La Caisse) في يوم الدفعة لا في يوم العربون الأول.
+   * - يمكن خصم الدفعة من الدين المرتبط في سجل الديون دون احتسابها مرتين في الصندوق.
+   */
+  const handleRecordTailoringPayment = useCallback((
+    orderId: string,
+    payment: { amount: number; date: string; method?: TailoringPaymentMethod; note?: string; countsInCaisse?: boolean; reduceLinkedCredit?: boolean }
+  ) => {
+    const order = maintenanceOrders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const amount = Number(payment?.amount) || 0;
+    if (amount <= 0) return;
+
+    const update = buildPaymentAddedUpdate(order, {
+      amount,
+      date: payment.date,
+      method: payment.method,
+      note: payment.note,
+      countsInCaisse: payment.countsInCaisse !== false
+    });
+
+    const firebaseUpdates = {
+      payments: update.payments,
+      paidAmount: update.paidAmount,
+      remainingAmount: update.remainingAmount,
+      paymentDate: update.paymentDate
+    };
+
+    setMaintenanceOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...firebaseUpdates } : o));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, orderId, firebaseUpdates);
+
+    // خصم المبلغ من الدين المرتبط في سجل الديون (إن طُلب ذلك) لتفادي الاحتساب المزدوج
+    if (payment.reduceLinkedCredit) {
+      const linkedCredit = credits.find(c =>
+        !c.supplierDebt && (c.relatedTailoringOrderId === orderId || c.desc?.includes(`#${order.orderNumber}`))
+      );
+      if (linkedCredit) {
+        const creditRemaining = Math.max(0, (Number(linkedCredit.amount) || 0) - paymentsForCredit(linkedCredit, creditPayments).reduce((sum, p) => sum + (Number(p.amount) || 0), 0));
+        const newCreditAmount = Math.max(0, creditRemaining - amount);
+        if (newCreditAmount <= 0) {
+          setCredits(prev => prev.filter(c => c.id !== linkedCredit.id));
+          deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDITS, linkedCredit.id);
+        } else {
+          setCredits(prev => prev.map(c => c.id === linkedCredit.id ? { ...c, amount: newCreditAmount } : c));
+          updateItemInFirebase(FIREBASE_COLLECTIONS.CREDITS, linkedCredit.id, { amount: newCreditAmount, updatedAt: new Date().toISOString() });
+        }
+      }
+    }
+
+    addActivityLog({
+      actionType: 'payment',
+      category: 'tailoring',
+      title: 'تسجيل فارسمو على طلب خياطة',
+      details: `طلب #${order.orderNumber} (${order.customerName || 'زبون'}) — دفعة ${amount.toLocaleString()} دج بتاريخ ${payment.date}${payment.countsInCaisse === false ? ' (محصّلة عبر سجل الديون لا تُحتسب في الصندوق)' : ''} • إجمالي المدفوع: ${update.paidAmount.toLocaleString()} دج • المتبقي: ${update.remainingAmount.toLocaleString()} دج`,
+      amount
+    });
+
+    showToast(update.remainingAmount > 0
+      ? `تم تسجيل فارسمو ${amount.toLocaleString()} دج • المتبقي: ${update.remainingAmount.toLocaleString()} دج`
+      : `تم تسجيل فارسمو ${amount.toLocaleString()} دج • الطلب خالص بالكامل ✓`);
+  }, [maintenanceOrders, credits, creditPayments, addActivityLog, showToast]);
+
+  /** حذف دفعة (تصحيح قيد): يُعاد احتساب المدفوع والمتبقي ويُخصم المبلغ من صندوق يومه */
+  const handleDeleteTailoringPayment = useCallback((orderId: string, paymentId: string) => {
+    const order = maintenanceOrders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const removed = getTailoringPayments(order).find(p => p.id === paymentId);
+    const update = buildPaymentRemovedUpdate(order, paymentId);
+
+    const firebaseUpdates = {
+      payments: update.payments,
+      paidAmount: update.paidAmount,
+      remainingAmount: update.remainingAmount,
+      paymentDate: update.paymentDate
+    };
+
+    setMaintenanceOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...firebaseUpdates } : o));
+    updateItemInFirebase(FIREBASE_COLLECTIONS.MAINTENANCE, orderId, firebaseUpdates);
+
+    addActivityLog({
+      actionType: 'delete',
+      category: 'tailoring',
+      title: 'حذف فارسمو من طلب خياطة',
+      details: `حذف دفعة ${(removed?.amount || 0).toLocaleString()} دج بتاريخ ${removed?.date || '—'} من طلب #${order.orderNumber} • المتبقي بعد التصحيح: ${update.remainingAmount.toLocaleString()} دج`,
+      amount: removed?.amount
+    });
+
+    showToast('تم حذف الفارسمو وإعادة احتساب المتبقي على الطلب');
+  }, [maintenanceOrders, addActivityLog, showToast]);
 
   const handleUpdateTailoringStatus = useCallback((id: string, newStatus: MaintenanceStatus) => {
     const updates = { 
@@ -2470,6 +2682,8 @@ export default function App() {
         onDeleteTailoringOrder={handleDeleteTailoringOrder}
         onUpdateTailoringStatus={handleUpdateTailoringStatus}
         onOpenTailoringReceiptModal={handleOpenTailoringReceiptModal}
+        onRecordTailoringPayment={handleOpenTailoringPayment}
+        onOpenTailoringDetails={handleOpenTailoringDetails}
         onAddExpense={handleAddExpense}
         onDeleteExpense={handleDeleteExpense}
         onSettleSupplierCredit={handleSettleSupplierCredit}
@@ -2502,19 +2716,55 @@ export default function App() {
 
       {activeModal === 'editTailoring' && selectedTailoringOrder && (
         <TailoringModal
-          order={selectedTailoringOrder}
+          order={activeTailoringOrder || selectedTailoringOrder}
           clothes={clothes}
           staffMembers={staffMembers}
           onSave={(data) => handleUpdateTailoringOrder(selectedTailoringOrder.id, data)}
           onClose={() => setActiveModal(null)}
+          onRecordPayment={handleOpenTailoringPayment}
         />
       )}
 
       {activeModal === 'tailoringReceipt' && selectedTailoringOrder && (
         <TailoringReceiptModal
-          order={selectedTailoringOrder}
+          order={activeTailoringOrder || selectedTailoringOrder}
           onClose={() => setActiveModal(null)}
         />
+      )}
+
+      {/* عرض كامل تفاصيل المعاملة (يبقى مفتوحاً حين تُسجَّل دفعة فوقه) */}
+      {activeModal === 'tailoringDetails' && activeTailoringOrder && (
+        <React.Suspense fallback={null}>
+          <TailoringDetailsModal
+            order={activeTailoringOrder}
+            onClose={() => setActiveModal(null)}
+            onRecordPayment={handleOpenTailoringPayment}
+            onDeletePayment={(paymentId) => handleDeleteTailoringPayment(activeTailoringOrder.id, paymentId)}
+            onEditOrder={(order) => {
+              setSelectedTailoringOrder(order);
+              setActiveModal('editTailoring');
+            }}
+            onOpenReceipt={(order) => {
+              setSelectedTailoringOrder(order);
+              setActiveModal('tailoringReceipt');
+            }}
+            onUpdateStatus={handleUpdateTailoringStatus}
+            onDeleteOrder={handleDeleteTailoringOrder}
+          />
+        </React.Suspense>
+      )}
+
+      {/* تسجيل فارسمو (دفعة/قسط) على طلب خياطة — طبقة مستقلة تُعرض فوق النوافذ الأخرى */}
+      {tailoringPaymentOrder && (
+        <React.Suspense fallback={null}>
+          <TailoringPaymentModal
+            order={tailoringPaymentOrder}
+            linkedCreditRemaining={activeTailoringLinkedCreditRemaining}
+            onSave={(payment) => handleRecordTailoringPayment(tailoringPaymentOrder.id, payment)}
+            onDeletePayment={(paymentId) => handleDeleteTailoringPayment(tailoringPaymentOrder.id, paymentId)}
+            onClose={handleCloseTailoringPayment}
+          />
+        </React.Suspense>
       )}
 
       {activeModal === 'addRental' && (

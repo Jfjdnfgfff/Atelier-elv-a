@@ -10,6 +10,7 @@ import {
 } from '../types';
 import { Modal } from './Shared';
 import { CaisseReceiptModal } from './CaisseReceiptModal';
+import { getTailoringIncomeOn, getTailoringPayments, getTailoringPaymentsOn, tailoringPaymentMethodLabel } from '../utils/tailoringPayments';
 import { checkSecurityPin } from './SecurityPasswordModal';
 import {
   Scale,
@@ -456,6 +457,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       subtitle: string;
       amount: number;
       originalItem: any;
+      meta?: { orderId: string; paymentId: string };
     }> = [];
 
     // Sales (inflow)
@@ -498,22 +500,27 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       });
     });
 
-    // Tailoring (inflow)
+    // Tailoring (inflow) — كل فارسمو (دفعة) يظهر في يوم استلامه بالضبط
     maintenanceOrders.forEach(o => {
-      const tailoringPaymentDate = o.paymentDate || (o.createdAt ? o.createdAt.split('T')[0] : o.receivedDate) || '';
       const timePart = o.createdAt && o.createdAt.includes('T') ? o.createdAt.split('T')[1]?.substring(0, 5) : '';
-      const amount = o.paidAmount || 0;
-      list.push({
-        id: o.id,
-        type: 'tailoring',
-        typeLabel: 'خياطة وتعديل',
-        date: tailoringPaymentDate,
-        time: timePart,
-        direction: 'inflow',
-        title: o.customerName || 'زبون خياطة',
-        subtitle: `${o.itemName || 'فستان/تعديل'} (دفع/عربون: ${(o.paidAmount || 0).toLocaleString()} دج • استلام المال: ${tailoringPaymentDate})`,
-        amount,
-        originalItem: o
+      const allPayments = getTailoringPayments(o).filter(p => p.countsInCaisse !== false);
+      if (allPayments.length === 0) return;
+
+      allPayments.forEach(payment => {
+        const isOnlyPayment = allPayments.length === 1;
+        list.push({
+          id: isOnlyPayment ? o.id : `${o.id}::${payment.id}`,
+          type: 'tailoring',
+          typeLabel: allPayments.length > 1 ? 'دفعة خياطة' : 'خياطة وتعديل',
+          date: payment.date,
+          time: timePart,
+          direction: 'inflow',
+          title: o.customerName || 'زبون خياطة',
+          subtitle: `${o.itemName || 'فستان/تعديل'} (فارسمو ${tailoringPaymentMethodLabel(payment.method)} بقيمة ${payment.amount.toLocaleString()} دج${payment.note ? ` • ${payment.note}` : ''} • إجمالي المدفوع: ${(o.paidAmount || 0).toLocaleString()} دج من ${(o.price || 0).toLocaleString()} دج)`,
+          amount: payment.amount,
+          meta: isOnlyPayment ? undefined : { orderId: o.id, paymentId: payment.id },
+          originalItem: o
+        });
       });
     });
 
@@ -608,7 +615,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
     return { totalInflow, totalOutflow, net };
   }, [filteredTransactions]);
 
-  const handleDeleteTransaction = (tx: { id: string; type: string; title: string; amount: number; originalItem: any }) => {
+  const handleDeleteTransaction = (tx: { id: string; type: string; title: string; amount: number; originalItem: any; meta?: { orderId: string; paymentId: string } }) => {
     if (tx.type === 'sale') {
       if (window.confirm(`هل أنت متأكد من إلغاء وحذف عملية البيع للزبون (${tx.title}) بمبلغ ${tx.amount.toLocaleString()} دج؟ سيتم استرجاع السلع للمخزن.`)) {
         onDeleteSale?.(tx.originalItem);
@@ -618,6 +625,13 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
         onDeleteRental?.(tx.id);
       }
     } else if (tx.type === 'tailoring') {
+      if (tx.meta?.paymentId) {
+        window.alert(
+          `هذه دفعة (فارسمو) من دفعات طلب خياطة ${tx.title} بمبلغ ${tx.amount.toLocaleString()} دج.\n` +
+          'لتعديلها أو حذفها، افتح قسم الخياطة والصيانة ← «التفاصيل» ← سجل الفارمسوات، فيُعاد احتساب المتبقي تلقائياً.'
+        );
+        return;
+      }
       if (window.confirm(`هل أنت متأكد من حذف طلب الخياطة والتعديل (${tx.title})؟`)) {
         onDeleteTailoringOrder?.(tx.id);
       }
@@ -1544,17 +1558,22 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                       <span>طلبات الخياطة والتعديل لليوم ({dateTailoring.length}):</span>
                     </div>
                     <div className="divide-y divide-slate-100 max-h-40 overflow-y-auto">
-                      {dateTailoring.map(o => (
+                      {dateTailoring.map(o => {
+                        const dayPayments = getTailoringPaymentsOn(o, selectedDate);
+                        const dayIncome = getTailoringIncomeOn(o, selectedDate);
+                        return (
                         <div key={o.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors group">
                           <div className="flex-1 min-w-0 pr-1">
                             <span className="font-semibold text-slate-800 block truncate">{o.customerName}</span>
                             <span className="text-[10px] text-slate-500">
-                              ({o.itemName || 'تعديل'}) {o.description} • استلام المال: <span className="font-mono font-bold text-slate-700">{o.paymentDate || (o.createdAt ? o.createdAt.split('T')[0] : o.receivedDate)}</span>
+                              ({o.itemName || 'تعديل'}) {o.description} • فارسمو: <span className="font-mono font-bold text-slate-700">{dayPayments.map(p => p.date).join('، ')}</span>
+                              {dayPayments.length > 1 ? ` • ${dayPayments.length} دفعات في نفس اليوم` : ''}
+                              {' • '}إجمالي المدفوع على الطلب: <span className="font-mono font-bold text-slate-700">{(o.paidAmount || 0).toLocaleString()} دج</span>
                             </span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="font-mono font-bold text-slate-900">
-                              +{(o.paidAmount || 0).toLocaleString()} دج
+                              +{dayIncome.toLocaleString()} دج
                             </span>
                             {onDeleteTailoringOrder && (
                               <button
@@ -1572,7 +1591,8 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                             )}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}

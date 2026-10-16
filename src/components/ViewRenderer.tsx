@@ -117,6 +117,8 @@ export interface ViewRendererProps {
   onDeleteTailoringOrder: (id: string) => void;
   onUpdateTailoringStatus: (id: string, status: MaintenanceStatus) => void;
   onOpenTailoringReceiptModal: (order: MaintenanceOrder) => void;
+  onRecordTailoringPayment: (order: MaintenanceOrder) => void;
+  onOpenTailoringDetails: (order: MaintenanceOrder) => void;
 
   // ExpensesView & PartnersView handlers
   onAddExpense: (expData: any) => void;
@@ -269,6 +271,8 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   onDeleteTailoringOrder,
   onUpdateTailoringStatus,
   onOpenTailoringReceiptModal,
+  onRecordTailoringPayment,
+  onOpenTailoringDetails,
   onAddExpense,
   onDeleteExpense,
   onSettleSupplierCredit,
@@ -383,6 +387,8 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           onDeleteOrder={onDeleteTailoringOrder}
           onUpdateStatus={onUpdateTailoringStatus}
           onOpenReceiptModal={onOpenTailoringReceiptModal}
+          onRecordPayment={onRecordTailoringPayment}
+          onOpenDetails={onOpenTailoringDetails}
         />
       )}
 
