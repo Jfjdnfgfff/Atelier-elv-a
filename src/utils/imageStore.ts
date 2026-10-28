@@ -1,6 +1,7 @@
 import { ref, get, set, remove as rtdbRemove } from 'firebase/database';
 import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
 import { rtdb, sanitizeForFirebase } from '../firebase';
+import { cloudPath } from './cloudLayout';
 
 export interface ImageStore {
   saveFull(id: string, dataUrl: string): Promise<boolean>;
@@ -45,7 +46,7 @@ export const thumbnailStore = {
   async saveThumb(id: string, thumbDataUrl: string): Promise<boolean> {
     if (!id || !thumbDataUrl) return false;
     try {
-      const thumbRef = ref(rtdb, `clothThumbs/${id}`);
+      const thumbRef = ref(rtdb, `${cloudPath('clothThumbs')}/${id}`);
       const payload = sanitizeForFirebase({
         thumb: thumbDataUrl,
         updatedAt: new Date().toISOString()
@@ -89,7 +90,7 @@ export const thumbnailStore = {
 
     // 3. Check RTDB clothThumbs/{id}
     try {
-      const thumbRef = ref(rtdb, `clothThumbs/${id}`);
+      const thumbRef = ref(rtdb, `${cloudPath('clothThumbs')}/${id}`);
       const snapshot = await get(thumbRef);
       if (snapshot.exists()) {
         const val = snapshot.val();
@@ -122,7 +123,7 @@ export const thumbnailStore = {
       await idbDel(`cloth_thumb_${id}`);
     } catch (e) {}
     try {
-      const thumbRef = ref(rtdb, `clothThumbs/${id}`);
+      const thumbRef = ref(rtdb, `${cloudPath('clothThumbs')}/${id}`);
       await rtdbRemove(thumbRef);
       return true;
     } catch (err) {
@@ -136,7 +137,7 @@ export const firebaseRtdbImageStore: ImageStore = {
   async saveFull(id: string, dataUrl: string): Promise<boolean> {
     if (!id || !dataUrl) return false;
     try {
-      const imgRef = ref(rtdb, `clothImages/${id}`);
+      const imgRef = ref(rtdb, `${cloudPath('clothImages')}/${id}`);
       const payload = sanitizeForFirebase({
         full: dataUrl,
         updatedAt: new Date().toISOString()
@@ -162,7 +163,7 @@ export const firebaseRtdbImageStore: ImageStore = {
     }
 
     try {
-      const imgRef = ref(rtdb, `clothImages/${id}`);
+      const imgRef = ref(rtdb, `${cloudPath('clothImages')}/${id}`);
       const snapshot = await get(imgRef);
       if (snapshot.exists()) {
         const val = snapshot.val();
@@ -183,7 +184,7 @@ export const firebaseRtdbImageStore: ImageStore = {
     if (!id) return false;
     memoryLruCache.delete(id);
     try {
-      const imgRef = ref(rtdb, `clothImages/${id}`);
+      const imgRef = ref(rtdb, `${cloudPath('clothImages')}/${id}`);
       await rtdbRemove(imgRef);
       return true;
     } catch (err) {

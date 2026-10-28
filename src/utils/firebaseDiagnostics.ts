@@ -1,4 +1,5 @@
-import { firebaseConfig, FIREBASE_COLLECTIONS } from '../firebase';
+import { firebaseConfig, FIREBASE_COLLECTIONS } from '../firebaseProject';
+import { ensureCloudLayout, cloudPath } from './cloudLayout';
 
 // ---------------------------------------------------------------------------
 // تشخيص قراءة بيانات Firebase (Realtime Database)
@@ -217,6 +218,25 @@ export async function runFirebaseDiagnostics(): Promise<DiagnosticReport> {
       KEY_COLLECTIONS.map(([key, label]) => checkCollectionRead(key, label))
     );
     checks.push(...results);
+  }
+
+  // فحص مخطط المسارات: هل تُقرأ المجموعات من مواضعها الحقيقية في القاعدة؟
+  try {
+    const layout = await ensureCloudLayout(true);
+        checks.push({
+      id: 'layout',
+      label: 'مسارات المجموعات المكتشفة في القاعدة',
+      status: layout.ok ? 'ok' : 'warn',
+      detail: layout.ok
+        ? `تم ربط المجموعات بأسمائها الحقيقية (${layout.rootKeys.length} عقدة في الجذر)`
+        : 'تعذر اكتشاف المخطط — سيتم استخدام الأسماء الافتراضية',
+      hint: layout.ok
+        ? 'القراءة والكتابة تستخدمان هذه المسارات الآن.'
+        : 'افتح قاعدة البيانات للتأكد من وجود عقد البيانات ثم أعد الفحص.',
+      rootKeys: Object.values(FIREBASE_COLLECTIONS).map(key => `${key} → /${cloudPath(key)}`)
+    });
+  } catch {
+    /* تجاهل */
   }
 
   const errorCount = checks.filter(c => c.status === 'error').length;

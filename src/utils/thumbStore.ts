@@ -1,6 +1,7 @@
 import { ref, get as rtdbGet, set as rtdbSet, remove as rtdbRemove } from 'firebase/database';
 import { get, set, del } from 'idb-keyval';
 import { rtdb, sanitizeForFirebase } from '../firebase';
+import { cloudPath } from './cloudLayout';
 
 const MAX_LRU_THUMBS = 300;
 const memoryLruThumbs = new Map<string, string>();
@@ -64,7 +65,7 @@ export const thumbStore = {
 
     const fetchPromise = (async () => {
       try {
-        const thumbRef = ref(rtdb, `clothThumbs/${id}`);
+        const thumbRef = ref(rtdb, `${cloudPath('clothThumbs')}/${id}`);
         const snapshot = await rtdbGet(thumbRef);
         if (snapshot.exists()) {
           const val = snapshot.val();
@@ -98,7 +99,7 @@ export const thumbStore = {
   async saveThumb(id: string, thumbDataUrl: string): Promise<boolean> {
     if (!id || !thumbDataUrl) return false;
     try {
-      const thumbRef = ref(rtdb, `clothThumbs/${id}`);
+      const thumbRef = ref(rtdb, `${cloudPath('clothThumbs')}/${id}`);
       const payload = sanitizeForFirebase({
         thumb: thumbDataUrl,
         updatedAt: new Date().toISOString()
@@ -119,7 +120,7 @@ export const thumbStore = {
   async hasRemoteThumb(id: string): Promise<boolean> {
     if (!id) return false;
     try {
-      const thumbRef = ref(rtdb, `clothThumbs/${id}`);
+      const thumbRef = ref(rtdb, `${cloudPath('clothThumbs')}/${id}`);
       const snapshot = await rtdbGet(thumbRef);
       return snapshot.exists() && !!snapshot.val()?.thumb;
     } catch (err) {
@@ -135,7 +136,7 @@ export const thumbStore = {
     memoryLruThumbs.delete(id);
     del(`cloth_thumb_${id}`).catch(() => {});
     try {
-      const thumbRef = ref(rtdb, `clothThumbs/${id}`);
+      const thumbRef = ref(rtdb, `${cloudPath('clothThumbs')}/${id}`);
       await rtdbRemove(thumbRef);
       return true;
     } catch (err) {

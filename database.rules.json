@@ -2,38 +2,29 @@
   "rules": {
     ".read": true,
     ".write": true,
-    "activityLogs": {
-      ".indexOn": ["timestamp", "category", "createdAt", "actionType"]
-    },
-    "sales": {
-      ".indexOn": ["date", "createdAt", "timestamp"]
-    },
-    "rentals": {
-      ".indexOn": ["status", "startDate", "expectedReturnDate", "createdAt", "itemId"]
-    },
-    "expenses": {
-      ".indexOn": ["date", "createdAt", "category"]
-    },
-    "credits": {
-      ".indexOn": ["date", "createdAt", "relatedRentalId", "relatedExpenseId"]
-    },
-    "creditPayments": {
-      ".indexOn": ["creditId", "date", "createdAt"]
-    },
-    "clothes": {
-      ".indexOn": ["barcode", "category", "createdAt", "updatedAt", "purpose", "name"]
-    },
-    "clothThumbs": {
-      ".indexOn": ["updatedAt"]
-    },
-    "clothImages": {
-      ".indexOn": ["updatedAt"]
-    },
-    "maintenanceOrders": {
-      ".indexOn": ["status", "createdAt", "receivedDate", "expectedDeliveryDate"]
-    },
-    "caisseClosures": {
-      ".indexOn": ["date", "createdAt"]
+    "activityLogs": { ".indexOn": ["timestamp", "category", "createdAt", "actionType"] },
+    "sales": { ".indexOn": ["date", "createdAt", "timestamp"] },
+    "rentals": { ".indexOn": ["status", "startDate", "expectedReturnDate", "createdAt", "itemId"] },
+    "expenses": { ".indexOn": ["date", "createdAt", "category"] },
+    "credits": { ".indexOn": ["date", "createdAt", "relatedRentalId", "relatedExpenseId"] },
+    "creditPayments": { ".indexOn": ["creditId", "date", "createdAt"] },
+    "clothes": { ".indexOn": ["barcode", "category", "createdAt", "updatedAt", "purpose", "name"] },
+    "clothThumbs": { ".indexOn": ["updatedAt"] },
+    "clothImages": { ".indexOn": ["updatedAt"] },
+    "maintenanceOrders": { ".indexOn": ["status", "createdAt", "receivedDate", "expectedDeliveryDate"] },
+    "caisseClosures": { ".indexOn": ["date", "createdAt"] },
+
+    "boutique_activity_logs": { ".indexOn": ["timestamp", "category", "createdAt", "actionType"] },
+    "boutique_clothes": { ".indexOn": ["barcode", "category", "createdAt", "updatedAt", "purpose", "name"] },
+    "boutique_caisse_closures": { ".indexOn": ["date", "createdAt"] },
+    "boutique_staff_members": { ".indexOn": ["createdAt", "updatedAt", "name"] },
+    "boutique_store": {
+      "sales": { ".indexOn": ["date", "createdAt", "timestamp"] },
+      "rentals": { ".indexOn": ["status", "startDate", "expectedReturnDate", "createdAt", "itemId"] },
+      "expenses": { ".indexOn": ["date", "createdAt", "category"] },
+      "credits": { ".indexOn": ["date", "createdAt", "relatedRentalId", "relatedExpenseId"] },
+      "credit_payments": { ".indexOn": ["creditId", "date", "createdAt"] },
+      "maintenance_orders": { ".indexOn": ["status", "createdAt", "receivedDate", "expectedDeliveryDate"] }
     }
   }
 }

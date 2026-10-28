@@ -1,4 +1,5 @@
-import { FIREBASE_COLLECTIONS } from '../firebase';
+import { FIREBASE_COLLECTIONS } from '../firebaseProject';
+import { ensureCloudLayout, cloudPath } from './cloudLayout';
 import { baseUrl, restFetch, explainHttpFailure } from './firebaseDiagnostics';
 
 // ---------------------------------------------------------------------------
@@ -22,6 +23,8 @@ export interface CloudPullProgress {
 
 export interface CloudPullResult {
   rootPath: string;
+  /** المسار الحقيقي لكل مجموعة كما هو في القاعدة */
+  paths?: Record<string, string>;
   detected: boolean;
   rootKeys: string[];
   counts: Record<string, number>;
@@ -124,9 +127,9 @@ export function normalizeRecords(val: any): any[] {
   return [];
 }
 
-export async function pullCollection(rootPath: string, collectionKey: string): Promise<any[]> {
+export async function pullCollection(rootPath: string, pathOrKey: string): Promise<any[]> {
   const cleanRoot = rootPath ? `${rootPath.replace(/\/+$/g, '')}/` : '';
-  const result = await getJson(`${cleanRoot}${collectionKey}.json`);
+  const result = await getJson(`${cleanRoot}${pathOrKey}.json`);
   if (!result.ok) {
     const info = explainHttpFailure(result.status, result.body);
     throw new CloudPullError(info.detail, info.hint, result.status);
@@ -140,7 +143,15 @@ export async function pullAllFromCloud(
   onProgress?: (progress: CloudPullProgress) => void
 ): Promise<CloudPullResult> {
   const started = Date.now();
-  const { rootPath, detected, rootKeys } = await detectDataRoot();
+  // المسارات تأتي من المخطط المكتشف (boutique_clothes، boutique_store/sales، ...)
+  const layout = await ensureCloudLayout();
+  const rootPath = '';
+  const detected = layout.ok;
+  const rootKeys = layout.rootKeys;
+  const paths: Record<string, string> = {};
+  collectionKeys.forEach(key => {
+    paths[key] = cloudPath(key);
+  });
 
   const counts: Record<string, number> = {};
   const data: Record<string, any[]> = {};
@@ -149,7 +160,7 @@ export async function pullAllFromCloud(
 
   const runOne = async (key: string) => {
     try {
-      const items = await pullCollection(rootPath, key);
+      const items = await pullCollection(rootPath, paths[key] || key);
       data[key] = items;
       counts[key] = items.length;
     } catch (err: any) {
@@ -174,6 +185,7 @@ export async function pullAllFromCloud(
     rootPath,
     detected,
     rootKeys,
+    paths,
     counts,
     total,
     data,

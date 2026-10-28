@@ -20,44 +20,22 @@ import {
   Query
 } from 'firebase/database';
 
-export const firebaseConfig = {
-  apiKey: "AIzaSyCbvyOhZK42hTsKjOWPPDc60LRyyrpoo34",
-  authDomain: "ateliu-14e23.firebaseapp.com",
-  databaseURL: "https://ateliu-14e23-default-rtdb.firebaseio.com",
-  projectId: "ateliu-14e23",
-  storageBucket: "ateliu-14e23.firebasestorage.app",
-  messagingSenderId: "137350226746",
-  appId: "1:137350226746:web:d4f824a6580b7c152be603",
-  measurementId: "G-WYDHE63XZS"
-};
+// الإعدادات وأسماء المجموعات في ملف مستقل لتفادي الاستيراد الدائري
+export { firebaseConfig, FIREBASE_COLLECTIONS } from './firebaseProject';
+export type { FirebaseCollectionKey } from './firebaseProject';
+
+import { firebaseConfig as projectConfig, FIREBASE_COLLECTIONS } from './firebaseProject';
+import { cloudPath } from './utils/cloudLayout';
 
 // Firebase Realtime Database
-const app = initializeApp(firebaseConfig);
-export const rtdb = getDatabase(app, firebaseConfig.databaseURL);
+const app = initializeApp(projectConfig);
+export const rtdb = getDatabase(app, projectConfig.databaseURL);
 
-// أسماء المجموعات: كل سجل مستند مستقل بمفتاح /مجموعة/{المعرف}
-export const FIREBASE_COLLECTIONS = {
-  CLOTHES: 'clothes',
-  RENTALS: 'rentals',
-  SALES: 'sales',
-  EXPENSES: 'expenses',
-  CREDITS: 'credits',
-  CREDIT_PAYMENTS: 'creditPayments',
-  STAFF_PAYOUTS: 'staffPayouts',
-  STAFF_MEMBERS: 'staffMembers',
-  STAFF_ABSENCES: 'staffAbsences',
-  MAINTENANCE: 'maintenanceOrders',
-  SUPPLIERS: 'suppliers',
-  SEAMSTRESSES: 'seamstresses',
-  RAW_MATERIALS: 'rawMaterials',
-  CAISSE_CLOSURES: 'caisseClosures',
-  ACTIVITY_LOGS: 'activityLogs',
-  CLOTH_THUMBS: 'clothThumbs',
-  CLOTH_IMAGES: 'clothImages',
-  SETTINGS: 'appSettings'
-} as const;
-
-export type FirebaseCollectionKey = typeof FIREBASE_COLLECTIONS[keyof typeof FIREBASE_COLLECTIONS];
+// مسار المجموعة الحقيقي في القاعدة (يُكتشف تلقائياً عند الإقلاع)
+// ملاحظة: الاستيراد المتكرر لـ FIREBASE_COLLECTIONS هنا ضروري للاستخدام المحلي
+function resolvedRef(collectionKey: string): ReturnType<typeof ref> {
+  return ref(rtdb, cloudPath(collectionKey));
+}
 
 // ---------------------------------------------------------------------------
 // سجل أخطاء Firebase الظاهرة للمستخدم
@@ -165,8 +143,8 @@ export async function saveItemToFirebase<T extends { id: string }>(collectionKey
   try {
     const itemWithTs = { ...item, updatedAt: (item as any).updatedAt || new Date().toISOString() };
     const cleanItem = sanitizeForFirebase(itemWithTs);
-    const collectionRef = ref(rtdb, collectionKey);
-    await update(collectionRef, { [cleanItem.id]: cleanItem });
+    const colRef = resolvedRef(collectionKey);
+    await update(colRef, { [cleanItem.id]: cleanItem });
   } catch (error) {
     console.warn(`[Firebase RTDB] Failed to save targeted item ${collectionKey}/${item.id}:`, error);
     recordFirebaseError(`save:${collectionKey}`, error);
@@ -182,7 +160,7 @@ export async function updateItemInFirebase(
   try {
     const updatesWithTs = { ...updates, updatedAt: updates.updatedAt || new Date().toISOString() };
     const cleanUpdates = sanitizeForFirebase(updatesWithTs);
-    const itemRef = ref(rtdb, `${collectionKey}/${itemId}`);
+    const itemRef = ref(rtdb, `${cloudPath(collectionKey)}/${itemId}`);
     await update(itemRef, cleanUpdates);
     return true;
   } catch (error) {
@@ -196,11 +174,11 @@ export async function updateItemInFirebase(
 export async function deleteItemFromFirebase(collectionKey: string, itemId: string): Promise<void> {
   if (!itemId) return;
   try {
-    const itemRef = ref(rtdb, `${collectionKey}/${itemId}`);
+    const itemRef = ref(rtdb, `${cloudPath(collectionKey)}/${itemId}`);
     const snapshot = await get(itemRef);
     if (snapshot.exists()) {
       const itemData = snapshot.val();
-      const trashRef = ref(rtdb, `trash/${collectionKey}/${itemId}`);
+      const trashRef = ref(rtdb, `trash/${cloudPath(collectionKey)}/${itemId}`);
       await set(trashRef, {
         ...itemData,
         originalCollection: collectionKey,
@@ -208,8 +186,8 @@ export async function deleteItemFromFirebase(collectionKey: string, itemId: stri
       });
     }
 
-    const collectionRef = ref(rtdb, collectionKey);
-    await update(collectionRef, { [itemId]: null });
+    const colRef = resolvedRef(collectionKey);
+    await update(colRef, { [itemId]: null });
     await remove(itemRef);
   } catch (error) {
     console.warn(`[Firebase RTDB] Failed to soft-delete targeted item ${collectionKey}/${itemId}:`, error);
@@ -242,8 +220,12 @@ export async function downloadFullFirebaseBackupDirect(): Promise<FirebaseBackup
       .filter(Boolean);
   };
 
+  // نقرأ كل مجموعة من مسارها الحقيقي (قد يكون boutique_clothes أو boutique_store/sales)
+  const readPath = (path: string) =>
+    path.split('/').filter(Boolean).reduce((acc: any, seg: string) => (acc ? acc[seg] : null), rootVal);
+
   for (const col of Object.values(FIREBASE_COLLECTIONS)) {
-    const items = toItems(rootVal?.[col]);
+    const items = toItems(readPath(cloudPath(col)));
     backupData[col] = items;
     counts[col] = items.length;
   }
@@ -299,7 +281,7 @@ export async function fetchCollectionPage<T extends { id?: string }>(
     if (cursor) constraints.push(endAt(cursor));
     constraints.push(limitToLast(pageSize + 1 + (cursor ? 1 : 0)));
 
-    const snapshot = await get(query(ref(rtdb, collectionKey), ...constraints));
+    const snapshot = await get(query(resolvedRef(collectionKey), ...constraints));
     if (!snapshot.exists()) {
       return { items: [], nextCursor: null, hasMore: false };
     }
@@ -346,7 +328,7 @@ export async function fetchClothByBarcode(barcode: string): Promise<any | null> 
 
   try {
     const bcQuery = query(
-      ref(rtdb, FIREBASE_COLLECTIONS.CLOTHES),
+      resolvedRef(FIREBASE_COLLECTIONS.CLOTHES),
       orderByChild('barcode'),
       equalTo(barcode.trim())
     );
@@ -362,7 +344,7 @@ export async function fetchClothByBarcode(barcode: string): Promise<any | null> 
       }
     }
 
-    const idSnap = await get(ref(rtdb, `${FIREBASE_COLLECTIONS.CLOTHES}/${clean}`));
+    const idSnap = await get(ref(rtdb, `${cloudPath(FIREBASE_COLLECTIONS.CLOTHES)}/${clean}`));
     if (idSnap.exists()) {
       const item = idSnap.val();
       if (item && typeof item === 'object') {
@@ -382,7 +364,7 @@ export async function syncCollectionToCloud<T extends { id?: string }>(
 ): Promise<void> {
   if (!items || !Array.isArray(items) || items.length === 0) return;
   try {
-    const colRef = ref(rtdb, collectionKey);
+    const colRef = resolvedRef(collectionKey);
     const mapObj: Record<string, T> = {};
     items.forEach((item, idx) => {
       if (item && typeof item === 'object') {
@@ -432,10 +414,10 @@ export async function migrateEmbeddedCreditPayments(creditsWithEmbedded: Array<{
     }
 
     if (Object.keys(paymentsUpdate).length > 0) {
-      await update(ref(rtdb, FIREBASE_COLLECTIONS.CREDIT_PAYMENTS), paymentsUpdate);
+      await update(resolvedRef(FIREBASE_COLLECTIONS.CREDIT_PAYMENTS), paymentsUpdate);
     }
     if (Object.keys(creditsUpdate).length > 0) {
-      await update(ref(rtdb, FIREBASE_COLLECTIONS.CREDITS), creditsUpdate);
+      await update(resolvedRef(FIREBASE_COLLECTIONS.CREDITS), creditsUpdate);
     }
   } catch (error) {
     console.warn('[Firebase RTDB] Failed to migrate embedded credit payments:', error);
@@ -471,13 +453,13 @@ export async function fetchTrashItems(): Promise<any[]> {
 // استرجاع مستند من السلة إلى مجموعته الأصلية
 export async function restoreItemFromTrash(collectionKey: string, itemId: string): Promise<boolean> {
   try {
-    const trashItemRef = ref(rtdb, `trash/${collectionKey}/${itemId}`);
+    const trashItemRef = ref(rtdb, `trash/${cloudPath(collectionKey)}/${itemId}`);
     const snapshot = await get(trashItemRef);
     if (!snapshot.exists()) return false;
     const itemData = snapshot.val();
     const { originalCollection, deletedAt, ...restoredData } = itemData;
 
-    const targetCollectionRef = ref(rtdb, collectionKey);
+    const targetCollectionRef = resolvedRef(collectionKey);
     await update(targetCollectionRef, { [itemId]: sanitizeForFirebase({ ...restoredData, updatedAt: new Date().toISOString() }) });
 
     await remove(trashItemRef);
@@ -555,9 +537,9 @@ export class SubscriptionManager {
       const callbacks = new Set<(items: any[]) => void>();
       callbacks.add(callback);
 
-      let targetRef: Query = ref(rtdb, collectionKey);
+      let targetRef: Query = resolvedRef(collectionKey);
       if (options?.limit && options.limit > 0) {
-        targetRef = query(ref(rtdb, collectionKey), limitToLast(options.limit));
+        targetRef = query(resolvedRef(collectionKey), limitToLast(options.limit));
       }
 
       const listener = (snapshot: any) => {
@@ -666,7 +648,7 @@ export class SubscriptionManager {
       const callbacks = new Set<(items: any[]) => void>();
       callbacks.add(callback);
 
-      const targetRef = ref(rtdb, collectionKey);
+      const targetRef = resolvedRef(collectionKey);
       const itemsMap = new Map<string, T>();
       let emitTimer: any = null;
 

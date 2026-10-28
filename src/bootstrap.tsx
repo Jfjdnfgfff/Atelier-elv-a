@@ -14,6 +14,18 @@ import './index.css';
 // حتى لا يظهر هيكل الانتظار عند أول شاشة
 void import('./components/DashboardView');
 
+// اكتشاف مسارات المجموعات في Firebase قبل تركيب التطبيق، حتى تُقرأ البيانات
+// من مساراتها الحقيقية (مثل /boutique_clothes أو /boutique_store/sales) بدل
+// إنشاء نسخة موازية فارغة. محدود زمنياً حتى لا يؤخر العرض عند شبكة بطيئة.
+const layoutReady = import('./utils/cloudLayout')
+  .then(({ ensureCloudLayout }) =>
+    Promise.race([
+      ensureCloudLayout(),
+      new Promise(resolve => window.setTimeout(resolve, 5000))
+    ])
+  )
+  .catch(() => null);
+
 declare global {
   interface Window {
     __removeBootShell?: () => void;
@@ -46,5 +58,7 @@ const Root: React.FC = () => {
 
 const container = document.getElementById('root');
 if (container) {
-  ReactDOM.createRoot(container).render(<Root />);
+  const mount = () => ReactDOM.createRoot(container).render(<Root />);
+  // ننتظر اكتشاف المخطط (أو مهلة 5 ثوانٍ) ثم نركّب التطبيق
+  void layoutReady.then(mount, mount);
 }

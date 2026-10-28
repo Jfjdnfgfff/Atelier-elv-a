@@ -648,6 +648,8 @@ export default function App() {
     }
   }, []);
 
+  const [cloudLayoutInfo, setCloudLayoutInfo] = useState<{ resolved: Record<string, string>; container: string } | null>(null);
+
   const pullFromCloudNow = useCallback(async (silent: boolean = false) => {
     setCloudPull(prev => ({ ...prev, phase: 'loading', done: 0, total: PULLABLE_COLLECTIONS.length }));
     try {
@@ -655,6 +657,13 @@ export default function App() {
         setCloudPull(prev => ({ ...prev, phase: 'loading', done: progress.done, total: progress.total }));
       });
       applyCloudCollections(result);
+      try {
+        const { getCloudLayout } = await import('./utils/cloudLayout');
+        const layout = getCloudLayout();
+        if (layout) setCloudLayoutInfo({ resolved: layout.resolved, container: layout.container });
+      } catch {
+        /* لا شيء */
+      }
       setCloudPull({
         phase: 'done',
         done: PULLABLE_COLLECTIONS.length,
@@ -3011,9 +3020,35 @@ export default function App() {
               </span>
             </button>
 
+            {cloudLayoutInfo && (
+              <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                <p className="text-[11px] font-black text-slate-700 mb-1">
+                  مسارات القراءة الفعلية من القاعدة
+                  {cloudLayoutInfo.container && (
+                    <span className="font-mono text-[10px] text-slate-500"> — حاضنة: /{cloudLayoutInfo.container}</span>
+                  )}
+                </p>
+                <div className="max-h-24 overflow-y-auto custom-scrollbar space-y-0.5">
+                  {Object.entries(cloudLayoutInfo.resolved).map(([logical, path]) => (
+                    <p key={logical} className="text-[10px] font-mono text-slate-600 break-all" dir="ltr">
+                      {logical} → /{path}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {cloudPull.phase === 'done' && (
               <p className="text-[11px] font-bold text-slate-600 leading-relaxed bg-slate-50 border border-slate-200 rounded-xl p-2.5">
-                آخر جلب: {cloudPull.records} سجل — المسار: <span className="font-mono">{cloudPull.rootPath || '/'}</span>
+                آخر جلب: {cloudPull.records} سجل
+                {(cloudPull.counts && Object.values(cloudPull.counts).some(n => Number(n) > 0)) && (
+                  <span className="block font-medium mt-1">
+                    {Object.entries(cloudPull.counts)
+                      .filter(([, n]) => Number(n) > 0)
+                      .map(([k, n]) => `${k}: ${n}`)
+                      .join(' • ')}
+                  </span>
+                )}
               </p>
             )}
 
