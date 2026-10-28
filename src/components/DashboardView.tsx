@@ -58,6 +58,7 @@ import {
 import { StatCard, Modal } from './Shared';
 import { useDashboardStats } from '../hooks/dashboardStatsHook';
 import { summarizeDailyCaisse } from '../utils/dailyCaisseSummary';
+import type { InventoryAggregate } from '../utils/inventoryAggregate';
 import { verifyAdminPin, getAdminPin, setAdminPin } from '../utils/security';
 
 interface DashboardViewProps {
@@ -70,6 +71,10 @@ interface DashboardViewProps {
   expenses?: Expense[];
   staffPayouts?: StaffPayout[];
   seamstressPayments?: SeamstressPayment[];
+  inventoryAggregate?: InventoryAggregate | null;
+  isInventoryAggregatePartial?: boolean;
+  isInventoryAggregateRefreshing?: boolean;
+  onRefreshInventoryAggregate?: (force?: boolean) => Promise<void>;
   credits?: Credit[];
   activityLogs?: ActivityLog[];
   hideFinances: boolean;
@@ -95,6 +100,10 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   expenses = [],
   staffPayouts = [],
   seamstressPayments = [],
+  inventoryAggregate,
+  isInventoryAggregatePartial = false,
+  isInventoryAggregateRefreshing = false,
+  onRefreshInventoryAggregate,
   credits = [],
   activityLogs = [],
   hideFinances,
@@ -592,6 +601,100 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           iconBg="bg-blue-100 text-blue-700"
           icon={<TrendingUp className="w-4 h-4 text-blue-700" />}
         />
+      </div>
+
+      {/* قيمة المخزون ورأس المال — تُحسب من كامل المخزون دون الحاجة لتحميله في الشاشة */}
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-2.5">
+          <div>
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+              <span className="p-1.5 bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-100">
+                <Package className="w-4 h-4" />
+              </span>
+              <span>قيمة المخزون ورأس المال</span>
+            </h3>
+            <p className="text-[11px] text-slate-500 font-normal mt-0.5">
+              محسوبة تلقائياً من <span className="font-semibold text-slate-700">كل</span> قطع المخزون والأقمشة — لا حاجة لتحميل المخزون كاملاً في الشاشة.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {!inventoryAggregate ? (
+              <span className="text-[10px] text-amber-600 font-medium">جارٍ حساب قيم المخزون...</span>
+            ) : isInventoryAggregatePartial ? (
+              <span className="text-[10px] text-amber-600 font-medium">قيم مؤقتة من الصفحات المحمّلة — اضغط تحديث</span>
+            ) : inventoryAggregate.stale ? (
+              <span className="text-[10px] text-amber-600 font-medium">جارٍ تحديث القيم بعد آخر تعديل...</span>
+            ) : (
+              <span className="text-[10px] text-slate-400 font-mono">
+                آخر تحديث: {new Date(inventoryAggregate.updatedAt).toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            <button
+              onClick={() => void onRefreshInventoryAggregate?.(true)}
+              disabled={isInventoryAggregateRefreshing}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-slate-50 disabled:opacity-50 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition-colors"
+              title="إعادة حساب قيم المخزون من كل السجلات"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isInventoryAggregateRefreshing ? 'animate-spin' : ''}`} />
+              <span>{isInventoryAggregateRefreshing ? 'جارٍ الحساب...' : 'تحديث'}</span>
+            </button>
+            <button
+              onClick={() => onNavigate('inventory')}
+              className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[11px] font-bold transition-colors"
+            >
+              فتح المخزون ←
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+          <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+            <span className="text-[11px] text-slate-500 font-medium block">قيمة الشراء (رأس مال الملابس)</span>
+            <span className="text-base sm:text-lg font-bold text-slate-900 font-mono block mt-0.5">
+              {!inventoryAggregate ? '—' : hideFinances ? '••••' : `${Math.round(inventoryAggregate.purchaseValue).toLocaleString()} دج`}
+            </span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">
+              {hideFinances ? '••' : `${(inventoryAggregate?.models || 0).toLocaleString()} موديل مسجل`}
+            </span>
+          </div>
+
+          <div className="bg-emerald-50/70 border border-emerald-200/70 rounded-xl p-3">
+            <span className="text-[11px] text-emerald-800 font-medium block">قيمة البيع المتوقعة</span>
+            <span className="text-base sm:text-lg font-bold text-emerald-900 font-mono block mt-0.5">
+              {!inventoryAggregate ? '—' : hideFinances ? '••••' : `${Math.round(inventoryAggregate.saleValue).toLocaleString()} دج`}
+            </span>
+            <span className="text-[10px] text-emerald-700/90 block mt-0.5">
+              {hideFinances
+                ? '••'
+                : `ربح متوقع: +${Math.max(0, Math.round((inventoryAggregate?.saleValue || 0) - (inventoryAggregate?.purchaseValue || 0))).toLocaleString()} دج`}
+            </span>
+          </div>
+
+          <div className="bg-sky-50/70 border border-sky-200/70 rounded-xl p-3">
+            <span className="text-[11px] text-sky-800 font-medium block">القطع في المخزنين</span>
+            <span className="text-base sm:text-lg font-bold text-sky-950 font-mono block mt-0.5">
+              {inventoryAggregate ? `${inventoryAggregate.pieces.toLocaleString()} قطعة` : '—'}
+            </span>
+            <span className="text-[10px] text-sky-700/90 block mt-0.5">
+              {inventoryAggregate
+                ? `صالة العرض: ${inventoryAggregate.stock1.toLocaleString()} • المستودع: ${inventoryAggregate.stock2.toLocaleString()}`
+                : 'جارٍ الحساب...'}
+            </span>
+          </div>
+
+          <div className="bg-amber-50/70 border border-amber-200/70 rounded-xl p-3">
+            <span className="text-[11px] text-amber-800 font-medium block">إجمالي رأس المال المندمج</span>
+            <span className="text-base sm:text-lg font-bold text-amber-950 font-mono block mt-0.5">
+              {!inventoryAggregate ? '—' : hideFinances ? '••••' : `${Math.round(inventoryAggregate.totalCapital).toLocaleString()} دج`}
+            </span>
+            <span className="text-[10px] text-amber-700/90 block mt-0.5">
+              {hideFinances
+                ? '••'
+                : `ملابس + أقمشة (${Math.round(inventoryAggregate?.rawMaterialsValue || 0).toLocaleString()} دج • ${(inventoryAggregate?.rawRolls || 0).toLocaleString()} رولو)`}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">

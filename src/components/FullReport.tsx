@@ -11,6 +11,7 @@ import {
   SeamstressPayment,
   Seamstress
 } from '../types';
+import type { InventoryAggregate } from '../utils/inventoryAggregate';
 import { downloadElementAsPng } from '../utils/pngDownload';
 import { openPrintInterface } from '../utils/printInterface';
 import { 
@@ -44,6 +45,8 @@ interface FullReportProps {
   caisseClosures?: DailyCaisseClosure[];
   seamstressPayments?: SeamstressPayment[];
   seamstresses?: Seamstress[];
+  /** ملخص كامل المخزون (رأس المال/ثمن البيع/القطع) — يُحسب دون تحميل كل القطع في الشاشة */
+  inventoryAggregate?: InventoryAggregate | null;
   hideFinances: boolean;
 }
 
@@ -61,6 +64,7 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
   caisseClosures = [],
   seamstressPayments = [],
   seamstresses = [],
+  inventoryAggregate,
   hideFinances
 }) => {
   const now = new Date();
@@ -203,11 +207,16 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
     const totalOutflow = totalExpenses + totalStaffPayouts + totalSeamstressPayments;
     const netProfit = (totalRentalIncome + totalSalesProfit + totalTailoringNet) - totalOutflow;
 
-    const totalStockQty = clothes.reduce((sum, c) => sum + (c.stock || 0), 0);
+    const localStockQty = clothes.reduce((sum, c) => sum + (c.stock || 0), 0);
     const totalRentedCount = clothes.reduce((sum, c) => sum + (c.rentedCount || 0), 0);
-    const totalAvailableStock = totalStockQty - totalRentedCount;
-    const totalStockBuyCost = clothes.reduce((sum, c) => sum + ((c.buyCost || 0) * (c.stock || 0)), 0);
-    const totalStockSellValue = clothes.reduce((sum, c) => sum + ((c.sellPrice || 0) * (c.stock || 0)), 0);
+    const localStockBuyCost = clothes.reduce((sum, c) => sum + ((c.buyCost || 0) * (c.stock || 0)), 0);
+    const localStockSellValue = clothes.reduce((sum, c) => sum + ((c.sellPrice || 0) * (c.stock || 0)), 0);
+
+    // تُفضّل قيم ملخص كل المخزون (إن توفرت) لتفادي الأرقام الجزئية الناتجة عن التحميل على صفحات
+    const totalStockQty = inventoryAggregate ? inventoryAggregate.pieces : localStockQty;
+    const totalStockBuyCost = inventoryAggregate ? inventoryAggregate.purchaseValue : localStockBuyCost;
+    const totalStockSellValue = inventoryAggregate ? inventoryAggregate.saleValue : localStockSellValue;
+    const totalAvailableStock = Math.max(0, totalStockQty - totalRentedCount);
 
     return {
       totalRentalIncome,
@@ -252,6 +261,7 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
     filteredSeamstressPayments,
     filteredTailoring,
     clothes,
+    inventoryAggregate,
     todayStr
   ]);
 

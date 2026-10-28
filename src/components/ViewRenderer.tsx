@@ -24,6 +24,7 @@ import {
 // الأقسام تُحمَّل كحزم منفصلة (Code Splitting) — الحزمة الرئيسية لا تحمل أي قسم غير مفتوح
 // + تمييز مسبق عند نيّة المستخدم (hover/touch) عبر viewRegistry.preloadView للحفاظ على فورية التنقّل
 import { LazyViews } from './viewRegistry';
+import type { InventoryAggregate } from '../utils/inventoryAggregate';
 
 const DashboardView = LazyViews.dashboard;
 const RentalsView = LazyViews.rentals;
@@ -69,6 +70,10 @@ export interface ViewRendererProps {
   seamstresses: Seamstress[];
   seamstressPayments: SeamstressPayment[];
   rawMaterials: RawMaterial[];
+  inventoryAggregate?: InventoryAggregate | null;
+  isInventoryAggregatePartial?: boolean;
+  isInventoryAggregateRefreshing?: boolean;
+  onRefreshInventoryAggregate?: (force?: boolean) => Promise<void>;
   activityLogs?: ActivityLog[];
   hideFinances: boolean;
   generalFundBalance: number;
@@ -160,7 +165,10 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
              prev.rawMaterials === next.rawMaterials &&
              prev.suppliers === next.suppliers &&
              prev.hasMoreClothes === next.hasMoreClothes &&
-             prev.isLoadingMoreClothes === next.isLoadingMoreClothes;
+             prev.isLoadingMoreClothes === next.isLoadingMoreClothes &&
+             prev.inventoryAggregate === next.inventoryAggregate &&
+             prev.isInventoryAggregatePartial === next.isInventoryAggregatePartial &&
+             prev.isInventoryAggregateRefreshing === next.isInventoryAggregateRefreshing;
     case 'rentals':
       return prev.rentals === next.rentals && 
              prev.clothes === next.clothes &&
@@ -220,7 +228,10 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
              prev.maintenanceOrders === next.maintenanceOrders &&
              prev.credits === next.credits &&
              prev.creditPayments === next.creditPayments &&
-             prev.activityLogs === next.activityLogs;
+             prev.activityLogs === next.activityLogs &&
+             prev.inventoryAggregate === next.inventoryAggregate &&
+             prev.isInventoryAggregatePartial === next.isInventoryAggregatePartial &&
+             prev.isInventoryAggregateRefreshing === next.isInventoryAggregateRefreshing;
     default:
       return false;
   }
@@ -241,6 +252,10 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   seamstresses,
   seamstressPayments,
   rawMaterials,
+  inventoryAggregate,
+  isInventoryAggregatePartial,
+  isInventoryAggregateRefreshing,
+  onRefreshInventoryAggregate,
   activityLogs = [],
   hideFinances,
   generalFundBalance,
@@ -323,6 +338,10 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           expenses={expenses}
           staffPayouts={staffPayouts}
           seamstressPayments={seamstressPayments}
+          inventoryAggregate={inventoryAggregate}
+          isInventoryAggregatePartial={isInventoryAggregatePartial}
+          isInventoryAggregateRefreshing={isInventoryAggregateRefreshing}
+          onRefreshInventoryAggregate={onRefreshInventoryAggregate}
           credits={creditsWithPayments}
           activityLogs={activityLogs}
           hideFinances={hideFinances}
@@ -370,6 +389,9 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           hasMoreClothes={hasMoreClothes}
           isLoadingMoreClothes={isLoadingMoreClothes}
           onLoadMoreClothes={onLoadMoreClothes}
+          inventoryAggregate={inventoryAggregate}
+          isInventoryAggregateRefreshing={isInventoryAggregateRefreshing}
+          onRefreshInventoryAggregate={onRefreshInventoryAggregate}
         />
       )}
 

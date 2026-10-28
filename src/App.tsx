@@ -73,6 +73,8 @@ import { AsyncProductImage } from './components/AsyncProductImage';
 import { getListImage } from './utils/imageUtils';
 import { imageStore } from './utils/imageStore';
 import { preloadIdleViews } from './components/viewRegistry';
+import { useInventoryAggregate } from './hooks/useInventoryAggregate';
+import { invalidateInventoryAggregate } from './utils/inventoryAggregate';
 
 // النوافذ المنبثقة تُحمَّل كسلاً وتُجهَّز مسبقاً في وقت الخمول لفتح فوري
 const BarcodeScanner = React.lazy(() => import('./components/BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
@@ -208,6 +210,17 @@ export default function App() {
     sales: { cursor: null, hasMore: true, isLoading: false, initialized: false }
   });
   const [hasMoreClothes, setHasMoreClothes] = useState(true);
+  // ملخص قيم المخزون (قيمة الشراء/البيع/القطع) محسوب من كل المخزون دون تحميله كاملاً في الواجهة
+  const {
+    aggregate: inventoryAggregate,
+    isPartial: isInventoryAggregatePartial,
+    isRefreshing: isInventoryAggregateRefreshing,
+    refresh: refreshInventoryAggregate
+  } = useInventoryAggregate({
+    clothes,
+    rawMaterials,
+    clothesComplete: !hasMoreClothes
+  });
   const [isLoadingMoreClothes, setIsLoadingMoreClothes] = useState(false);
   const [hasMoreSales, setHasMoreSales] = useState(true);
   const [isLoadingMoreSales, setIsLoadingMoreSales] = useState(false);
@@ -1454,6 +1467,7 @@ export default function App() {
     const newCloth: ClothItem = { ...itemData, id: generateId() };
     setClothes(prev => [newCloth, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.CLOTHES, newCloth);
+    invalidateInventoryAggregate();
 
     if (pendingFullUrl) {
       imageStore.saveFull(newCloth.id, pendingFullUrl);
@@ -1474,6 +1488,7 @@ export default function App() {
   const handleUpdateCloth = useCallback((id: string, itemData: any, pendingFullUrl?: string) => {
     setClothes(prev => prev.map(c => c.id === id ? { ...c, ...itemData } : c));
     updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, id, itemData);
+    invalidateInventoryAggregate();
 
     if (pendingFullUrl) {
       imageStore.saveFull(id, pendingFullUrl);
@@ -1497,6 +1512,7 @@ export default function App() {
       onConfirm: () => {
         setClothes(prev => prev.filter(c => c.id !== id));
         deleteItemFromFirebase(FIREBASE_COLLECTIONS.CLOTHES, id);
+        invalidateInventoryAggregate();
 
         addActivityLog({
           actionType: 'delete',
@@ -1522,6 +1538,7 @@ export default function App() {
     const newSale: Sale = { ...saleData, items: sanitizedItems, id: generateId() };
     setSales(prev => [newSale, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.SALES, newSale);
+    invalidateInventoryAggregate();
 
     addActivityLog({
       actionType: 'create',
@@ -1927,6 +1944,7 @@ export default function App() {
   const handleAddRawMaterial = useCallback((mat: RawMaterial) => {
     setRawMaterials(prev => [mat, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, mat);
+    invalidateInventoryAggregate();
 
     addActivityLog({
       actionType: 'create',
@@ -1943,6 +1961,7 @@ export default function App() {
     const updates = { ...data, updatedAt: new Date().toISOString() };
     setRawMaterials(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
     updateItemInFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, id, updates);
+    invalidateInventoryAggregate();
 
     addActivityLog({
       actionType: 'update',
@@ -1961,6 +1980,7 @@ export default function App() {
       onConfirm: () => {
         setRawMaterials(prev => prev.filter(m => m.id !== id));
         deleteItemFromFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, id);
+        invalidateInventoryAggregate();
 
         addActivityLog({
           actionType: 'delete',
@@ -2529,6 +2549,10 @@ export default function App() {
         seamstresses={seamstresses}
         seamstressPayments={seamstressPayments}
         rawMaterials={rawMaterials}
+        inventoryAggregate={inventoryAggregate}
+        isInventoryAggregatePartial={isInventoryAggregatePartial}
+        isInventoryAggregateRefreshing={isInventoryAggregateRefreshing}
+        onRefreshInventoryAggregate={refreshInventoryAggregate}
         activityLogs={activityLogs}
         posScannedBarcode={posScannedBarcode}
         hasMoreClothes={hasMoreClothes}
@@ -2936,6 +2960,7 @@ export default function App() {
             caisseClosures={caisseClosures}
             seamstressPayments={seamstressPayments}
             seamstresses={seamstresses}
+            inventoryAggregate={inventoryAggregate}
             hideFinances={hideFinances}
           />
         </Modal>
