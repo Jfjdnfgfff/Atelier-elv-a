@@ -151,6 +151,11 @@ export const FirebaseDiagnosticsPanel: React.FC<{ compact?: boolean }> = ({ comp
                     )}
                   </div>
                   <p className="text-[11px] font-medium text-slate-700 mt-0.5 break-words">{check.detail}</p>
+                  {check.rootKeys && check.rootKeys.length > 0 && (
+                    <p className="text-[10px] font-mono text-slate-600 mt-1 break-all bg-white/60 rounded-lg p-1.5 border border-white/80" dir="ltr">
+                      {check.rootKeys.join(' · ')}
+                    </p>
+                  )}
                   {check.hint && (
                     <p className="text-[11px] text-slate-600 mt-1 leading-relaxed bg-white/60 rounded-lg p-1.5 border border-white/80">
                       💡 {check.hint}

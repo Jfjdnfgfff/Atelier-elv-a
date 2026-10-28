@@ -18,6 +18,7 @@ export interface DiagnosticCheck {
   hint?: string;
   ms?: number;
   count?: number;
+  rootKeys?: string[];
 }
 
 export interface DiagnosticReport {
@@ -31,11 +32,11 @@ export interface DiagnosticReport {
 
 const TIMEOUT_MS = 9000;
 
-function baseUrl(): string {
+export function baseUrl(): string {
   return (firebaseConfig.databaseURL || '').replace(/\/+$/, '');
 }
 
-function explainHttpFailure(status: number, body: string): { detail: string; hint: string } {
+export function explainHttpFailure(status: number, body: string): { detail: string; hint: string } {
   const trimmed = (body || '').slice(0, 200);
   if (status === 401 || status === 403 || /permission_denied|Permission denied/i.test(trimmed)) {
     return {
@@ -87,7 +88,7 @@ function explainNetworkFailure(err: any): { detail: string; hint: string } {
   };
 }
 
-async function restFetch(url: string, init?: RequestInit): Promise<Response> {
+export async function restFetch(url: string, init?: RequestInit): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -97,7 +98,7 @@ async function restFetch(url: string, init?: RequestInit): Promise<Response> {
   }
 }
 
-function countKeys(val: any): number {
+export function countKeys(val: any): number {
   if (!val) return 0;
   if (Array.isArray(val)) return val.filter(Boolean).length;
   if (typeof val === 'object') return Object.keys(val).length;
@@ -116,11 +117,24 @@ export async function checkRootRead(): Promise<DiagnosticCheck> {
       const info = explainHttpFailure(res.status, text);
       return { id: 'root', label: 'الاتصال بقاعدة البيانات (قراءة الجذر)', status: 'error', ...info, ms };
     }
+    let parsed: any = null;
+    try {
+      parsed = text && text !== 'null' ? JSON.parse(text) : null;
+    } catch {
+      parsed = null;
+    }
+    const rootKeys = parsed && typeof parsed === 'object' ? Object.keys(parsed) : [];
     return {
       id: 'root',
       label: 'الاتصال بقاعدة البيانات (قراءة الجذر)',
       status: 'ok',
-      detail: 'تم الاتصال وقراءة الجذر بنجاح',
+      detail: rootKeys.length === 0
+        ? 'تم الاتصال، لكن جذر القاعدة فارغ تماماً (لا توجد أي بيانات)'
+        : `تم الاتصال — ${rootKeys.length} عقدة في الجذر`,
+      hint: rootKeys.length === 0
+        ? 'قاعدة البيانات موجودة لكنها فارغة. ارفع بياناتك بزر «مزامنة ورفع جميع البيانات» أو تأكد أنك تستخدم المشروع الصحيح (ateliu-14e23).'
+        : undefined,
+      rootKeys,
       ms
     };
   } catch (err: any) {

@@ -65,6 +65,7 @@ import {
 
 import { Modal } from './components/Shared';
 import { FirebaseDiagnosticsPanel } from './components/FirebaseDiagnosticsPanel';
+import { pullAllFromCloud, PULLABLE_COLLECTIONS, CloudPullResult } from './utils/cloudPull';
 import AppNavigation from './components/AppNavigation';
 import { TrashModal } from './components/TrashModal';
 import { ImageMigrationModal } from './components/ImageMigrationModal';
@@ -133,6 +134,10 @@ import {
   Plus,
   Cloud,
   CheckCircle,
+  CheckCircle2,
+  XCircle,
+  Download,
+  X,
   RefreshCw,
   Database
 } from 'lucide-react';
@@ -578,6 +583,116 @@ export default function App() {
         return () => {};
     }
   }, []);
+
+  // -------------------------------------------------------------------------
+  // الجلب المباشر من Firebase إلى الواجهة (Cloud → App)
+  // -------------------------------------------------------------------------
+  // لا نكتفي بمستمعي SDK الصامتين: نقرأ القاعدة عبر REST عند بدء التطبيق
+  // ونستبدل البيانات المعروضة ببيانات السحابة (إن وُجدت)، مع كشف المسار
+  // الجذري تلقائياً حتى لو كانت البيانات مخزّنة تحت عقدة أخرى.
+  type CloudPullPhase = 'idle' | 'loading' | 'done' | 'error';
+  const [cloudPull, setCloudPull] = useState<{
+    phase: CloudPullPhase;
+    done: number;
+    total: number;
+    records?: number;
+    counts?: Record<string, number>;
+    rootPath?: string;
+    message?: string;
+    hint?: string;
+    at?: string;
+  }>({ phase: 'idle', done: 0, total: 0 });
+
+  const applyCloudCollections = useCallback((result: CloudPullResult) => {
+    const d = result.data || {};
+
+    const sortByDateDesc = (a: any, b: any) => {
+      const ta = a?.createdAt || a?.updatedAt || a?.timestamp || a?.date || '';
+      const tb = b?.createdAt || b?.updatedAt || b?.timestamp || b?.date || '';
+      if (ta && tb) return String(tb).localeCompare(String(ta));
+      return 0;
+    };
+
+    // نستبدل فقط المجموعات التي تحتوي فعلاً على سجلات في السحابة
+    // حتى لا نطمس بيانات محلية لم تُرفع بعد.
+    const apply = (collectionKey: string, storageKey: string, setter: (value: any) => void) => {
+      const items = d[collectionKey];
+      if (!Array.isArray(items) || items.length === 0) return;
+      loadedCollectionsRef.current.add(storageKey);
+      setter(items.slice().sort(sortByDateDesc));
+    };
+
+    apply(FIREBASE_COLLECTIONS.CLOTHES, STORAGE_KEYS.CLOTHES, setClothes);
+    apply(FIREBASE_COLLECTIONS.RENTALS, STORAGE_KEYS.RENTALS, setRentals);
+    apply(FIREBASE_COLLECTIONS.SALES, STORAGE_KEYS.SALES, setSales);
+    apply(FIREBASE_COLLECTIONS.EXPENSES, STORAGE_KEYS.EXPENSES, setExpenses);
+    apply(FIREBASE_COLLECTIONS.CREDITS, STORAGE_KEYS.CREDITS, setCredits);
+    apply(FIREBASE_COLLECTIONS.CREDIT_PAYMENTS, STORAGE_KEYS.CREDIT_PAYMENTS, setCreditPayments);
+    apply(FIREBASE_COLLECTIONS.STAFF_PAYOUTS, STORAGE_KEYS.STAFF_PAYOUTS, setStaffPayouts);
+    apply(FIREBASE_COLLECTIONS.STAFF_MEMBERS, STORAGE_KEYS.STAFF_MEMBERS, setStaffMembers);
+    apply(FIREBASE_COLLECTIONS.STAFF_ABSENCES, STORAGE_KEYS.STAFF_ABSENCES, setStaffAbsences);
+    apply(FIREBASE_COLLECTIONS.MAINTENANCE, STORAGE_KEYS.MAINTENANCE, setMaintenanceOrders);
+    apply(FIREBASE_COLLECTIONS.SUPPLIERS, STORAGE_KEYS.SUPPLIERS, setSuppliers);
+    apply(FIREBASE_COLLECTIONS.SEAMSTRESSES, STORAGE_KEYS.SEAMSTRESSES, setSeamstresses);
+    apply(FIREBASE_COLLECTIONS.RAW_MATERIALS, STORAGE_KEYS.RAW_MATERIALS, setRawMaterials);
+    apply(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, STORAGE_KEYS.CAISSE_CLOSURES, setCaisseClosures);
+    apply(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, STORAGE_KEYS.ACTIVITY_LOGS, setActivityLogs);
+
+    const settings = d[FIREBASE_COLLECTIONS.SETTINGS];
+    if (Array.isArray(settings)) {
+      const fund = settings.find((item: any) => item?.id === 'generalFund');
+      if (fund && typeof fund.balance === 'number' && Number.isFinite(fund.balance)) {
+        setGeneralFundBalance(fund.balance);
+        loadedCollectionsRef.current.add(STORAGE_KEYS.GENERAL_FUND_BALANCE);
+      }
+    }
+  }, []);
+
+  const pullFromCloudNow = useCallback(async (silent: boolean = false) => {
+    setCloudPull(prev => ({ ...prev, phase: 'loading', done: 0, total: PULLABLE_COLLECTIONS.length }));
+    try {
+      const result = await pullAllFromCloud(PULLABLE_COLLECTIONS, progress => {
+        setCloudPull(prev => ({ ...prev, phase: 'loading', done: progress.done, total: progress.total }));
+      });
+      applyCloudCollections(result);
+      setCloudPull({
+        phase: 'done',
+        done: PULLABLE_COLLECTIONS.length,
+        total: PULLABLE_COLLECTIONS.length,
+        records: result.total,
+        counts: result.counts,
+        rootPath: result.rootPath,
+        at: new Date().toISOString()
+      });
+      if (!silent) {
+        showToast(
+          result.total > 0
+            ? `تم جلب ${result.total} سجل من Firebase إلى الموقع`
+            : 'القاعدة متصلة لكنها لا تحتوي على سجلات في هذا المسار',
+          result.total > 0 ? 'success' : 'error'
+        );
+      }
+      return result;
+    } catch (err: any) {
+      setCloudPull({
+        phase: 'error',
+        done: 0,
+        total: PULLABLE_COLLECTIONS.length,
+        message: err?.message || 'تعذر الاتصال بقاعدة البيانات',
+        hint: err?.hint
+      });
+      if (!silent) showToast('تعذر جلب البيانات من Firebase', 'error');
+      return null;
+    }
+  }, [applyCloudCollections, showToast]);
+
+  // جلب أولي تلقائي عند فتح الموقع: البيانات تأتي من Firebase وليس من المتصفح فقط
+  const cloudPullStartedRef = useRef(false);
+  useEffect(() => {
+    if (cloudPullStartedRef.current) return;
+    cloudPullStartedRef.current = true;
+    void pullFromCloudNow(true);
+  }, [pullFromCloudNow]);
 
   // ما يحتاجه كل قسم من مجموعات التخزين المحلي
   const VIEW_STORAGE_MAP: Record<ViewType, readonly string[]> = {
@@ -2411,6 +2526,80 @@ export default function App() {
         ))}
       </div>
 
+      {/* حالة جلب البيانات من Firebase */}
+      {cloudPull.phase !== 'idle' && (
+        <div className="fixed bottom-20 left-4 right-4 sm:right-auto sm:max-w-sm z-[95]">
+          <div className={`rounded-2xl shadow-xl border p-3 text-xs font-bold ${
+            cloudPull.phase === 'error'
+              ? 'bg-rose-50 border-rose-200 text-rose-900'
+              : cloudPull.phase === 'loading'
+                ? 'bg-slate-900/95 border-slate-700 text-white'
+                : (cloudPull.records || 0) > 0
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : 'bg-amber-50 border-amber-200 text-amber-900'
+          }`}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start gap-2 min-w-0">
+                {cloudPull.phase === 'loading' ? (
+                  <RefreshCw className="w-4 h-4 animate-spin shrink-0 mt-0.5" />
+                ) : cloudPull.phase === 'error' ? (
+                  <XCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                ) : (cloudPull.records || 0) > 0 ? (
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                )}
+                <div className="min-w-0">
+                  {cloudPull.phase === 'loading' && (
+                    <span>جاري جلب البيانات من Firebase… {cloudPull.done}/{cloudPull.total}</span>
+                  )}
+                  {cloudPull.phase === 'done' && (
+                    <>
+                      <div>
+                        {(cloudPull.records || 0) > 0
+                          ? `تم جلب ${cloudPull.records} سجل من Firebase إلى الموقع`
+                          : 'لا توجد سجلات في قاعدة البيانات'}
+                      </div>
+                      {cloudPull.counts && (
+                        <div className="font-medium text-[11px] mt-1 leading-relaxed">
+                          {Object.entries(cloudPull.counts)
+                            .filter(([, n]) => Number(n) > 0)
+                            .map(([k, n]) => `${k}: ${n}`)
+                            .join(' • ') || `المسار المقروء: ${cloudPull.rootPath || '/'}`}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {cloudPull.phase === 'error' && (
+                    <>
+                      <div>{cloudPull.message}</div>
+                      {cloudPull.hint && (
+                        <div className="font-medium text-[11px] mt-1 leading-relaxed">{cloudPull.hint}</div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => void pullFromCloudNow(false)}
+                        className="mt-2 px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold"
+                      >
+                        إعادة المحاولة
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCloudPull(prev => ({ ...prev, phase: 'idle' }))}
+                aria-label="إغلاق"
+                className="opacity-60 hover:opacity-100 shrink-0"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <AppNavigation
         onInitNav={handleInitNav}
         onEnsureCollection={handleEnsureCollection}
@@ -2808,6 +2997,25 @@ export default function App() {
               <Sparkles className="w-4 h-4 text-amber-500" />
               <span>تحسين وترحيل صور المنتجات (إخراج الصور من السجلات)</span>
             </button>
+
+            <button
+              onClick={() => void pullFromCloudNow(false)}
+              disabled={cloudPull.phase === 'loading'}
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 shadow-xs active:scale-95"
+            >
+              <Download className={`w-4 h-4 ${cloudPull.phase === 'loading' ? 'animate-bounce' : ''}`} />
+              <span>
+                {cloudPull.phase === 'loading'
+                  ? `جاري جلب البيانات… ${cloudPull.done}/${cloudPull.total}`
+                  : 'جلب البيانات من Firebase إلى الموقع الآن'}
+              </span>
+            </button>
+
+            {cloudPull.phase === 'done' && (
+              <p className="text-[11px] font-bold text-slate-600 leading-relaxed bg-slate-50 border border-slate-200 rounded-xl p-2.5">
+                آخر جلب: {cloudPull.records} سجل — المسار: <span className="font-mono">{cloudPull.rootPath || '/'}</span>
+              </p>
+            )}
 
             <button
               onClick={handleSyncAllToCloud}
