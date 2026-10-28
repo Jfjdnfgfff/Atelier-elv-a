@@ -66,6 +66,7 @@ import {
 import { Modal } from './components/Shared';
 import { FirebaseDiagnosticsPanel } from './components/FirebaseDiagnosticsPanel';
 import { pullAllFromCloud, PULLABLE_COLLECTIONS, CloudPullResult } from './utils/cloudPull';
+import { FirebaseDataExplorer } from './components/FirebaseDataExplorer';
 import AppNavigation from './components/AppNavigation';
 import { TrashModal } from './components/TrashModal';
 import { ImageMigrationModal } from './components/ImageMigrationModal';
@@ -3022,6 +3023,13 @@ export default function App() {
             <div className="p-3 bg-white border border-slate-200 rounded-2xl">
               <FirebaseDiagnosticsPanel />
             </div>
+
+            <details className="p-3 bg-white border border-slate-200 rounded-2xl" open>
+              <summary className="cursor-pointer text-xs font-black text-slate-900 mb-2">
+                مستعرض بيانات Firebase — اربط عقد القاعدة بأقسام التطبيق
+              </summary>
+              <FirebaseDataExplorer />
+            </details>
 
             <button
               onClick={() => setActiveModal('imageMigration')}

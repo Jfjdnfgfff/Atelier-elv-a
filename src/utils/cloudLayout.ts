@@ -94,6 +94,40 @@ export function getCloudLayout(): CloudLayout | null {
   return current;
 }
 
+// ---- تجاوزات يدوية محفوظة (يضبطها المستخدم من مستعرض البيانات) ----
+const OVERRIDE_KEY = 'bm_cloud_paths';
+
+export function readPathOverrides(): CloudLayoutMap {
+  try {
+    const raw = localStorage.getItem(OVERRIDE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export function setPathOverride(logical: string, path: string): void {
+  const overrides = readPathOverrides();
+  overrides[logical] = path;
+  try {
+    localStorage.setItem(OVERRIDE_KEY, JSON.stringify(overrides));
+  } catch {
+    /* التخزين ممتلئ/محجوب */
+  }
+  if (current) current.resolved[logical] = path;
+}
+
+export function clearPathOverrides(): void {
+  try {
+    localStorage.removeItem(OVERRIDE_KEY);
+  } catch {
+    /* لا شيء */
+  }
+  current = null;
+}
+
 /**
  * المسار الحقيقي لمجموعة منطقية — متزامن.
  * قبل انتهاء الاكتشاف يعيد الاسم المنطقي كما هو (السلوك القديم).
@@ -201,6 +235,12 @@ export async function detectCloudLayout(): Promise<CloudLayout> {
       resolved[logical] = rootPrefix ? `${rootPrefix}${toSnake(logical)}` : toSnake(logical);
     }
   }
+
+  // التجاوزات اليدوية لها الأولوية دائماً
+  const overrides = readPathOverrides();
+  Object.entries(overrides).forEach(([logical, path]) => {
+    if (typeof path === 'string' && path.trim()) resolved[logical] = path.trim().replace(/^\/+/, '');
+  });
 
   const layout: CloudLayout = {
     resolved,

@@ -1,6 +1,6 @@
 import { FIREBASE_COLLECTIONS } from '../firebaseProject';
 import { ensureCloudLayout, cloudPath } from './cloudLayout';
-import { baseUrl, restFetch, explainHttpFailure } from './firebaseDiagnostics';
+import { baseUrl, restFetch, restFetchWithRetry, explainHttpFailure } from './firebaseDiagnostics';
 
 // ---------------------------------------------------------------------------
 // جلب البيانات الحقيقية من Firebase Realtime Database إلى التطبيق
@@ -55,7 +55,8 @@ export class CloudPullError extends Error {
 
 async function getJson(path: string): Promise<{ ok: boolean; status: number; body: string; json: any }> {
   const url = `${baseUrl()}/${path}`;
-  const res = await restFetch(url);
+  // قراءة البيانات الكاملة: مهلة أطول + إعادة محاولة واحدة
+  const res = await restFetchWithRetry(url);
   const body = await res.text();
   let json: any = null;
   try {

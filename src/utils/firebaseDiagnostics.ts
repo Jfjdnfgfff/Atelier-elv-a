@@ -31,7 +31,8 @@ export interface DiagnosticReport {
   verdict: string;
 }
 
-const TIMEOUT_MS = 9000;
+// مهلة أطول: بعض مجموعات المخزون كبيرة (سجلات تحتوي صوراً مضمّنة)
+const TIMEOUT_MS = 45000;
 
 export function baseUrl(): string {
   return (firebaseConfig.databaseURL || '').replace(/\/+$/, '');
@@ -96,6 +97,16 @@ export async function restFetch(url: string, init?: RequestInit): Promise<Respon
     return await fetch(url, { ...init, signal: controller.signal, cache: 'no-store' });
   } finally {
     clearTimeout(timer);
+  }
+}
+
+// إعادة محاولة واحدة عند فشل الشبكة/المهلة (شبكات الهاتف كثيراً ما تفشل أول مرة)
+export async function restFetchWithRetry(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await restFetch(url, init);
+  } catch (error) {
+    await new Promise(resolve => setTimeout(resolve, 700));
+    return restFetch(url, init);
   }
 }
 
