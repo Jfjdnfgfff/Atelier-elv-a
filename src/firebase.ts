@@ -25,7 +25,7 @@ export { firebaseConfig, FIREBASE_COLLECTIONS } from './firebaseProject';
 export type { FirebaseCollectionKey } from './firebaseProject';
 
 import { firebaseConfig as projectConfig, FIREBASE_COLLECTIONS } from './firebaseProject';
-import { cloudPath } from './utils/cloudLayout';
+import { cloudPath, getCloudLayout, ensureCloudLayout } from './utils/cloudLayout';
 
 // Firebase Realtime Database
 const app = initializeApp(projectConfig);
@@ -505,11 +505,13 @@ export async function purgeOldTrashItems(days: number = 30): Promise<number> {
 interface ActiveSubscriptionEntry<T = any> {
   collectionKey: string;
   subKey: string;
-  targetRef: Query;
+  targetRef: Query | null;
   listener: (snapshot: any) => void;
   unsubFirebase: () => void;
   callbacks: Set<(items: T[]) => void>;
   lastData: T[] | null;
+  /** صحيح بعد إلغاء الاشتراك — يمنع تركيب مستمع متأخر */
+  disposed?: boolean;
 }
 
 // مدير اشتراكات موحّد: مستمع واحد فقط لكل مجموعة، مع عدّاد مستهلكين وإلغاء تلقائي
@@ -536,11 +538,6 @@ export class SubscriptionManager {
     } else {
       const callbacks = new Set<(items: any[]) => void>();
       callbacks.add(callback);
-
-      let targetRef: Query = resolvedRef(collectionKey);
-      if (options?.limit && options.limit > 0) {
-        targetRef = query(resolvedRef(collectionKey), limitToLast(options.limit));
-      }
 
       const listener = (snapshot: any) => {
         let items: T[] = [];
@@ -584,21 +581,34 @@ export class SubscriptionManager {
         }
       };
 
-      const unsubFirebase = onValue(targetRef, listener, (error) => {
-        console.warn(`[Firebase RTDB] Listener error on ${subKey}:`, error);
-        recordFirebaseError(`listen:${collectionKey}`, error);
-      });
-
-      entry = {
+      const newEntry: ActiveSubscriptionEntry = {
         collectionKey,
         subKey,
-        targetRef,
+        targetRef: null,
         listener,
-        unsubFirebase,
+        unsubFirebase: () => {},
         callbacks,
         lastData: null
       };
 
+      // ننتظر اكتشاف مسار المجموعة الحقيقي قبل تركيب المستمع
+      const attach = () => {
+        if (newEntry.disposed) return;
+        const baseRef = resolvedRef(collectionKey);
+        const targetRef: Query = options?.limit && options.limit > 0
+          ? query(baseRef, limitToLast(options.limit))
+          : baseRef;
+        newEntry.targetRef = targetRef;
+        newEntry.unsubFirebase = onValue(targetRef, listener, (error) => {
+          console.warn(`[Firebase RTDB] Listener error on ${subKey}:`, error);
+          recordFirebaseError(`listen:${collectionKey}`, error);
+        });
+      };
+
+      if (getCloudLayout()) attach();
+      else void ensureCloudLayout().then(attach, attach);
+
+      entry = newEntry;
       this.activeSubscriptions.set(subKey, entry);
     }
 
@@ -613,13 +623,14 @@ export class SubscriptionManager {
       activeEntry.callbacks.delete(callback);
 
       if (activeEntry.callbacks.size === 0) {
+        activeEntry.disposed = true;
         try {
           if (typeof activeEntry.unsubFirebase === 'function') {
             activeEntry.unsubFirebase();
           }
         } catch (e) {}
         try {
-          off(activeEntry.targetRef, 'value', activeEntry.listener);
+          if (activeEntry.targetRef) off(activeEntry.targetRef, 'value', activeEntry.listener);
         } catch (e) {}
         SubscriptionManager.activeSubscriptions.delete(subKey);
       }
@@ -648,7 +659,6 @@ export class SubscriptionManager {
       const callbacks = new Set<(items: any[]) => void>();
       callbacks.add(callback);
 
-      const targetRef = resolvedRef(collectionKey);
       const itemsMap = new Map<string, T>();
       let emitTimer: any = null;
 
@@ -685,49 +695,57 @@ export class SubscriptionManager {
         }
       };
 
-      const unsubAdd = onChildAdded(targetRef, (snapshot) => {
+      const applySnapshot = (snapshot: any) => {
         const item = snapshot.val();
         if (item && typeof item === 'object') {
           const id = item.id || snapshot.key;
           itemsMap.set(id, { ...item, id });
           scheduleEmit();
         }
-      });
+      };
 
-      const unsubChange = onChildChanged(targetRef, (snapshot) => {
-        const item = snapshot.val();
-        if (item && typeof item === 'object') {
-          const id = item.id || snapshot.key;
-          itemsMap.set(id, { ...item, id });
-          scheduleEmit();
-        }
-      });
-
-      const unsubRemove = onChildRemoved(targetRef, (snapshot) => {
+      const removeSnapshot = (snapshot: any) => {
         const key = snapshot.key;
         if (key) {
           itemsMap.delete(key);
           scheduleEmit();
         }
-      });
-
-      const unsubFirebase = () => {
-        if (emitTimer) clearTimeout(emitTimer);
-        try { unsubAdd(); } catch (e) {}
-        try { unsubChange(); } catch (e) {}
-        try { unsubRemove(); } catch (e) {}
       };
 
-      entry = {
+      const newEntry: ActiveSubscriptionEntry = {
         collectionKey,
         subKey,
-        targetRef,
+        targetRef: null,
         listener: emitBatch,
-        unsubFirebase,
+        unsubFirebase: () => {},
         callbacks,
         lastData: null
       };
 
+      // ننتظر اكتشاف مسار المجموعة الحقيقي قبل تركيب مستمعات الأبناء
+      const attachGranular = () => {
+        if (newEntry.disposed) return;
+        const targetRef = resolvedRef(collectionKey);
+        newEntry.targetRef = targetRef;
+        const onError = (error: any) => {
+          console.warn(`[Firebase RTDB] Granular listener error on ${subKey}:`, error);
+          recordFirebaseError(`listen:${collectionKey}`, error);
+        };
+        const unsubAdd = onChildAdded(targetRef, applySnapshot, onError);
+        const unsubChange = onChildChanged(targetRef, applySnapshot, onError);
+        const unsubRemove = onChildRemoved(targetRef, removeSnapshot);
+        newEntry.unsubFirebase = () => {
+          if (emitTimer) clearTimeout(emitTimer);
+          try { unsubAdd(); } catch (e) {}
+          try { unsubChange(); } catch (e) {}
+          try { unsubRemove(); } catch (e) {}
+        };
+      };
+
+      if (getCloudLayout()) attachGranular();
+      else void ensureCloudLayout().then(attachGranular, attachGranular);
+
+      entry = newEntry;
       this.activeSubscriptions.set(subKey, entry);
     }
 
@@ -742,6 +760,7 @@ export class SubscriptionManager {
       activeEntry.callbacks.delete(callback);
 
       if (activeEntry.callbacks.size === 0) {
+        activeEntry.disposed = true;
         try {
           activeEntry.unsubFirebase();
         } catch (e) {}
