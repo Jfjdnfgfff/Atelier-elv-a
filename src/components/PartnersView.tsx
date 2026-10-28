@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Supplier, Seamstress, SeamstressPayment, Expense, MaintenanceOrder, Credit } from '../types';
 import { LettersInput, NumbersInput } from './Shared';
+import { buildSimplePrintHtml, openPrintInterface } from '../utils/printInterface';
 import { 
   Building2, 
   Scissors, 
@@ -23,7 +24,8 @@ import {
   X,
   Wallet,
   Banknote,
-  AlertCircle
+  AlertCircle,
+  Printer
 } from 'lucide-react';
 
 interface PartnersViewProps {
@@ -419,6 +421,59 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
     setPaySeamstress(null);
     setPayAmount('');
     setPayNote('');
+  };
+
+  // طباعة كشف حساب الخياطة (أتعاب + دفعات + المتبقي)
+  const handlePrintSeamstressStatement = (seam: Seamstress) => {
+    const data = seamstressAnalytics.find(s => s.id === seam.id);
+    if (!data) return;
+
+    const rows: Array<Array<string | number>> = [];
+
+    for (const p of [...data.payments].sort((a, b) => (a.date || '').localeCompare(b.date || ''))) {
+      rows.push([
+        p.date || '-',
+        'دفعة مسددة',
+        `${Number(p.amount || 0).toLocaleString()} دج`,
+        p.fundSource === 'general' ? 'الصندوق العام' : 'صندوق اليوم',
+        p.note || '-'
+      ]);
+    }
+
+    for (const o of [...data.orders].sort((a, b) => (a.receivedDate || '').localeCompare(b.receivedDate || ''))) {
+      rows.push([
+        o.receivedDate || '-',
+        `طلبية ${o.orderNumber} — ${o.itemName}`,
+        `${(o.cost || 0).toLocaleString()} دج`,
+        o.status === 'delivered' ? 'مسلّمة (مستحقة)' : 'قيد الإنجاز (غير مستحقة)',
+        o.description || '-'
+      ]);
+    }
+
+    rows.push(['—', 'إجمالي الأتعاب المستحقة (المسلّمة)', `${data.earnedDues.toLocaleString()} دج`, '', '']);
+    rows.push(['—', 'إجمالي المسدد', `${data.totalPaid.toLocaleString()} دج`, '', '']);
+    rows.push([
+      '—',
+      'المتبقي بذمة المحل',
+      `${data.remainingDue.toLocaleString()} دج`,
+      data.advancePaid > 0 ? `سلفة ${data.advancePaid.toLocaleString()} دج` : '',
+      ''
+    ]);
+
+    openPrintInterface({
+      title: `كشف حساب الخياطة — ${seam.name}`,
+      fileName: `كشف_حساب_الخياطة_${seam.name}_${new Date().toISOString().split('T')[0]}`,
+      html: buildSimplePrintHtml({
+        heading: `كشف حساب الخياطة: ${seam.name}`,
+        subtitle: [
+          seam.specialty ? `الاختصاص: ${seam.specialty}` : '',
+          seam.phone ? `الهاتف: ${seam.phone}` : '',
+          `المسدد: ${data.totalPaid.toLocaleString()} دج | المتبقي: ${data.remainingDue.toLocaleString()} دج`
+        ].filter(Boolean).join(' • '),
+        headers: ['التاريخ', 'البيان', 'المبلغ', 'الحالة / المصدر', 'ملاحظات'],
+        rows
+      })
+    });
   };
 
   const handleWhatsApp = (phone?: string, name?: string) => {
@@ -1288,6 +1343,13 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                         <span>واتساب</span>
                       </button>
                     )}
+                    <button
+                      onClick={() => handlePrintSeamstressStatement(selectedSeamstressHistory)}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition-colors"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>طباعة كشف الحساب</span>
+                    </button>
                     {selectedSeamstressHistory.ratePerPieceOrSalary && (
                       <span className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2">
                         التسعير: <span className="font-semibold text-slate-800">{selectedSeamstressHistory.ratePerPieceOrSalary}</span>

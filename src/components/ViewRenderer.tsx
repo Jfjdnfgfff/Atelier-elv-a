@@ -202,6 +202,7 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
              prev.rentals === next.rentals && 
              prev.expenses === next.expenses && 
              prev.staffPayouts === next.staffPayouts && 
+             prev.seamstressPayments === next.seamstressPayments &&
              prev.maintenanceOrders === next.maintenanceOrders &&
              prev.credits === next.credits &&
              prev.creditPayments === next.creditPayments &&
@@ -215,6 +216,7 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
              prev.sales === next.sales &&
              prev.expenses === next.expenses &&
              prev.staffPayouts === next.staffPayouts &&
+             prev.seamstressPayments === next.seamstressPayments &&
              prev.maintenanceOrders === next.maintenanceOrders &&
              prev.credits === next.credits &&
              prev.creditPayments === next.creditPayments &&
@@ -320,6 +322,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           sales={sales}
           expenses={expenses}
           staffPayouts={staffPayouts}
+          seamstressPayments={seamstressPayments}
           credits={creditsWithPayments}
           activityLogs={activityLogs}
           hideFinances={hideFinances}
@@ -432,6 +435,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           expenses={expenses}
           credits={creditsWithPayments}
           staffPayouts={staffPayouts}
+          seamstressPayments={seamstressPayments}
           maintenanceOrders={maintenanceOrders}
           caisseClosures={caisseClosures}
           onSaveClosure={onSaveCaisseClosure}
@@ -440,6 +444,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           onDeleteRental={onDeleteRental}
           onDeleteExpense={onDeleteExpense}
           onDeleteStaffPayout={onDeleteStaffPayout}
+          onDeleteSeamstressPayment={onDeleteSeamstressPayment}
           onDeleteTailoringOrder={onDeleteTailoringOrder}
           hideFinances={hideFinances}
           onPrivacyToggle={onPrivacyToggle}

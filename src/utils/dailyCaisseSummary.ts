@@ -4,6 +4,7 @@ import {
   MaintenanceOrder,
   Rental,
   Sale,
+  SeamstressPayment,
   StaffPayout,
 } from '../types';
 import { isGeneralFundExpense, isGeneralFundRental, summarizeCreditPaymentsOn } from './fundBalance';
@@ -16,6 +17,7 @@ export interface DailyCaisseSummaryInput {
   expenses: Expense[];
   credits: Credit[];
   staffPayouts: StaffPayout[];
+  seamstressPayments?: SeamstressPayment[];
 }
 
 export interface DailyCaisseSummary {
@@ -39,6 +41,9 @@ export interface DailyCaisseSummary {
   dateCreditPaymentsCount: number;
   dateStaffPayouts: StaffPayout[];
   dateStaffPayoutsPaid: number;
+  dateSeamstressPayments: SeamstressPayment[];
+  dateSeamstressPaymentsPaid: number;
+  dateSeamstressPaymentsGeneral: number;
   totalDailyInflow: number;
   totalDailyOutflow: number;
 }
@@ -63,6 +68,7 @@ export function summarizeDailyCaisse({
   expenses,
   credits,
   staffPayouts,
+  seamstressPayments = [],
 }: DailyCaisseSummaryInput): DailyCaisseSummary {
   const dateSales: Sale[] = [];
   let dateSalesIncome = 0;
@@ -135,6 +141,20 @@ export function summarizeDailyCaisse({
     0,
   );
 
+  // دفعات أتعاب الخياطات: من الدرج تُخصم من صندوق اليوم، ومن الخزينة تُظهر خارج الدرج
+  const dateSeamstressPayments: SeamstressPayment[] = [];
+  let dateSeamstressPaymentsPaid = 0;
+  let dateSeamstressPaymentsGeneral = 0;
+  for (const payment of seamstressPayments) {
+    if (toDateKey(payment.date) !== date) continue;
+    dateSeamstressPayments.push(payment);
+    if (payment.fundSource === 'general') {
+      dateSeamstressPaymentsGeneral += toAmount(payment.amount);
+    } else {
+      dateSeamstressPaymentsPaid += toAmount(payment.amount);
+    }
+  }
+
   const creditPayments = summarizeCreditPaymentsOn(credits, date);
   const totalDailyInflow =
     dateSalesIncome +
@@ -143,7 +163,10 @@ export function summarizeDailyCaisse({
     dateCautionsReceived +
     creditPayments.inflow;
   const totalDailyOutflow =
-    dateExpensesPaid + dateStaffPayoutsPaid + creditPayments.outflow;
+    dateExpensesPaid +
+    dateStaffPayoutsPaid +
+    dateSeamstressPaymentsPaid +
+    creditPayments.outflow;
 
   return {
     dateSales,
@@ -166,6 +189,9 @@ export function summarizeDailyCaisse({
     dateCreditPaymentsCount: creditPayments.count,
     dateStaffPayouts,
     dateStaffPayoutsPaid,
+    dateSeamstressPayments,
+    dateSeamstressPaymentsPaid,
+    dateSeamstressPaymentsGeneral,
     totalDailyInflow,
     totalDailyOutflow,
   };

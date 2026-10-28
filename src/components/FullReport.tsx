@@ -7,7 +7,9 @@ import {
   Credit, 
   StaffPayout, 
   MaintenanceOrder, 
-  DailyCaisseClosure 
+  DailyCaisseClosure,
+  SeamstressPayment,
+  Seamstress
 } from '../types';
 import { downloadElementAsPng } from '../utils/pngDownload';
 import { openPrintInterface } from '../utils/printInterface';
@@ -40,11 +42,13 @@ interface FullReportProps {
   staffPayouts: StaffPayout[];
   maintenanceOrders?: MaintenanceOrder[];
   caisseClosures?: DailyCaisseClosure[];
+  seamstressPayments?: SeamstressPayment[];
+  seamstresses?: Seamstress[];
   hideFinances: boolean;
 }
 
 type PeriodType = 'today' | 'last7' | 'this_month' | 'last_month' | 'this_year' | 'all' | 'custom';
-type TabType = 'overview_all' | 'rentals' | 'sales' | 'expenses' | 'tailoring' | 'credits' | 'staff' | 'inventory';
+type TabType = 'overview_all' | 'rentals' | 'sales' | 'expenses' | 'tailoring' | 'credits' | 'staff' | 'seamstresses' | 'inventory';
 
 export const FullReport: React.FC<FullReportProps> = React.memo(({
   clothes = [],
@@ -55,6 +59,8 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
   staffPayouts = [],
   maintenanceOrders = [],
   caisseClosures = [],
+  seamstressPayments = [],
+  seamstresses = [],
   hideFinances
 }) => {
   const now = new Date();
@@ -135,6 +141,10 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
     return staffPayouts.filter(p => isDateInRange(p.date));
   }, [staffPayouts, isDateInRange]);
 
+  const filteredSeamstressPayments = useMemo(() => {
+    return seamstressPayments.filter(p => isDateInRange(p.date));
+  }, [seamstressPayments, isDateInRange]);
+
   const filteredTailoring = useMemo(() => {
     return maintenanceOrders.filter(o => isDateInRange(o.receivedDate || o.createdAt));
   }, [maintenanceOrders, isDateInRange]);
@@ -181,11 +191,16 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
 
     const totalExpenses = filteredExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
     const totalStaffPayouts = filteredStaffPayouts.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const totalSeamstressPayments = filteredSeamstressPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const totalSeamstressDues = filteredTailoring
+      .filter(o => o.status === 'delivered')
+      .reduce((sum, o) => sum + (o.cost || 0), 0);
+    const seamstressRemainingDues = Math.max(0, totalSeamstressDues - totalSeamstressPayments);
     const totalCustomerCredits = filteredCredits.filter(c => !c.supplierDebt).reduce((sum, c) => sum + Number(c.amount || 0), 0);
     const totalSupplierDebts = filteredCredits.filter(c => c.supplierDebt).reduce((sum, c) => sum + Number(c.amount || 0), 0);
 
     const grossInflow = totalRentalIncome + totalSalesPaid + totalTailoringRevenue;
-    const totalOutflow = totalExpenses + totalStaffPayouts;
+    const totalOutflow = totalExpenses + totalStaffPayouts + totalSeamstressPayments;
     const netProfit = (totalRentalIncome + totalSalesProfit + totalTailoringNet) - totalOutflow;
 
     const totalStockQty = clothes.reduce((sum, c) => sum + (c.stock || 0), 0);
@@ -214,6 +229,9 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
       totalTailoringNet,
       totalExpenses,
       totalStaffPayouts,
+      totalSeamstressPayments,
+      totalSeamstressDues,
+      seamstressRemainingDues,
       totalCustomerCredits,
       totalSupplierDebts,
       grossInflow,
@@ -231,6 +249,7 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
     filteredExpenses,
     filteredCredits,
     filteredStaffPayouts,
+    filteredSeamstressPayments,
     filteredTailoring,
     clothes,
     todayStr
@@ -320,6 +339,15 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
       p.notes?.toLowerCase().includes(term)
     );
   }, [filteredStaffPayouts, searchTerm]);
+
+  const searchedSeamstressPayments = useMemo(() => {
+    if (!searchTerm) return filteredSeamstressPayments;
+    const term = searchTerm.toLowerCase();
+    return filteredSeamstressPayments.filter(p =>
+      p.seamstressName?.toLowerCase().includes(term) ||
+      p.note?.toLowerCase().includes(term)
+    );
+  }, [filteredSeamstressPayments, searchTerm]);
 
   const searchedClothes = useMemo(() => {
     if (!searchTerm) return clothes;
@@ -474,6 +502,7 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
             { id: 'tailoring', label: '✂️ الخياطة', count: filteredTailoring.length },
             { id: 'credits', label: '💳 الديون', count: filteredCredits.length },
             { id: 'staff', label: '👥 العمال', count: filteredStaffPayouts.length },
+            { id: 'seamstresses', label: '🧵 دفعات الخياطات', count: filteredSeamstressPayments.length },
             { id: 'inventory', label: '📦 المخزون', count: clothes.length },
           ].map(tab => {
             const active = activeTab === tab.id;
@@ -1024,6 +1053,76 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
                         </td>
                         <td className="p-2 text-slate-500 text-[11px]">{p.notes || '-'}</td>
                         <td className="p-2 text-left font-mono font-black text-rose-700">{renderMoney(p.amount)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {(activeTab === 'overview_all' || activeTab === 'seamstresses') && (
+          <div className="space-y-2.5 pt-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
+              <h3 className="font-black text-sm text-slate-900 flex items-center gap-2">
+                <Scissors className="w-4 h-4 text-teal-600" />
+                <span>7. تقرير أتعاب الخياطات ({filteredSeamstressPayments.length} دفعة • {seamstresses.length} خياطة)</span>
+              </h3>
+              <span className="text-xs font-bold text-teal-900">
+                المجموع المسدد في الفترة: {renderMoney(metrics.totalSeamstressPayments)}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+                <span className="text-[11px] text-slate-500 font-medium block">أتعاب طلبيات مسلّمة</span>
+                <span className="text-sm font-black font-mono text-slate-900">{renderMoney(metrics.totalSeamstressDues)}</span>
+              </div>
+              <div className="bg-emerald-50 border border-emerald-200/80 rounded-xl p-2.5">
+                <span className="text-[11px] text-emerald-700 font-medium block">المسدد للخياطات</span>
+                <span className="text-sm font-black font-mono text-emerald-800">{renderMoney(metrics.totalSeamstressPayments)}</span>
+              </div>
+              <div className="bg-rose-50 border border-rose-200/80 rounded-xl p-2.5">
+                <span className="text-[11px] text-rose-700 font-medium block">متبقي بذمة المحل</span>
+                <span className="text-sm font-black font-mono text-rose-700">{renderMoney(metrics.seamstressRemainingDues)}</span>
+              </div>
+            </div>
+
+            <div className="border border-slate-200 rounded-2xl overflow-x-auto">
+              <table className="w-full text-right text-xs table-auto divide-y divide-slate-200 min-w-[600px]">
+                <thead className="bg-slate-100 text-slate-700 font-black">
+                  <tr>
+                    <th className="p-2.5">التاريخ</th>
+                    <th className="p-2.5">اسم الخياطة</th>
+                    <th className="p-2.5">مصدر الدفع</th>
+                    <th className="p-2.5">ملاحظات</th>
+                    <th className="p-2.5 text-left">المبلغ المسدد</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {searchedSeamstressPayments.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-4 text-center text-slate-400 font-bold">
+                        لا توجد دفعات مسددة للخياطات في هذه الفترة
+                      </td>
+                    </tr>
+                  ) : (
+                    searchedSeamstressPayments.map(p => (
+                      <tr key={p.id} className="hover:bg-slate-50/80">
+                        <td className="p-2 font-mono text-slate-600 text-[11px]">{p.date?.slice(0, 10)}</td>
+                        <td className="p-2 font-bold text-slate-900">{p.seamstressName}</td>
+                        <td className="p-2">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                            p.fundSource === 'general'
+                              ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}>
+                            {p.fundSource === 'general' ? 'الصندوق العام' : 'صندوق اليوم'}
+                          </span>
+                        </td>
+                        <td className="p-2 text-slate-500 text-[11px]">{p.note || '-'}</td>
+                        <td className="p-2 text-left font-mono font-black text-teal-700">{renderMoney(p.amount)}</td>
                       </tr>
                     ))
                   )}

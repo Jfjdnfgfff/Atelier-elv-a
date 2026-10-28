@@ -953,11 +953,15 @@ export default function App() {
       ensureCollectionLoaded(STORAGE_KEYS.MAINTENANCE);
       ensureCollectionLoaded(STORAGE_KEYS.RENTALS);
       ensureCollectionLoaded(STORAGE_KEYS.CAISSE_CLOSURES);
+      ensureCollectionLoaded(STORAGE_KEYS.SEAMSTRESSES);
+      ensureCollectionLoaded(STORAGE_KEYS.SEAMSTRESS_PAYMENTS);
       const unsubs = [
         subscribeToCollection(FIREBASE_COLLECTIONS.SALES),
         subscribeToCollection(FIREBASE_COLLECTIONS.EXPENSES),
         subscribeToCollection(FIREBASE_COLLECTIONS.CREDITS),
-        subscribeToCollection(FIREBASE_COLLECTIONS.STAFF_PAYOUTS)
+        subscribeToCollection(FIREBASE_COLLECTIONS.STAFF_PAYOUTS),
+        subscribeToCollection(FIREBASE_COLLECTIONS.SEAMSTRESSES),
+        subscribeToCollection(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS)
       ];
       return () => {
         unsubs.forEach(u => u());
@@ -2930,6 +2934,8 @@ export default function App() {
             staffPayouts={staffPayouts}
             maintenanceOrders={maintenanceOrders}
             caisseClosures={caisseClosures}
+            seamstressPayments={seamstressPayments}
+            seamstresses={seamstresses}
             hideFinances={hideFinances}
           />
         </Modal>

@@ -309,6 +309,7 @@ export interface DailyCaisseClosure {
   generalFundExpenses?: number; // مصاريف مسددة اليوم من الصندوق العام (لا تدخل في حساب الدرج)
   creditsCollected?: number; // مبالغ ديون الزبائن المحصلة كاش في الدرج اليوم
   creditSettlementsPaid?: number; // دفعات ديون الموردين المسددة كاش من الدرج اليوم
+  seamstressPaymentsPaid?: number; // دفعات أتعاب الخياطات المسددة كاش من الدرج اليوم
   staffPayoutsPaid: number; // دفعات العمال المسددة كاش اليوم
   cautionsRefunded: number; // ضمانات تم إرجاعها للزبائن كاش
   totalInflow: number; // إجمالي المدخول في صندوق اليوم
