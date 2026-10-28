@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "check:firebase": "node scripts/check-firebase.mjs",
+    "deploy:rules": "npx --yes firebase-tools deploy --only database --project uohouhi-41bde"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

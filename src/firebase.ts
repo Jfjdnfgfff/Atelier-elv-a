@@ -69,6 +69,9 @@ export interface FirebaseConnectionResult {
   rootKeys?: number;
   databaseURL: string;
   projectId: string;
+  /** رمز سبب الفشل عند تعذّر الوصول للبيانات */
+  failureReason?: 'PERMISSION_DENIED' | 'HTTP_ERROR' | 'NETWORK';
+  httpStatus?: number;
   error?: string;
 }
 
@@ -139,11 +142,18 @@ export async function checkFirebaseConnection(timeoutMs = 8000): Promise<Firebas
 
     if (!response.ok) {
       const body = await response.text().catch(() => '');
+      const isPermission = response.status === 401 || response.status === 403 || /permission denied/i.test(body);
+
       return {
         ...base,
         connected: true,
         latencyMs: readLatency,
-        error: `الاتصال قائم لكن القراءة مرفوضة (HTTP ${response.status}) — راجع قواعد الأمان في database.rules.json${body ? ` — ${body.slice(0, 160)}` : ''}`
+        /** تمييز سبب الفشل برمز يقرأه التشخيص في الواجهة */
+        failureReason: isPermission ? 'PERMISSION_DENIED' : 'HTTP_ERROR',
+        httpStatus: response.status,
+        error: isPermission
+          ? `قواعد الأمان تمنع القراءة/الكتابة (Permission denied). الحل: انشر database.rules.json — افتح Firebase Console ← Realtime Database ← Rules ← الصق محتوى الملف ← Publish، أو نفّذ: npm run deploy:rules`
+          : `الخادم ردّ بالرمز HTTP ${response.status}${body ? ` — ${body.slice(0, 160)}` : ''}`
       };
     }
 

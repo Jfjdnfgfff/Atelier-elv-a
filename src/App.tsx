@@ -270,6 +270,9 @@ export default function App() {
   const [lastCloudSyncTime, setLastCloudSyncTime] = useState<string | null>(null);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionTest, setConnectionTest] = useState<FirebaseConnectionResult | null>(null);
+  // الاتصال قد يكون قائماً على مستوى Socket لكن الوصول للبيانات مرفوض (قواعد غير منشورة)
+  const dataAccessBroken = !!connectionTest && connectionTest.connected && !connectionTest.canRead;
+  const firebaseHealthy = isFirebaseConnected && !dataAccessBroken;
   const isRemoteUpdateRef = useRef<Record<string, boolean>>({});
 
   const [toasts, setToasts] = useState<{ id: number; message: string; type: 'success' | 'error' }[]>([]);
@@ -2777,23 +2780,33 @@ export default function App() {
         <Modal title="مزامنة وسحابة Firebase" onClose={() => setActiveModal(null)}>
           <div className="space-y-4">
             <div className={`p-4 rounded-2xl border ${
-              isFirebaseConnected 
+              firebaseHealthy
                 ? 'bg-emerald-50/70 border-emerald-200' 
                 : 'bg-amber-50/70 border-amber-200'
             }`}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className={`w-3 h-3 rounded-full ${
-                    isCloudSyncing ? 'bg-blue-500 animate-ping' : isFirebaseConnected ? 'bg-emerald-500' : 'bg-amber-500'
+                    isCloudSyncing ? 'bg-blue-500 animate-ping' : firebaseHealthy ? 'bg-emerald-500' : 'bg-amber-500'
                   }`} />
                   <span className="font-black text-sm text-slate-900">
-                    {isCloudSyncing ? 'جاري رفع ومزامنة البيانات...' : isFirebaseConnected ? 'متصل بسحابة Firebase بنجاح' : 'جاري الاتصال بقاعدة البيانات'}
+                    {isCloudSyncing
+                      ? 'جاري رفع ومزامنة البيانات...'
+                      : dataAccessBroken
+                        ? 'الخادم متاح لكن قواعد الأمان تمنع الوصول للبيانات'
+                        : firebaseHealthy
+                          ? 'متصل بسحابة Firebase بنجاح'
+                          : 'جاري الاتصال بقاعدة البيانات'}
                   </span>
                 </div>
                 <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                  isFirebaseConnected ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                  dataAccessBroken
+                    ? 'bg-amber-100 text-amber-800'
+                    : firebaseHealthy
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-amber-100 text-amber-800'
                 }`}>
-                  {isFirebaseConnected ? 'أونلاين (Online)' : 'أوفلاين (Offline)'}
+                  {dataAccessBroken ? 'محجوب (Rules)' : firebaseHealthy ? 'أونلاين (Online)' : 'أوفلاين (Offline)'}
                 </span>
               </div>
               <p className="text-xs text-slate-600 leading-relaxed">
@@ -2808,26 +2821,45 @@ export default function App() {
 
             {connectionTest && (
               <div className={`p-3 rounded-xl border text-xs space-y-1.5 ${
-                connectionTest.connected
+                connectionTest.canRead
                   ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                  : 'bg-rose-50 border-rose-200 text-rose-900'
+                  : connectionTest.connected
+                    ? 'bg-amber-50 border-amber-300 text-amber-900'
+                    : 'bg-rose-50 border-rose-200 text-rose-900'
               }`} dir="rtl">
                 <div className="flex items-center gap-2 font-black">
-                  {connectionTest.connected ? (
+                  {connectionTest.canRead ? (
                     <CheckCircle className="w-4 h-4 text-emerald-600" />
                   ) : (
-                    <AlertTriangle className="w-4 h-4 text-rose-600" />
+                    <AlertTriangle className={`w-4 h-4 ${connectionTest.connected ? 'text-amber-600' : 'text-rose-600'}`} />
                   )}
                   <span>
-                    {connectionTest.connected
-                      ? `نجح الاتصال بقاعدة البيانات (${connectionTest.latencyMs}ms)`
-                      : 'فشل الاتصال بقاعدة البيانات'}
+                    {connectionTest.canRead
+                      ? `الوصول للبيانات يعمل (${connectionTest.latencyMs}ms)`
+                      : connectionTest.connected
+                        ? 'الخادم متاح لكن الوصول للبيانات مرفوض'
+                        : 'فشل الاتصال بقاعدة البيانات'}
                   </span>
                 </div>
-                {connectionTest.connected && connectionTest.canRead && (
+                {connectionTest.canRead && (
                   <p className="text-[11px] font-bold text-emerald-800">
                     ✓ القراءة من القاعدة تعمل — عدد المسارات الجذرية: {connectionTest.rootKeys ?? 0}
                   </p>
+                )}
+                {connectionTest.failureReason === 'PERMISSION_DENIED' && (
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-bold">
+                      قواعد أمان قاعدة البيانات تمنع القراءة والكتابة، لذلك لا تصل البيانات إلى Firebase ولا يعرضها.
+                    </p>
+                    <p className="text-[10px] leading-relaxed">
+                      الحل: افتح Firebase Console ← Realtime Database ← Rules ← الصق محتوى
+                      <span className="font-mono"> database.rules.json </span>
+                      ← Publish، أو نفّذ
+                      <span className="font-mono"> npx firebase-tools login </span>
+                      ثم
+                      <span className="font-mono"> npm run deploy:rules</span>
+                    </p>
+                  </div>
                 )}
                 {connectionTest.error && (
                   <p className={`font-mono text-[10px] leading-relaxed break-words rounded-lg p-2 ${
