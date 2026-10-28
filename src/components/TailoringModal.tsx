@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MaintenanceOrder, MaintenanceServiceType, MaintenanceTargetType, MaintenanceStatus, ClothItem, StaffMember } from '../types';
+import { MaintenanceOrder, MaintenanceServiceType, MaintenanceTargetType, MaintenanceStatus, ClothItem, StaffMember, Seamstress } from '../types';
 import { Modal, LettersInput, NumbersInput } from './Shared';
 const CustomerIdScannerModal = React.lazy(() => import('./CustomerIdScannerModal').then(m => ({ default: m.CustomerIdScannerModal })));
 import type { ExtractedCustomerData } from './CustomerIdScannerModal';
@@ -10,6 +10,7 @@ interface TailoringModalProps {
   order?: MaintenanceOrder | null;
   clothes: ClothItem[];
   staffMembers: StaffMember[];
+  seamstresses?: Seamstress[];
   onSave: (orderData: Partial<MaintenanceOrder>) => void;
   onClose: () => void;
 }
@@ -18,6 +19,7 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
   order,
   clothes,
   staffMembers,
+  seamstresses = [],
   onSave,
   onClose
 }) => {
@@ -45,7 +47,13 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
   const [serviceType, setServiceType] = useState<MaintenanceServiceType>(order?.serviceType || 'alteration');
   const [description, setDescription] = useState(order?.description || '');
   const [measurements, setMeasurements] = useState(order?.measurements || '');
-  const [tailorName, setTailorName] = useState(order?.tailorName || (staffMembers.find(s => s.role.includes('خياط'))?.name || staffMembers[0]?.name || ''));
+  const [tailorName, setTailorName] = useState(
+    order?.tailorName ||
+    (staffMembers.find(s => s.role.includes('خياط'))?.name ||
+     seamstresses[0]?.name ||
+     staffMembers[0]?.name ||
+     '')
+  );
   
   const [cost, setCost] = useState<number>(order?.cost !== undefined ? order.cost : 500);
   const [price, setPrice] = useState<number>(order?.price !== undefined ? order.price : 1500);
@@ -272,6 +280,11 @@ export const TailoringModal: React.FC<TailoringModalProps> = ({
                 className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-slate-800 focus:outline-none"
               />
               <datalist id="staff-list">
+                {seamstresses.map(s => (
+                  <option key={`seam-${s.id}`} value={s.name}>
+                    {s.specialty ? `خياطة — ${s.specialty}` : 'خياطة مسجلة'}
+                  </option>
+                ))}
                 {staffMembers.map(s => (
                   <option key={s.id} value={s.name}>{s.role}</option>
                 ))}

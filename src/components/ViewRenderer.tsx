@@ -14,6 +14,7 @@ import {
   MaintenanceOrder,
   Supplier,
   Seamstress,
+  SeamstressPayment,
   RawMaterial,
   MaintenanceStatus,
   ActivityLog,
@@ -66,6 +67,7 @@ export interface ViewRendererProps {
   caisseClosures: DailyCaisseClosure[];
   suppliers: Supplier[];
   seamstresses: Seamstress[];
+  seamstressPayments: SeamstressPayment[];
   rawMaterials: RawMaterial[];
   activityLogs?: ActivityLog[];
   hideFinances: boolean;
@@ -142,6 +144,10 @@ export interface ViewRendererProps {
   onAddSeamstress: (seam: Seamstress) => void;
   onUpdateSeamstress: (id: string, data: Partial<Seamstress>) => void;
   onDeleteSeamstress: (id: string) => void;
+  onAddSeamstressPayment: (payment: SeamstressPayment) => void;
+  onDeleteSeamstressPayment: (id: string) => void;
+  partnersFocus?: { tab: 'suppliers' | 'seamstresses'; requestId: number };
+  onOpenSeamstressAccounts?: () => void;
 }
 
 function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererProps): boolean {
@@ -169,7 +175,8 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
              prev.isLoadingMoreSales === next.isLoadingMoreSales;
     case 'tailoring':
       return prev.maintenanceOrders === next.maintenanceOrders && 
-             prev.clothes === next.clothes;
+             prev.clothes === next.clothes &&
+             prev.onOpenSeamstressAccounts === next.onOpenSeamstressAccounts;
     case 'expenses':
       return prev.expenses === next.expenses && 
              prev.suppliers === next.suppliers && 
@@ -184,9 +191,11 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
     case 'partners':
       return prev.suppliers === next.suppliers && 
              prev.seamstresses === next.seamstresses && 
+             prev.seamstressPayments === next.seamstressPayments &&
              prev.expenses === next.expenses && 
              prev.maintenanceOrders === next.maintenanceOrders && 
-             prev.credits === next.credits;
+             prev.credits === next.credits &&
+             prev.partnersFocus === next.partnersFocus;
     case 'caisse':
       return prev.caisseClosures === next.caisseClosures && 
              prev.sales === next.sales && 
@@ -228,6 +237,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   caisseClosures,
   suppliers,
   seamstresses,
+  seamstressPayments,
   rawMaterials,
   activityLogs = [],
   hideFinances,
@@ -286,6 +296,10 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   onAddSeamstress,
   onUpdateSeamstress,
   onDeleteSeamstress,
+  onAddSeamstressPayment,
+  onDeleteSeamstressPayment,
+  partnersFocus,
+  onOpenSeamstressAccounts,
 }) => {
   perfMonitor.recordViewRender(currentView);
 
@@ -383,6 +397,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           onDeleteOrder={onDeleteTailoringOrder}
           onUpdateStatus={onUpdateTailoringStatus}
           onOpenReceiptModal={onOpenTailoringReceiptModal}
+          onOpenSeamstressAccounts={onOpenSeamstressAccounts}
         />
       )}
 
@@ -438,6 +453,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
         <PartnersView
           suppliers={suppliers}
           seamstresses={seamstresses}
+          seamstressPayments={seamstressPayments}
           expenses={expenses}
           maintenanceOrders={maintenanceOrders}
           credits={creditsWithPayments}
@@ -447,7 +463,10 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           onAddSeamstress={onAddSeamstress}
           onUpdateSeamstress={onUpdateSeamstress}
           onDeleteSeamstress={onDeleteSeamstress}
+          onAddSeamstressPayment={onAddSeamstressPayment}
+          onDeleteSeamstressPayment={onDeleteSeamstressPayment}
           onSettleSupplierCredit={onSettleSupplierCredit}
+          focusTab={partnersFocus}
         />
       )}
 

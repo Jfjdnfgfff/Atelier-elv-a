@@ -175,6 +175,18 @@ export interface Seamstress {
   createdAt?: string;
 }
 
+// دفعة مسددة لخياطة (مستند مستقل) — تُخصم من مستحقاتها المتراكمة من أتعاب الطلبيات المسلمة
+export interface SeamstressPayment {
+  id: string;
+  seamstressId: string;
+  seamstressName: string;
+  amount: number;
+  date: string; // YYYY-MM-DD تاريخ الدفع الفعلي
+  fundSource?: FundSource; // من أين دفعت: صندوق اليوم (الدرج) أو الصندوق العام (الخزينة)
+  note?: string;
+  createdAt?: string;
+}
+
 // دفعة تسديد كريدي: مستند مستقل داخل مجموعة creditPayments مرتبط بالدين عبر creditId
 export interface CreditPayment {
   id: string;

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { MaintenanceOrder, MaintenanceStatus, MaintenanceTargetType, ClothItem } from '../types';
-import { Plus, AlertTriangle, AlertCircle, MessageSquare, Mail, Phone, Trash2, FileText, Edit3, Calendar, DollarSign, Sparkles, Scissors, Clock, TrendingUp } from 'lucide-react';
+import { Plus, AlertTriangle, AlertCircle, MessageSquare, Mail, Phone, Trash2, FileText, Edit3, Calendar, DollarSign, Sparkles, Scissors, Clock, TrendingUp, Wallet } from 'lucide-react';
 
 interface TailoringViewProps {
   orders: MaintenanceOrder[];
@@ -10,6 +10,7 @@ interface TailoringViewProps {
   onDeleteOrder: (id: string) => void;
   onUpdateStatus: (id: string, newStatus: MaintenanceStatus) => void;
   onOpenReceiptModal: (order: MaintenanceOrder) => void;
+  onOpenSeamstressAccounts?: () => void;
 }
 
 export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
@@ -19,7 +20,8 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
   onEditOrder,
   onDeleteOrder,
   onUpdateStatus,
-  onOpenReceiptModal
+  onOpenReceiptModal,
+  onOpenSeamstressAccounts
 }) => {
   const [filter, setFilter] = useState<'all' | 'due_soon' | 'pending' | 'in_progress' | 'ready' | 'delivered'>('all');
   const [serviceFilter, setServiceFilter] = useState<'all' | 'ironing_prep' | 'alteration' | 'repair' | 'custom_sewing'>('all');
@@ -173,13 +175,25 @@ export const TailoringView: React.FC<TailoringViewProps> = React.memo(({
             </p>
           </div>
 
-          <button
-            onClick={onOpenAddModal}
-            className="bg-slate-900 hover:bg-slate-800 active:scale-95 text-white px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all min-h-[40px] shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>طلب خياطة جديد</span>
-          </button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            {onOpenSeamstressAccounts && (
+              <button
+                onClick={onOpenSeamstressAccounts}
+                className="bg-white hover:bg-slate-50 active:scale-95 text-slate-800 border border-slate-300 px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all min-h-[40px] shadow-xs"
+                title="دفعات الخياطات والمستحقات المتبقية"
+              >
+                <Wallet className="w-4 h-4" />
+                <span>حسابات الخياطات</span>
+              </button>
+            )}
+            <button
+              onClick={onOpenAddModal}
+              className="bg-slate-900 hover:bg-slate-800 active:scale-95 text-white px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all min-h-[40px] shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span>طلب خياطة جديد</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3 pt-3 border-t border-slate-100 text-xs">
