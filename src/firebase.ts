@@ -59,6 +59,60 @@ export const FIREBASE_COLLECTIONS = {
 
 export type FirebaseCollectionKey = typeof FIREBASE_COLLECTIONS[keyof typeof FIREBASE_COLLECTIONS];
 
+// ---------------------------------------------------------------------------
+// سجل أخطاء Firebase الظاهرة للمستخدم
+// ---------------------------------------------------------------------------
+// SDK الخاص بـ RTDB يبتلع الأخطاء (permission denied / offline) ويكتفي بتحذير
+// في الكونسول، فيظن المستخدم أن التطبيق متصل بينما لا تصل أي بيانات.
+// نسجّل هنا آخر الأخطاء لعرضها صراحةً داخل نافذة التشخيص.
+export interface FirebaseErrorEntry {
+  scope: string;
+  message: string;
+  code?: string;
+  at: string;
+}
+
+const firebaseErrors: FirebaseErrorEntry[] = [];
+const MAX_ERRORS = 25;
+const errorListeners = new Set<(errors: FirebaseErrorEntry[]) => void>();
+
+export function recordFirebaseError(scope: string, error: any): void {
+  const message = String(error?.message || error?.serverResponse || error || 'خطأ غير معروف');
+  const entry: FirebaseErrorEntry = {
+    scope,
+    message,
+    code: error?.code || undefined,
+    at: new Date().toISOString()
+  };
+  firebaseErrors.unshift(entry);
+  if (firebaseErrors.length > MAX_ERRORS) firebaseErrors.length = MAX_ERRORS;
+  errorListeners.forEach(cb => {
+    try {
+      cb(getRecentFirebaseErrors());
+    } catch {}
+  });
+}
+
+export function getRecentFirebaseErrors(): FirebaseErrorEntry[] {
+  return [...firebaseErrors];
+}
+
+export function clearRecentFirebaseErrors(): void {
+  firebaseErrors.length = 0;
+  errorListeners.forEach(cb => {
+    try {
+      cb([]);
+    } catch {}
+  });
+}
+
+export function onFirebaseErrors(cb: (errors: FirebaseErrorEntry[]) => void): () => void {
+  errorListeners.add(cb);
+  return () => {
+    errorListeners.delete(cb);
+  };
+}
+
 // مقارنة مصفوفات سريعة O(N) بدون JSON.stringify (المعرف + الحقول القابلة للتغيير)
 export function areArraysEqual<T extends { id?: string; updatedAt?: string | number }>(
   a: T[] | undefined | null, 
@@ -115,6 +169,7 @@ export async function saveItemToFirebase<T extends { id: string }>(collectionKey
     await update(collectionRef, { [cleanItem.id]: cleanItem });
   } catch (error) {
     console.warn(`[Firebase RTDB] Failed to save targeted item ${collectionKey}/${item.id}:`, error);
+    recordFirebaseError(`save:${collectionKey}`, error);
   }
 }
 
@@ -132,6 +187,7 @@ export async function updateItemInFirebase(
     return true;
   } catch (error) {
     console.warn(`[Firebase RTDB] Failed to update targeted item ${collectionKey}/${itemId}:`, error);
+    recordFirebaseError(`update:${collectionKey}`, error);
     return false;
   }
 }
@@ -157,6 +213,7 @@ export async function deleteItemFromFirebase(collectionKey: string, itemId: stri
     await remove(itemRef);
   } catch (error) {
     console.warn(`[Firebase RTDB] Failed to soft-delete targeted item ${collectionKey}/${itemId}:`, error);
+    recordFirebaseError(`delete:${collectionKey}`, error);
   }
 }
 
@@ -348,6 +405,7 @@ export async function syncCollectionToCloud<T extends { id?: string }>(
     }
   } catch (error) {
     console.warn(`[Firebase RTDB] Failed to merge sync collection ${collectionKey}:`, error);
+    recordFirebaseError(`sync:${collectionKey}`, error);
   }
 }
 
@@ -546,6 +604,7 @@ export class SubscriptionManager {
 
       const unsubFirebase = onValue(targetRef, listener, (error) => {
         console.warn(`[Firebase RTDB] Listener error on ${subKey}:`, error);
+        recordFirebaseError(`listen:${collectionKey}`, error);
       });
 
       entry = {

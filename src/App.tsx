@@ -64,6 +64,7 @@ import {
 } from './firebase';
 
 import { Modal } from './components/Shared';
+import { FirebaseDiagnosticsPanel } from './components/FirebaseDiagnosticsPanel';
 import AppNavigation from './components/AppNavigation';
 import { TrashModal } from './components/TrashModal';
 import { ImageMigrationModal } from './components/ImageMigrationModal';
@@ -2794,6 +2795,10 @@ export default function App() {
                 <span className="text-slate-600 font-medium">المصاريف والمشتريات</span>
                 <span className="font-black text-blue-900">{expenses.length}</span>
               </div>
+            </div>
+
+            <div className="p-3 bg-white border border-slate-200 rounded-2xl">
+              <FirebaseDiagnosticsPanel />
             </div>
 
             <button
