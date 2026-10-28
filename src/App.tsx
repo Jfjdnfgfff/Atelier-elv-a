@@ -60,7 +60,9 @@ import {
   SubscriptionManager, 
   areArraysEqual,
   firebaseConfig,
-  downloadFullFirebaseBackupDirect
+  downloadFullFirebaseBackupDirect,
+  checkFirebaseConnection,
+  type FirebaseConnectionResult
 } from './firebase';
 
 import { Modal } from './components/Shared';
@@ -266,6 +268,8 @@ export default function App() {
   const [isFirebaseConnected, setIsFirebaseConnected] = useState(false);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [lastCloudSyncTime, setLastCloudSyncTime] = useState<string | null>(null);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [connectionTest, setConnectionTest] = useState<FirebaseConnectionResult | null>(null);
   const isRemoteUpdateRef = useRef<Record<string, boolean>>({});
 
   const [toasts, setToasts] = useState<{ id: number; message: string; type: 'success' | 'error' }[]>([]);
@@ -937,6 +941,44 @@ export default function App() {
       };
     }
   }, [activeModal, subscribeToCollection, ensureCollectionLoaded]);
+
+  // اختبار اتصال مباشر بقاعدة Firebase (قراءة .info فقط) — يُظهر نتيجة صريحة للمستخدم
+  const handleTestConnection = useCallback(async () => {
+    setIsTestingConnection(true);
+    setConnectionTest(null);
+    try {
+      const result = await checkFirebaseConnection(8000);
+      setConnectionTest(result);
+      if (result.connected) {
+        setIsFirebaseConnected(true);
+        showToast(`اتصال Firebase يعمل بنجاح (${result.latencyMs}ms)`);
+      } else {
+        showToast('تعذّر الاتصال بقاعدة Firebase — راجع الرسالة أدناه', 'error');
+      }
+    } catch (e) {
+      showToast('فشل اختبار الاتصال بقاعدة البيانات', 'error');
+    } finally {
+      setIsTestingConnection(false);
+    }
+  }, [showToast]);
+
+  // فحص تلقائي عند فتح نافذة المزامنة: يعطي المستخدم حالة الربط الفعلية فوراً
+  useEffect(() => {
+    if (activeModal !== 'cloudSync') return;
+    let cancelled = false;
+    setIsTestingConnection(true);
+    checkFirebaseConnection(8000)
+      .then(result => {
+        if (cancelled) return;
+        setConnectionTest(result);
+        if (result.connected) setIsFirebaseConnected(true);
+      })
+      .catch(() => { /* لا شيء */ })
+      .finally(() => {
+        if (!cancelled) setIsTestingConnection(false);
+      });
+    return () => { cancelled = true; };
+  }, [activeModal]);
 
   const handleSyncAllToCloud = useCallback(async () => {
     setIsCloudSyncing(true);
@@ -2764,6 +2806,39 @@ export default function App() {
               )}
             </div>
 
+            {connectionTest && (
+              <div className={`p-3 rounded-xl border text-xs space-y-1.5 ${
+                connectionTest.connected
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : 'bg-rose-50 border-rose-200 text-rose-900'
+              }`} dir="rtl">
+                <div className="flex items-center gap-2 font-black">
+                  {connectionTest.connected ? (
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-rose-600" />
+                  )}
+                  <span>
+                    {connectionTest.connected
+                      ? `نجح الاتصال بقاعدة البيانات (${connectionTest.latencyMs}ms)`
+                      : 'فشل الاتصال بقاعدة البيانات'}
+                  </span>
+                </div>
+                {connectionTest.connected && connectionTest.canRead && (
+                  <p className="text-[11px] font-bold text-emerald-800">
+                    ✓ القراءة من القاعدة تعمل — عدد المسارات الجذرية: {connectionTest.rootKeys ?? 0}
+                  </p>
+                )}
+                {connectionTest.error && (
+                  <p className={`font-mono text-[10px] leading-relaxed break-words rounded-lg p-2 ${
+                    connectionTest.connected ? 'bg-amber-100/70 text-amber-900' : 'bg-rose-100/70'
+                  }`}>
+                    {connectionTest.error}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-slate-500 font-bold">معرف المشروع:</span>
@@ -2802,6 +2877,15 @@ export default function App() {
             >
               <Sparkles className="w-4 h-4 text-amber-500" />
               <span>تحسين وترحيل صور المنتجات (إخراج الصور من السجلات)</span>
+            </button>
+
+            <button
+              onClick={handleTestConnection}
+              disabled={isTestingConnection || isCloudSyncing}
+              className="w-full py-3 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 text-emerald-900 border border-emerald-200 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 active:scale-95"
+            >
+              <Cloud className={`w-4 h-4 text-emerald-600 ${isTestingConnection ? 'animate-pulse' : ''}`} />
+              <span>{isTestingConnection ? 'جاري اختبار الاتصال...' : 'اختبار الاتصال بقاعدة Firebase'}</span>
             </button>
 
             <button

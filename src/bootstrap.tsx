@@ -14,6 +14,11 @@ import './index.css';
 // حتى لا يظهر هيكل الانتظار عند أول شاشة
 void import('./components/DashboardView');
 
+// رصد Firebase Analytics (اختياري، يفشل بصمت عند الحجب أو عدم الدعم)
+void import('./firebase')
+  .then(mod => mod.initFirebaseAnalytics())
+  .catch(() => { /* لا شيء */ });
+
 declare global {
   interface Window {
     __removeBootShell?: () => void;

@@ -20,7 +20,13 @@ import {
   Query
 } from 'firebase/database';
 
-export const firebaseConfig = {
+/**
+ * إعدادات Firebase — القيم الافتراضية مطابقة لمشروع Firestore/RTDB الحالي،
+ * ويمكن تجاوزها عبر متغيّرات البيئة (VITE_FIREBASE_*) عند البناء على Vercel
+ * دون أي تعديل على الشيفرة. القيم الافتراضية عامة (public) وليست أسراراً،
+ * والحماية الفعلية تأتي من قواعد الأمان في database.rules.json.
+ */
+const DEFAULT_FIREBASE_CONFIG = {
   apiKey: "AIzaSyB4AuVSK1sAUeVtPCBlzRqkibT7zEx1Ivw",
   authDomain: "uohouhi-41bde.firebaseapp.com",
   databaseURL: "https://uohouhi-41bde-default-rtdb.firebaseio.com",
@@ -31,9 +37,135 @@ export const firebaseConfig = {
   measurementId: "G-1JZNWTEFRM"
 };
 
+const env = (import.meta as any)?.env ?? {};
+
+function pickEnv(value: string | undefined, fallback: string): string {
+  const clean = typeof value === 'string' ? value.trim() : '';
+  return clean.length > 0 ? clean : fallback;
+}
+
+export const firebaseConfig = {
+  apiKey: pickEnv(env.VITE_FIREBASE_API_KEY, DEFAULT_FIREBASE_CONFIG.apiKey),
+  authDomain: pickEnv(env.VITE_FIREBASE_AUTH_DOMAIN, DEFAULT_FIREBASE_CONFIG.authDomain),
+  databaseURL: pickEnv(env.VITE_FIREBASE_DATABASE_URL, DEFAULT_FIREBASE_CONFIG.databaseURL),
+  projectId: pickEnv(env.VITE_FIREBASE_PROJECT_ID, DEFAULT_FIREBASE_CONFIG.projectId),
+  storageBucket: pickEnv(env.VITE_FIREBASE_STORAGE_BUCKET, DEFAULT_FIREBASE_CONFIG.storageBucket),
+  messagingSenderId: pickEnv(env.VITE_FIREBASE_MESSAGING_SENDER_ID, DEFAULT_FIREBASE_CONFIG.messagingSenderId),
+  appId: pickEnv(env.VITE_FIREBASE_APP_ID, DEFAULT_FIREBASE_CONFIG.appId),
+  measurementId: pickEnv(env.VITE_FIREBASE_MEASUREMENT_ID, DEFAULT_FIREBASE_CONFIG.measurementId)
+};
+
 // Firebase Realtime Database
 const app = initializeApp(firebaseConfig);
 export const rtdb = getDatabase(app, firebaseConfig.databaseURL);
+
+export interface FirebaseConnectionResult {
+  connected: boolean;
+  /** زمن الاستجابة بالمللي ثانية */
+  latencyMs: number;
+  /** هل نجحت قراءة فعلية للبيانات (تحقّق من قواعد الأمان) */
+  canRead: boolean;
+  /** عدد المسارات الجذرية المقروءة عند نجاح canRead */
+  rootKeys?: number;
+  databaseURL: string;
+  projectId: string;
+  error?: string;
+}
+
+/**
+ * فحص اتصال حقيقي بقاعدة Firebase على مرحلتين:
+ *
+ * 1) انتظار إشارة WebSocket الحقيقية `.info/connected` (لا تُحل محلياً، بل تتطلب
+ *    اتصالاً فعلياً بالسحابة) — لذلك هي المرجع الصادق لحالة الاتصال.
+ * 2) قراءة فعلية لمسار خفيف من القاعدة عبر REST (‎`/.json?shallow=true`‎) للتأكد
+ *    من صلاحية الوصول للبيانات وفق قواعد الأمان، وليس مجرد الوصول للخادم.
+ *
+ * ملاحظة: `get()` على مسارات `.info/*` تُحل محلياً في الـ SDK، لذا لا تُستخدم
+ * هنا لأنها تعطي نتيجة إيجابية كاذبة عند انقطاع الشبكة.
+ */
+export async function checkFirebaseConnection(timeoutMs = 8000): Promise<FirebaseConnectionResult> {
+  const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const startedAt = now();
+  const elapsed = () => Math.round(now() - startedAt);
+
+  const base: FirebaseConnectionResult = {
+    connected: false,
+    latencyMs: 0,
+    canRead: false,
+    databaseURL: String(firebaseConfig.databaseURL),
+    projectId: firebaseConfig.projectId
+  };
+
+  // المرحلة 1: إشارة الاتصال الفعلية (WebSocket) مع مهلة
+  const waitForConnected = new Promise<boolean>(resolve => {
+    const connectedRef = ref(rtdb, '.info/connected');
+    let settled = false;
+
+    const finish = (value: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { off(connectedRef, 'value', listener); } catch { /* لا شيء */ }
+      resolve(value);
+    };
+
+    const listener = (snapshot: any) => {
+      if (snapshot.val() === true) finish(true);
+    };
+
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    try {
+      onValue(connectedRef, listener, () => finish(false));
+    } catch {
+      finish(false);
+    }
+  });
+
+  const connected = await waitForConnected;
+  if (!connected) {
+    return {
+      ...base,
+      latencyMs: elapsed(),
+      error: `تعذّر الاتصال بقاعدة البيانات خلال ${timeoutMs}ms — تحقّق من الشبكة أو من حجب النطاق *.firebaseio.com`
+    };
+  }
+
+  // المرحلة 2: قراءة فعلية خفيفة للتأكد من صلاحية الوصول
+  const readStartedAt = now();
+  try {
+    const url = `${String(firebaseConfig.databaseURL).replace(/\/$/, '')}/.json?shallow=true`;
+    const response = await fetch(url, { method: 'GET', cache: 'no-store' });
+    const readLatency = Math.round(now() - readStartedAt);
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      return {
+        ...base,
+        connected: true,
+        latencyMs: readLatency,
+        error: `الاتصال قائم لكن القراءة مرفوضة (HTTP ${response.status}) — راجع قواعد الأمان في database.rules.json${body ? ` — ${body.slice(0, 160)}` : ''}`
+      };
+    }
+
+    const data = await response.json().catch(() => null);
+    const rootKeys = data && typeof data === 'object' ? Object.keys(data).length : 0;
+
+    return {
+      ...base,
+      connected: true,
+      canRead: true,
+      rootKeys,
+      latencyMs: readLatency
+    };
+  } catch (error: any) {
+    return {
+      ...base,
+      connected: true,
+      latencyMs: Math.round(now() - readStartedAt),
+      error: `الاتصال قائم لكن تعذّرت قراءة البيانات: ${error?.message || String(error)}`
+    };
+  }
+}
 
 // أسماء المجموعات: كل سجل مستند مستقل بمفتاح /مجموعة/{المعرف}
 export const FIREBASE_COLLECTIONS = {
@@ -735,5 +867,24 @@ export class SubscriptionManager {
         off(connectedRef, 'value', listener);
       } catch (e) {}
     };
+  }
+}
+
+/**
+ * رصد Analytics (اختياري وآمن): يُحمَّل ديناميكياً فقط في المتصفح،
+ * وإذا حجبه مانع الإعلانات أو لم يدعمه المتصفح يفشل بصمت دون أي تأثير على التطبيق.
+ * يُشغَّل مرة واحدة عند إقلاع التطبيق.
+ */
+export async function initFirebaseAnalytics(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  if (!firebaseConfig.measurementId) return false;
+  try {
+    const { getAnalytics, isSupported } = await import('firebase/analytics');
+    if (!(await isSupported())) return false;
+    getAnalytics(app);
+    return true;
+  } catch (error) {
+    console.warn('[Firebase Analytics] تم تعطيله (حجب/عدم دعم):', error);
+    return false;
   }
 }
