@@ -54,6 +54,7 @@ export const TrashModal: React.FC<TrashModalProps> = ({ onClose, onRestored }) =
       maintenanceOrders: 'طلب خياطة',
       suppliers: 'مورد',
       seamstresses: 'خياطة',
+      seamstressPayments: 'دفعة خياطة',
       rawMaterials: 'قماش/مادة خام',
       activityLogs: 'سجل نشاط'
     };

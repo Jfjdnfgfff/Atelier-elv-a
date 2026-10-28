@@ -175,6 +175,18 @@ export interface Seamstress {
   createdAt?: string;
 }
 
+// دفعة مسددة لخياطة (مستند مستقل) — تُخصم من مستحقاتها المتراكمة من أتعاب الطلبيات المسلمة
+export interface SeamstressPayment {
+  id: string;
+  seamstressId: string;
+  seamstressName: string;
+  amount: number;
+  date: string; // YYYY-MM-DD تاريخ الدفع الفعلي
+  fundSource?: FundSource; // من أين دفعت: صندوق اليوم (الدرج) أو الصندوق العام (الخزينة)
+  note?: string;
+  createdAt?: string;
+}
+
 // دفعة تسديد كريدي: مستند مستقل داخل مجموعة creditPayments مرتبط بالدين عبر creditId
 export interface CreditPayment {
   id: string;
@@ -297,6 +309,7 @@ export interface DailyCaisseClosure {
   generalFundExpenses?: number; // مصاريف مسددة اليوم من الصندوق العام (لا تدخل في حساب الدرج)
   creditsCollected?: number; // مبالغ ديون الزبائن المحصلة كاش في الدرج اليوم
   creditSettlementsPaid?: number; // دفعات ديون الموردين المسددة كاش من الدرج اليوم
+  seamstressPaymentsPaid?: number; // دفعات أتعاب الخياطات المسددة كاش من الدرج اليوم
   staffPayoutsPaid: number; // دفعات العمال المسددة كاش اليوم
   cautionsRefunded: number; // ضمانات تم إرجاعها للزبائن كاش
   totalInflow: number; // إجمالي المدخول في صندوق اليوم

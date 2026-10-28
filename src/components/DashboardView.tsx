@@ -48,7 +48,8 @@ import {
   DailyCaisseClosure, 
   Sale, 
   Expense, 
-  StaffPayout, 
+  StaffPayout,
+  SeamstressPayment, 
   Credit,
   ActivityLog,
   ActivityActionType,
@@ -68,6 +69,7 @@ interface DashboardViewProps {
   sales?: Sale[];
   expenses?: Expense[];
   staffPayouts?: StaffPayout[];
+  seamstressPayments?: SeamstressPayment[];
   credits?: Credit[];
   activityLogs?: ActivityLog[];
   hideFinances: boolean;
@@ -92,6 +94,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   sales = [],
   expenses = [],
   staffPayouts = [],
+  seamstressPayments = [],
   credits = [],
   activityLogs = [],
   hideFinances,
@@ -346,6 +349,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
       expenses,
       credits,
       staffPayouts,
+      seamstressPayments,
     });
     const closure = caisseClosures.find(c => c.date === today);
     const currentMonth = today.substring(0, 7);
@@ -358,7 +362,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
       todayClosure: closure,
       monthVariance: mVariance,
     };
-  }, [sales, rentals, maintenanceOrders, expenses, credits, staffPayouts, caisseClosures, today]);
+  }, [sales, rentals, maintenanceOrders, expenses, credits, staffPayouts, seamstressPayments, caisseClosures, today]);
 
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6" dir="rtl">

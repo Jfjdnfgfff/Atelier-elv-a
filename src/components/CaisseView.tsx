@@ -6,7 +6,8 @@ import {
   StaffPayout, 
   MaintenanceOrder, 
   DailyCaisseClosure,
-  Credit
+  Credit,
+  SeamstressPayment
 } from '../types';
 import { Modal } from './Shared';
 import { CaisseReceiptModal } from './CaisseReceiptModal';
@@ -43,6 +44,7 @@ import {
   Wallet,
   HandCoins,
   Pencil,
+  Scissors,
   X
 } from 'lucide-react';
 import {
@@ -57,6 +59,7 @@ interface CaisseViewProps {
   expenses: Expense[];
   credits?: Credit[];
   staffPayouts: StaffPayout[];
+  seamstressPayments?: SeamstressPayment[];
   maintenanceOrders: MaintenanceOrder[];
   caisseClosures: DailyCaisseClosure[];
   onSaveClosure: (closure: DailyCaisseClosure) => void;
@@ -65,6 +68,7 @@ interface CaisseViewProps {
   onDeleteRental?: (rentalId: string) => void;
   onDeleteExpense?: (expenseId: string) => void;
   onDeleteStaffPayout?: (payoutId: string) => void;
+  onDeleteSeamstressPayment?: (paymentId: string) => void;
   onDeleteTailoringOrder?: (orderId: string) => void;
   hideFinances: boolean;
   onPrivacyToggle: () => void;
@@ -82,6 +86,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
   expenses,
   credits = [],
   staffPayouts,
+  seamstressPayments = [],
   maintenanceOrders,
   caisseClosures,
   onSaveClosure,
@@ -90,6 +95,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
   onDeleteRental,
   onDeleteExpense,
   onDeleteStaffPayout,
+  onDeleteSeamstressPayment,
   onDeleteTailoringOrder,
   hideFinances,
   onPrivacyToggle,
@@ -153,7 +159,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
 
   // Transactions tab search & filters
   const [txSearch, setTxSearch] = useState('');
-  const [txTypeFilter, setTxTypeFilter] = useState<'all' | 'sale' | 'rental' | 'tailoring' | 'expense' | 'staffPayout'>('all');
+  const [txTypeFilter, setTxTypeFilter] = useState<'all' | 'sale' | 'rental' | 'tailoring' | 'expense' | 'staffPayout' | 'seamstressPayment'>('all');
   const [txDirectionFilter, setTxDirectionFilter] = useState<'all' | 'inflow' | 'outflow'>('all');
   const [txDateFilter, setTxDateFilter] = useState<string>('');
 
@@ -261,6 +267,9 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
     dateCreditPaymentsCount,
     dateStaffPayouts,
     dateStaffPayoutsPaid,
+    dateSeamstressPayments,
+    dateSeamstressPaymentsPaid,
+    dateSeamstressPaymentsGeneral,
     totalDailyInflow,
     totalDailyOutflow,
   } = useMemo(
@@ -273,8 +282,9 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
         expenses,
         credits,
         staffPayouts,
+        seamstressPayments,
       }),
-    [sales, rentals, maintenanceOrders, expenses, credits, staffPayouts, selectedDate],
+    [sales, rentals, maintenanceOrders, expenses, credits, staffPayouts, seamstressPayments, selectedDate],
   );
   const theoreticalAmount = openingBalance + totalDailyInflow - totalDailyOutflow;
 
@@ -409,6 +419,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       generalFundExpenses: dateGeneralSourceExpenses,
       creditsCollected: dateCreditInflow,
       creditSettlementsPaid: dateCreditOutflow,
+      seamstressPaymentsPaid: dateSeamstressPaymentsPaid,
       staffPayoutsPaid: dateStaffPayoutsPaid,
       cautionsRefunded: 0,
       totalInflow: totalDailyInflow,
@@ -447,7 +458,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
   const allTransactions = useMemo(() => {
     const list: Array<{
       id: string;
-      type: 'sale' | 'rental' | 'tailoring' | 'expense' | 'staffPayout' | 'creditPayment';
+      type: 'sale' | 'rental' | 'tailoring' | 'expense' | 'staffPayout' | 'seamstressPayment' | 'creditPayment';
       typeLabel: string;
       date: string;
       time?: string;
@@ -578,9 +589,29 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       });
     });
 
+    // Seamstress payments (outflow) — أتعاب الخياطات المسددة
+    seamstressPayments.forEach(p => {
+      const d = p.date || '';
+      const datePart = d.includes('T') ? d.split('T')[0] : (d.split(' ')[0] || '');
+      const timePart = p.createdAt && p.createdAt.includes('T') ? p.createdAt.split('T')[1]?.substring(0, 5) : '';
+      const amount = Number(p.amount || 0);
+      list.push({
+        id: p.id,
+        type: 'seamstressPayment',
+        typeLabel: p.fundSource === 'general' ? 'دفعة خياطة (خزينة)' : 'دفعة خياطة',
+        date: datePart,
+        time: timePart,
+        direction: 'outflow',
+        title: p.seamstressName || 'خياطة',
+        subtitle: `تسديد أتعاب خياطة • المصدر: ${p.fundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)'}${p.note ? ` • ${p.note}` : ''}`,
+        amount,
+        originalItem: p
+      });
+    });
+
     // Sort descending by date & time
     return list.sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')));
-  }, [sales, rentals, maintenanceOrders, expenses, staffPayouts, credits]);
+  }, [sales, rentals, maintenanceOrders, expenses, staffPayouts, seamstressPayments, credits]);
 
   // Filtered transactions for Transactions Tab
   const filteredTransactions = useMemo(() => {
@@ -629,6 +660,10 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       if (window.confirm(`هل أنت متأكد من حذف سجل الدفعة/الراتب (${tx.title}) بمبلغ ${tx.amount.toLocaleString()} دج؟`)) {
         onDeleteStaffPayout?.(tx.id);
       }
+    } else if (tx.type === 'seamstressPayment') {
+      if (window.confirm(`هل أنت متأكد من حذف دفعة الخياطة (${tx.title}) بمبلغ ${tx.amount.toLocaleString()} دج؟ سيُعاد احتساب مستحقاتها.`)) {
+        onDeleteSeamstressPayment?.(tx.id);
+      }
     } else if (tx.type === 'creditPayment') {
       window.alert(
         `دفعة كريدي (${tx.title}) بمبلغ ${tx.amount.toLocaleString()} دج.\n` +
@@ -656,6 +691,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
         else if (tx.type === 'rental') onDeleteRental?.(tx.id);
         else if (tx.type === 'expense') onDeleteExpense?.(tx.id);
         else if (tx.type === 'staffPayout') onDeleteStaffPayout?.(tx.id);
+        else if (tx.type === 'seamstressPayment') onDeleteSeamstressPayment?.(tx.id);
         else if (tx.type === 'tailoring') onDeleteTailoringOrder?.(tx.id);
       });
     }
@@ -1184,6 +1220,15 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                     <span className="font-mono font-bold">-{dateCreditOutflow.toLocaleString()} دج</span>
                   </div>
                 )}
+                {dateSeamstressPaymentsPaid > 0 && (
+                  <div className="flex justify-between text-teal-700 bg-teal-50/70 -mx-1 px-1.5 py-1 rounded-lg">
+                    <span className="flex items-center gap-1">
+                      <Scissors className="w-3 h-3" />
+                      <span>دفعات أتعاب الخياطات من الدرج:</span>
+                    </span>
+                    <span className="font-mono font-bold">-{dateSeamstressPaymentsPaid.toLocaleString()} دج</span>
+                  </div>
+                )}
                 {dateGeneralSourceExpenses > 0 && (
                   <div className="flex justify-between text-indigo-700 bg-indigo-50/70 -mx-1 px-1.5 py-1 rounded-lg">
                     <span className="flex items-center gap-1">
@@ -1191,6 +1236,15 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                       <span>مصاريف مسددة من الصندوق العام (خارج الدرج):</span>
                     </span>
                     <span className="font-mono font-bold">-{dateGeneralSourceExpenses.toLocaleString()} دج</span>
+                  </div>
+                )}
+                {dateSeamstressPaymentsGeneral > 0 && (
+                  <div className="flex justify-between text-teal-700 bg-teal-50/70 -mx-1 px-1.5 py-1 rounded-lg">
+                    <span className="flex items-center gap-1">
+                      <Scissors className="w-3 h-3" />
+                      <span>دفعات خياطات من الصندوق العام (خارج الدرج):</span>
+                    </span>
+                    <span className="font-mono font-bold">-{dateSeamstressPaymentsGeneral.toLocaleString()} دج</span>
                   </div>
                 )}
                 <div className="flex justify-between pt-2 border-t border-slate-200/80 font-bold text-slate-900 text-xs sm:text-sm">
@@ -1379,7 +1433,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                   <span className="font-mono text-xs font-bold text-slate-900">+{totalDailyInflow.toLocaleString()} دج</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-xs">
                     <div className="text-slate-500 font-medium">مبيعات كاش:</div>
                     <div className="font-bold text-slate-900 font-mono text-sm mt-0.5">
@@ -1617,6 +1671,17 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                     </div>
                     <div className="text-[10px] text-slate-400 mt-0.5">{dateStaffPayouts.length} دفعة عمال</div>
                   </div>
+
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 text-xs">
+                    <div className="text-slate-500 font-medium">أتعاب الخياطات المسددة (من الدرج):</div>
+                    <div className="font-bold text-teal-700 font-mono text-sm mt-0.5">
+                      -{dateSeamstressPaymentsPaid.toLocaleString()} دج
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">
+                      {dateSeamstressPayments.length} دفعة خياطة
+                      {dateSeamstressPaymentsGeneral > 0 ? ` • +${dateSeamstressPaymentsGeneral.toLocaleString()} دج من الصندوق العام` : ''}
+                    </div>
+                  </div>
                 </div>
 
                 {dateExpenses.length > 0 && (
@@ -1687,6 +1752,52 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                                 onClick={() => {
                                   if (window.confirm(`هل أنت متأكد من حذف سجل الدفعة/الراتب (${p.name}) بمبلغ ${Number(p.amount).toLocaleString()} دج؟`)) {
                                     onDeleteStaffPayout(p.id);
+                                  }
+                                }}
+                                title="حذف الدفعة"
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-80 group-hover:opacity-100"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {dateSeamstressPayments.length > 0 && (
+                  <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
+                    <div className="bg-teal-50/70 px-3 py-1 font-semibold text-teal-800 text-[11px] flex justify-between items-center">
+                      <span>دفعات أتعاب الخياطات المسددة اليوم ({dateSeamstressPayments.length}):</span>
+                    </div>
+                    <div className="divide-y divide-slate-100 max-h-40 overflow-y-auto">
+                      {dateSeamstressPayments.map(p => (
+                        <div key={p.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors group">
+                          <div className="flex-1 min-w-0 pr-1">
+                            <span className="font-semibold text-slate-800 block truncate">{p.seamstressName}</span>
+                            <span className="text-[10px] text-slate-400 flex items-center gap-1.5 flex-wrap">
+                              <span className={`px-1.5 py-0.5 rounded-md font-bold border ${
+                                p.fundSource === 'general'
+                                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              }`}>
+                                {p.fundSource === 'general' ? 'من الصندوق العام (لا يخصم من الدرج)' : 'من صندوق اليوم'}
+                              </span>
+                              {p.note && <span>{p.note}</span>}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={`font-mono font-bold ${p.fundSource === 'general' ? 'text-indigo-600' : 'text-rose-600'}`}>
+                              -{Number(p.amount).toLocaleString()} دج
+                            </span>
+                            {onDeleteSeamstressPayment && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(`هل أنت متأكد من حذف دفعة الخياطة (${p.seamstressName}) بمبلغ ${Number(p.amount).toLocaleString()} دج؟`)) {
+                                    onDeleteSeamstressPayment(p.id);
                                   }
                                 }}
                                 title="حذف الدفعة"
@@ -1772,6 +1883,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                 <option value="tailoring">خياطة وتفصيل (Couture)</option>
                 <option value="expense">مصاريف (Dépenses)</option>
                 <option value="staffPayout">أجور وسلفيات (Salaires)</option>
+                <option value="seamstressPayment">دفعات الخياطات (Couture)</option>
               </select>
 
               <select
@@ -1839,6 +1951,7 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                               tx.type === 'rental' ? 'bg-purple-50 text-purple-700 border-purple-200' :
                               tx.type === 'tailoring' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                               tx.type === 'expense' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                              tx.type === 'seamstressPayment' ? 'bg-teal-50 text-teal-700 border-teal-200' :
                               tx.type === 'creditPayment' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                               'bg-slate-100 text-slate-700 border-slate-200'
                             }`}>

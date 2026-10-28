@@ -34,6 +34,12 @@
     },
     "caisseClosures": {
       ".indexOn": ["date", "createdAt"]
+    },
+    "seamstresses": {
+      ".indexOn": ["name", "createdAt"]
+    },
+    "seamstressPayments": {
+      ".indexOn": ["seamstressId", "seamstressName", "date", "createdAt"]
     }
   }
 }

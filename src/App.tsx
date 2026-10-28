@@ -16,6 +16,7 @@ import {
   DailyCaisseClosure,
   RawMaterial,
   Seamstress,
+  SeamstressPayment,
   ActivityLog,
   FundSource
 } from './types';
@@ -38,6 +39,7 @@ import {
   DEFAULT_CAISSE_CLOSURES,
   DEFAULT_RAW_MATERIALS,
   DEFAULT_SEAMSTRESSES,
+  DEFAULT_SEAMSTRESS_PAYMENTS,
   DEFAULT_ACTIVITY_LOGS,
   initializeStorage,
   hydrateFromIndexedDB
@@ -182,6 +184,7 @@ export default function App() {
   const [maintenanceOrders, setMaintenanceOrders] = useState<MaintenanceOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [seamstresses, setSeamstresses] = useState<Seamstress[]>([]);
+  const [seamstressPayments, setSeamstressPayments] = useState<SeamstressPayment[]>([]);
   const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
 
   // المجموعات المحمّلة حالياً في حالة التطبيق
@@ -244,6 +247,9 @@ export default function App() {
       case STORAGE_KEYS.SEAMSTRESSES:
         setSeamstresses(loadFromStorage<Seamstress[]>(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES));
         break;
+      case STORAGE_KEYS.SEAMSTRESS_PAYMENTS:
+        setSeamstressPayments(loadFromStorage<SeamstressPayment[]>(STORAGE_KEYS.SEAMSTRESS_PAYMENTS, DEFAULT_SEAMSTRESS_PAYMENTS));
+        break;
       case STORAGE_KEYS.RAW_MATERIALS:
         setRawMaterials(loadFromStorage<RawMaterial[]>(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS));
         break;
@@ -276,6 +282,16 @@ export default function App() {
   }, []);
 
   const [activeModal, setActiveModal] = useState<string | null>(null);
+
+  // طلب فتح قسم الشركاء مباشرة على تبويب الخياطات (من قسم الخياطة)
+  const [partnersFocus, setPartnersFocus] = useState<{ tab: 'suppliers' | 'seamstresses'; requestId: number }>({
+    tab: 'suppliers',
+    requestId: 0
+  });
+  const handleOpenSeamstressAccounts = useCallback(() => {
+    setPartnersFocus(prev => ({ tab: 'seamstresses', requestId: prev.requestId + 1 }));
+    navRef.current('partners');
+  }, []);
 
   const navRef = useRef<(view: ViewType) => void>(() => {});
   const getCurrentViewRef = useRef<() => ViewType>(() => 'dashboard');
@@ -342,6 +358,7 @@ export default function App() {
       [STORAGE_KEYS.MAINTENANCE, maintenanceOrders],
       [STORAGE_KEYS.SUPPLIERS, suppliers],
       [STORAGE_KEYS.SEAMSTRESSES, seamstresses],
+      [STORAGE_KEYS.SEAMSTRESS_PAYMENTS, seamstressPayments],
       [STORAGE_KEYS.RAW_MATERIALS, rawMaterials],
       [STORAGE_KEYS.CAISSE_CLOSURES, caisseClosures],
       [STORAGE_KEYS.ACTIVITY_LOGS, activityLogs]
@@ -352,7 +369,7 @@ export default function App() {
   }, [
     clothes, rentals, sales, expenses, credits, creditPayments, staffPayouts,
     staffMembers, staffAbsences, maintenanceOrders, suppliers, seamstresses,
-    rawMaterials, caisseClosures, activityLogs
+    seamstressPayments, rawMaterials, caisseClosures, activityLogs
   ]);
 
   // قراءة مخزون المتصفح ثم مراقبة حالة الاتصال السحابي
@@ -370,6 +387,7 @@ export default function App() {
       setMaintenanceOrders(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE) : prev));
       setSuppliers(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.SUPPLIERS, DEFAULT_SUPPLIERS) : prev));
       setSeamstresses(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.SEAMSTRESSES, DEFAULT_SEAMSTRESSES) : prev));
+      setSeamstressPayments(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.SEAMSTRESS_PAYMENTS, DEFAULT_SEAMSTRESS_PAYMENTS) : prev));
       setRawMaterials(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS) : prev));
       setCaisseClosures(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES) : prev));
       setActivityLogs(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS) : prev));
@@ -555,6 +573,13 @@ export default function App() {
             setSeamstresses(prev => areArraysEqual(prev, items) ? prev : items);
           }
         });
+      case FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS:
+        return SubscriptionManager.subscribe<SeamstressPayment>(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, (items) => {
+          if (Array.isArray(items)) {
+            loadedCollectionsRef.current.add(STORAGE_KEYS.SEAMSTRESS_PAYMENTS);
+            setSeamstressPayments(prev => areArraysEqual(prev, items) ? prev : items);
+          }
+        });
       case FIREBASE_COLLECTIONS.RAW_MATERIALS:
         return SubscriptionManager.subscribe<RawMaterial>(FIREBASE_COLLECTIONS.RAW_MATERIALS, (items) => {
           if (Array.isArray(items)) {
@@ -624,6 +649,7 @@ export default function App() {
     partners: [
       STORAGE_KEYS.SUPPLIERS, 
       STORAGE_KEYS.SEAMSTRESSES,
+      STORAGE_KEYS.SEAMSTRESS_PAYMENTS,
       STORAGE_KEYS.EXPENSES,
       STORAGE_KEYS.MAINTENANCE,
       STORAGE_KEYS.CREDITS,
@@ -691,6 +717,7 @@ export default function App() {
     partners: [
       FIREBASE_COLLECTIONS.SUPPLIERS, 
       FIREBASE_COLLECTIONS.SEAMSTRESSES,
+      FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS,
       FIREBASE_COLLECTIONS.EXPENSES,
       FIREBASE_COLLECTIONS.MAINTENANCE,
       FIREBASE_COLLECTIONS.CREDITS,
@@ -926,11 +953,15 @@ export default function App() {
       ensureCollectionLoaded(STORAGE_KEYS.MAINTENANCE);
       ensureCollectionLoaded(STORAGE_KEYS.RENTALS);
       ensureCollectionLoaded(STORAGE_KEYS.CAISSE_CLOSURES);
+      ensureCollectionLoaded(STORAGE_KEYS.SEAMSTRESSES);
+      ensureCollectionLoaded(STORAGE_KEYS.SEAMSTRESS_PAYMENTS);
       const unsubs = [
         subscribeToCollection(FIREBASE_COLLECTIONS.SALES),
         subscribeToCollection(FIREBASE_COLLECTIONS.EXPENSES),
         subscribeToCollection(FIREBASE_COLLECTIONS.CREDITS),
-        subscribeToCollection(FIREBASE_COLLECTIONS.STAFF_PAYOUTS)
+        subscribeToCollection(FIREBASE_COLLECTIONS.STAFF_PAYOUTS),
+        subscribeToCollection(FIREBASE_COLLECTIONS.SEAMSTRESSES),
+        subscribeToCollection(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS)
       ];
       return () => {
         unsubs.forEach(u => u());
@@ -954,6 +985,7 @@ export default function App() {
         syncCollectionToCloud(FIREBASE_COLLECTIONS.MAINTENANCE, maintenanceOrders),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.SUPPLIERS, suppliers),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESSES, seamstresses),
+        syncCollectionToCloud(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, seamstressPayments),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.RAW_MATERIALS, rawMaterials),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, caisseClosures),
         syncCollectionToCloud(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, activityLogs),
@@ -971,7 +1003,7 @@ export default function App() {
   }, [
     clothes, rentals, sales, expenses, credits, creditPayments, staffPayouts, 
     staffMembers, staffAbsences, maintenanceOrders, suppliers, 
-    seamstresses, rawMaterials, caisseClosures, activityLogs, generalFundBalance, showToast
+    seamstresses, seamstressPayments, rawMaterials, caisseClosures, activityLogs, generalFundBalance, showToast
   ]);
 
   const [hideFinances, setHideFinances] = useState(() => localStorage.getItem('bm_hideFinances') !== 'false');
@@ -1834,6 +1866,64 @@ export default function App() {
     });
   }, []);
 
+  // تسجيل دفعة مسددة لخياطة (أتعاب طلبيات) — مستند مستقل في سجل دفعات الخياطات
+  const handleAddSeamstressPayment = useCallback((payment: SeamstressPayment) => {
+    const amount = Number(payment.amount) || 0;
+    const record: SeamstressPayment = {
+      ...payment,
+      amount,
+      fundSource: payment.fundSource || 'daily',
+      createdAt: payment.createdAt || new Date().toISOString()
+    };
+
+    setSeamstressPayments(prev => [record, ...prev]);
+    saveItemToFirebase(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, record);
+
+    // الدفع من الصندوق العام (الخزينة) يُخصم مباشرة من رصيده
+    if (record.fundSource === 'general') {
+      setGeneralFundBalance(prev => Math.round((prev - amount) * 100) / 100);
+    }
+
+    addActivityLog({
+      actionType: 'payment',
+      category: 'partners',
+      title: 'تسديد دفعة للخياطة',
+      details: `دفع ${amount.toLocaleString()} دج للخياطة ${record.seamstressName} — مصدر الدفع: ${
+        record.fundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)'
+      }${record.note ? ` — ${record.note}` : ''}`,
+      amount
+    });
+
+    showToast(`تم تسجيل دفعة ${amount.toLocaleString()} دج للخياطة ${record.seamstressName}`);
+  }, [addActivityLog, showToast]);
+
+  const handleDeleteSeamstressPayment = useCallback((id: string) => {
+    setConfirmDelete({
+      title: 'حذف دفعة الخياطة',
+      message: 'هل تريد حذف هذه الدفعة من سجل مستحقات الخياطة؟ سيُعاد احتساب المتبقي تلقائياً.',
+      onConfirm: () => {
+        const target = seamstressPayments.find(p => p.id === id);
+        if (target && target.fundSource === 'general') {
+          const amount = Number(target.amount) || 0;
+          setGeneralFundBalance(prev => Math.round((prev + amount) * 100) / 100);
+        }
+
+        setSeamstressPayments(prev => prev.filter(p => p.id !== id));
+        deleteItemFromFirebase(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, id);
+
+        addActivityLog({
+          actionType: 'delete',
+          category: 'partners',
+          title: 'حذف دفعة خياطة',
+          details: `حذف دفعة${target ? ` بقيمة ${(Number(target.amount) || 0).toLocaleString()} دج للخياطة ${target.seamstressName}` : ''}`
+        });
+
+        showToast('تم حذف الدفعة وتحديث رصيد المستحقات');
+        setConfirmDelete(null);
+      }
+    });
+  }, [seamstressPayments, addActivityLog, showToast]);
+
   const handleAddRawMaterial = useCallback((mat: RawMaterial) => {
     setRawMaterials(prev => [mat, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, mat);
@@ -2363,6 +2453,7 @@ export default function App() {
           if (Array.isArray(raw.maintenanceOrders) && raw.maintenanceOrders.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.MAINTENANCE, name: 'طلبات الخياطة والتعديل', items: raw.maintenanceOrders });
           if (Array.isArray(raw.suppliers) && raw.suppliers.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.SUPPLIERS, name: 'الموردين', items: raw.suppliers });
           if (Array.isArray(raw.seamstresses) && raw.seamstresses.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.SEAMSTRESSES, name: 'الخياطات', items: raw.seamstresses });
+          if (Array.isArray(raw.seamstressPayments) && raw.seamstressPayments.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, name: 'دفعات الخياطات', items: raw.seamstressPayments });
           if (Array.isArray(raw.rawMaterials) && raw.rawMaterials.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.RAW_MATERIALS, name: 'الأقمشة والمواد الخام', items: raw.rawMaterials });
           if (Array.isArray(raw.caisseClosures) && raw.caisseClosures.length > 0) collectionsToMerge.push({ key: FIREBASE_COLLECTIONS.CAISSE_CLOSURES, name: 'إغلاقات الصندوق', items: raw.caisseClosures });
 
@@ -2436,6 +2527,7 @@ export default function App() {
         caisseClosures={caisseClosures}
         suppliers={suppliers}
         seamstresses={seamstresses}
+        seamstressPayments={seamstressPayments}
         rawMaterials={rawMaterials}
         activityLogs={activityLogs}
         posScannedBarcode={posScannedBarcode}
@@ -2488,6 +2580,10 @@ export default function App() {
         onAddSeamstress={handleAddSeamstress}
         onUpdateSeamstress={handleUpdateSeamstress}
         onDeleteSeamstress={handleDeleteSeamstress}
+        onAddSeamstressPayment={handleAddSeamstressPayment}
+        onDeleteSeamstressPayment={handleDeleteSeamstressPayment}
+        partnersFocus={partnersFocus}
+        onOpenSeamstressAccounts={handleOpenSeamstressAccounts}
       />
 
 
@@ -2495,6 +2591,7 @@ export default function App() {
         <TailoringModal
           clothes={clothes}
           staffMembers={staffMembers}
+          seamstresses={seamstresses}
           onSave={handleAddTailoringOrder}
           onClose={() => setActiveModal(null)}
         />
@@ -2505,6 +2602,7 @@ export default function App() {
           order={selectedTailoringOrder}
           clothes={clothes}
           staffMembers={staffMembers}
+          seamstresses={seamstresses}
           onSave={(data) => handleUpdateTailoringOrder(selectedTailoringOrder.id, data)}
           onClose={() => setActiveModal(null)}
         />
@@ -2836,6 +2934,8 @@ export default function App() {
             staffPayouts={staffPayouts}
             maintenanceOrders={maintenanceOrders}
             caisseClosures={caisseClosures}
+            seamstressPayments={seamstressPayments}
+            seamstresses={seamstresses}
             hideFinances={hideFinances}
           />
         </Modal>
