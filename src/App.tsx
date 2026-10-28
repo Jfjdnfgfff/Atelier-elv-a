@@ -460,14 +460,14 @@ export default function App() {
             loadedCollectionsRef.current.add(STORAGE_KEYS.RENTALS);
             setRentals(prev => areArraysEqual(prev, items) ? prev : items);
           }
-        }, { limit: 150, ...options });
+        }, { ...options });
       case FIREBASE_COLLECTIONS.CAISSE_CLOSURES:
         return SubscriptionManager.subscribe<DailyCaisseClosure>(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.CAISSE_CLOSURES);
             setCaisseClosures(prev => areArraysEqual(prev, items) ? prev : items);
           }
-        }, { limit: 90, ...options });
+        }, { ...options });
       case FIREBASE_COLLECTIONS.SALES: {
         const onSales = (items: Sale[]) => {
           if (!Array.isArray(items)) return;
@@ -495,7 +495,7 @@ export default function App() {
         return SubscriptionManager.subscribe<Sale>(
           FIREBASE_COLLECTIONS.SALES,
           onSales,
-          { limit: options?.limit || 150, ...options }
+          { ...options }
         );
       }
       case FIREBASE_COLLECTIONS.EXPENSES:
@@ -504,14 +504,14 @@ export default function App() {
             loadedCollectionsRef.current.add(STORAGE_KEYS.EXPENSES);
             setExpenses(prev => areArraysEqual(prev, items) ? prev : items);
           }
-        }, { limit: 150, ...options });
+        }, { ...options });
       case FIREBASE_COLLECTIONS.CREDITS:
         return SubscriptionManager.subscribe<Credit>(FIREBASE_COLLECTIONS.CREDITS, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.CREDITS);
             setCredits(prev => areArraysEqual(prev, items) ? prev : items);
           }
-        }, { limit: 150, ...options });
+        }, { ...options });
       case FIREBASE_COLLECTIONS.CREDIT_PAYMENTS:
         return SubscriptionManager.subscribe<CreditPayment>(FIREBASE_COLLECTIONS.CREDIT_PAYMENTS, (items) => {
           if (Array.isArray(items)) {
@@ -577,12 +577,15 @@ export default function App() {
               setActivityLogs(prev => areArraysEqual(prev, items) ? prev : items);
             }
           }, 
-          { limit: 200 }
+          options
         );
       default:
         return () => {};
     }
   }, []);
+
+  // بعد الجلب الشامل تُعتبر البيانات كاملة → لا تقسيم صفحات ولا تقييد أعداد
+  const fullDataLoadedRef = useRef(false);
 
   // -------------------------------------------------------------------------
   // الجلب المباشر من Firebase إلى الواجهة (Cloud → App)
@@ -637,6 +640,13 @@ export default function App() {
     apply(FIREBASE_COLLECTIONS.RAW_MATERIALS, STORAGE_KEYS.RAW_MATERIALS, setRawMaterials);
     apply(FIREBASE_COLLECTIONS.CAISSE_CLOSURES, STORAGE_KEYS.CAISSE_CLOSURES, setCaisseClosures);
     apply(FIREBASE_COLLECTIONS.ACTIVITY_LOGS, STORAGE_KEYS.ACTIVITY_LOGS, setActivityLogs);
+
+    // البيانات أصبحت كاملة من السحابة: نُظهر كل السجلات بلا تقسيم صفحات
+    fullDataLoadedRef.current = true;
+    setHasMoreClothes(false);
+    setHasMoreSales(false);
+    paginationRef.current.clothes = { cursor: null, hasMore: false, isLoading: false, initialized: true };
+    paginationRef.current.sales = { cursor: null, hasMore: false, isLoading: false, initialized: true };
 
     const settings = d[FIREBASE_COLLECTIONS.SETTINGS];
     if (Array.isArray(settings)) {
@@ -840,10 +850,23 @@ export default function App() {
   const resetPaginatedCollection = useCallback((collection: PaginatedCollection) => {
     const state = paginationRef.current[collection];
     state.cursor = null;
-    state.hasMore = true;
     state.isLoading = false;
     state.initialized = false;
 
+    // في وضع «كل البيانات» لا نحتفظ بصفحة واحدة فقط
+    if (fullDataLoadedRef.current) {
+      state.hasMore = false;
+      if (collection === 'clothes') {
+        setHasMoreClothes(false);
+        setIsLoadingMoreClothes(false);
+      } else {
+        setHasMoreSales(false);
+        setIsLoadingMoreSales(false);
+      }
+      return;
+    }
+
+    state.hasMore = true;
     if (collection === 'clothes') {
       setHasMoreClothes(true);
       setIsLoadingMoreClothes(false);
@@ -856,6 +879,7 @@ export default function App() {
   }, []);
 
   const loadMorePaginatedCollection = useCallback(async (collection: PaginatedCollection) => {
+    if (fullDataLoadedRef.current) return;
     const state = paginationRef.current[collection];
     if (state.isLoading || !state.hasMore) return;
 
@@ -937,10 +961,10 @@ export default function App() {
 
     for (const col of neededCollections) {
       if (!activeMap.has(col)) {
-        const options = (
+        const options = (!fullDataLoadedRef.current && (
           (col === FIREBASE_COLLECTIONS.CLOTHES && paginatedView) ||
           (col === FIREBASE_COLLECTIONS.SALES && view === 'sales')
-        ) ? { limit: PAGE_SIZE, sort: false } : undefined;
+        )) ? { limit: PAGE_SIZE, sort: false } : undefined;
         const unsub = subscribeToCollection(col, options);
         activeMap.set(col, unsub);
       }
@@ -2560,13 +2584,13 @@ export default function App() {
                 )}
                 <div className="min-w-0">
                   {cloudPull.phase === 'loading' && (
-                    <span>جاري جلب البيانات من Firebase… {cloudPull.done}/{cloudPull.total}</span>
+                    <span>جاري جلب كل البيانات من Firebase… {cloudPull.done}/{cloudPull.total}</span>
                   )}
                   {cloudPull.phase === 'done' && (
                     <>
                       <div>
                         {(cloudPull.records || 0) > 0
-                          ? `تم جلب ${cloudPull.records} سجل من Firebase إلى الموقع`
+                          ? `تم جلب كامل البيانات: ${cloudPull.records} سجل من Firebase`
                           : 'لا توجد سجلات في قاعدة البيانات'}
                       </div>
                       {cloudPull.counts && (
@@ -3015,8 +3039,8 @@ export default function App() {
               <Download className={`w-4 h-4 ${cloudPull.phase === 'loading' ? 'animate-bounce' : ''}`} />
               <span>
                 {cloudPull.phase === 'loading'
-                  ? `جاري جلب البيانات… ${cloudPull.done}/${cloudPull.total}`
-                  : 'جلب البيانات من Firebase إلى الموقع الآن'}
+                  ? `جاري جلب كل البيانات… ${cloudPull.done}/${cloudPull.total}`
+                  : 'جلب كامل بيانات المخزون من Firebase الآن'}
               </span>
             </button>
 
@@ -3040,7 +3064,7 @@ export default function App() {
 
             {cloudPull.phase === 'done' && (
               <p className="text-[11px] font-bold text-slate-600 leading-relaxed bg-slate-50 border border-slate-200 rounded-xl p-2.5">
-                آخر جلب: {cloudPull.records} سجل
+                آخر جلب شامل: {cloudPull.records} سجل
                 {(cloudPull.counts && Object.values(cloudPull.counts).some(n => Number(n) > 0)) && (
                   <span className="block font-medium mt-1">
                     {Object.entries(cloudPull.counts)

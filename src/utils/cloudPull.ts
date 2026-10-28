@@ -15,6 +15,12 @@ import { baseUrl, restFetch, explainHttpFailure } from './firebaseDiagnostics';
 
 export const PULLABLE_COLLECTIONS = Object.values(FIREBASE_COLLECTIONS);
 
+// مجموعات ثقيلة (صور base64) — لا نُحمّلها كاملة إلى الذاكرة، نكتفي بعدّها
+export const SHALLOW_ONLY_COLLECTIONS = new Set<string>([
+  FIREBASE_COLLECTIONS.CLOTH_IMAGES,
+  FIREBASE_COLLECTIONS.CLOTH_THUMBS
+]);
+
 export interface CloudPullProgress {
   done: number;
   total: number;
@@ -28,6 +34,8 @@ export interface CloudPullResult {
   detected: boolean;
   rootKeys: string[];
   counts: Record<string, number>;
+  /** أعداد المجموعات الثقيلة (صور) التي تم عدّها فقط دون تنزيلها */
+  shallowCounts?: Record<string, number>;
   total: number;
   data: Record<string, any[]>;
   errors: string[];
@@ -158,9 +166,20 @@ export async function pullAllFromCloud(
   const errors: string[] = [];
   let done = 0;
 
+  const shallowCounts: Record<string, number> = {};
+
   const runOne = async (key: string) => {
     try {
-      const items = await pullCollection(rootPath, paths[key] || key);
+      const target = paths[key] || key;
+      if (SHALLOW_ONLY_COLLECTIONS.has(key)) {
+        // عدّ فقط بلا تنزيل الصور
+        const keys = await getShallowKeys(target);
+        shallowCounts[key] = keys.length;
+        counts[key] = keys.length;
+        data[key] = [];
+        return;
+      }
+      const items = await pullCollection(rootPath, target);
       data[key] = items;
       counts[key] = items.length;
     } catch (err: any) {
@@ -187,6 +206,7 @@ export async function pullAllFromCloud(
     rootKeys,
     paths,
     counts,
+    shallowCounts,
     total,
     data,
     errors,
