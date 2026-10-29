@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Supplier, Seamstress, SeamstressPayment, Expense, MaintenanceOrder, Credit } from '../types';
 import { LettersInput, NumbersInput } from './Shared';
 import { buildSimplePrintHtml, openPrintInterface } from '../utils/printInterface';
@@ -111,6 +111,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
   const [payFundSource, setPayFundSource] = useState<'daily' | 'general'>('daily');
   const [payNote, setPayNote] = useState<string>('');
   const [payError, setPayError] = useState<string>('');
+  const submitLockRef = useRef(false);
 
   // --- Calculations for Suppliers ---
   const supplierAnalytics = useMemo(() => {
@@ -403,9 +404,13 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
     setPayError('');
   };
 
-  const handleConfirmSeamstressPayment = (e: React.FormEvent) => {
-    e.preventDefault();
+  // ملاحظة مهمة: لا نعتمد على إرسال النموذج الأصلي (submit) لأن المتصفح يمنع
+  // الإرسال بصمت إذا كان أحد الحقول مطلوباً وفارغاً — وهو ما يجعل الزر «لا يعمل».
+  // لذلك نتحقق هنا بأنفسنا ونعرض سبباً واضحاً، ويُستدعى المعالج من onClick مباشرة.
+  const handleConfirmSeamstressPayment = (e?: { preventDefault?: () => void }) => {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     if (!paySeamstress) return;
+    if (submitLockRef.current) return;
     if (!onAddSeamstressPayment) {
       setPayError('تعذر الوصول إلى خدمة الحفظ. أعد تحميل الصفحة وحاول مرة أخرى.');
       return;
@@ -416,7 +421,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
       return;
     }
 
-    onAddSeamstressPayment({
+    const payment: SeamstressPayment = {
       id: 'seampay_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
       seamstressId: paySeamstress.id,
       seamstressName: paySeamstress.name,
@@ -425,12 +430,24 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
       fundSource: payFundSource,
       note: payNote.trim() || undefined,
       createdAt: new Date().toISOString()
-    });
+    };
+
+    submitLockRef.current = true;
+    try {
+      onAddSeamstressPayment(payment);
+    } catch (err) {
+      submitLockRef.current = false;
+      console.warn('[PartnersView] تعذّر تسجيل الدفعة', err);
+      setPayError('تعذّر تسجيل الدفعة. حاول مرة أخرى.');
+      return;
+    }
 
     setPaySeamstress(null);
     setPayAmount('');
     setPayNote('');
     setPayError('');
+    // تحرير القفل بعد لحظة حتى لا يُسجَّل نفس الضغط مرتين
+    window.setTimeout(() => { submitLockRef.current = false; }, 400);
   };
 
   // طباعة كشف حساب الخياطة (أتعاب + دفعات + المتبقي)
@@ -1535,7 +1552,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
       )}
 
       {paySeamstress && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/40 backdrop-blur-xs" dir="rtl">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 bg-slate-900/40 backdrop-blur-xs" dir="rtl">
           <div className="bg-white rounded-2xl w-full max-w-md p-5 sm:p-6 shadow-xl border border-slate-200/80 space-y-4 max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-3 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
@@ -1557,7 +1574,11 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
               const afterPay = Math.round((remaining - amount) * 100) / 100;
 
               return (
-                <form onSubmit={handleConfirmSeamstressPayment} className="space-y-3">
+                <form
+                  noValidate
+                  onSubmit={handleConfirmSeamstressPayment}
+                  className="space-y-3"
+                >
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-xs space-y-1">
                     <div>الخياطة: <span className="font-bold text-slate-900">{paySeamstress.name}</span></div>
                     <div>الأتعاب المستحقة: <span className="font-mono font-bold text-slate-800">{(data?.earnedDues || 0).toLocaleString()} دج</span></div>
@@ -1581,7 +1602,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                       className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-sm font-bold text-slate-900 font-mono focus:bg-white focus:outline-none ${
                         payError ? 'border-rose-300 focus:border-rose-400' : 'border-slate-200 focus:border-slate-400'
                       }`}
-                      required
                     />
                     {payError && (
                       <p className="text-[11px] text-rose-600 font-bold mt-1">{payError}</p>
@@ -1670,7 +1690,8 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                       إلغاء
                     </button>
                     <button
-                      type="submit"
+                      type="button"
+                      onClick={handleConfirmSeamstressPayment}
                       className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition-colors active:scale-95"
                     >
                       تأكيد تسجيل الدفعة
