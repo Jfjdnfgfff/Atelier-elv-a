@@ -196,10 +196,7 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
     const totalExpenses = filteredExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
     const totalStaffPayouts = filteredStaffPayouts.reduce((sum, p) => sum + Number(p.amount || 0), 0);
     const totalSeamstressPayments = filteredSeamstressPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-    const totalSeamstressDues = filteredTailoring
-      .filter(o => o.status === 'delivered')
-      .reduce((sum, o) => sum + (o.cost || 0), 0);
-    const seamstressRemainingDues = Math.max(0, totalSeamstressDues - totalSeamstressPayments);
+    // لا حساب تلقائي لأتعاب أو متبقٍّ للخياطات: الدفعات تُسجَّل بمبلغ يدوي فقط.
     const totalCustomerCredits = filteredCredits.filter(c => !c.supplierDebt).reduce((sum, c) => sum + Number(c.amount || 0), 0);
     const totalSupplierDebts = filteredCredits.filter(c => c.supplierDebt).reduce((sum, c) => sum + Number(c.amount || 0), 0);
 
@@ -239,8 +236,6 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
       totalExpenses,
       totalStaffPayouts,
       totalSeamstressPayments,
-      totalSeamstressDues,
-      seamstressRemainingDues,
       totalCustomerCredits,
       totalSupplierDebts,
       grossInflow,
@@ -1077,25 +1072,21 @@ export const FullReport: React.FC<FullReportProps> = React.memo(({
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
               <h3 className="font-black text-sm text-slate-900 flex items-center gap-2">
                 <Scissors className="w-4 h-4 text-teal-600" />
-                <span>7. تقرير أتعاب الخياطات ({filteredSeamstressPayments.length} دفعة • {seamstresses.length} خياطة)</span>
+                <span>7. تقرير دفعات الخياطات ({filteredSeamstressPayments.length} دفعة • {seamstresses.length} خياطة)</span>
               </h3>
               <span className="text-xs font-bold text-teal-900">
                 المجموع المسدد في الفترة: {renderMoney(metrics.totalSeamstressPayments)}
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
-                <span className="text-[11px] text-slate-500 font-medium block">أتعاب طلبيات مسلّمة</span>
-                <span className="text-sm font-black font-mono text-slate-900">{renderMoney(metrics.totalSeamstressDues)}</span>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div className="bg-emerald-50 border border-emerald-200/80 rounded-xl p-2.5">
                 <span className="text-[11px] text-emerald-700 font-medium block">المسدد للخياطات</span>
                 <span className="text-sm font-black font-mono text-emerald-800">{renderMoney(metrics.totalSeamstressPayments)}</span>
               </div>
-              <div className="bg-rose-50 border border-rose-200/80 rounded-xl p-2.5">
-                <span className="text-[11px] text-rose-700 font-medium block">متبقي بذمة المحل</span>
-                <span className="text-sm font-black font-mono text-rose-700">{renderMoney(metrics.seamstressRemainingDues)}</span>
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+                <span className="text-[11px] text-slate-500 font-medium block">عدد الدفعات المسجلة</span>
+                <span className="text-sm font-black font-mono text-slate-900">{filteredSeamstressPayments.length}</span>
               </div>
             </div>
 

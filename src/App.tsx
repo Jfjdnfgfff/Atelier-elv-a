@@ -1952,7 +1952,7 @@ export default function App() {
   const handleDeleteSeamstressPayment = useCallback((id: string) => {
     setConfirmDelete({
       title: 'حذف دفعة الخياطة',
-      message: 'هل تريد حذف هذه الدفعة من سجل مستحقات الخياطة؟ سيُعاد احتساب المتبقي تلقائياً.',
+      message: 'هل تريد حذف هذه الدفعة من سجل دفعات الخياطة؟ سيُعاد خصمها من النقدية إن كانت من الصندوق العام.',
       onConfirm: () => {
         const target = seamstressPayments.find(p => p.id === id);
         if (target && target.fundSource === 'general') {
