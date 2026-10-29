@@ -390,6 +390,7 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           isLoadingMoreClothes={isLoadingMoreClothes}
           onLoadMoreClothes={onLoadMoreClothes}
           inventoryAggregate={inventoryAggregate}
+          isInventoryAggregatePartial={isInventoryAggregatePartial}
           isInventoryAggregateRefreshing={isInventoryAggregateRefreshing}
           onRefreshInventoryAggregate={onRefreshInventoryAggregate}
         />
