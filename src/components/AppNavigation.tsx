@@ -12,6 +12,7 @@ import {
   DailyCaisseClosure, 
   Supplier, 
   Seamstress, 
+  SeamstressPayment,
   RawMaterial, 
   MaintenanceStatus,
   ActivityLog,
@@ -22,6 +23,7 @@ import { ViewRenderer } from './ViewRenderer';
 import { preloadView } from './viewRegistry';
 import { Scale, Plus } from 'lucide-react';
 import { perfMonitor } from '../utils/performanceMonitor';
+import type { InventoryAggregate } from '../utils/inventoryAggregate';
 
 export interface AppNavigationProps {
   onInitNav?: (navFn: (view: ViewType) => void, getViewFn: () => ViewType) => void;
@@ -52,7 +54,14 @@ export interface AppNavigationProps {
   caisseClosures: DailyCaisseClosure[];
   suppliers: Supplier[];
   seamstresses: Seamstress[];
+  seamstressPayments: SeamstressPayment[];
   rawMaterials: RawMaterial[];
+
+  // ملخص المخزون (يُحسب في App ويُمرَّر للواجهات دون إعادة قراءة كل القطع)
+  inventoryAggregate?: InventoryAggregate | null;
+  isInventoryAggregatePartial?: boolean;
+  isInventoryAggregateRefreshing?: boolean;
+  onRefreshInventoryAggregate?: () => void;
   activityLogs?: ActivityLog[];
   posScannedBarcode: string | null;
   hasMoreClothes: boolean;
@@ -103,6 +112,10 @@ export interface AppNavigationProps {
   onAddSeamstress: (seam: Seamstress) => void;
   onUpdateSeamstress: (id: string, data: Partial<Seamstress>) => void;
   onDeleteSeamstress: (id: string) => void;
+  onAddSeamstressPayment?: (payment: SeamstressPayment) => void;
+  onDeleteSeamstressPayment?: (id: string) => void;
+  partnersFocus?: { tab: 'suppliers' | 'seamstresses'; requestId: number };
+  onOpenSeamstressAccounts?: () => void;
 
   // Firebase Cloud Sync
   isFirebaseConnected?: boolean;
@@ -191,6 +204,15 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
   onAddSeamstress,
   onUpdateSeamstress,
   onDeleteSeamstress,
+  onAddSeamstressPayment,
+  onDeleteSeamstressPayment,
+  seamstressPayments,
+  inventoryAggregate,
+  isInventoryAggregatePartial,
+  isInventoryAggregateRefreshing,
+  onRefreshInventoryAggregate,
+  partnersFocus,
+  onOpenSeamstressAccounts,
   onInitNav,
   onEnsureCollection,
 }) => {
@@ -446,6 +468,11 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
           caisseClosures={caisseClosures}
           suppliers={suppliers}
           seamstresses={seamstresses}
+          seamstressPayments={seamstressPayments}
+          inventoryAggregate={inventoryAggregate}
+          isInventoryAggregatePartial={isInventoryAggregatePartial}
+          isInventoryAggregateRefreshing={isInventoryAggregateRefreshing}
+          onRefreshInventoryAggregate={onRefreshInventoryAggregate}
           rawMaterials={rawMaterials}
           activityLogs={activityLogs}
           hideFinances={hideFinances}
@@ -504,6 +531,10 @@ export const AppNavigation: React.FC<AppNavigationProps> = memo(({
           onAddSeamstress={onAddSeamstress}
           onUpdateSeamstress={onUpdateSeamstress}
           onDeleteSeamstress={onDeleteSeamstress}
+          onAddSeamstressPayment={onAddSeamstressPayment}
+          onDeleteSeamstressPayment={onDeleteSeamstressPayment}
+          partnersFocus={partnersFocus}
+          onOpenSeamstressAccounts={onOpenSeamstressAccounts}
         />
       </main>
     </div>
