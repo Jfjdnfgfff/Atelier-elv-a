@@ -1,0 +1,22 @@
+import { strict as assert } from 'node:assert';
+import { test } from 'node:test';
+import { summarizeDailyCaisse } from '../src/utils/dailyCaisseSummary';
+import { attachCreditPayments, creditRemaining } from '../src/utils/fundBalance';
+import type { Credit, CreditPayment, Expense } from '../src/types';
+
+test('independent seamstress invoice and dated debt payments affect the right funds only once', () => {
+  const invoice: Expense = { id: 'invoice', seamstressId: 'seam', category: 'فاتورة خياطة', desc: 'عمل', date: '2026-10-01', amount: 200, paidAmount: 700, totalInvoiceAmount: 1000, creditAmount: 300, fundSource: 'daily', expenseScope: 'tailoring' };
+  const credit: Credit = { id: 'credit', name: 'خياطة', phone: '', type: 'دين للخياطة', desc: '', amount: 800, date: '2026-10-01', relatedExpenseId: invoice.id, supplierDebt: true };
+  const payments: CreditPayment[] = [
+    { id: 'one', creditId: credit.id, amount: 300, date: '2026-10-02', fundSource: 'daily' },
+    { id: 'two', creditId: credit.id, amount: 200, date: '2026-10-03', fundSource: 'general' },
+  ];
+  const credits = attachCreditPayments([credit], payments);
+  const base = { sales: [], rentals: [], maintenanceOrders: [], expenses: [invoice], credits, staffPayouts: [] };
+  assert.equal(creditRemaining(credits[0]), 300);
+  assert.equal(summarizeDailyCaisse({ ...base, date: '2026-10-01' }).totalDailyOutflow, 200);
+  assert.equal(summarizeDailyCaisse({ ...base, date: '2026-10-02' }).totalDailyOutflow, 300);
+  const third = summarizeDailyCaisse({ ...base, date: '2026-10-03' });
+  assert.equal(third.totalDailyOutflow, 0);
+  assert.equal(third.dateCreditGeneralOutflow, 200);
+});
