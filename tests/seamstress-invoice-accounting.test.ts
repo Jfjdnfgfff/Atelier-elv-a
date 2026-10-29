@@ -20,3 +20,27 @@ test('independent seamstress invoice and dated debt payments affect the right fu
   assert.equal(third.totalDailyOutflow, 0);
   assert.equal(third.dateCreditGeneralOutflow, 200);
 });
+
+import { isSeamstressCredit, makeSeamstressCreditInvoice } from '../src/utils/seamstressCredit';
+
+test('a new seamstress credit is an unpaid independent invoice', () => {
+  const invoice = makeSeamstressCreditInvoice({ id: 's1', name: 'سميرة', phone: '0550' }, 1000, '2026-10-01', '  تفصيل  ');
+  assert.equal(invoice.seamstressId, 's1');
+  assert.equal(invoice.goodsDescription, 'تفصيل');
+  assert.equal(invoice.amount, 0);
+  assert.equal(invoice.paidAmount, 0);
+  assert.equal(invoice.totalInvoiceAmount, 1000);
+  assert.equal(invoice.creditAmount, 1000);
+  assert.equal(invoice.expenseScope, 'tailoring');
+  const day = summarizeDailyCaisse({ date: '2026-10-01', sales: [], rentals: [], maintenanceOrders: [], expenses: [invoice as Expense], credits: [], staffPayouts: [] });
+  assert.equal(day.totalDailyOutflow, 0);
+});
+
+test('seamstress debt classification preserves old invoice-linked debts and excludes supplier debts', () => {
+  const base: Credit = { id: 'c', name: 'اسم', phone: '', type: '', desc: '', amount: 100, date: '2026-10-01', supplierDebt: true };
+  const invoiceIds = new Set(['old-invoice']);
+  assert.equal(isSeamstressCredit({ ...base, seamstressId: 's1' }, invoiceIds), true);
+  assert.equal(isSeamstressCredit({ ...base, relatedExpenseId: 'old-invoice' }, invoiceIds), true);
+  assert.equal(isSeamstressCredit({ ...base, relatedExpenseId: 'supplier-invoice' }, invoiceIds), false);
+  assert.equal(isSeamstressCredit(base, invoiceIds), false);
+});

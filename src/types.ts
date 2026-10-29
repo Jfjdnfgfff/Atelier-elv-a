@@ -210,6 +210,7 @@ export interface Credit {
   date: string;
   relatedRentalId?: string;
   relatedExpenseId?: string;
+  seamstressId?: string; // دين مرتبط بفاتورة خياطة
   supplierDebt?: boolean; // هل هو دين للمورد (علينا للمورد)
   supplierName?: string;
   goodsDescription?: string;

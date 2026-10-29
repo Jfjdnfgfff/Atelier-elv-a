@@ -111,6 +111,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
 
   // فواتير مستقلة عن الطلبيات والدفعات القديمة
   const [invoiceSeam, setInvoiceSeam] = useState<Seamstress | null>(null);
+  const [invoiceMode, setInvoiceMode] = useState<'invoice' | 'credit'>('invoice');
   const [invoiceDescription, setInvoiceDescription] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceTotal, setInvoiceTotal] = useState('');
@@ -457,8 +458,9 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
     window.setTimeout(() => { submitLockRef.current = false; }, 400);
   };
 
-  const openInvoice = (seam: Seamstress) => {
-    setInvoiceSeam(seam); setInvoiceDescription(''); setInvoiceNumber('');
+  const openInvoice = (seam: Seamstress, mode: 'invoice' | 'credit' = 'invoice') => {
+    setInvoiceMode(mode);
+    setInvoiceSeam(seam); setInvoiceDescription(mode === 'credit' ? 'كريدي خياطة' : ''); setInvoiceNumber('');
     setInvoiceTotal(''); setInvoicePaid(''); setInvoiceNotes(''); setInvoiceError('');
     setInvoiceDate(new Date().toISOString().slice(0, 10)); setInvoiceSource('daily');
   };
@@ -566,7 +568,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
               </h2>
             </div>
             <p className="text-xs text-slate-600 font-normal mt-1 mr-10">
-              متابعة حسابات الموردين (فواتير، دفعات، ديون متبقية) وسجل الخياطات (طلبيات، إنجاز، ودفعات مسددة تُسجَّل يدوياً).
+              متابعة فواتير وكريدي الموردين والخياطات، والمدفوع والديون المتبقية، إضافة إلى طلبيات الخياطة.
             </p>
           </div>
 
@@ -672,7 +674,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                 </span>
               </div>
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
-                <span className="text-[11px] text-slate-500 font-medium block mb-0.5">إجمالي المسدد للخياطات:</span>
+                <span className="text-[11px] text-slate-500 font-medium block mb-0.5">الدفعات المستقلة للخياطات:</span>
                 <span className="text-lg sm:text-xl font-bold text-emerald-700 font-mono">{totalSeamstressPaid.toLocaleString()} دج</span>
                 <span className="text-[10px] text-slate-400 block mt-0.5">مجموع الدفعات المسجلة يدوياً</span>
               </div>
@@ -867,7 +869,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md font-mono">
-                          مسدد {seam.totalPaid.toLocaleString()} دج
+                          دفعات مستقلة {seam.totalPaid.toLocaleString()} دج
                         </span>
                         {seam.activeOrders > 0 ? (
                           <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-md font-mono">
@@ -904,7 +906,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                     <div className="grid grid-cols-3 gap-2 bg-teal-50 p-2.5 rounded-xl border border-teal-100 text-center text-xs">
                       <div><span className="block text-slate-500">الفواتير</span><strong>{seam.invoiceTotal.toLocaleString()}</strong></div>
                       <div><span className="block text-slate-500">مدفوع الفواتير</span><strong className="text-emerald-700">{seam.invoicePaid.toLocaleString()}</strong></div>
-                      <div><span className="block text-slate-500">الدين المتبقي</span><strong className="text-rose-600">{seam.invoiceDebt.toLocaleString()}</strong></div>
+                      <div><span className="block text-slate-500">الكريدي المتبقي (دج)</span><strong className="text-rose-600">{seam.invoiceDebt.toLocaleString()}</strong></div>
                     </div>
                     {seam.notes && (
                       <p className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
@@ -954,6 +956,9 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                     </div>
 
                     <div className="flex flex-wrap items-center justify-end gap-1.5">
+                      <button onClick={() => openInvoice(seam, 'credit')} className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold flex items-center gap-1">
+                        <Plus className="w-3.5 h-3.5" /> تسجيل كريدي
+                      </button>
                       <button onClick={() => openInvoice(seam)} className="px-2.5 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-bold flex items-center gap-1">
                         <Plus className="w-3.5 h-3.5" /> فاتورة جديدة
                       </button>
@@ -963,7 +968,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                         title="تسجيل دفعة مسددة لهذه الخياطة"
                       >
                         <Banknote className="w-3.5 h-3.5" />
-                        <span>تسديد دفعة</span>
+                        <span>دفعة مستقلة</span>
                       </button>
                       <button
                         onClick={() => setSelectedSeamstressHistory(seam)}
@@ -1387,8 +1392,9 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                   </div>
 
                   <div className="space-y-2">
-                    <div className="flex justify-between items-center"><h4 className="text-xs font-bold">فواتير الخياطة ({seamData?.invoices.length || 0})</h4>
-                      <button onClick={() => openInvoice(selectedSeamstressHistory)} className="text-xs font-bold text-teal-700">+ إضافة فاتورة</button></div>
+                    <div className="flex flex-wrap justify-between items-center gap-2"><h4 className="text-xs font-bold">الفواتير والكريدي ({seamData?.invoices.length || 0}) • المتبقي: {(seamData?.invoiceDebt || 0).toLocaleString()} دج</h4>
+                      <div className="flex gap-3"><button onClick={() => openInvoice(selectedSeamstressHistory, 'credit')} className="text-xs font-bold text-rose-700">+ تسجيل كريدي</button>
+                      <button onClick={() => openInvoice(selectedSeamstressHistory)} className="text-xs font-bold text-teal-700">+ إضافة فاتورة</button></div></div>
                     <p className="text-[11px] text-slate-500">الفواتير مستقلة عن الطلبيات والدفعات اليدوية المسجلة أدناه.</p>
                     {seamData?.invoices.length ? seamData.invoices.map(invoice => (
                       <div key={invoice.id} className="p-3 border border-slate-200 rounded-xl text-xs space-y-2">
@@ -1572,20 +1578,20 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
       {invoiceSeam && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 bg-slate-900/40" dir="rtl">
           <form onSubmit={saveInvoice} className="bg-white rounded-2xl w-full max-w-md p-5 shadow-xl space-y-3 max-h-[92vh] overflow-y-auto">
-            <div className="flex justify-between"><h3 className="font-bold">فاتورة جديدة — {invoiceSeam.name}</h3><button type="button" onClick={() => setInvoiceSeam(null)} aria-label="إغلاق"><X /></button></div>
-            <p className="text-xs text-slate-500">فاتورة مستقلة؛ الدفعات اليدوية والطلبيات السابقة لا تخصم منها تلقائياً.</p>
+            <div className="flex justify-between"><h3 className="font-bold">{invoiceMode === 'credit' ? 'تسجيل كريدي' : 'فاتورة جديدة'} — {invoiceSeam.name}</h3><button type="button" onClick={() => setInvoiceSeam(null)} aria-label="إغلاق"><X /></button></div>
+            <p className="text-xs text-slate-500">{invoiceMode === 'credit' ? 'الكريدي يُسجّل كفاتورة غير مدفوعة، ويمكن تسديده من كشف الحساب.' : 'فاتورة مستقلة؛ الدفعات اليدوية والطلبيات السابقة لا تخصم منها تلقائياً.'}</p>
             <label className="block text-xs font-bold">بيان الفاتورة *<input required value={invoiceDescription} onChange={e => setInvoiceDescription(e.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>
             <label className="block text-xs font-bold">رقم الفاتورة<input value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-xs font-bold">الإجمالي (دج) *<input type="number" min="0.01" step="any" required value={invoiceTotal} onChange={e => setInvoiceTotal(e.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>
-              <label className="block text-xs font-bold">المدفوع الآن (دج)<input type="number" min="0" step="any" value={invoicePaid} onChange={e => setInvoicePaid(e.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>
+              {invoiceMode === 'invoice' && <label className="block text-xs font-bold">المدفوع الآن (دج)<input type="number" min="0" step="any" value={invoicePaid} onChange={e => setInvoicePaid(e.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>}
               <label className="block text-xs font-bold">التاريخ *<input type="date" required value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>
-              <label className="block text-xs font-bold">مصدر الدفع<select value={invoiceSource} onChange={e => setInvoiceSource(e.target.value as 'daily' | 'general')} className="mt-1 w-full border rounded-lg p-2"><option value="daily">صندوق اليوم</option><option value="general">الصندوق العام</option></select></label>
+              {invoiceMode === 'invoice' && <label className="block text-xs font-bold">مصدر الدفع<select value={invoiceSource} onChange={e => setInvoiceSource(e.target.value as 'daily' | 'general')} className="mt-1 w-full border rounded-lg p-2"><option value="daily">صندوق اليوم</option><option value="general">الصندوق العام</option></select></label>}
             </div>
             <label className="block text-xs font-bold">ملاحظات<textarea value={invoiceNotes} onChange={e => setInvoiceNotes(e.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>
             <div className="text-xs text-rose-600">المتبقي: {Math.max(0, (Number(invoiceTotal) || 0) - (Number(invoicePaid) || 0)).toLocaleString()} دج</div>
             {invoiceError && <p role="alert" className="text-xs text-rose-600">{invoiceError}</p>}
-            <button type="submit" className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold">حفظ الفاتورة</button>
+            <button type="submit" className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold">{invoiceMode === 'credit' ? 'حفظ الكريدي' : 'حفظ الفاتورة'}</button>
           </form>
         </div>
       )}
@@ -1631,7 +1637,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-xs space-y-1">
                     <div>الخياطة: <span className="font-bold text-slate-900">{paySeamstress.name}</span></div>
                     <div>المسدد سابقاً: <span className="font-mono font-bold text-emerald-700">{(data?.totalPaid || 0).toLocaleString()} دج</span></div>
-                    <div className="text-slate-500">أدخل المبلغ المسدَّد يدوياً في الحقل أدناه.</div>
+                    <div className="text-slate-500">هذه دفعة مستقلة ولا تُخصم من كريدي الفواتير. لتسديد الكريدي اختر الفاتورة من كشف الحساب.</div>
                   </div>
 
                   <div>
