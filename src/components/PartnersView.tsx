@@ -110,6 +110,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
   const [payDate, setPayDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [payFundSource, setPayFundSource] = useState<'daily' | 'general'>('daily');
   const [payNote, setPayNote] = useState<string>('');
+  const [payError, setPayError] = useState<string>('');
 
   // --- Calculations for Suppliers ---
   const supplierAnalytics = useMemo(() => {
@@ -399,13 +400,21 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
     setPayDate(new Date().toISOString().split('T')[0]);
     setPayFundSource('daily');
     setPayNote('');
+    setPayError('');
   };
 
   const handleConfirmSeamstressPayment = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!paySeamstress || !onAddSeamstressPayment) return;
+    if (!paySeamstress) return;
+    if (!onAddSeamstressPayment) {
+      setPayError('تعذر الوصول إلى خدمة الحفظ. أعد تحميل الصفحة وحاول مرة أخرى.');
+      return;
+    }
     const amount = Number(payAmount);
-    if (!Number.isFinite(amount) || amount <= 0) return;
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setPayError('أدخل مبلغاً صحيحاً أكبر من صفر لتسجيل الدفعة.');
+      return;
+    }
 
     onAddSeamstressPayment({
       id: 'seampay_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
@@ -421,6 +430,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
     setPaySeamstress(null);
     setPayAmount('');
     setPayNote('');
+    setPayError('');
   };
 
   // طباعة كشف حساب الخياطة (أتعاب + دفعات + المتبقي)
@@ -1563,11 +1573,24 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                     </label>
                     <NumbersInput
                       value={payAmount}
-                      onChange={setPayAmount}
+                      onChange={(val) => {
+                        setPayAmount(val);
+                        if (payError) setPayError('');
+                      }}
                       placeholder="المبلغ المراد تسديده"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 font-mono focus:bg-white focus:border-slate-400 focus:outline-none"
+                      className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-sm font-bold text-slate-900 font-mono focus:bg-white focus:outline-none ${
+                        payError ? 'border-rose-300 focus:border-rose-400' : 'border-slate-200 focus:border-slate-400'
+                      }`}
                       required
                     />
+                    {payError && (
+                      <p className="text-[11px] text-rose-600 font-bold mt-1">{payError}</p>
+                    )}
+                    {remaining <= 0 && (
+                      <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200/80 rounded-lg px-2 py-1.5 mt-1.5">
+                        {`لا توجد أتعاب مستحقة حالياً (تُحتسب عند تسليم الطلبية). أي دفعة الآن تُحسب سلفة للخياطة.`}
+                      </p>
+                    )}
                     {remaining > 0 && (
                       <div className="flex items-center gap-1.5 mt-1.5">
                         <button
@@ -1648,8 +1671,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                     </button>
                     <button
                       type="submit"
-                      disabled={!(Number(payAmount) > 0)}
-                      className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs font-bold shadow-xs transition-colors"
+                      className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition-colors active:scale-95"
                     >
                       تأكيد تسجيل الدفعة
                     </button>

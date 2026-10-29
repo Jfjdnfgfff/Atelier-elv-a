@@ -62,8 +62,10 @@ import {
   SubscriptionManager, 
   areArraysEqual,
   firebaseConfig,
-  downloadFullFirebaseBackupDirect
+  downloadFullFirebaseBackupDirect,
+  flushFailedWrites
 } from './firebase';
+import { mergeQueuedWrites, hasQueuedWrites, queueFailedWrite, clearQueuedWrite } from './utils/writeOutbox';
 
 import { Modal } from './components/Shared';
 import AppNavigation from './components/AppNavigation';
@@ -408,8 +410,22 @@ export default function App() {
 
     const unsub = SubscriptionManager.onConnectionStatus(connected => {
       setIsFirebaseConnected(connected);
+      // عودة الاتصال → إعادة إرسال كل الكتابات التي فشلت سابقاً (مثل دفعات الخياطات)
+      if (connected && hasQueuedWrites()) {
+        void flushFailedWrites().then(flushed => {
+          if (flushed > 0) showToast(`تم إرسال ${flushed} عملية كانت بانتظار الاتصال ✅`);
+        });
+      }
     });
-    return () => unsub();
+
+    // محاولة أولى عند بدء التطبيق لتصريف أي كتابات معلّقة من جلسة سابقة
+    const startupFlush = setTimeout(() => {
+      if (hasQueuedWrites()) void flushFailedWrites();
+    }, 4000);
+    return () => {
+      clearTimeout(startupFlush);
+      unsub();
+    };
   }, []);
 
   // ترحيل الدفعات المضمّنة داخل الديون القديمة إلى مجموعة مستندات الدفعات المستقلة
@@ -569,28 +585,33 @@ export default function App() {
         return SubscriptionManager.subscribe<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.MAINTENANCE);
-            setMaintenanceOrders(prev => areArraysEqual(prev, items) ? prev : items);
+            const merged = mergeQueuedWrites<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, items);
+            setMaintenanceOrders(prev => areArraysEqual(prev, merged) ? prev : merged);
           }
         });
       case FIREBASE_COLLECTIONS.SUPPLIERS:
         return SubscriptionManager.subscribe<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.SUPPLIERS);
-            setSuppliers(prev => areArraysEqual(prev, items) ? prev : items);
+            const merged = mergeQueuedWrites<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, items);
+            setSuppliers(prev => areArraysEqual(prev, merged) ? prev : merged);
           }
         });
       case FIREBASE_COLLECTIONS.SEAMSTRESSES:
         return SubscriptionManager.subscribe<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.SEAMSTRESSES);
-            setSeamstresses(prev => areArraysEqual(prev, items) ? prev : items);
+            const merged = mergeQueuedWrites<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, items);
+            setSeamstresses(prev => areArraysEqual(prev, merged) ? prev : merged);
           }
         });
       case FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS:
         return SubscriptionManager.subscribe<SeamstressPayment>(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.SEAMSTRESS_PAYMENTS);
-            setSeamstressPayments(prev => areArraysEqual(prev, items) ? prev : items);
+            // دمج الدفعات التي لم تصل بعد للسحابة حتى لا تختفي من الشاشة أو من الجهاز
+            const merged = mergeQueuedWrites<SeamstressPayment>(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, items);
+            setSeamstressPayments(prev => (areArraysEqual(prev, merged) ? prev : merged));
           }
         });
       case FIREBASE_COLLECTIONS.RAW_MATERIALS:
@@ -1884,17 +1905,23 @@ export default function App() {
   }, []);
 
   // تسجيل دفعة مسددة لخياطة (أتعاب طلبيات) — مستند مستقل في سجل دفعات الخياطات
-  const handleAddSeamstressPayment = useCallback((payment: SeamstressPayment) => {
+  const handleAddSeamstressPayment = useCallback(async (payment: SeamstressPayment) => {
     const amount = Number(payment.amount) || 0;
+    const now = new Date().toISOString();
     const record: SeamstressPayment = {
       ...payment,
       amount,
       fundSource: payment.fundSource || 'daily',
-      createdAt: payment.createdAt || new Date().toISOString()
+      createdAt: payment.createdAt || now,
+      updatedAt: now
     };
 
-    setSeamstressPayments(prev => [record, ...prev]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, record);
+    // حفظ محلي فوري (حتى لو انقطعت الشبكة لا تضيع الدفعة)
+    setSeamstressPayments(prev => {
+      if (prev.some(p => p.id === record.id)) return prev;
+      return [record, ...prev];
+    });
+    loadedCollectionsRef.current.add(STORAGE_KEYS.SEAMSTRESS_PAYMENTS);
 
     // الدفع من الصندوق العام (الخزينة) يُخصم مباشرة من رصيده
     if (record.fundSource === 'general') {
@@ -1911,7 +1938,15 @@ export default function App() {
       amount
     });
 
-    showToast(`تم تسجيل دفعة ${amount.toLocaleString()} دج للخياطة ${record.seamstressName}`);
+    // نضعها في الصندوق الصادر مسبقاً حتى لو أُغلق التطبيق في منتصف الإرسال لا تضيع،
+    // ثم تُحذف منه تلقائياً بعد نجاح الوصول للسحابة.
+    queueFailedWrite(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, record as unknown as Record<string, any> & { id: string });
+    const saved = await saveItemToFirebase(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, record);
+    if (saved) {
+      showToast(`تم تسجيل دفعة ${amount.toLocaleString()} دج للخياطة ${record.seamstressName}`);
+    } else {
+      showToast(`تم حفظ الدفعة (${amount.toLocaleString()} دج) على هذا الجهاز، وستُرسل للسحابة تلقائياً عند عودة الاتصال`, 'error');
+    }
   }, [addActivityLog, showToast]);
 
   const handleDeleteSeamstressPayment = useCallback((id: string) => {
@@ -1926,6 +1961,7 @@ export default function App() {
         }
 
         setSeamstressPayments(prev => prev.filter(p => p.id !== id));
+        clearQueuedWrite(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, id);
         deleteItemFromFirebase(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, id);
 
         addActivityLog({

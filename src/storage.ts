@@ -280,6 +280,13 @@ export const clearAllStorage = () => {
     memoryStore.set(key, []);
     lastWrittenRef.set(key, []);
   });
+
+  // إفراغ صندوق الكتابات المعلّقة أيضاً حتى لا تُعاد بيانات قديمة
+  try {
+    localStorage.removeItem('bm_write_outbox_v1');
+  } catch {
+    // تجاهل
+  }
 };
 
 export const initializeStorage = () => {

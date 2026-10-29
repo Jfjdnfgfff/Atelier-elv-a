@@ -1,4 +1,9 @@
 import { initializeApp } from 'firebase/app';
+import {
+  clearQueuedWrite,
+  getQueuedWrites,
+  queueFailedWrite
+} from './utils/writeOutbox';
 import { 
   getDatabase, 
   ref, 
@@ -107,16 +112,43 @@ export function sanitizeForFirebase<T>(data: T): T {
 }
 
 // كتابة مستند واحد فقط في /مجموعة/{المعرف} دون لمس بقية المستندات
-export async function saveItemToFirebase<T extends { id: string }>(collectionKey: string, item: T): Promise<void> {
-  if (!item || !item.id) return;
+// تُعيد true عند نجاح الوصول للسحابة، وfalse عند الفشل (مع حفظها في الصندوق الصادر لإعادة المحاولة)
+export async function saveItemToFirebase<T extends { id: string }>(collectionKey: string, item: T): Promise<boolean> {
+  if (!item || !item.id) return false;
+  const itemWithTs = { ...item, updatedAt: (item as any).updatedAt || new Date().toISOString() };
   try {
-    const itemWithTs = { ...item, updatedAt: (item as any).updatedAt || new Date().toISOString() };
     const cleanItem = sanitizeForFirebase(itemWithTs);
     const collectionRef = ref(rtdb, collectionKey);
     await update(collectionRef, { [cleanItem.id]: cleanItem });
+    clearQueuedWrite(collectionKey, item.id);
+    return true;
   } catch (error) {
     console.warn(`[Firebase RTDB] Failed to save targeted item ${collectionKey}/${item.id}:`, error);
+    queueFailedWrite(collectionKey, itemWithTs as Record<string, any> & { id: string });
+    return false;
   }
+}
+
+/**
+ * إعادة إرسال كل الكتابات التي فشلت سابقاً (عند عودة الاتصال أو بدء التطبيق).
+ * يعيد عدد الكتابات التي نجحت هذه المرة.
+ */
+export async function flushFailedWrites(): Promise<number> {
+  const pending = getQueuedWrites();
+  if (pending.length === 0) return 0;
+
+  let flushed = 0;
+  for (const entry of pending) {
+    try {
+      const cleanItem = sanitizeForFirebase(entry.item);
+      await update(ref(rtdb, entry.collection), { [cleanItem.id]: cleanItem });
+      clearQueuedWrite(entry.collection, entry.item.id);
+      flushed += 1;
+    } catch (error) {
+      console.warn(`[Firebase RTDB] Retry failed for ${entry.collection}/${entry.item.id}:`, error);
+    }
+  }
+  return flushed;
 }
 
 export async function updateItemInFirebase(

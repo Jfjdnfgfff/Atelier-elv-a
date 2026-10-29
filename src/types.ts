@@ -185,6 +185,7 @@ export interface SeamstressPayment {
   fundSource?: FundSource; // من أين دفعت: صندوق اليوم (الدرج) أو الصندوق العام (الخزينة)
   note?: string;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 // دفعة تسديد كريدي: مستند مستقل داخل مجموعة creditPayments مرتبط بالدين عبر creditId
