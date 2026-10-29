@@ -676,9 +676,11 @@ export default function App() {
       STORAGE_KEYS.CREDIT_PAYMENTS
     ],
     credits: [
-      STORAGE_KEYS.CREDITS, 
+      STORAGE_KEYS.CREDITS,
       STORAGE_KEYS.CREDIT_PAYMENTS,
-      STORAGE_KEYS.SUPPLIERS
+      STORAGE_KEYS.SUPPLIERS,
+      STORAGE_KEYS.SEAMSTRESSES,
+      STORAGE_KEYS.EXPENSES
     ],
     partners: [
       STORAGE_KEYS.SUPPLIERS, 
@@ -744,9 +746,11 @@ export default function App() {
       FIREBASE_COLLECTIONS.CREDIT_PAYMENTS
     ],
     credits: [
-      FIREBASE_COLLECTIONS.CREDITS, 
+      FIREBASE_COLLECTIONS.CREDITS,
       FIREBASE_COLLECTIONS.CREDIT_PAYMENTS,
-      FIREBASE_COLLECTIONS.SUPPLIERS
+      FIREBASE_COLLECTIONS.SUPPLIERS,
+      FIREBASE_COLLECTIONS.SEAMSTRESSES,
+      FIREBASE_COLLECTIONS.EXPENSES
     ],
     partners: [
       FIREBASE_COLLECTIONS.SUPPLIERS, 
@@ -1702,6 +1706,7 @@ export default function App() {
         amount: expData.creditAmount,
         date: expData.date || new Date().toISOString(),
         relatedExpenseId: newExpId,
+        seamstressId: expData.seamstressId,
         supplierDebt: true,
         supplierName: expData.supplierName,
         goodsDescription: expData.goodsDescription,
@@ -2121,7 +2126,7 @@ export default function App() {
     addActivityLog({
       actionType: 'payment',
       category: 'credits',
-      title: isCustomer ? 'تحصيل دفعة من دين زبون' : 'تسديد دفعة دين مورد',
+      title: isCustomer ? 'تحصيل دفعة من دين زبون' : linkedExpense?.seamstressId ? 'تسديد كريدي خياطة' : 'تسديد دفعة دين مورد',
       details: `${isCustomer ? 'تحصيل' : 'دفع'} ${amount.toLocaleString()} دج ${isCustomer ? 'من' : 'إلى'} ${credit.name} بتاريخ ${paymentDate} — ${fundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)'}${remaining > 0 ? ` • المتبقي: ${remaining.toLocaleString()} دج` : ' • تسديد كامل'}`,
       amount
     });
@@ -2129,7 +2134,7 @@ export default function App() {
     if (remaining <= 0) {
       showToast(isCustomer
         ? `تم تحصيل ${amount.toLocaleString()} دج وإبراء ذمة ${credit.name} بالكامل`
-        : `تم تسديد ${amount.toLocaleString()} دج للمورد ${credit.name} بالكامل`);
+        : `تم تسديد ${amount.toLocaleString()} دج ${linkedExpense?.seamstressId ? 'للخياطة' : 'للمورد'} ${credit.name} بالكامل`);
     } else {
       showToast(`تم تسجيل دفعة ${amount.toLocaleString()} دج • المتبقي: ${remaining.toLocaleString()} دج`);
     }

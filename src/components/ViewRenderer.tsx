@@ -192,7 +192,9 @@ function areViewRendererPropsEqual(prev: ViewRendererProps, next: ViewRendererPr
              prev.creditPayments === next.creditPayments &&
              prev.generalFundBalance === next.generalFundBalance;
     case 'credits':
-      return prev.credits === next.credits && 
+      return prev.expenses === next.expenses &&
+             prev.seamstresses === next.seamstresses &&
+             prev.credits === next.credits &&
              prev.creditPayments === next.creditPayments &&
              prev.suppliers === next.suppliers &&
              prev.generalFundBalance === next.generalFundBalance;
@@ -445,6 +447,9 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
         <CreditsView
           credits={creditsWithPayments}
           suppliers={suppliers}
+          seamstresses={seamstresses}
+          expenses={expenses}
+          onAddExpense={onAddExpense}
           onAddCredit={onAddCredit}
           onSettleCredit={onSettleCredit}
           onDeleteCredit={onDeleteCredit}

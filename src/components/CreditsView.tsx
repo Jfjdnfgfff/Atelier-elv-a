@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Credit, Supplier, FundSource, CreditPayment } from '../types';
+import { Credit, Supplier, Seamstress, Expense, FundSource, CreditPayment } from '../types';
+import { isSeamstressCredit, makeSeamstressCreditInvoice } from '../utils/seamstressCredit';
 import { VirtualizedList } from './VirtualizedList';
 import type { ExtractedCustomerData } from './CustomerIdScannerModal';
 const CustomerIdScannerModal = React.lazy(() => import('./CustomerIdScannerModal').then(m => ({ default: m.CustomerIdScannerModal })));
@@ -29,6 +30,9 @@ import {
 interface CreditsViewProps {
   credits: Credit[];
   suppliers?: Supplier[];
+  seamstresses: Seamstress[];
+  expenses: Expense[];
+  onAddExpense: (expense: Partial<Expense>) => void;
   onAddCredit: (data: any) => void;
   /** تسجيل دفعة تسديد (كاملة أو جزئية) مع تاريخها والصندوق الذي دخلت/خرجت منه */
   onSettleCredit: (creditId: string, payment: { amount: number; date: string; fundSource: FundSource; note?: string }) => void;
@@ -46,15 +50,22 @@ const todayDateString = () => {
 export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
   credits,
   suppliers = [],
+  seamstresses,
+  expenses,
+  onAddExpense,
   onAddCredit,
   onSettleCredit,
   onDeleteCredit,
   generalFundBalance = 0
 }) => {
-  const [filterTab, setFilterTab] = useState<'all' | 'customers' | 'suppliers'>('all');
-  const [debtCategory, setDebtCategory] = useState<'customer' | 'supplier'>('customer');
+  const [filterTab, setFilterTab] = useState<'all' | 'customers' | 'suppliers' | 'seamstresses'>('all');
+  const [debtCategory, setDebtCategory] = useState<'customer' | 'supplier' | 'seamstress'>('customer');
 
   const [name, setName] = useState('');
+  const [seamstressId, setSeamstressId] = useState('');
+  const [formError, setFormError] = useState('');
+  const seamstressInvoiceIds = useMemo(() => new Set(expenses.filter(e => e.seamstressId).map(e => e.id)), [expenses]);
+  const isSeamCredit = (credit: Credit) => isSeamstressCredit(credit, seamstressInvoiceIds);
   const [phone, setPhone] = useState('');
   const [desc, setDesc] = useState('');
   const [amount, setAmount] = useState<number | ''>('');
@@ -82,6 +93,10 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
     if (!settleCredit) return;
     const value = Number(settleAmount) || 0;
     if (value <= 0) return;
+    if (value > creditRemaining(settleCredit) && isSeamCredit(settleCredit)) {
+      window.alert('المبلغ يتجاوز الكريدي المتبقي للخياطة.');
+      return;
+    }
     if (value > creditRemaining(settleCredit) && !window.confirm(
       `المبلغ المُدخل (${value.toLocaleString()} دج) أكبر من المتبقي (${creditRemaining(settleCredit).toLocaleString()} دج). هل تريد المتابعة؟`
     )) {
@@ -125,6 +140,17 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (debtCategory === 'seamstress') {
+      const seamstress = seamstresses.find(s => s.id === seamstressId);
+      if (!seamstress || !Number.isFinite(Number(amount)) || Number(amount) <= 0 || !creditDate) {
+        setFormError('اختر خياطة وأدخل مبلغاً صحيحاً وتاريخاً للكريدي.');
+        return;
+      }
+      onAddExpense(makeSeamstressCreditInvoice(seamstress, Number(amount), creditDate, desc));
+      setSeamstressId(''); setName(''); setPhone(''); setDesc(''); setAmount('');
+      setCreditDate(todayDateString()); setFormError('');
+      return;
+    }
     if (!name.trim() || !amount) return;
 
     const isSup = debtCategory === 'supplier';
@@ -150,15 +176,18 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
 
   // Calculations
   const customerDebts = credits.filter(c => !c.supplierDebt);
-  const supplierDebts = credits.filter(c => !!c.supplierDebt);
+  const supplierDebts = credits.filter(c => !!c.supplierDebt && !isSeamCredit(c));
+  const seamstressDebts = credits.filter(c => !!c.supplierDebt && isSeamCredit(c));
 
-  const totalCustomerDebt = customerDebts.reduce((s, c) => s + Number(c.amount), 0);
-  const totalSupplierDebt = supplierDebts.reduce((s, c) => s + Number(c.amount), 0);
-  const netDebtBalance = totalCustomerDebt - totalSupplierDebt;
+  const totalCustomerDebt = customerDebts.reduce((s, c) => s + creditRemaining(c), 0);
+  const totalSupplierDebt = supplierDebts.reduce((s, c) => s + creditRemaining(c), 0);
+  const totalSeamstressDebt = seamstressDebts.reduce((s, c) => s + creditRemaining(c), 0);
+  const netDebtBalance = totalCustomerDebt - totalSupplierDebt - totalSeamstressDebt;
 
   const filteredCredits = credits.filter(c => {
     if (filterTab === 'customers') return !c.supplierDebt;
-    if (filterTab === 'suppliers') return !!c.supplierDebt;
+    if (filterTab === 'suppliers') return !!c.supplierDebt && !isSeamCredit(c);
+    if (filterTab === 'seamstresses') return !!c.supplierDebt && isSeamCredit(c);
     return true;
   });
 
@@ -187,12 +216,12 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
               <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">سجل الديون والكريدي الشامل</h2>
             </div>
             <p className="text-xs text-slate-600 font-normal mt-1 mr-10">
-              متابعة ديون الزبائن (أموال لنا في الخارج) وديون الموردين (التزامات شراء السلعة).
+              متابعة ديون الزبائن والموردين والخياطات، والمدفوع والمتبقي لكل دين.
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 pt-1">
           <div className="bg-white/90 border border-amber-100 p-3.5 rounded-xl shadow-2xs">
             <div className="flex justify-between items-center mb-1">
               <span className="text-xs text-amber-900 font-bold flex items-center gap-1.5">
@@ -225,6 +254,11 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
             <span className="text-[10px] text-slate-500 block mt-0.5">متبقي كريدي شراء سلع وفواتير</span>
           </div>
 
+          <div className="bg-white/90 border border-teal-100 p-3.5 rounded-xl shadow-2xs">
+            <div className="text-xs text-teal-900 font-bold mb-1">كريدي الخياطات (علينا): {seamstressDebts.length} سجل</div>
+            <span className="text-lg sm:text-xl font-bold text-rose-600 font-mono">{totalSeamstressDebt.toLocaleString()} دج</span>
+            <span className="text-[10px] text-slate-500 block mt-0.5">المبلغ المتبقي بعد التسديد</span>
+          </div>
           <div className="bg-white/90 border border-slate-200/80 p-3.5 rounded-xl shadow-2xs">
             <div className="flex justify-between items-center mb-1">
               <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
@@ -239,7 +273,7 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
               {netDebtBalance >= 0 ? `+${netDebtBalance.toLocaleString()}` : netDebtBalance.toLocaleString()} دج
             </span>
             <span className="text-[10px] text-slate-500 block mt-0.5">
-              {netDebtBalance >= 0 ? 'رصيد إيجابي لصالح البوتيك' : 'التزامات الموردين تتجاوز ديون الزبائن'}
+              {netDebtBalance >= 0 ? 'رصيد إيجابي لصالح البوتيك' : 'التزامات الموردين والخياطات تتجاوز ديون الزبائن'}
             </span>
           </div>
         </div>
@@ -249,10 +283,10 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div className="flex items-center gap-2">
             <h3 className="font-bold text-slate-900 text-sm">تسجيل دين / كريدي جديد</h3>
-            <div className="flex bg-slate-100/90 p-1 rounded-xl border border-slate-200/60">
+            <div className="flex flex-wrap bg-slate-100/90 p-1 rounded-xl border border-slate-200/60">
               <button
                 type="button"
-                onClick={() => { setDebtCategory('customer'); setType('دين كراء فستان'); }}
+                onClick={() => { setDebtCategory('customer'); setType('دين كراء فستان'); setName(''); setPhone(''); setFormError(''); }}
                 className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
                   debtCategory === 'customer' ? 'bg-amber-600 text-white font-bold shadow-xs' : 'text-slate-600 hover:text-amber-800'
                 }`}
@@ -262,13 +296,17 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
               </button>
               <button
                 type="button"
-                onClick={() => { setDebtCategory('supplier'); setType('دين للمورد (كريدي سلعة)'); }}
+                onClick={() => { setDebtCategory('supplier'); setType('دين للمورد (كريدي سلعة)'); setName(''); setPhone(''); setFormError(''); }}
                 className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
                   debtCategory === 'supplier' ? 'bg-rose-600 text-white font-bold shadow-xs' : 'text-slate-600 hover:text-rose-800'
                 }`}
               >
                 <Building2 className="w-3.5 h-3.5" />
                 <span>للمورد (علينا)</span>
+              </button>
+              <button type="button" onClick={() => { setDebtCategory('seamstress'); setType('دين للخياطة'); setName(''); setPhone(''); setSeamstressId(''); setFormError(''); }}
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${debtCategory === 'seamstress' ? 'bg-teal-700 text-white' : 'text-slate-600 hover:text-teal-800'}`}>
+                للخياطة (علينا)
               </button>
             </div>
           </div>
@@ -288,9 +326,14 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">
-              {debtCategory === 'supplier' ? 'اسم المورد *' : 'اسم الزبون *'}
+              {debtCategory === 'seamstress' ? 'الخياطة *' : debtCategory === 'supplier' ? 'اسم المورد *' : 'اسم الزبون *'}
             </label>
-            {debtCategory === 'supplier' && suppliers.length > 0 ? (
+            {debtCategory === 'seamstress' ? (
+              <select required value={seamstressId} onChange={e => { const seam = seamstresses.find(s => s.id === e.target.value); setSeamstressId(e.target.value); setPhone(seam?.phone || ''); setFormError(''); }} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white">
+                <option value="">-- اختر خياطة مسجلة --</option>
+                {seamstresses.map(seam => <option key={seam.id} value={seam.id}>{seam.name}</option>)}
+              </select>
+            ) : debtCategory === 'supplier' && suppliers.length > 0 ? (
               <div className="space-y-1">
                 <select
                   onChange={(e) => handleSupplierSelect(e.target.value)}
@@ -322,11 +365,13 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
             <label className="block text-xs font-medium text-slate-700 mb-1">رقم الهاتف (أرقام فقط)</label>
             <NumbersInput
               allowPlus
+              readOnly={debtCategory === 'seamstress'}
               value={phone}
               onChange={setPhone}
               placeholder="05 / 06 / 07..."
               className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-normal focus:outline-none focus:border-slate-400"
             />
+            {debtCategory === 'seamstress' && <p className="text-[10px] text-slate-500 mt-1">الهاتف من بيانات الخياطة المسجلة</p>}
           </div>
 
           <div>
@@ -349,7 +394,7 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
               onChange={(e) => setType(e.target.value)}
               className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-slate-400"
             >
-              {(debtCategory === 'supplier' ? supplierCreditTypes : customerCreditTypes).map(t => (
+              {(debtCategory === 'seamstress' ? ['دين للخياطة'] : debtCategory === 'supplier' ? supplierCreditTypes : customerCreditTypes).map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
@@ -384,17 +429,19 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
 
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">
-            {debtCategory === 'supplier' ? 'تفاصيل السلعة المشتراة أو الفاتورة' : 'البيان / ملاحظات'}
+            {debtCategory === 'supplier' ? 'تفاصيل السلعة المشتراة أو الفاتورة' : debtCategory === 'seamstress' ? 'بيان كريدي الخياطة' : 'البيان / ملاحظات'}
           </label>
           <input
             type="text"
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
-            placeholder={debtCategory === 'supplier' ? "مثال: متبقي شراء 3 فساتين سهرة تركية..." : "مثال: متبقي كراء فستان أسود..."}
+            placeholder={debtCategory === 'supplier' ? 'مثال: متبقي شراء فساتين...' : debtCategory === 'seamstress' ? 'مثال: أتعاب خياطة فستان...' : 'مثال: متبقي كراء فستان أسود...'}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-normal focus:outline-none focus:border-slate-400"
           />
         </div>
 
+        {debtCategory === 'seamstress' && <p className="text-xs text-slate-500">يُسجّل الكريدي كفاتورة مستقلة في حساب الخياطة، ولا يخصم شيئاً من الصندوق حتى يتم الدفع. لا تُخصم الدفعات القديمة تلقائياً.</p>}
+        {formError && <p role="alert" className="text-xs text-rose-600">{formError}</p>}
         <button
           type="submit"
           className={`w-full py-2.5 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs active:scale-[0.98] flex items-center justify-center gap-1.5 ${
@@ -404,7 +451,7 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
           }`}
         >
           <Plus className="w-4 h-4" />
-          <span>{debtCategory === 'supplier' ? 'تسجيل دين للمورد' : 'تسجيل دين على الزبون'}</span>
+          <span>{debtCategory === 'seamstress' ? 'تسجيل كريدي للخياطة' : debtCategory === 'supplier' ? 'تسجيل دين للمورد' : 'تسجيل دين على الزبون'}</span>
         </button>
       </form>
 
@@ -427,7 +474,7 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
                   <Check className="w-4 h-4 text-emerald-600" />
                   <span>
                     {settleCredit.supplierDebt
-                      ? settlementMode === 'partial' ? 'تسديد جزء من دين المورد' : 'تسديد كامل دين المورد'
+                      ? isSeamCredit(settleCredit) ? 'تسديد كريدي الخياطة' : settlementMode === 'partial' ? 'تسديد جزء من دين المورد' : 'تسديد كامل دين المورد'
                       : settlementMode === 'partial' ? 'تحصيل جزء من دين الزبون' : 'تحصيل كامل دين الزبون'}
                   </span>
                 </h3>
@@ -448,7 +495,7 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
 
             <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-xl space-y-2 text-xs">
               <div className="flex justify-between items-center">
-                <span className="text-slate-500 font-normal">{settleCredit.supplierDebt ? 'المورد:' : 'الزبون:'}</span>
+                <span className="text-slate-500 font-normal">{isSeamCredit(settleCredit) ? 'الخياطة:' : settleCredit.supplierDebt ? 'المورد:' : 'الزبون:'}</span>
                 <span className="font-bold text-slate-900">{settleCredit.name}</span>
               </div>
               <div className="flex justify-between items-center">
@@ -566,7 +613,7 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <h3 className="font-bold text-slate-900 text-sm sm:text-base">قائمة الديون المسجلة</h3>
           
-          <div className="flex gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/60">
+          <div className="flex flex-wrap gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/60">
             <button
               onClick={() => setFilterTab('all')}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
@@ -593,6 +640,9 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
               <Building2 className="w-3.5 h-3.5" />
               <span>ديون الموردين ({supplierDebts.length})</span>
             </button>
+            <button onClick={() => setFilterTab('seamstresses')} className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${filterTab === 'seamstresses' ? 'bg-teal-700 text-white' : 'text-slate-600 hover:text-teal-800'}`}>
+              كريدي الخياطات ({seamstressDebts.length})
+            </button>
           </div>
         </div>
 
@@ -610,7 +660,7 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-slate-900 text-sm">{credit.name}</span>
                     <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200/70">
-                      {isSupplierDebt ? 'دين مورد (علينا)' : 'دين زبون (لنا)'}
+                      {isSeamCredit(credit) ? 'دين خياطة (علينا)' : isSupplierDebt ? 'دين مورد (علينا)' : 'دين زبون (لنا)'}
                     </span>
                   </div>
 
@@ -702,7 +752,7 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
                       </>
                     )}
 
-                    <button
+                    {isSeamCredit(credit) ? <span className="text-[10px] text-slate-500">الحذف من فاتورة الخياطة</span> : <button
                       onClick={() => {
                         const paid = creditTotalPaid(credit);
                         const message = paid > 0
@@ -714,7 +764,7 @@ export const CreditsView: React.FC<CreditsViewProps> = React.memo(({
                       title="حذف"
                     >
                       <Trash2 className="w-4 h-4" />
-                    </button>
+                    </button>}
                   </div>
                 </div>
               </div>
