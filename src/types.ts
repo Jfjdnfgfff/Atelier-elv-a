@@ -154,6 +154,7 @@ export interface Expense {
   periodNote?: string; // بيان الفترة (مثل: إيجار شهر جانفي، كراء 3 أشهر...)
   // Supplier purchase specific fields
   isSupplierPurchase?: boolean;
+  seamstressId?: string; // فاتورة مستقلة للخياطة مرتبطة بمعرفها
   supplierName?: string;
   supplierPhone?: string;
   goodsDescription?: string; // ماذا شريت عليه (تفاصيل السلعة المشتراة)

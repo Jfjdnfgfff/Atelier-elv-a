@@ -1687,18 +1687,18 @@ export default function App() {
     addActivityLog({
       actionType: 'create',
       category: 'expenses',
-      title: expData.isSupplierPurchase ? 'تسجيل مشتريات وموردين' : 'تسجيل مصروف جديد',
+      title: expData.seamstressId ? 'تسجيل فاتورة خياطة' : expData.isSupplierPurchase ? 'تسجيل مشتريات وموردين' : 'تسجيل مصروف جديد',
       details: `${expData.category}: ${expData.desc || expData.goodsDescription} (${expData.amount} دج) — مصدر الدفع: ${fundLabel}`,
       amount: expData.amount
     });
 
-    if (expData.isSupplierPurchase && expData.creditAmount > 0) {
+    if ((expData.isSupplierPurchase || expData.seamstressId) && expData.creditAmount > 0) {
       const newCredit: Credit = {
         id: generateId(),
         name: expData.supplierName || 'مورد',
         phone: expData.supplierPhone || '',
-        type: 'دين للمورد (كريدي سلعة)',
-        desc: `متبقي شراء: ${expData.goodsDescription || expData.desc}`,
+        type: expData.seamstressId ? 'دين للخياطة' : 'دين للمورد (كريدي سلعة)',
+        desc: `${expData.seamstressId ? 'متبقي فاتورة خياطة' : 'متبقي شراء'}: ${expData.goodsDescription || expData.desc}`,
         amount: expData.creditAmount,
         date: expData.date || new Date().toISOString(),
         relatedExpenseId: newExpId,
@@ -1710,7 +1710,7 @@ export default function App() {
       };
       setCredits(prev => [newCredit, ...prev]);
       saveItemToFirebase(FIREBASE_COLLECTIONS.CREDITS, newCredit);
-      showToast(`تم تسجيل مشتريات المورد (المسدد: ${expData.paidAmount?.toLocaleString()} دج + متبقي دين: ${expData.creditAmount?.toLocaleString()} دج)`);
+      showToast(`تم تسجيل الفاتورة (المسدد: ${expData.paidAmount?.toLocaleString()} دج + متبقي دين: ${expData.creditAmount?.toLocaleString()} دج)`);
     } else if (expData.isSupplierPurchase) {
       showToast(`تم تسجيل خلاص المورد بنجاح (${(expData.paidAmount || expData.amount)?.toLocaleString()} دج كاش)`);
     } else {
@@ -1719,8 +1719,20 @@ export default function App() {
   }, [addActivityLog, showToast]);
 
   const handleDeleteExpense = useCallback((id: string) => {
-    // حذف مصروف كان مسحوباً من الصندوق العام → يُرجع مبلغه إلى الرصيد
     const target = expenses.find(e => e.id === id);
+    if (target?.seamstressId) {
+      const linkedCredits = credits.filter(c => c.relatedExpenseId === id);
+      const linkedIds = new Set(linkedCredits.map(c => c.id));
+      let generalPayments = 0;
+      for (const credit of linkedCredits) {
+        for (const payment of paymentsForCredit(credit, creditPayments)) {
+          if (payment.fundSource === 'general') generalPayments += Number(payment.amount) || 0;
+        }
+      }
+      if (generalPayments) setGeneralFundBalance(prev => Math.round((prev + generalPayments) * 100) / 100);
+      creditPayments.filter(p => p.creditId && linkedIds.has(p.creditId)).forEach(p => deleteItemFromFirebase(FIREBASE_COLLECTIONS.CREDIT_PAYMENTS, p.id));
+      setCreditPayments(prev => prev.filter(p => !p.creditId || !linkedIds.has(p.creditId)));
+    }
     if (target && isGeneralFundExpense(target)) {
       const amount = Number(target.amount) || 0;
       setGeneralFundBalance(prev => Math.round((prev + amount) * 100) / 100);
@@ -1741,7 +1753,7 @@ export default function App() {
     });
 
     showToast('تم حذف سجل المصروف');
-  }, [expenses, addActivityLog, showToast]);
+  }, [expenses, credits, creditPayments, addActivityLog, showToast]);
 
   const handleSettleSupplierCredit = useCallback((expenseId: string, paidNow: number) => {
     // تسديد دفعة إضافية لمصروف كان مسحوباً من الصندوق العام → تُخصم من رصيد الخزينة
@@ -1881,6 +1893,10 @@ export default function App() {
   }, []);
 
   const handleDeleteSeamstress = useCallback((id: string) => {
+    if (expenses.some(e => e.seamstressId === id)) {
+      showToast('احذف فواتير الخياطة أولاً قبل حذف بياناتها');
+      return;
+    }
     setConfirmDelete({
       title: 'حذف الخياطة',
       message: 'هل تريد حذف هذه الخياطة من النظام؟',
@@ -1902,7 +1918,7 @@ export default function App() {
         setConfirmDelete(null);
       }
     });
-  }, []);
+  }, [expenses, showToast]);
 
   // تسجيل دفعة مسددة لخياطة (أتعاب طلبيات) — مستند مستقل في سجل دفعات الخياطات
   const handleAddSeamstressPayment = useCallback(async (payment: SeamstressPayment) => {
@@ -2057,6 +2073,11 @@ export default function App() {
 
     const amount = Number(paymentData?.amount) || 0;
     if (amount <= 0) return;
+    const linkedExpense = expenses.find(e => e.id === credit.relatedExpenseId);
+    if (linkedExpense?.seamstressId && amount > Math.max(0, credit.amount - paymentsForCredit(credit, creditPayments).reduce((sum, p) => sum + (Number(p.amount) || 0), 0))) {
+      showToast('المبلغ يتجاوز الدين المتبقي');
+      return;
+    }
 
     const fundSource: FundSource = paymentData?.fundSource === 'general' ? 'general' : 'daily';
     const paymentDate = (paymentData?.date || new Date().toISOString().split('T')[0]).substring(0, 10);
@@ -2087,7 +2108,7 @@ export default function App() {
         const currentPaid = exp.paidAmount !== undefined ? exp.paidAmount : exp.amount;
         const newPaid = currentPaid + amount;
         const newCredit = Math.max(0, (exp.creditAmount || 0) - amount);
-        const updates = { paidAmount: newPaid, amount: newPaid, creditAmount: newCredit };
+        const updates = { paidAmount: newPaid, amount: exp.seamstressId ? exp.amount : newPaid, creditAmount: newCredit };
         updateItemInFirebase(FIREBASE_COLLECTIONS.EXPENSES, exp.id, updates);
         return { ...exp, ...updates };
       }));
@@ -2112,10 +2133,14 @@ export default function App() {
     } else {
       showToast(`تم تسجيل دفعة ${amount.toLocaleString()} دج • المتبقي: ${remaining.toLocaleString()} دج`);
     }
-  }, [credits, creditPayments, addActivityLog, showToast]);
+  }, [credits, creditPayments, expenses, addActivityLog, showToast]);
 
   const handleDeleteCredit = useCallback((id: string) => {
     const target = credits.find(c => c.id === id);
+    if (target?.relatedExpenseId && expenses.some(e => e.id === target.relatedExpenseId && e.seamstressId)) {
+      showToast('لحذف هذا الدين احذف فاتورة الخياطة المرتبطة به من كشف حسابها');
+      return;
+    }
     if (target) {
       // عكس أثر الدفعات المسددة من/إلى الصندوق العام
       const mergedPayments = paymentsForCredit(target, creditPayments);
@@ -2162,7 +2187,7 @@ export default function App() {
     });
 
     showToast('تم حذف السجل');
-  }, [credits, creditPayments, addActivityLog, showToast]);
+  }, [credits, creditPayments, expenses, addActivityLog, showToast]);
 
   const handleSaveCaisseClosure = useCallback((closure: DailyCaisseClosure) => {
     setCaisseClosures(prev => {
