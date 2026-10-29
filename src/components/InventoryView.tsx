@@ -11,10 +11,11 @@ import { VirtualizedClothGrid } from './VirtualizedClothGrid';
 import { SecurityPasswordModal, checkSecurityPin } from './SecurityPasswordModal';
 import { isValidImageFileType, generateSecureImageFilename, sanitizeText, sanitizeNumericAmount } from '../utils/security';
 import { processImageToVariants, getListImage } from '../utils/imageUtils';
+import type { InventoryAggregate } from '../utils/inventoryAggregate';
 import { imageStore } from '../utils/imageStore';
 import { ImagePreviewModal } from './ImagePreviewModal';
 import { AsyncProductImage } from './AsyncProductImage';
-import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap, ChevronLeft, ChevronRight, Search, Loader2, Barcode } from 'lucide-react';
+import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap, ChevronLeft, ChevronRight, Search, Loader2, Barcode, RefreshCw } from 'lucide-react';
 
 export const STANDARD_SIZES = [
   '34', '36', '38', '40', '42', '44', '46', '48', '50', '52', '54',
@@ -184,6 +185,12 @@ interface InventoryViewProps {
   hasMoreClothes?: boolean;
   isLoadingMoreClothes?: boolean;
   onLoadMoreClothes?: () => Promise<void>;
+  /** ملخص قيم المخزون الكامل (يُحسب من كل السجلات وليس من الصفحات المحمّلة فقط) */
+  inventoryAggregate?: InventoryAggregate | null;
+  /** true عندما تكون القيم المعروضة مجموعاً جزئياً من الصفحات المحمّلة (لم يكتمل حساب كل السجلات) */
+  isInventoryAggregatePartial?: boolean;
+  isInventoryAggregateRefreshing?: boolean;
+  onRefreshInventoryAggregate?: (force?: boolean) => Promise<void>;
 }
 
 export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
@@ -198,7 +205,11 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   onDeleteRawMaterial,
   hasMoreClothes = false,
   isLoadingMoreClothes = false,
-  onLoadMoreClothes
+  onLoadMoreClothes,
+  inventoryAggregate,
+  isInventoryAggregatePartial = false,
+  isInventoryAggregateRefreshing = false,
+  onRefreshInventoryAggregate
 }) => {
   const [inventoryTab, setInventoryTab] = useState<'clothes' | 'raw_materials'>('clothes');
   const [filterPurpose, setFilterPurpose] = useState<string>('all');
@@ -398,6 +409,108 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
       sellCount: sellC
     };
   }, [clothes, rawMaterials]);
+
+  // قيم البطاقات: تُعرض دائماً من ملخص **كل** المخزون (السحابة/الكاش) دون أي شرط
+  // لتحميل القطع في الشاشة. لا تُعرض أرقام جزئية على أنها إجمالي نهائي.
+  const displayTotals = useMemo(() => {
+    const completeLocally = !hasMoreClothes;
+
+    // 1) ملخص كامل لكل السجلات (من كاش محلي أو مسح سحابي) — له الأولوية دائماً
+    if (inventoryAggregate && !isInventoryAggregatePartial) {
+      return {
+        stock1: inventoryAggregate.stock1,
+        stock2: inventoryAggregate.stock2,
+        pieces: inventoryAggregate.pieces,
+        cost: inventoryAggregate.purchaseValue,
+        sell: inventoryAggregate.saleValue,
+        profit: Math.max(0, inventoryAggregate.saleValue - inventoryAggregate.purchaseValue),
+        rawRolls: inventoryAggregate.rawRolls,
+        rawMeters: inventoryAggregate.rawMeters,
+        rawCost: inventoryAggregate.rawMaterialsValue,
+        capital: inventoryAggregate.totalCapital,
+        models: inventoryAggregate.models,
+        isComplete: true,
+        pending: false,
+        source: 'all' as const
+      };
+    }
+
+    // 2) كل القطع محمّلة محلياً ➜ المجموع المحلي دقيق ومطابق للكل
+    if (completeLocally) {
+      return {
+        stock1: totalStock1,
+        stock2: totalStock2,
+        pieces: grandTotalStock,
+        cost: totalCostReadyClothes,
+        sell: totalSellReadyClothes,
+        profit: expectedProfitReadyClothes,
+        rawRolls: totalRawRolls,
+        rawMeters: totalRawMeters,
+        rawCost: totalRawMaterialsCost,
+        capital: grandTotalStoreCapital,
+        models: clothes.length,
+        isComplete: true,
+        pending: false,
+        source: 'all' as const
+      };
+    }
+
+    // 3) لا يوجد ملخص كامل بعد وما زالت هناك صفحات غير محمّلة ➜ «قيد الحساب»
+    //    نحتفظ بمجموع المحمّل للاستخدام الاحتياطي فقط بعد انتهاء مهلة الانتظار،
+    //    ولا يُعرض كإجمالي كامل.
+    return {
+      stock1: totalStock1,
+      stock2: totalStock2,
+      pieces: grandTotalStock,
+      cost: totalCostReadyClothes,
+      sell: totalSellReadyClothes,
+      profit: expectedProfitReadyClothes,
+      rawRolls: totalRawRolls,
+      rawMeters: totalRawMeters,
+      rawCost: totalRawMaterialsCost,
+      capital: grandTotalStoreCapital,
+      models: clothes.length,
+      isComplete: false,
+      pending: true,
+      source: 'pending' as const
+    };
+  }, [
+    hasMoreClothes,
+    inventoryAggregate,
+    isInventoryAggregatePartial,
+    totalStock1,
+    totalStock2,
+    grandTotalStock,
+    totalCostReadyClothes,
+    totalSellReadyClothes,
+    expectedProfitReadyClothes,
+    totalRawRolls,
+    totalRawMeters,
+    totalRawMaterialsCost,
+    grandTotalStoreCapital,
+    clothes.length
+  ]);
+
+  // إن طال الانتظار (تعذّر المسح السحابي مثلاً) نعرض مجموع المحمّل موسوماً «تقريبي»
+  // بدل إبقاء البطاقات فارغة إلى الأبد.
+  const [allowApproxAfterWait, setAllowApproxAfterWait] = useState(false);
+  useEffect(() => {
+    if (!displayTotals.pending) {
+      setAllowApproxAfterWait(false);
+      return;
+    }
+    const timer = setTimeout(() => setAllowApproxAfterWait(true), 6000);
+    return () => clearTimeout(timer);
+  }, [displayTotals.pending]);
+
+  const isApproximate = displayTotals.pending && allowApproxAfterWait;
+  const isHidden = displayTotals.pending && !allowApproxAfterWait;
+
+  // تنسيق القيم: «—» أثناء الحساب بدل رقم جزئي مضلّل
+  const fmtMoney = (value: number) => (isHidden ? '—' : Math.round(value).toLocaleString());
+  const fmtQty = (value: number) => (isHidden ? '—' : Math.round(value).toLocaleString());
+  const valueNote = (fullText: string) =>
+    isApproximate ? 'قيمة تقريبية من الأجزاء المحمّلة — اضغط «تحديث القيم»' : fullText;
 
   // Process a scanned barcode in Inventory:
   const handleProcessBarcode = (code: string) => {
@@ -659,14 +772,42 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
         </div>
       </div>
 
+      {(
+        <div className="flex flex-wrap items-center justify-between gap-2 bg-emerald-50/60 border border-emerald-200/70 rounded-xl px-3 py-2 text-[11px] text-emerald-800">
+          <span className="flex items-center gap-1.5 font-medium">
+            <Package className="w-3.5 h-3.5" />
+            <span>
+              {isHidden
+                ? 'جارٍ حساب إجمالي كل المخزون من السجلات… ستظهر القيم كاملة بعد لحظات.'
+                : isApproximate
+                ? <>تعذّر الحساب الكامل مؤقتاً — الأرقام أدناه من الأجزاء المحمّلة فقط. اضغط «تحديث القيم».</>
+                : <>قيم المخزون أدناه إجمالية من <span className="font-bold">كل</span> السجلات — لا تحتاج تحميل كل القطع.</>}
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() => void onRefreshInventoryAggregate?.(true)}
+            disabled={isInventoryAggregateRefreshing}
+            className="flex items-center gap-1 px-2 py-1 bg-white hover:bg-emerald-50 disabled:opacity-50 text-emerald-800 border border-emerald-200 rounded-lg font-bold transition-colors"
+          >
+            <RefreshCw className={`w-3 h-3 ${isInventoryAggregateRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isInventoryAggregateRefreshing ? 'جارٍ الحساب...' : 'تحديث القيم'}</span>
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-medium text-slate-500">مجموع السلعة بالتكلفة</span>
             <Tag className="w-4 h-4 text-slate-400" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{totalCostReadyClothes.toLocaleString()} <span className="text-xs font-medium text-slate-400">دج</span></p>
-          <span className="text-[11px] text-slate-500 font-normal">رأس مال شراء الملابس الجاهزة</span>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{fmtMoney(displayTotals.cost)} <span className="text-xs font-medium text-slate-400">دج</span></p>
+          <span className="text-[11px] text-slate-500 font-normal">
+            {isHidden
+              ? 'قيد الحساب…'
+              : valueNote(`رأس مال شراء الملابس الجاهزة (${displayTotals.models.toLocaleString()} موديل من كل المخزون)`)}
+          </span>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
@@ -674,8 +815,10 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
             <span className="text-xs font-medium text-slate-500">مجموع السلعة بثمن البيع</span>
             <ShoppingBag className="w-4 h-4 text-slate-400" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{totalSellReadyClothes.toLocaleString()} <span className="text-xs font-medium text-slate-400">دج</span></p>
-          <span className="text-[11px] text-emerald-700 font-medium">الأرباح المتوقعة: +{expectedProfitReadyClothes.toLocaleString()} دج</span>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{fmtMoney(displayTotals.sell)} <span className="text-xs font-medium text-slate-400">دج</span></p>
+          <span className="text-[11px] text-emerald-700 font-medium">
+            {isHidden ? 'قيد الحساب…' : valueNote(`الأرباح المتوقعة: +${fmtMoney(displayTotals.profit)} دج`)}
+          </span>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
@@ -683,8 +826,10 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
             <span className="text-xs font-medium text-slate-500">الأقمشة والسلع الأولية</span>
             <Scissors className="w-4 h-4 text-slate-400" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{totalRawMaterialsCost.toLocaleString()} <span className="text-xs font-medium text-slate-400">دج</span></p>
-          <span className="text-[11px] text-slate-500 font-normal">{totalRawRolls} رولو ({totalRawMeters} متر أقمشة)</span>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{fmtMoney(displayTotals.rawCost)} <span className="text-xs font-medium text-slate-400">دج</span></p>
+          <span className="text-[11px] text-slate-500 font-normal">
+            {isHidden ? 'قيد الحساب…' : valueNote(`${displayTotals.rawRolls} رولو (${displayTotals.rawMeters} متر أقمشة)`)}
+          </span>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
@@ -692,8 +837,10 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
             <span className="text-xs font-medium text-slate-500">إجمالي رأس مال المحل المندمج</span>
             <Landmark className="w-4 h-4 text-slate-400" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{grandTotalStoreCapital.toLocaleString()} <span className="text-xs font-medium text-slate-400">دج</span></p>
-          <span className="text-[11px] text-slate-500 font-normal">ملابس جاهزة + أقمشة وسلع أولية</span>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{fmtMoney(displayTotals.capital)} <span className="text-xs font-medium text-slate-400">دج</span></p>
+          <span className="text-[11px] text-slate-500 font-normal">
+            {isHidden ? 'قيد الحساب…' : valueNote('ملابس جاهزة + أقمشة وسلع أولية (كل المخزون)')}
+          </span>
         </div>
       </div>
 
@@ -716,7 +863,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                 </span>
                 <Store className="w-4 h-4 text-slate-400" />
               </div>
-              <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{totalStock1.toLocaleString()} <span className="text-xs font-normal text-slate-500">قطعة</span></p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{fmtQty(displayTotals.stock1)} <span className="text-xs font-normal text-slate-500">قطعة</span></p>
               <span className="text-[11px] text-slate-500 font-normal">مخزن المحل المعروض للزبائن</span>
             </div>
 
@@ -728,7 +875,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                 </span>
                 <Warehouse className="w-4 h-4 text-slate-400" />
               </div>
-              <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{totalStock2.toLocaleString()} <span className="text-xs font-normal text-slate-500">قطعة</span></p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{fmtQty(displayTotals.stock2)} <span className="text-xs font-normal text-slate-500">قطعة</span></p>
               <span className="text-[11px] text-slate-500 font-normal">المستودع والتخزين الاحتياطي</span>
             </div>
 
@@ -740,7 +887,7 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                 </span>
                 <Package className="w-4 h-4 text-slate-400" />
               </div>
-              <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{grandTotalStock.toLocaleString()} <span className="text-xs font-normal text-slate-500">قطعة</span></p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{fmtQty(displayTotals.pieces)} <span className="text-xs font-normal text-slate-500">قطعة</span></p>
               <span className="text-[11px] text-slate-500 font-normal">مجموع المخزن 1 + المخزن 2</span>
             </div>
           </div>

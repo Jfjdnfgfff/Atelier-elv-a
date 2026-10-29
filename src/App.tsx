@@ -62,8 +62,10 @@ import {
   SubscriptionManager, 
   areArraysEqual,
   firebaseConfig,
-  downloadFullFirebaseBackupDirect
+  downloadFullFirebaseBackupDirect,
+  flushFailedWrites
 } from './firebase';
+import { mergeQueuedWrites, hasQueuedWrites, queueFailedWrite, clearQueuedWrite } from './utils/writeOutbox';
 
 import { Modal } from './components/Shared';
 import AppNavigation from './components/AppNavigation';
@@ -73,6 +75,8 @@ import { AsyncProductImage } from './components/AsyncProductImage';
 import { getListImage } from './utils/imageUtils';
 import { imageStore } from './utils/imageStore';
 import { preloadIdleViews } from './components/viewRegistry';
+import { useInventoryAggregate } from './hooks/useInventoryAggregate';
+import { invalidateInventoryAggregate } from './utils/inventoryAggregate';
 
 // النوافذ المنبثقة تُحمَّل كسلاً وتُجهَّز مسبقاً في وقت الخمول لفتح فوري
 const BarcodeScanner = React.lazy(() => import('./components/BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
@@ -208,6 +212,17 @@ export default function App() {
     sales: { cursor: null, hasMore: true, isLoading: false, initialized: false }
   });
   const [hasMoreClothes, setHasMoreClothes] = useState(true);
+  // ملخص قيم المخزون (قيمة الشراء/البيع/القطع) محسوب من كل المخزون دون تحميله كاملاً في الواجهة
+  const {
+    aggregate: inventoryAggregate,
+    isPartial: isInventoryAggregatePartial,
+    isRefreshing: isInventoryAggregateRefreshing,
+    refresh: refreshInventoryAggregate
+  } = useInventoryAggregate({
+    clothes,
+    rawMaterials,
+    clothesComplete: !hasMoreClothes
+  });
   const [isLoadingMoreClothes, setIsLoadingMoreClothes] = useState(false);
   const [hasMoreSales, setHasMoreSales] = useState(true);
   const [isLoadingMoreSales, setIsLoadingMoreSales] = useState(false);
@@ -395,8 +410,22 @@ export default function App() {
 
     const unsub = SubscriptionManager.onConnectionStatus(connected => {
       setIsFirebaseConnected(connected);
+      // عودة الاتصال → إعادة إرسال كل الكتابات التي فشلت سابقاً (مثل دفعات الخياطات)
+      if (connected && hasQueuedWrites()) {
+        void flushFailedWrites().then(flushed => {
+          if (flushed > 0) showToast(`تم إرسال ${flushed} عملية كانت بانتظار الاتصال ✅`);
+        });
+      }
     });
-    return () => unsub();
+
+    // محاولة أولى عند بدء التطبيق لتصريف أي كتابات معلّقة من جلسة سابقة
+    const startupFlush = setTimeout(() => {
+      if (hasQueuedWrites()) void flushFailedWrites();
+    }, 4000);
+    return () => {
+      clearTimeout(startupFlush);
+      unsub();
+    };
   }, []);
 
   // ترحيل الدفعات المضمّنة داخل الديون القديمة إلى مجموعة مستندات الدفعات المستقلة
@@ -556,28 +585,33 @@ export default function App() {
         return SubscriptionManager.subscribe<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.MAINTENANCE);
-            setMaintenanceOrders(prev => areArraysEqual(prev, items) ? prev : items);
+            const merged = mergeQueuedWrites<MaintenanceOrder>(FIREBASE_COLLECTIONS.MAINTENANCE, items);
+            setMaintenanceOrders(prev => areArraysEqual(prev, merged) ? prev : merged);
           }
         });
       case FIREBASE_COLLECTIONS.SUPPLIERS:
         return SubscriptionManager.subscribe<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.SUPPLIERS);
-            setSuppliers(prev => areArraysEqual(prev, items) ? prev : items);
+            const merged = mergeQueuedWrites<Supplier>(FIREBASE_COLLECTIONS.SUPPLIERS, items);
+            setSuppliers(prev => areArraysEqual(prev, merged) ? prev : merged);
           }
         });
       case FIREBASE_COLLECTIONS.SEAMSTRESSES:
         return SubscriptionManager.subscribe<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.SEAMSTRESSES);
-            setSeamstresses(prev => areArraysEqual(prev, items) ? prev : items);
+            const merged = mergeQueuedWrites<Seamstress>(FIREBASE_COLLECTIONS.SEAMSTRESSES, items);
+            setSeamstresses(prev => areArraysEqual(prev, merged) ? prev : merged);
           }
         });
       case FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS:
         return SubscriptionManager.subscribe<SeamstressPayment>(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, (items) => {
           if (Array.isArray(items)) {
             loadedCollectionsRef.current.add(STORAGE_KEYS.SEAMSTRESS_PAYMENTS);
-            setSeamstressPayments(prev => areArraysEqual(prev, items) ? prev : items);
+            // دمج الدفعات التي لم تصل بعد للسحابة حتى لا تختفي من الشاشة أو من الجهاز
+            const merged = mergeQueuedWrites<SeamstressPayment>(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, items);
+            setSeamstressPayments(prev => (areArraysEqual(prev, merged) ? prev : merged));
           }
         });
       case FIREBASE_COLLECTIONS.RAW_MATERIALS:
@@ -1454,6 +1488,7 @@ export default function App() {
     const newCloth: ClothItem = { ...itemData, id: generateId() };
     setClothes(prev => [newCloth, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.CLOTHES, newCloth);
+    invalidateInventoryAggregate();
 
     if (pendingFullUrl) {
       imageStore.saveFull(newCloth.id, pendingFullUrl);
@@ -1474,6 +1509,7 @@ export default function App() {
   const handleUpdateCloth = useCallback((id: string, itemData: any, pendingFullUrl?: string) => {
     setClothes(prev => prev.map(c => c.id === id ? { ...c, ...itemData } : c));
     updateItemInFirebase(FIREBASE_COLLECTIONS.CLOTHES, id, itemData);
+    invalidateInventoryAggregate();
 
     if (pendingFullUrl) {
       imageStore.saveFull(id, pendingFullUrl);
@@ -1497,6 +1533,7 @@ export default function App() {
       onConfirm: () => {
         setClothes(prev => prev.filter(c => c.id !== id));
         deleteItemFromFirebase(FIREBASE_COLLECTIONS.CLOTHES, id);
+        invalidateInventoryAggregate();
 
         addActivityLog({
           actionType: 'delete',
@@ -1522,6 +1559,7 @@ export default function App() {
     const newSale: Sale = { ...saleData, items: sanitizedItems, id: generateId() };
     setSales(prev => [newSale, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.SALES, newSale);
+    invalidateInventoryAggregate();
 
     addActivityLog({
       actionType: 'create',
@@ -1867,17 +1905,23 @@ export default function App() {
   }, []);
 
   // تسجيل دفعة مسددة لخياطة (أتعاب طلبيات) — مستند مستقل في سجل دفعات الخياطات
-  const handleAddSeamstressPayment = useCallback((payment: SeamstressPayment) => {
+  const handleAddSeamstressPayment = useCallback(async (payment: SeamstressPayment) => {
     const amount = Number(payment.amount) || 0;
+    const now = new Date().toISOString();
     const record: SeamstressPayment = {
       ...payment,
       amount,
       fundSource: payment.fundSource || 'daily',
-      createdAt: payment.createdAt || new Date().toISOString()
+      createdAt: payment.createdAt || now,
+      updatedAt: now
     };
 
-    setSeamstressPayments(prev => [record, ...prev]);
-    saveItemToFirebase(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, record);
+    // حفظ محلي فوري (حتى لو انقطعت الشبكة لا تضيع الدفعة)
+    setSeamstressPayments(prev => {
+      if (prev.some(p => p.id === record.id)) return prev;
+      return [record, ...prev];
+    });
+    loadedCollectionsRef.current.add(STORAGE_KEYS.SEAMSTRESS_PAYMENTS);
 
     // الدفع من الصندوق العام (الخزينة) يُخصم مباشرة من رصيده
     if (record.fundSource === 'general') {
@@ -1894,13 +1938,21 @@ export default function App() {
       amount
     });
 
-    showToast(`تم تسجيل دفعة ${amount.toLocaleString()} دج للخياطة ${record.seamstressName}`);
+    // نضعها في الصندوق الصادر مسبقاً حتى لو أُغلق التطبيق في منتصف الإرسال لا تضيع،
+    // ثم تُحذف منه تلقائياً بعد نجاح الوصول للسحابة.
+    queueFailedWrite(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, record as unknown as Record<string, any> & { id: string });
+    const saved = await saveItemToFirebase(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, record);
+    if (saved) {
+      showToast(`تم تسجيل دفعة ${amount.toLocaleString()} دج للخياطة ${record.seamstressName}`);
+    } else {
+      showToast(`تم حفظ الدفعة (${amount.toLocaleString()} دج) على هذا الجهاز، وستُرسل للسحابة تلقائياً عند عودة الاتصال`, 'error');
+    }
   }, [addActivityLog, showToast]);
 
   const handleDeleteSeamstressPayment = useCallback((id: string) => {
     setConfirmDelete({
       title: 'حذف دفعة الخياطة',
-      message: 'هل تريد حذف هذه الدفعة من سجل مستحقات الخياطة؟ سيُعاد احتساب المتبقي تلقائياً.',
+      message: 'هل تريد حذف هذه الدفعة من سجل دفعات الخياطة؟ سيُعاد خصمها من النقدية إن كانت من الصندوق العام.',
       onConfirm: () => {
         const target = seamstressPayments.find(p => p.id === id);
         if (target && target.fundSource === 'general') {
@@ -1909,6 +1961,7 @@ export default function App() {
         }
 
         setSeamstressPayments(prev => prev.filter(p => p.id !== id));
+        clearQueuedWrite(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, id);
         deleteItemFromFirebase(FIREBASE_COLLECTIONS.SEAMSTRESS_PAYMENTS, id);
 
         addActivityLog({
@@ -1927,6 +1980,7 @@ export default function App() {
   const handleAddRawMaterial = useCallback((mat: RawMaterial) => {
     setRawMaterials(prev => [mat, ...prev]);
     saveItemToFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, mat);
+    invalidateInventoryAggregate();
 
     addActivityLog({
       actionType: 'create',
@@ -1943,6 +1997,7 @@ export default function App() {
     const updates = { ...data, updatedAt: new Date().toISOString() };
     setRawMaterials(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
     updateItemInFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, id, updates);
+    invalidateInventoryAggregate();
 
     addActivityLog({
       actionType: 'update',
@@ -1961,6 +2016,7 @@ export default function App() {
       onConfirm: () => {
         setRawMaterials(prev => prev.filter(m => m.id !== id));
         deleteItemFromFirebase(FIREBASE_COLLECTIONS.RAW_MATERIALS, id);
+        invalidateInventoryAggregate();
 
         addActivityLog({
           actionType: 'delete',
@@ -2529,6 +2585,10 @@ export default function App() {
         seamstresses={seamstresses}
         seamstressPayments={seamstressPayments}
         rawMaterials={rawMaterials}
+        inventoryAggregate={inventoryAggregate}
+        isInventoryAggregatePartial={isInventoryAggregatePartial}
+        isInventoryAggregateRefreshing={isInventoryAggregateRefreshing}
+        onRefreshInventoryAggregate={refreshInventoryAggregate}
         activityLogs={activityLogs}
         posScannedBarcode={posScannedBarcode}
         hasMoreClothes={hasMoreClothes}
@@ -2936,6 +2996,7 @@ export default function App() {
             caisseClosures={caisseClosures}
             seamstressPayments={seamstressPayments}
             seamstresses={seamstresses}
+            inventoryAggregate={inventoryAggregate}
             hideFinances={hideFinances}
           />
         </Modal>

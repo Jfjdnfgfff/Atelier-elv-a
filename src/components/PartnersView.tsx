@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Supplier, Seamstress, SeamstressPayment, Expense, MaintenanceOrder, Credit } from '../types';
 import { LettersInput, NumbersInput } from './Shared';
 import { buildSimplePrintHtml, openPrintInterface } from '../utils/printInterface';
@@ -67,7 +67,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
 }) => {
   const [activeTab, setActiveTab] = useState<'suppliers' | 'seamstresses'>('suppliers');
   const [search, setSearch] = useState('');
-  const [onlyDueSeamstresses, setOnlyDueSeamstresses] = useState(false);
 
   // التنقل المباشر إلى تبويب الخياطات عند القدوم من قسم الخياطة
   useEffect(() => {
@@ -110,6 +109,8 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
   const [payDate, setPayDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [payFundSource, setPayFundSource] = useState<'daily' | 'general'>('daily');
   const [payNote, setPayNote] = useState<string>('');
+  const [payError, setPayError] = useState<string>('');
+  const submitLockRef = useRef(false);
 
   // --- Calculations for Suppliers ---
   const supplierAnalytics = useMemo(() => {
@@ -218,32 +219,21 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
       let activeOrders = 0;
       let deliveredOrders = 0;
       let totalOrdersValue = 0;
-      let earnedDues = 0; // أتعاب الطلبيات المسلّمة (أصبحت مستحقة للخياطة)
-      let pendingDues = 0; // أتعاب طلبيات لازالت قيد الإنجاز
       let totalTailorCost = 0;
 
       for (let j = 0; j < orders.length; j++) {
         const o = orders[j];
-        const orderCost = o.cost || 0;
-        if (o.status === 'delivered') {
-          deliveredOrders++;
-          earnedDues += orderCost;
-        } else {
-          activeOrders++;
-          pendingDues += orderCost;
-        }
+        if (o.status === 'delivered') deliveredOrders++;
+        else activeOrders++;
         totalOrdersValue += (o.price || 0);
-        totalTailorCost += orderCost;
+        totalTailorCost += o.cost || 0;
       }
 
+      // لا يوجد حساب تلقائي لأي أتعاب أو متبقٍّ: المبالغ المسددة للخياطة تُسجَّل يدوياً فقط.
       let totalPaid = 0;
       for (let j = 0; j < payments.length; j++) {
         totalPaid += Number(payments[j].amount) || 0;
       }
-
-      const rawBalance = Math.round((earnedDues - totalPaid) * 100) / 100;
-      const remainingDue = rawBalance > 0 ? rawBalance : 0; // متبقي عليها لنا
-      const advancePaid = rawBalance < 0 ? Math.abs(rawBalance) : 0; // سلفة مدفوعة مسبقاً
 
       return {
         ...seam,
@@ -252,11 +242,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
         deliveredOrders,
         totalOrdersValue,
         totalTailorCost,
-        earnedDues,
-        pendingDues,
         totalPaid,
-        remainingDue,
-        advancePaid,
         payments,
         orders
       };
@@ -265,10 +251,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
 
   const totalTailoringOrdersCount = seamstressAnalytics.reduce((s, seam) => s + seam.totalOrders, 0);
   const totalActiveTailoringCount = seamstressAnalytics.reduce((s, seam) => s + seam.activeOrders, 0);
-  const totalSeamstressDues = seamstressAnalytics.reduce((s, seam) => s + seam.earnedDues, 0);
   const totalSeamstressPaid = seamstressAnalytics.reduce((s, seam) => s + seam.totalPaid, 0);
-  const totalSeamstressRemaining = seamstressAnalytics.reduce((s, seam) => s + seam.remainingDue, 0);
-  const totalPendingSeamstressDues = seamstressAnalytics.reduce((s, seam) => s + seam.pendingDues, 0);
 
   // Filtered Suppliers
   const filteredSuppliers = supplierAnalytics.filter(sup => {
@@ -282,7 +265,6 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
 
   // Filtered Seamstresses
   const filteredSeamstresses = seamstressAnalytics.filter(seam => {
-    if (onlyDueSeamstresses && seam.remainingDue <= 0) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return seam.name.toLowerCase().includes(q) ||
@@ -393,21 +375,33 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
   };
 
   const handleOpenSeamstressPayment = (seam: Seamstress) => {
-    const data = seamstressAnalytics.find(s => s.id === seam.id);
+    // لا حساب تلقائي: المبلغ يُدخَل يدوياً في كل مرة
     setPaySeamstress(seam);
-    setPayAmount(data && data.remainingDue > 0 ? String(Math.round(data.remainingDue)) : '');
+    setPayAmount('');
     setPayDate(new Date().toISOString().split('T')[0]);
     setPayFundSource('daily');
     setPayNote('');
+    setPayError('');
   };
 
-  const handleConfirmSeamstressPayment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!paySeamstress || !onAddSeamstressPayment) return;
+  // ملاحظة مهمة: لا نعتمد على إرسال النموذج الأصلي (submit) لأن المتصفح يمنع
+  // الإرسال بصمت إذا كان أحد الحقول مطلوباً وفارغاً — وهو ما يجعل الزر «لا يعمل».
+  // لذلك نتحقق هنا بأنفسنا ونعرض سبباً واضحاً، ويُستدعى المعالج من onClick مباشرة.
+  const handleConfirmSeamstressPayment = (e?: { preventDefault?: () => void }) => {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    if (!paySeamstress) return;
+    if (submitLockRef.current) return;
+    if (!onAddSeamstressPayment) {
+      setPayError('تعذر الوصول إلى خدمة الحفظ. أعد تحميل الصفحة وحاول مرة أخرى.');
+      return;
+    }
     const amount = Number(payAmount);
-    if (!Number.isFinite(amount) || amount <= 0) return;
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setPayError('أدخل مبلغاً صحيحاً أكبر من صفر لتسجيل الدفعة.');
+      return;
+    }
 
-    onAddSeamstressPayment({
+    const payment: SeamstressPayment = {
       id: 'seampay_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
       seamstressId: paySeamstress.id,
       seamstressName: paySeamstress.name,
@@ -416,14 +410,27 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
       fundSource: payFundSource,
       note: payNote.trim() || undefined,
       createdAt: new Date().toISOString()
-    });
+    };
+
+    submitLockRef.current = true;
+    try {
+      onAddSeamstressPayment(payment);
+    } catch (err) {
+      submitLockRef.current = false;
+      console.warn('[PartnersView] تعذّر تسجيل الدفعة', err);
+      setPayError('تعذّر تسجيل الدفعة. حاول مرة أخرى.');
+      return;
+    }
 
     setPaySeamstress(null);
     setPayAmount('');
     setPayNote('');
+    setPayError('');
+    // تحرير القفل بعد لحظة حتى لا يُسجَّل نفس الضغط مرتين
+    window.setTimeout(() => { submitLockRef.current = false; }, 400);
   };
 
-  // طباعة كشف حساب الخياطة (أتعاب + دفعات + المتبقي)
+  // طباعة كشف حساب الخياطة (الدفعات المسددة يدوياً + الطلبيات المسندة)
   const handlePrintSeamstressStatement = (seam: Seamstress) => {
     const data = seamstressAnalytics.find(s => s.id === seam.id);
     if (!data) return;
@@ -445,20 +452,12 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
         o.receivedDate || '-',
         `طلبية ${o.orderNumber} — ${o.itemName}`,
         `${(o.cost || 0).toLocaleString()} دج`,
-        o.status === 'delivered' ? 'مسلّمة (مستحقة)' : 'قيد الإنجاز (غير مستحقة)',
+        o.status === 'delivered' ? 'مسلّمة' : 'قيد الإنجاز',
         o.description || '-'
       ]);
     }
 
-    rows.push(['—', 'إجمالي الأتعاب المستحقة (المسلّمة)', `${data.earnedDues.toLocaleString()} دج`, '', '']);
-    rows.push(['—', 'إجمالي المسدد', `${data.totalPaid.toLocaleString()} دج`, '', '']);
-    rows.push([
-      '—',
-      'المتبقي بذمة المحل',
-      `${data.remainingDue.toLocaleString()} دج`,
-      data.advancePaid > 0 ? `سلفة ${data.advancePaid.toLocaleString()} دج` : '',
-      ''
-    ]);
+    rows.push(['—', 'إجمالي المسدد', `${data.totalPaid.toLocaleString()} دج`, `${data.payments.length} دفعة`, 'مبالغ مسجلة يدوياً']);
 
     openPrintInterface({
       title: `كشف حساب الخياطة — ${seam.name}`,
@@ -468,7 +467,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
         subtitle: [
           seam.specialty ? `الاختصاص: ${seam.specialty}` : '',
           seam.phone ? `الهاتف: ${seam.phone}` : '',
-          `المسدد: ${data.totalPaid.toLocaleString()} دج | المتبقي: ${data.remainingDue.toLocaleString()} دج`
+          `إجمالي المسدد: ${data.totalPaid.toLocaleString()} دج • ${data.payments.length} دفعة`
         ].filter(Boolean).join(' • '),
         headers: ['التاريخ', 'البيان', 'المبلغ', 'الحالة / المصدر', 'ملاحظات'],
         rows
@@ -498,7 +497,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
               </h2>
             </div>
             <p className="text-xs text-slate-600 font-normal mt-1 mr-10">
-              متابعة متطابقة وشاملة لحسابات الموردين (فواتير، دفعات، ديون متبقية) والخياطات (طلبيات، إنجاز، ومستحقات).
+              متابعة حسابات الموردين (فواتير، دفعات، ديون متبقية) وسجل الخياطات (طلبيات، إنجاز، ودفعات مسددة تُسجَّل يدوياً).
             </p>
           </div>
 
@@ -595,7 +594,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
           </div>
         ) : (
           <div className="space-y-3 pt-1">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
                 <span className="text-[11px] text-slate-500 font-medium block mb-0.5">عدد الخياطات في الفريق:</span>
                 <span className="text-lg sm:text-xl font-bold text-slate-900">{seamstresses.length} خياطات</span>
@@ -604,40 +603,16 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                 </span>
               </div>
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
-                <span className="text-[11px] text-slate-500 font-medium block mb-0.5">الأتعاب المستحقة (طلبيات مسلّمة):</span>
-                <span className="text-lg sm:text-xl font-bold text-slate-900 font-mono">{totalSeamstressDues.toLocaleString()} دج</span>
-                <span className="text-[10px] text-slate-400 block mt-0.5">
-                  + {totalPendingSeamstressDues.toLocaleString()} دج قيد الإنجاز
-                </span>
-              </div>
-              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
                 <span className="text-[11px] text-slate-500 font-medium block mb-0.5">إجمالي المسدد للخياطات:</span>
                 <span className="text-lg sm:text-xl font-bold text-emerald-700 font-mono">{totalSeamstressPaid.toLocaleString()} دج</span>
-                <span className="text-[10px] text-slate-400 block mt-0.5">
-                  {seamstressPayments.length} دفعة مسجلة
-                </span>
+                <span className="text-[10px] text-slate-400 block mt-0.5">مجموع الدفعات المسجلة يدوياً</span>
               </div>
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
-                <span className="text-[11px] text-slate-500 font-medium block mb-0.5">المتبقي بذمة المحل للخياطات:</span>
-                <span className={`text-lg sm:text-xl font-bold font-mono ${totalSeamstressRemaining > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
-                  {totalSeamstressRemaining.toLocaleString()} دج
-                </span>
-                <span className="text-[10px] text-slate-400 block mt-0.5">مستحقات بانتظار السداد</span>
+                <span className="text-[11px] text-slate-500 font-medium block mb-0.5">عدد الدفعات المسجلة:</span>
+                <span className="text-lg sm:text-xl font-bold text-slate-900 font-mono">{seamstressPayments.length} دفعة</span>
+                <span className="text-[10px] text-slate-400 block mt-0.5">تُسجَّل بمبلغ يدوي دون حساب أتعاب</span>
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setOnlyDueSeamstresses(v => !v)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
-                onlyDueSeamstresses
-                  ? 'bg-rose-600 text-white border-rose-600'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-rose-300 hover:text-rose-700'
-              }`}
-            >
-              <Wallet className="w-3.5 h-3.5" />
-              <span>{onlyDueSeamstresses ? 'عرض كل الخياطات' : 'عرض من عليهن مستحقات فقط'}</span>
-            </button>
           </div>
         )}
       </div>
@@ -817,19 +792,9 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                         <h3 className="font-bold text-slate-900 text-sm sm:text-base mt-1.5">{seam.name}</h3>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        {seam.remainingDue > 0 ? (
-                          <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-2 py-0.5 rounded-md font-mono">
-                            مستحق {seam.remainingDue.toLocaleString()} دج
-                          </span>
-                        ) : seam.advancePaid > 0 ? (
-                          <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-md font-mono">
-                            سلفة {seam.advancePaid.toLocaleString()} دج
-                          </span>
-                        ) : (
-                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                            خالص ✓
-                          </span>
-                        )}
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md font-mono">
+                          مسدد {seam.totalPaid.toLocaleString()} دج
+                        </span>
                         {seam.activeOrders > 0 ? (
                           <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-md font-mono">
                             {seam.activeOrders} طلبيات جارية
@@ -875,22 +840,15 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                         <span className="text-[9px] text-slate-400 block font-normal">{seam.deliveredOrders} مسلّمة</span>
                       </div>
                       <div>
-                        <span className="text-[9px] text-slate-400 block font-normal">أتعاب مستحقة</span>
-                        <span className="font-bold text-slate-900 font-mono">{seam.earnedDues.toLocaleString()}</span>
+                        <span className="text-[9px] text-slate-400 block font-normal">المسدد</span>
+                        <span className="font-bold text-emerald-700 font-mono">{seam.totalPaid.toLocaleString()}</span>
                         <span className="text-[9px] text-slate-400 block font-normal">دج</span>
                       </div>
                       <div>
-                        <span className="text-[9px] text-slate-400 block font-normal">المتبقي</span>
-                        <span className={`font-bold font-mono ${seam.remainingDue > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
-                          {seam.remainingDue.toLocaleString()}
-                        </span>
-                        <span className="text-[9px] text-slate-400 block font-normal">دج</span>
+                        <span className="text-[9px] text-slate-400 block font-normal">الدفعات</span>
+                        <span className="font-bold text-slate-800 font-mono">{seam.payments.length}</span>
+                        <span className="text-[9px] text-slate-400 block font-normal">دفعة</span>
                       </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[10px] text-slate-500 bg-white border border-slate-100 rounded-lg px-2.5 py-1.5">
-                      <span>المسدد: <span className="font-bold text-emerald-700 font-mono">{seam.totalPaid.toLocaleString()} دج</span></span>
-                      <span>{seam.payments.length} دفعة</span>
                     </div>
                   </div>
 
@@ -1294,33 +1252,22 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
               const seamData = seamstressAnalytics.find(s => s.id === selectedSeamstressHistory.id);
               const seamOrders = seamData?.orders || [];
               const seamPayments = seamData?.payments || [];
-              const earnedDues = seamData?.earnedDues || 0;
-              const pendingDues = seamData?.pendingDues || 0;
               const totalPaid = seamData?.totalPaid || 0;
-              const remainingDue = seamData?.remainingDue || 0;
-              const advancePaid = seamData?.advancePaid || 0;
 
               return (
                 <>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-center">
-                      <span className="text-[10px] text-slate-500 block">أتعاب مستحقة</span>
-                      <span className="text-sm font-bold text-slate-900 font-mono">{earnedDues.toLocaleString()} دج</span>
-                      {pendingDues > 0 && (
-                        <span className="text-[9px] text-slate-400 block mt-0.5">+{pendingDues.toLocaleString()} قيد الإنجاز</span>
-                      )}
-                    </div>
+                  <div className="grid grid-cols-2 gap-2">
                     <div className="bg-emerald-50 border border-emerald-200/80 rounded-xl p-3 text-center">
-                      <span className="text-[10px] text-emerald-700 block">المسدد</span>
+                      <span className="text-[10px] text-emerald-700 block">إجمالي المسدد</span>
                       <span className="text-sm font-bold text-emerald-800 font-mono">{totalPaid.toLocaleString()} دج</span>
-                      <span className="text-[9px] text-emerald-600/80 block mt-0.5">{seamPayments.length} دفعة</span>
+                      <span className="text-[9px] text-emerald-600/80 block mt-0.5">{seamPayments.length} دفعة مسجلة</span>
                     </div>
-                    <div className={`rounded-xl p-3 text-center border ${remainingDue > 0 ? 'bg-rose-50 border-rose-200/80' : 'bg-slate-50 border-slate-200/80'}`}>
-                      <span className={`text-[10px] block ${remainingDue > 0 ? 'text-rose-700' : 'text-slate-500'}`}>المتبقي</span>
-                      <span className={`text-sm font-bold font-mono ${remainingDue > 0 ? 'text-rose-700' : 'text-slate-900'}`}>{remainingDue.toLocaleString()} دج</span>
-                      {advancePaid > 0 && (
-                        <span className="text-[9px] text-amber-600 block mt-0.5">سلفة {advancePaid.toLocaleString()} دج</span>
-                      )}
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-center">
+                      <span className="text-[10px] text-slate-500 block">الطلبيات المسندة</span>
+                      <span className="text-sm font-bold text-slate-900 font-mono">{seamOrders.length}</span>
+                      <span className="text-[9px] text-slate-400 block mt-0.5">
+                        {(seamData?.deliveredOrders || 0)} مسلّمة • {(seamData?.activeOrders || 0)} قيد الإنجاز
+                      </span>
                     </div>
                   </div>
 
@@ -1448,10 +1395,10 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                                   : 'bg-slate-100 text-slate-700 border-slate-200'
                               }`}>
                                 {order.status === 'delivered'
-                                  ? 'مسلّمة — ضمن المستحق'
+                                  ? 'مسلّمة'
                                   : order.status === 'ready'
-                                  ? 'جاهزة — غير مستحقة بعد'
-                                  : 'قيد الإنجاز — غير مستحقة بعد'}
+                                  ? 'جاهزة للتسليم'
+                                  : 'قيد الإنجاز'}
                               </span>
                             </div>
                           </div>
@@ -1525,7 +1472,7 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
       )}
 
       {paySeamstress && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/40 backdrop-blur-xs" dir="rtl">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 bg-slate-900/40 backdrop-blur-xs" dir="rtl">
           <div className="bg-white rounded-2xl w-full max-w-md p-5 sm:p-6 shadow-xl border border-slate-200/80 space-y-4 max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-3 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
@@ -1542,19 +1489,17 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
 
             {(() => {
               const data = seamstressAnalytics.find(s => s.id === paySeamstress.id);
-              const remaining = data?.remainingDue || 0;
-              const amount = Number(payAmount) || 0;
-              const afterPay = Math.round((remaining - amount) * 100) / 100;
 
               return (
-                <form onSubmit={handleConfirmSeamstressPayment} className="space-y-3">
+                <form
+                  noValidate
+                  onSubmit={handleConfirmSeamstressPayment}
+                  className="space-y-3"
+                >
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-xs space-y-1">
                     <div>الخياطة: <span className="font-bold text-slate-900">{paySeamstress.name}</span></div>
-                    <div>الأتعاب المستحقة: <span className="font-mono font-bold text-slate-800">{(data?.earnedDues || 0).toLocaleString()} دج</span></div>
                     <div>المسدد سابقاً: <span className="font-mono font-bold text-emerald-700">{(data?.totalPaid || 0).toLocaleString()} دج</span></div>
-                    <div className={remaining > 0 ? 'text-rose-600 font-bold font-mono' : 'text-slate-600 font-bold font-mono'}>
-                      الدين المتبقي: {remaining.toLocaleString()} دج
-                    </div>
+                    <div className="text-slate-500">أدخل المبلغ المسدَّد يدوياً في الحقل أدناه.</div>
                   </div>
 
                   <div>
@@ -1563,37 +1508,17 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                     </label>
                     <NumbersInput
                       value={payAmount}
-                      onChange={setPayAmount}
+                      onChange={(val) => {
+                        setPayAmount(val);
+                        if (payError) setPayError('');
+                      }}
                       placeholder="المبلغ المراد تسديده"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 font-mono focus:bg-white focus:border-slate-400 focus:outline-none"
-                      required
+                      className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-sm font-bold text-slate-900 font-mono focus:bg-white focus:outline-none ${
+                        payError ? 'border-rose-300 focus:border-rose-400' : 'border-slate-200 focus:border-slate-400'
+                      }`}
                     />
-                    {remaining > 0 && (
-                      <div className="flex items-center gap-1.5 mt-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setPayAmount(String(Math.round(remaining)))}
-                          className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-[10px] font-bold text-slate-700 transition-colors"
-                        >
-                          كامل المتبقي ({remaining.toLocaleString()} دج)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPayAmount(String(Math.round(remaining / 2)))}
-                          className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-[10px] font-bold text-slate-700 transition-colors"
-                        >
-                          النصف
-                        </button>
-                      </div>
-                    )}
-                    {amount > 0 && (
-                      <p className={`text-[11px] mt-1.5 font-medium ${afterPay > 0 ? 'text-rose-600' : afterPay < 0 ? 'text-amber-600' : 'text-emerald-700'}`}>
-                        {afterPay > 0
-                          ? `المتبقي بعد هذه الدفعة: ${afterPay.toLocaleString()} دج`
-                          : afterPay < 0
-                          ? `دفعة زائدة تُحسب سلفة للخياطة: ${Math.abs(afterPay).toLocaleString()} دج`
-                          : 'بهذه الدفعة يصبح حسابها خالصاً ✓'}
-                      </p>
+                    {payError && (
+                      <p className="text-[11px] text-rose-600 font-bold mt-1">{payError}</p>
                     )}
                   </div>
 
@@ -1647,9 +1572,9 @@ export const PartnersView: React.FC<PartnersViewProps> = React.memo(({
                       إلغاء
                     </button>
                     <button
-                      type="submit"
-                      disabled={!(Number(payAmount) > 0)}
-                      className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs font-bold shadow-xs transition-colors"
+                      type="button"
+                      onClick={handleConfirmSeamstressPayment}
+                      className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition-colors active:scale-95"
                     >
                       تأكيد تسجيل الدفعة
                     </button>
