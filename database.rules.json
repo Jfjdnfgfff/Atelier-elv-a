@@ -2,6 +2,91 @@
   "rules": {
     ".read": true,
     ".write": true,
+
+    "inventory": {
+      "clothes": {
+        ".indexOn": ["barcode", "category", "createdAt", "updatedAt", "purpose", "name"]
+      },
+      "rawMaterials": {
+        ".indexOn": ["name", "code", "fabricType", "createdAt", "updatedAt"]
+      },
+      "suppliers": {
+        ".indexOn": ["name", "createdAt"]
+      },
+      "clothThumbs": {
+        ".indexOn": ["updatedAt"]
+      },
+      "clothImages": {
+        ".indexOn": ["updatedAt"]
+      },
+      "searchIndex": {
+        "clothes": {
+          ".indexOn": ["b", "n", "c", "u", "t"]
+        }
+      }
+    },
+
+    "finance": {
+      "sales": {
+        ".indexOn": ["date", "createdAt", "timestamp"]
+      },
+      "expenses": {
+        ".indexOn": ["date", "createdAt", "category"]
+      },
+      "credits": {
+        ".indexOn": ["date", "createdAt", "relatedRentalId", "relatedExpenseId"]
+      },
+      "creditPayments": {
+        ".indexOn": ["creditId", "date", "createdAt"]
+      },
+      "caisseClosures": {
+        ".indexOn": ["date", "createdAt"]
+      }
+    },
+
+    "operations": {
+      "rentals": {
+        ".indexOn": ["status", "startDate", "expectedReturnDate", "createdAt", "itemId"]
+      },
+      "maintenanceOrders": {
+        ".indexOn": ["status", "createdAt", "receivedDate", "expectedDeliveryDate"]
+      }
+    },
+
+    "people": {
+      "staffMembers": {
+        ".indexOn": ["name", "role", "createdAt"]
+      },
+      "staffPayouts": {
+        ".indexOn": ["staffId", "date", "createdAt"]
+      },
+      "staffAbsences": {
+        ".indexOn": ["staffId", "date", "createdAt"]
+      },
+      "seamstresses": {
+        ".indexOn": ["name", "createdAt"]
+      },
+      "seamstressPayments": {
+        ".indexOn": ["seamstressId", "seamstressName", "date", "createdAt"]
+      }
+    },
+
+    "system": {
+      "meta": {
+        ".read": true,
+        ".write": true
+      },
+      "cacheMeta": {
+        ".indexOn": ["revision", "updatedAt"]
+      },
+      "appSettings": {
+        ".indexOn": ["updatedAt"]
+      },
+      "trash": {
+        ".indexOn": ["deletedAt"]
+      }
+    },
+
     "activityLogs": {
       ".indexOn": ["timestamp", "category", "createdAt", "actionType"]
     },
@@ -40,6 +125,9 @@
     },
     "seamstressPayments": {
       ".indexOn": ["seamstressId", "seamstressName", "date", "createdAt"]
+    },
+    "trash": {
+      ".indexOn": ["deletedAt"]
     }
   }
 }

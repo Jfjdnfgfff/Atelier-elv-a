@@ -13,6 +13,9 @@ import { isValidImageFileType, generateSecureImageFilename, sanitizeText, saniti
 import { processImageToVariants, getListImage } from '../utils/imageUtils';
 import type { InventoryAggregate } from '../utils/inventoryAggregate';
 import { imageStore } from '../utils/imageStore';
+import { buildLocalSearchIndex, searchLocalIndex } from '../utils/searchIndexCore';
+import { usePagination } from '../hooks/usePagination';
+import { PaginationBar } from './PaginationBar';
 import { ImagePreviewModal } from './ImagePreviewModal';
 import { AsyncProductImage } from './AsyncProductImage';
 import { Store, Warehouse, ArrowLeftRight, Camera, X, Check, Package, Shirt, Tag, AlertTriangle, Upload, Trash2, Palette, Ruler, Plus, Sparkles, Filter, CheckCircle2, Scissors, DollarSign, Lock, Eye, EyeOff, Pencil, ShoppingBag, Landmark, Building2, Zap, ChevronLeft, ChevronRight, Search, Loader2, Barcode, RefreshCw } from 'lucide-react';
@@ -185,6 +188,13 @@ interface InventoryViewProps {
   hasMoreClothes?: boolean;
   isLoadingMoreClothes?: boolean;
   onLoadMoreClothes?: () => Promise<void>;
+  /**
+   * بحث في فهرس السحابة الكامل (يشمل الصفحات غير المحمّلة).
+   * يعيد عدد النتائج التي أُضيفت إلى القائمة.
+   */
+  onRemoteSearch?: (term: string) => Promise<number>;
+  /** بناء فهرس البحث السحابي للقطع غير المفهرسة (يُستدعى مرة عند فتح القسم) */
+  onBuildSearchIndex?: () => Promise<void>;
   /** ملخص قيم المخزون الكامل (يُحسب من كل السجلات وليس من الصفحات المحمّلة فقط) */
   inventoryAggregate?: InventoryAggregate | null;
   /** true عندما تكون القيم المعروضة مجموعاً جزئياً من الصفحات المحمّلة (لم يكتمل حساب كل السجلات) */
@@ -206,6 +216,8 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
   hasMoreClothes = false,
   isLoadingMoreClothes = false,
   onLoadMoreClothes,
+  onRemoteSearch,
+  onBuildSearchIndex,
   inventoryAggregate,
   isInventoryAggregatePartial = false,
   isInventoryAggregateRefreshing = false,
@@ -595,6 +607,14 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
     setQuickTransferItem(null);
   };
 
+  // فهرس بحث محلي معكوس (token → ids): فلترة فورية بدون مسح كل الحقول في كل حرف
+  const localSearchIndex = useMemo(() => buildLocalSearchIndex(clothes), [clothes]);
+  const indexedSearchIds = useMemo(() => {
+    if (!search.trim()) return null;
+    const ids = searchLocalIndex(localSearchIndex, search, Math.max(clothes.length, 1));
+    return new Set(ids);
+  }, [localSearchIndex, search, clothes.length]);
+
   const filteredClothes = useMemo(() => {
     return clothes.filter(item => {
       if (filterPurpose !== 'all') {
@@ -645,6 +665,12 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
 
       if (search.trim()) {
         const q = search.toLowerCase();
+        // مسار سريع: نتائج الفهرس المحلي (كل الكلمات تطابق بادئة في القطعة)
+        if (indexedSearchIds && indexedSearchIds.size > 0) {
+          if (!indexedSearchIds.has(item.id)) return false;
+          return true;
+        }
+        // احتياط: مطابقة نصية جزئية عندما لا يعثر الفهرس على شيء (أو استعلام قصير جداً)
         const matchName = item.name.toLowerCase().includes(q);
         const matchBarcode = item.barcode.includes(q);
         const matchVariant = item.variants && item.variants.some(v => v.code && v.code.toLowerCase().includes(q));
@@ -654,31 +680,79 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
       }
       return true;
     });
-  }, [clothes, filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search, barcodeSearch]);
+  }, [clothes, filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search, barcodeSearch, indexedSearchIds]);
 
-  const [visibleCount, setVisibleCount] = useState<number>(5);
+  // تقسيم الصفحات: يعمل على النتائج المفلترة محلياً، مع زر لجلب صفحات إضافية من السحابة
+  const paginationResetKey = [
+    inventoryTab,
+    filterPurpose,
+    filterStockLoc,
+    filterCategory,
+    filterSize,
+    filterColor,
+    search,
+    barcodeSearch
+  ].join('|');
 
-  // زر «تحميل المنتجات الباقية»: يظهر طالما توجد قطع محمّلة غير معروضة أو صفحات أخرى في السحابة
-  const canLoadMoreClothes = visibleCount < filteredClothes.length || hasMoreClothes;
+  const pager = usePagination<ClothItem>({
+    total: filteredClothes.length,
+    initialPageSize: 12,
+    resetKey: paginationResetKey,
+    storageKey: 'bm_page_size_inventory'
+  });
+
+  const displayedClothes = useMemo(
+    () => pager.slice(filteredClothes).items,
+    [filteredClothes, pager.page, pager.pageSize]
+  );
+
+  const isLastPage = pager.page >= pager.pages;
+  const canFetchMoreFromCloud = hasMoreClothes && isLastPage;
+
   const handleLoadMoreClothes = async () => {
     if (isLoadingMoreClothes) return;
-    if (visibleCount < filteredClothes.length) {
-      setVisibleCount(prev => prev + 5);
-      return;
-    }
-    if (onLoadMoreClothes) {
-      await onLoadMoreClothes();
-      setVisibleCount(prev => prev + 5);
-    }
+    if (onLoadMoreClothes) await onLoadMoreClothes();
   };
 
-  useEffect(() => {
-    setVisibleCount(5);
-  }, [filterPurpose, filterStockLoc, filterCategory, filterSize, filterColor, search, barcodeSearch, inventoryTab]);
+  // بحث في فهرس السحابة عندما يكون المخزون المحمّل جزئياً فقط
+  const [remoteSearch, setRemoteSearch] = useState<{ term: string; loading: boolean; added: number }>({
+    term: '',
+    loading: false,
+    added: 0
+  });
 
-  const displayedClothes = useMemo(() => {
-    return filteredClothes.slice(0, visibleCount);
-  }, [filteredClothes, visibleCount]);
+  useEffect(() => {
+    const term = search.trim();
+    if (!term || !hasMoreClothes || !onRemoteSearch) {
+      setRemoteSearch({ term: '', loading: false, added: 0 });
+      return;
+    }
+
+    let cancelled = false;
+    setRemoteSearch({ term, loading: true, added: 0 });
+    const timer = setTimeout(async () => {
+      try {
+        const added = await onRemoteSearch(term);
+        if (!cancelled) setRemoteSearch({ term, loading: false, added: Number(added) || 0 });
+      } catch {
+        if (!cancelled) setRemoteSearch({ term, loading: false, added: 0 });
+      }
+    }, 450);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [search, hasMoreClothes, onRemoteSearch]);
+
+  // بناء فهرس البحث السحابي مرة واحدة عند فتح المخزون (في الخلفية)
+  const didBuildIndexRef = useRef(false);
+  useEffect(() => {
+    if (didBuildIndexRef.current || !onBuildSearchIndex) return;
+    didBuildIndexRef.current = true;
+    const timer = setTimeout(() => { void onBuildSearchIndex(); }, 1500);
+    return () => clearTimeout(timer);
+  }, [onBuildSearchIndex]);
 
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
@@ -1146,19 +1220,42 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           <Shirt className="w-4 h-4 text-blue-900" />
           <span>قائمة القطع في المخزن ({filteredClothes.length})</span>
         </span>
-        {canLoadMoreClothes && (
-          <button
-            type="button"
-            onClick={handleLoadMoreClothes}
-            disabled={isLoadingMoreClothes}
-            className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-60 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all active:scale-95 shrink-0"
-            title="تحميل 5 منتجات أخرى"
-          >
-            {isLoadingMoreClothes ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-            <span>{isLoadingMoreClothes ? 'جاري الجلب...' : `تحميل المزيد (${displayedClothes.length}/${filteredClothes.length})`}</span>
-          </button>
+        {hasMoreClothes && (
+          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded-lg">
+            محمّل جزئياً من السحابة
+          </span>
         )}
       </div>
+
+      {(remoteSearch.loading || remoteSearch.added > 0) && remoteSearch.term === search.trim() && (
+        <div className="flex items-center gap-2 text-[11px] font-bold text-indigo-700 bg-indigo-50/70 border border-indigo-200 rounded-xl px-3 py-2">
+          {remoteSearch.loading ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <span>جارٍ البحث في فهرس كامل المخزون (بما فيه القطع غير المحمّلة)…</span>
+            </>
+          ) : (
+            <>
+              <Search className="w-3.5 h-3.5" />
+              <span>تمت إضافة {remoteSearch.added} نتيجة من فهرس السحابة إلى القائمة.</span>
+            </>
+          )}
+        </div>
+      )}
+
+      <PaginationBar
+        page={pager.page}
+        pages={pager.pages}
+        pageSize={pager.pageSize}
+        total={pager.total}
+        start={pager.start}
+        end={pager.end}
+        numbers={pager.numbers}
+        pageSizeOptions={pager.pageSizeOptions}
+        itemLabel="قطعة"
+        onPageChange={pager.setPage}
+        onPageSizeChange={pager.setPageSize}
+      />
 
       <VirtualizedClothGrid
         clothes={displayedClothes}
@@ -1173,8 +1270,21 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
           if (item) handleInitiateDeleteCloth(item);
         }}
         footer={
-          canLoadMoreClothes ? (
-            <div className="flex justify-center pt-2 pb-4">
+          <div className="flex flex-col items-center gap-2 pt-2 pb-4">
+            <PaginationBar
+              compact
+              page={pager.page}
+              pages={pager.pages}
+              pageSize={pager.pageSize}
+              total={pager.total}
+              start={pager.start}
+              end={pager.end}
+              numbers={pager.numbers}
+              itemLabel="قطعة"
+              onPageChange={pager.setPage}
+              className="w-full"
+            />
+            {canFetchMoreFromCloud && (
               <button
                 type="button"
                 disabled={isLoadingMoreClothes}
@@ -1182,10 +1292,10 @@ export const InventoryView: React.FC<InventoryViewProps> = React.memo(({
                 className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-wait text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95"
               >
                 {isLoadingMoreClothes ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                <span>{isLoadingMoreClothes ? 'جاري جلب 5 منتجات...' : `تحميل 5 منتجات أخرى (عرض ${displayedClothes.length} من المحمل ${filteredClothes.length})`}</span>
+                <span>{isLoadingMoreClothes ? 'جاري جلب الصفحة التالية من السحابة…' : 'تحميل المزيد من السحابة'}</span>
               </button>
-            </div>
-          ) : null
+            )}
+          </div>
         }
       />
 

@@ -18,6 +18,13 @@ import {
   ActivityLog
 } from './types';
 import { perfMonitor } from './utils/performanceMonitor';
+import {
+  CACHE_SCHEMA_VERSION,
+  DEFAULT_CACHE_TTL_MS,
+  evaluateCacheFreshness,
+  getKnownRevision,
+  type CacheStamp
+} from './utils/cachePolicy';
 
 export const STORAGE_KEYS = {
   CLOTHES: 'boutique_clothes',
@@ -76,6 +83,10 @@ export interface StorageEnvelope<T> {
   timestamp: number;
   version: number;
   updatedAt?: string;
+  /** بصمة السحابة وقت كتابة الكاش (لمقارنتها ببصمة /system/cacheMeta) */
+  revision?: number;
+  /** نسخة مخطّط التخزين — تُبطل الكاش عند تغيّر شكل البيانات */
+  schemaVersion?: number;
 }
 
 // فك غلاف التخزين مع دعم الصيغة القديمة (مصفوفات مباشرة) دون فقدان السجلات
@@ -90,7 +101,9 @@ export function parseStorageEnvelope<T>(raw: string | null, defaultValue: T): St
         data: parsed.data as T,
         timestamp: typeof parsed.timestamp === 'number' ? parsed.timestamp : Date.now(),
         version: typeof parsed.version === 'number' ? parsed.version : 1,
-        updatedAt: parsed.updatedAt
+        updatedAt: parsed.updatedAt,
+        revision: typeof parsed.revision === 'number' ? parsed.revision : 0,
+        schemaVersion: typeof parsed.schemaVersion === 'number' ? parsed.schemaVersion : 0
       };
     }
     // Legacy format: raw array or object saved directly in localStorage
@@ -120,10 +133,12 @@ export function flushPendingStorageSynchronously(): void {
     if (dataToPersist === undefined) continue;
 
     const meta = cacheMetaStore.get(key) || { timestamp: Date.now(), version: 1 };
-    const cacheEnvelope = {
+    const cacheEnvelope: StorageEnvelope<unknown> = {
       data: dataToPersist,
       timestamp: meta.timestamp,
-      version: meta.version
+      version: meta.version,
+      revision: getKnownRevision(key),
+      schemaVersion: CACHE_SCHEMA_VERSION
     };
 
     // 1. IndexedDB write (completely independent of localStorage and outside its try/catch)
@@ -147,7 +162,9 @@ export function flushPendingStorageSynchronously(): void {
       const payloadStr = JSON.stringify({
         data: storageData,
         timestamp: meta.timestamp,
-        version: meta.version
+        version: meta.version,
+        revision: cacheEnvelope.revision,
+        schemaVersion: cacheEnvelope.schemaVersion
       });
 
       // Disable localStorage write for clothes completely if size > 1MB
@@ -177,13 +194,14 @@ function scheduleIdleStorageFlush() {
   };
 
   if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-    (window as any).requestIdleCallback(performFlush, { timeout: 400 });
+    // 200ms سقف أقصى: أقصر نافذة ممكنة بين التغيير والكتابة على القرص
+    (window as any).requestIdleCallback(performFlush, { timeout: 200 });
   } else {
-    setTimeout(performFlush, 200);
+    setTimeout(performFlush, 120);
   }
 }
 
-// Ensure pending writes are always committed before page refresh/exit
+// تأكيد كتابة كل ما هو معلّق قبل إغلاق الصفحة أو تجميد التطبيق (Page Lifecycle)
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', flushPendingStorageSynchronously);
   window.addEventListener('pagehide', flushPendingStorageSynchronously);
@@ -192,7 +210,86 @@ if (typeof window !== 'undefined') {
       flushPendingStorageSynchronously();
     }
   });
+  // Chrome: تجميد التبويب في الخلفية (آخر فرصة للكتابة قبل إيقاف العمليات)
+  document.addEventListener('freeze', flushPendingStorageSynchronously as EventListener);
+
+  // شبكة أمان: تفريغ دوري كل 20 ثانية حتى لو تأخر وقت الخمول
+  window.setInterval(flushPendingStorageSynchronously, 20_000);
 }
+
+/**
+ * طلب تخزين دائم من المتصفح (Storage Bucket) حتى لا يحذف النظام
+ * بيانات IndexedDB/localStorage عند نقص مساحة الجهاز.
+ * لا يضمن المتصفح الموافقة، لكنه يرفع الأولوية كثيراً عند الموافقة.
+ */
+export async function requestPersistentStorage(): Promise<boolean> {
+  try {
+    if (typeof navigator === 'undefined' || !navigator.storage?.persist) return false;
+    const persisted = await navigator.storage.persisted?.();
+    if (persisted) return true;
+    return await navigator.storage.persist();
+  } catch {
+    return false;
+  }
+}
+
+const isOffline = (): boolean =>
+  typeof navigator !== 'undefined' && (navigator as any).onLine === false;
+
+/**
+ * هل يُسمح بعرض نسخة الكاش هذه؟ (TTL + بصمة السحابة + مخطّط التخزين)
+ * في وضع عدم الاتصال نُفضّل عرض آخر نسخة معروفة على شاشة فارغة.
+ */
+function isEnvelopeUsable(key: string, env: StorageEnvelope<unknown>): boolean {
+  const stamp: CacheStamp = {
+    revision: env.revision || 0,
+    cachedAt: env.timestamp || 0,
+    schemaVersion: env.schemaVersion || 0
+  };
+  const evaluation = evaluateCacheFreshness(
+    stamp,
+    getKnownRevision(key),
+    Date.now(),
+    DEFAULT_CACHE_TTL_MS,
+    CACHE_SCHEMA_VERSION
+  );
+  if (evaluation.fresh) return true;
+  if (isOffline() && evaluation.reason !== 'schema') {
+    // بدون شبكة: نعرض الكاش مع علم أنه غير مُتحقَّق منه حديثاً
+    return true;
+  }
+  if (evaluation.reason !== 'missing') {
+    perfMonitor.recordStorageRead(`stale:${key}:${evaluation.reason}`);
+    void removeStoredEntry(key);
+  }
+  return false;
+}
+
+async function removeStoredEntry(key: string): Promise<void> {
+  try {
+    const { del } = await import('idb-keyval');
+    await del(key);
+  } catch {
+    // تجاهل
+  }
+}
+
+/**
+ * إبطال كاش مفتاح واحد: الذاكرة + localStorage + IndexedDB.
+ * يُستدعى عند اكتشاف أن بصمة السحابة أحدث من النسخة المحلية.
+ */
+export const invalidateStoredKey = (key: string): void => {
+  memoryStore.delete(key);
+  lastWrittenRef.delete(key);
+  dirtyKeys.delete(key);
+  cacheMetaStore.delete(key);
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // تجاهل
+  }
+  void removeStoredEntry(key);
+};
 
 export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
   perfMonitor.recordStorageRead(key);
@@ -212,6 +309,11 @@ export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
       return defaultValue;
     }
     const env = parseStorageEnvelope<T>(raw, defaultValue);
+    if (!isEnvelopeUsable(key, env)) {
+      memoryStore.set(key, defaultValue);
+      cacheMetaStore.set(key, { timestamp: Date.now(), version: 1, updatedAt: new Date().toISOString() });
+      return defaultValue;
+    }
     if (Array.isArray(env.data) && env.data.length === 0 && Array.isArray(defaultValue) && defaultValue.length > 0) {
       memoryStore.set(key, defaultValue);
       cacheMetaStore.set(key, { 
@@ -243,7 +345,11 @@ export const saveToStorage = <T>(key: string, data: T): void => {
   // نفس المرجع = لا حاجة لإعادة الكتابة
   if (lastWrittenRef.get(key) === data) return;
   lastWrittenRef.set(key, data);
-  cacheMetaStore.set(key, { timestamp: Date.now(), version: 1, updatedAt: new Date().toISOString() });
+  cacheMetaStore.set(key, {
+    timestamp: Date.now(),
+    version: 1,
+    updatedAt: new Date().toISOString()
+  });
 
   memoryStore.set(key, data);
   dirtyKeys.add(key);
@@ -251,11 +357,28 @@ export const saveToStorage = <T>(key: string, data: T): void => {
   scheduleIdleStorageFlush();
 };
 
+/** معلومات الكاش لمفتاح (للتشخيص): العمر والبصمة */
+export const getCacheDiagnostics = (key: string): { knownRevision: number; cachedAt: number | null; hasMemory: boolean } => {
+  const meta = cacheMetaStore.get(key);
+  return {
+    knownRevision: getKnownRevision(key),
+    cachedAt: meta ? meta.timestamp : null,
+    hasMemory: memoryStore.has(key)
+  };
+};
+
 export const generateId = (): string => {
   return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7);
 };
 
 export const clearAllStorage = () => {
+  try {
+    localStorage.removeItem('bm_cache_schema_v1');
+    localStorage.removeItem('bm_cache_revisions_v1');
+  } catch {
+    // تجاهل
+  }
+
   const collections = [
     STORAGE_KEYS.CLOTHES,
     STORAGE_KEYS.RENTALS,
@@ -295,6 +418,30 @@ export const initializeStorage = () => {
     clearAllStorage();
     localStorage.setItem('boutique_empty_data_flag', RESET_VERSION);
   }
+
+  // تغيّر مخطّط الكاش (شكل البيانات) ⇒ إبطال كل الكاش المحلي مرة واحدة
+  const storedSchema = localStorage.getItem('bm_cache_schema_v1');
+  if (storedSchema !== String(CACHE_SCHEMA_VERSION)) {
+    invalidateAllCachedCollections();
+    localStorage.setItem('bm_cache_schema_v1', String(CACHE_SCHEMA_VERSION));
+  }
+};
+
+/** إبطال كل مفاتيح المجموعات دفعة واحدة (تغيّر المخطّط أو مسح شامل) */
+export const invalidateAllCachedCollections = (): void => {
+  for (const key of Object.values(STORAGE_KEYS)) {
+    if (key === STORAGE_KEYS.SECURITY_PIN) continue;
+    memoryStore.delete(key);
+    lastWrittenRef.delete(key);
+    dirtyKeys.delete(key);
+    cacheMetaStore.delete(key);
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // تجاهل
+    }
+    void removeStoredEntry(key);
+  }
 };
 
 // تعبئة كل المجموعات من IndexedDB بالتوازي (بدل قراءة تسلسلية بطيئة) قبل الاشتراكات السحابية
@@ -303,6 +450,15 @@ export async function hydrateFromIndexedDB(): Promise<void> {
     try {
       const idbVal = await get(key);
       if (idbVal && idbVal.data) {
+        const envelope: StorageEnvelope<unknown> = {
+          data: idbVal.data,
+          timestamp: idbVal.timestamp || 0,
+          version: idbVal.version || 1,
+          revision: typeof idbVal.revision === 'number' ? idbVal.revision : 0,
+          schemaVersion: typeof idbVal.schemaVersion === 'number' ? idbVal.schemaVersion : 0
+        };
+        // لا نُعبّئ الذاكرة من IndexedDB إلا إذا كانت النسخة صالحة (TTL + بصمة السحابة)
+        if (!isEnvelopeUsable(key, envelope)) return;
         const memVal = memoryStore.get(key);
         if (!memVal || (Array.isArray(memVal) && memVal.length === 0 && Array.isArray(idbVal.data) && idbVal.data.length > 0)) {
           memoryStore.set(key, idbVal.data);
