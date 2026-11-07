@@ -1438,11 +1438,21 @@ export default function App() {
     setActiveModal(null);
   }, []);
 
-  const handleActivateRental = useCallback((rental: Rental, collectedAmount: number = 0, handoverNotes: string = '', handoverFundSource?: FundSource) => {
+  const handleActivateRental = useCallback((
+    rental: Rental,
+    collectedAmount: number = 0,
+    handoverNotes: string = '',
+    handoverFundSource?: FundSource,
+    handoverPaymentDate?: string
+  ) => {
     const safeCollected = Number(collectedAmount) || 0;
     const newPaid = (rental.paidAmount || 0) + safeCollected;
     const newRemaining = Math.max(0, rental.rentPrice - newPaid);
     const todayStr = new Date().toISOString().split('T')[0];
+    // تاريخ دخول المبلغ المحصل في الصندوق (يُدخله المستخدم عند إتمام الصفقة)
+    const safePaymentDate = typeof handoverPaymentDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(handoverPaymentDate.trim())
+      ? handoverPaymentDate.trim()
+      : todayStr;
     const notesStr = handoverNotes ? `${rental.notes ? rental.notes + ' | ' : ''}تسليم: ${handoverNotes}` : rental.notes;
 
     // صندوق تسجيل المبلغ المحصل عند التسليم (إن وُجد)
@@ -1460,6 +1470,14 @@ export default function App() {
       handoverDate: todayStr,
       notes: notesStr
     };
+
+    // حفظ دفعة التسليم منفصلة: مبلغها + تاريخ دخولها الصندوق + صندوقها،
+    // حتى تُحسب في صندوق اليوم المختار ولا تتحرك دفعة الحجز من تاريخها.
+    if (safeCollected > 0) {
+      rentalUpdates.handoverCollectedAmount = (Number(rental.handoverCollectedAmount) || 0) + safeCollected;
+      rentalUpdates.handoverPaymentDate = safePaymentDate;
+      rentalUpdates.handoverFundSource = handoverSource;
+    }
     // إذا كان الحجز الأصلي على الصندوق العام والمحصل الآن على الصندوق العام نبقي الصنف عاماً، وإلا نحتفظ بالأصل
     // نحفظ صندوق التسليم إذا اختلف عن الأصل عبر تحديث fundSource عند الحاجة
     if (handoverSource === 'general' && rental.fundSource !== 'general') {
@@ -1516,12 +1534,14 @@ export default function App() {
       actionType: 'deal',
       category: 'rentals',
       title: 'تسليم وتفعيل حجز فستان',
-      details: `تسليم الفستان ${rental.itemName} للزبونة ${rental.customerName} وتفعيل عقد الكراء${safeCollected > 0 ? ` — محصل عند التسليم: ${safeCollected.toLocaleString()} دج (${handoverFundLabel})` : ''}`,
+      details: `تسليم الفستان ${rental.itemName} للزبونة ${rental.customerName} وتفعيل عقد الكراء${safeCollected > 0 ? ` — محصل عند التسليم: ${safeCollected.toLocaleString()} دج (${handoverFundLabel}) دخل الصندوق بتاريخ ${safePaymentDate}` : ''}`,
       amount: safeCollected > 0 ? safeCollected : rental.rentPrice
     });
 
     if (handoverSource === 'general' && safeCollected > 0) {
-      showToast(`تمت الصفقة وتسليم الفستان بنجاح! ${safeCollected.toLocaleString()} دج أُضيفت إلى الصندوق العام`);
+      showToast(`تمت الصفقة وتسليم الفستان بنجاح! ${safeCollected.toLocaleString()} دج أُضيفت إلى الصندوق العام بتاريخ ${safePaymentDate}`);
+    } else if (safeCollected > 0) {
+      showToast(`تمت الصفقة وتسليم الفستان بنجاح! ${safeCollected.toLocaleString()} دج دخلت صندوق اليوم بتاريخ ${safePaymentDate}`);
     } else {
       showToast('تمت الصفقة وتسليم الفستان بنجاح! دخل الفستان في الكراء الجاري وتم خصمه من المخزن');
     }

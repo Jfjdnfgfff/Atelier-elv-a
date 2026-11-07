@@ -51,7 +51,7 @@ import {
   isGeneralFundExpense,
   sumGeneralFundExpenses
 } from '../utils/fundBalance';
-import { summarizeDailyCaisse } from '../utils/dailyCaisseSummary';
+import { summarizeDailyCaisse, rentalIncomeOnDate, splitRentalIncome } from '../utils/dailyCaisseSummary';
 
 interface CaisseViewProps {
   sales: Sale[];
@@ -489,23 +489,35 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
       });
     });
 
-    // Rentals (inflow) — صندوق اليوم أو الصندوق العام
+    // Rentals (inflow) — دفعة الحجز ودفعة التسليم كل واحدة بتاريخها وصندوقها
     rentals.forEach(r => {
-      const rentPaymentDate = r.paymentDate || (r.createdAt ? r.createdAt.split('T')[0] : r.startDate) || '';
       const timePart = r.createdAt && r.createdAt.includes('T') ? r.createdAt.split('T')[1]?.substring(0, 5) : '';
-      const amount = r.paidAmount || 0;
-      const rentalFund = (r as any).fundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)';
-      list.push({
-        id: r.id,
-        type: 'rental',
-        typeLabel: r.status === 'reserved' ? 'عربون حجز كراء' : 'كراء',
-        date: rentPaymentDate,
-        time: timePart,
-        direction: 'inflow',
-        title: r.customerName || 'زبون كراء',
-        subtitle: `${r.itemName} (${r.status === 'reserved' ? 'عربون حجز' : 'دفع كراء'}: ${(r.paidAmount || 0).toLocaleString()} دج • استلام المال: ${rentPaymentDate} • الصندوق: ${rentalFund})`,
-        amount,
-        originalItem: r
+      const split = splitRentalIncome(r);
+      const portions: Array<{ date: string; amount: number; fundSource: 'daily' | 'general'; isHandover: boolean }> = [];
+
+      if (split.bookingAmount > 0) {
+        portions.push({ date: split.bookingDate, amount: split.bookingAmount, fundSource: split.bookingFundSource, isHandover: false });
+      }
+      if (split.handoverAmount > 0 && split.handoverDate) {
+        portions.push({ date: split.handoverDate, amount: split.handoverAmount, fundSource: split.handoverFundSource, isHandover: true });
+      }
+
+      portions.forEach(portion => {
+        const rentalFund = portion.fundSource === 'general' ? 'الصندوق العام (الخزينة)' : 'صندوق اليوم (الدرج)';
+        list.push({
+          id: portion.isHandover ? `${r.id}_handover` : r.id,
+          type: 'rental',
+          typeLabel: portion.isHandover
+            ? 'دفعة تسليم كراء'
+            : (r.status === 'reserved' ? 'عربون حجز كراء' : 'كراء'),
+          date: portion.date,
+          time: portion.isHandover ? '' : timePart,
+          direction: 'inflow',
+          title: r.customerName || 'زبون كراء',
+          subtitle: `${r.itemName} (${portion.isHandover ? 'دفعة التسليم' : (r.status === 'reserved' ? 'عربون حجز' : 'دفع كراء')}: ${portion.amount.toLocaleString()} دج • دخول المبلغ في الصندوق: ${portion.date} • الصندوق: ${rentalFund})`,
+          amount: portion.amount,
+          originalItem: r
+        });
       });
     });
 
@@ -1520,17 +1532,19 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                       <span>قائمة كراء اليوم النقدية ({dateRentals.length}):</span>
                     </div>
                     <div className="divide-y divide-slate-100 max-h-40 overflow-y-auto">
-                      {dateRentals.map(r => (
+                      {dateRentals.map(r => {
+                        const portion = rentalIncomeOnDate(r, selectedDate);
+                        return (
                         <div key={r.id} className="p-2 flex justify-between items-center hover:bg-slate-50 transition-colors group">
                           <div className="flex-1 min-w-0 pr-1">
                             <span className="font-semibold text-slate-800 block truncate">{r.customerName}</span>
                             <span className="text-[10px] text-slate-500">
-                              ({r.itemName}) {r.status === 'reserved' ? '• حجز/عربون' : '• كراء'} • استلام المال: <span className="font-mono font-bold text-slate-700">{r.paymentDate || (r.createdAt ? r.createdAt.split('T')[0] : r.startDate)}</span>
+                              ({r.itemName}) {portion.isHandover ? '• دفعة تسليم الكراء' : (r.status === 'reserved' ? '• حجز/عربون' : '• كراء')} • دخول المال في الصندوق: <span className="font-mono font-bold text-slate-700">{portion.date || '—'}</span>
                             </span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="font-mono font-bold text-slate-900">
-                              +{(r.paidAmount || 0).toLocaleString()} دج
+                              +{(portion.amount || 0).toLocaleString()} دج
                             </span>
                             {onDeleteRental && (
                               <button
@@ -1548,7 +1562,8 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                             )}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -1559,17 +1574,19 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                       <span className="font-mono">+{dateRentalsGeneralIncome.toLocaleString()} دج</span>
                     </div>
                     <div className="divide-y divide-slate-100 max-h-40 overflow-y-auto">
-                      {dateRentalsGeneral.map(r => (
+                      {dateRentalsGeneral.map(r => {
+                        const portion = rentalIncomeOnDate(r, selectedDate);
+                        return (
                         <div key={r.id} className="p-2 flex justify-between items-center hover:bg-indigo-50/40 transition-colors group">
                           <div className="flex-1 min-w-0 pr-1">
                             <span className="font-semibold text-slate-800 block truncate">{r.customerName}</span>
                             <span className="text-[10px] text-indigo-600">
-                              ({r.itemName}) • <span className="font-bold">الصندوق العام (الخزينة)</span> • استلام المال: <span className="font-mono font-bold text-slate-700">{r.paymentDate || (r.createdAt ? r.createdAt.split('T')[0] : r.startDate)}</span>
+                              ({r.itemName}) • <span className="font-bold">الصندوق العام (الخزينة)</span> • دخول المال في الصندوق: <span className="font-mono font-bold text-slate-700">{portion.date || '—'}{portion.isHandover ? ' (تسليم)' : ''}</span>
                             </span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="font-mono font-bold text-indigo-700">
-                              +{(r.paidAmount || 0).toLocaleString()} دج
+                              +{(portion.amount || 0).toLocaleString()} دج
                             </span>
                             {onDeleteRental && (
                               <button
@@ -1587,7 +1604,8 @@ export const CaisseView: React.FC<CaisseViewProps> = React.memo(({
                             )}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
