@@ -109,6 +109,10 @@ export interface ViewRendererProps {
   onAddCloth: (data: any) => void;
   onUpdateCloth: (id: string, data: any) => void;
   onDeleteCloth: (id: string) => void;
+  /** بحث في فهرس المخزون السحابي (كل القطع وليس الصفحات المحمّلة فقط) */
+  onRemoteInventorySearch?: (term: string) => Promise<number>;
+  /** بناء/إكمال فهرس البحث السحابي للقطع غير المفهرسة */
+  onBuildInventoryIndex?: () => Promise<void>;
   onAddRawMaterial: (mat: RawMaterial) => void;
   onUpdateRawMaterial: (id: string, data: Partial<RawMaterial>) => void;
   onDeleteRawMaterial: (id: string) => void;
@@ -288,6 +292,8 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
   onAddCloth,
   onUpdateCloth,
   onDeleteCloth,
+  onRemoteInventorySearch,
+  onBuildInventoryIndex,
   onAddRawMaterial,
   onUpdateRawMaterial,
   onDeleteRawMaterial,
@@ -392,6 +398,8 @@ export const ViewRenderer: React.FC<ViewRendererProps> = memo(({
           hasMoreClothes={hasMoreClothes}
           isLoadingMoreClothes={isLoadingMoreClothes}
           onLoadMoreClothes={onLoadMoreClothes}
+          onRemoteSearch={onRemoteInventorySearch}
+          onBuildSearchIndex={onBuildInventoryIndex}
           inventoryAggregate={inventoryAggregate}
           isInventoryAggregatePartial={isInventoryAggregatePartial}
           isInventoryAggregateRefreshing={isInventoryAggregateRefreshing}

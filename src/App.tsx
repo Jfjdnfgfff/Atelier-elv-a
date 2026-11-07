@@ -42,7 +42,8 @@ import {
   DEFAULT_SEAMSTRESS_PAYMENTS,
   DEFAULT_ACTIVITY_LOGS,
   initializeStorage,
-  hydrateFromIndexedDB
+  hydrateFromIndexedDB,
+  requestPersistentStorage
 } from './storage';
 import { perfMonitor } from './utils/performanceMonitor';
 import {
@@ -51,6 +52,11 @@ import {
   paymentsForCredit,
   generalFundEffectOfPayment
 } from './utils/fundBalance';
+import { ensureNamespacedLayout } from './data/layoutMigration';
+import { DATA_LAYOUT_VERSION } from './data/paths';
+import { isLayoutComplete } from './data/layoutCore';
+import { invalidateStaleCaches, startCacheRevalidation } from './data/cacheManager';
+import { MIGRATABLE_COLLECTIONS } from './data/paths';
 import { 
   FIREBASE_COLLECTIONS, 
   saveItemToFirebase, 
@@ -63,9 +69,15 @@ import {
   areArraysEqual,
   firebaseConfig,
   downloadFullFirebaseBackupDirect,
-  flushFailedWrites
+  flushFailedWrites,
+  hasPendingWrites,
+  markNamespacedLayoutReady,
+  fetchInventorySearchIndex,
+  pushInventorySearchIndex,
+  fetchClothesByIds
 } from './firebase';
-import { mergeQueuedWrites, hasQueuedWrites, queueFailedWrite, clearQueuedWrite } from './utils/writeOutbox';
+import { searchIndexRecords, type SearchIndexRecord } from './utils/searchIndexCore';
+import { mergeQueuedWrites, queueFailedWrite, clearQueuedWrite } from './utils/writeOutbox';
 
 import { Modal } from './components/Shared';
 import AppNavigation from './components/AppNavigation';
@@ -283,6 +295,9 @@ export default function App() {
     }
   }, []);
 
+  // حالة تنظيم المسارات: لا نُشغّل الاشتراكات قبل التأكد من مكان البيانات
+  const [isLayoutReady, setIsLayoutReady] = useState(false);
+
   // حالة الاتصال والمزامنة السحابية
   const [isFirebaseConnected, setIsFirebaseConnected] = useState(false);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
@@ -387,9 +402,49 @@ export default function App() {
     seamstressPayments, rawMaterials, caisseClosures, activityLogs
   ]);
 
-  // قراءة مخزون المتصفح ثم مراقبة حالة الاتصال السحابي
+  // ---------------------------------------------------------------------
+  // الإقلاع: ترحيل المسارات → إبطال الكاش القديم → تعبئة من IndexedDB
+  // ---------------------------------------------------------------------
   useEffect(() => {
-    hydrateFromIndexedDB().then(() => {
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      // 0) طلب تخزين دائم حتى لا يحذف النظام الكاش المحلي عند نقص المساحة
+      void requestPersistentStorage();
+
+      // 1) تنظيم البيانات في مسارات منفصلة (نسخ فقط، لا حذف)
+      try {
+        const meta = await ensureNamespacedLayout(MIGRATABLE_COLLECTIONS);
+        const complete = isLayoutComplete(meta, DATA_LAYOUT_VERSION, MIGRATABLE_COLLECTIONS);
+        // لا نتحوّل للمسارات الجديدة إلا بعد التأكد من اكتمال كل النسخ،
+        // وإلا يبقى القارئ على المسار القديم (fallback) لتفادي شاشة فارغة.
+        markNamespacedLayoutReady(complete);
+        if (!complete) {
+          console.warn('[Bootstrap] Layout migration incomplete — using legacy paths for missing collections');
+        }
+      } catch (error) {
+        console.warn('[Bootstrap] Layout migration skipped:', error);
+      }
+
+      // 2) إبطال كل كاش أقدم من آخر تعديل سحابي (قراءة بصمات صغيرة فقط)
+      try {
+        const invalidated = await invalidateStaleCaches(MIGRATABLE_COLLECTIONS);
+        if (invalidated.length > 0) {
+          console.info(`[Cache] Invalidated stale caches: ${invalidated.join(', ')}`);
+        }
+      } catch (error) {
+        console.warn('[Bootstrap] Cache validation skipped:', error);
+      }
+
+      // 3) تعبئة الذاكرة من الكاش الصالح فقط
+      try {
+        await hydrateFromIndexedDB();
+      } catch (error) {
+        console.warn('[Bootstrap] Hydration error:', error);
+      }
+
+      if (cancelled) return;
+
       setClothes(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.CLOTHES, DEFAULT_CLOTHES) : prev));
       setRentals(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.RENTALS, DEFAULT_RENTALS) : prev));
       setSales(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.SALES, DEFAULT_SALES) : prev));
@@ -406,12 +461,23 @@ export default function App() {
       setRawMaterials(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.RAW_MATERIALS, DEFAULT_RAW_MATERIALS) : prev));
       setCaisseClosures(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.CAISSE_CLOSURES, DEFAULT_CAISSE_CLOSURES) : prev));
       setActivityLogs(prev => (prev.length === 0 ? loadFromStorage(STORAGE_KEYS.ACTIVITY_LOGS, DEFAULT_ACTIVITY_LOGS) : prev));
-    }).catch(err => console.warn('Hydration error:', err));
 
+      setIsLayoutReady(true);
+    };
+
+    void bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // مراقبة الاتصال + إعادة إرسال الكتابات المعلّقة
+  useEffect(() => {
     const unsub = SubscriptionManager.onConnectionStatus(connected => {
       setIsFirebaseConnected(connected);
       // عودة الاتصال → إعادة إرسال كل الكتابات التي فشلت سابقاً (مثل دفعات الخياطات)
-      if (connected && hasQueuedWrites()) {
+      if (connected && hasPendingWrites()) {
         void flushFailedWrites().then(flushed => {
           if (flushed > 0) showToast(`تم إرسال ${flushed} عملية كانت بانتظار الاتصال ✅`);
         });
@@ -420,13 +486,66 @@ export default function App() {
 
     // محاولة أولى عند بدء التطبيق لتصريف أي كتابات معلّقة من جلسة سابقة
     const startupFlush = setTimeout(() => {
-      if (hasQueuedWrites()) void flushFailedWrites();
+      if (hasPendingWrites()) void flushFailedWrites();
     }, 4000);
     return () => {
       clearTimeout(startupFlush);
       unsub();
     };
-  }, []);
+  }, [showToast]);
+
+  // إعادة التحقق من صلاحية الكاش عند عودة التبويب/الاتصال
+  useEffect(() => {
+    if (!isLayoutReady) return;
+    return startCacheRevalidation({
+      collections: MIGRATABLE_COLLECTIONS,
+      onInvalidated: (collections) => {
+        console.info(`[Cache] Revalidation invalidated: ${collections.join(', ')}`);
+      }
+    });
+  }, [isLayoutReady]);
+
+  // ---------------------------------------------------------------------
+  // إيقاف الاستماع للتغييرات عندما لا نحتاج إليه:
+  //  - مغادرة القسم: يحدث فوراً داخل handleEnsureCollection (إلغاء اشتراكات القسم السابق)
+  //  - إخفاء التبويب: بعد 30 ثانية بلا استخدام تُغلق كل المستمعات (توفير بطارية/بيانات)
+  //  - العودة: إعادة فتح المستمعات وطلب لقطة حديثة من السحابة
+  // ---------------------------------------------------------------------
+  useEffect(() => {
+    if (!isLayoutReady || typeof document === 'undefined') return;
+
+    let hiddenTimer: number | null = null;
+    const SUSPEND_AFTER_HIDDEN_MS = 30_000;
+
+    const clearHiddenTimer = () => {
+      if (hiddenTimer !== null) {
+        window.clearTimeout(hiddenTimer);
+        hiddenTimer = null;
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        clearHiddenTimer();
+        hiddenTimer = window.setTimeout(() => {
+          const closed = SubscriptionManager.suspendAll();
+          if (closed > 0) console.info(`[Realtime] Suspended ${closed} listener(s) while hidden`);
+        }, SUSPEND_AFTER_HIDDEN_MS);
+      } else {
+        clearHiddenTimer();
+        if (SubscriptionManager.isSuspended()) {
+          const resumed = SubscriptionManager.resumeAll();
+          console.info(`[Realtime] Resumed ${resumed} listener(s)`);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      clearHiddenTimer();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [isLayoutReady]);
 
   // ترحيل الدفعات المضمّنة داخل الديون القديمة إلى مجموعة مستندات الدفعات المستقلة
   const migratedCreditsRef = useRef<Set<string>>(new Set());
@@ -829,6 +948,95 @@ export default function App() {
   const loadMoreClothes = useCallback(() => loadMorePaginatedCollection('clothes'), [loadMorePaginatedCollection]);
   const loadMoreSales = useCallback(() => loadMorePaginatedCollection('sales'), [loadMorePaginatedCollection]);
 
+  // -----------------------------------------------------------------------
+  // فهرس البحث في المخزون (السحابة): بحث في كل المخزون وليس الصفحات المحمّلة
+  // -----------------------------------------------------------------------
+  const clothesRef = useRef<ClothItem[]>([]);
+  useEffect(() => {
+    clothesRef.current = clothes;
+  }, [clothes]);
+
+  const inventoryIndexRef = useRef<SearchIndexRecord[]>([]);
+  const inventoryIndexLoadedAtRef = useRef<number>(0);
+  const inventoryIndexLoadingRef = useRef<Promise<SearchIndexRecord[]> | null>(null);
+  const INDEX_TTL_MS = 5 * 60 * 1000;
+
+  const loadInventoryIndex = useCallback(async (force: boolean = false): Promise<SearchIndexRecord[]> => {
+    const isFresh = Date.now() - inventoryIndexLoadedAtRef.current < INDEX_TTL_MS;
+    if (!force && inventoryIndexLoadedAtRef.current > 0 && isFresh) {
+      return inventoryIndexRef.current;
+    }
+    if (inventoryIndexLoadingRef.current) return inventoryIndexLoadingRef.current;
+
+    const task = (async () => {
+      const records = await fetchInventorySearchIndex();
+      inventoryIndexRef.current = records;
+      inventoryIndexLoadedAtRef.current = Date.now();
+      return records;
+    })().finally(() => {
+      inventoryIndexLoadingRef.current = null;
+    });
+
+    inventoryIndexLoadingRef.current = task;
+    return task;
+  }, []);
+
+  /**
+   * بناء فهرس السحابة للقطع التي لم تُفهرس بعد (ترحيل لمرة واحدة، على دفعات).
+   * يشتغل في الخلفية دون تعطيل الواجهة.
+   */
+  const backfillInventoryIndex = useCallback(async (): Promise<void> => {
+    try {
+      const records = await loadInventoryIndex();
+      const indexed = new Set(records.map(record => record.id));
+      const pending = clothesRef.current.filter(item => item?.id && !indexed.has(item.id));
+      if (pending.length === 0) return;
+
+      const BATCH = 12;
+      const MAX_PER_RUN = 120;
+      const slice = pending.slice(0, MAX_PER_RUN);
+      for (let start = 0; start < slice.length; start += BATCH) {
+        await Promise.all(slice.slice(start, start + BATCH).map(item => pushInventorySearchIndex(item)));
+      }
+      // الفهرس تغيّر ⇒ نعيد تحميله في المرة القادمة
+      inventoryIndexLoadedAtRef.current = 0;
+      console.info(`[SearchIndex] Backfilled ${slice.length}/${pending.length} items`);
+    } catch (error) {
+      console.warn('[SearchIndex] Backfill failed:', error);
+    }
+  }, [loadInventoryIndex]);
+
+  // أي إضافة/حذف في المخزون تُبطل نسخة الفهرس في الذاكرة (يُعاد تحميله عند البحث التالي)
+  useEffect(() => {
+    if (inventoryIndexLoadedAtRef.current > 0) inventoryIndexLoadedAtRef.current = 0;
+  }, [clothes.length]);
+
+  /** بحث في فهرس السحابة: يجلب السجلات المطابقة غير المحمّلة ويضيفها إلى المخزون المعروض */
+  const handleRemoteInventorySearch = useCallback(async (term: string): Promise<number> => {
+    const query = term.trim();
+    if (!query) return 0;
+    try {
+      const records = await loadInventoryIndex();
+      if (records.length === 0) return 0;
+
+      const matches = searchIndexRecords(records, query, 60);
+      if (matches.length === 0) return 0;
+
+      const knownIds = new Set(clothesRef.current.map(item => item.id));
+      const missingIds = matches.map(record => record.id).filter(id => !knownIds.has(id)).slice(0, 30);
+      if (missingIds.length === 0) return 0;
+
+      const items = await fetchClothesByIds(missingIds);
+      if (items.length === 0) return 0;
+
+      setClothes(prev => mergeRecordsById(prev, items as ClothItem[]));
+      return items.length;
+    } catch (error) {
+      console.warn('[SearchIndex] Remote search failed:', error);
+      return 0;
+    }
+  }, [loadInventoryIndex]);
+
   const activeViewUnsubsMapRef = useRef<Map<string, () => void>>(new Map());
   const currentActiveViewRef = useRef<ViewType | null>(null);
 
@@ -888,6 +1096,9 @@ export default function App() {
   }, [subscribeToCollection, ensureCollectionLoaded, resetPaginatedCollection]);
 
   useEffect(() => {
+    // لا نُشغّل اشتراكات السحابة قبل معرفة المسار الصحيح للبيانات
+    if (!isLayoutReady) return;
+
     handleEnsureCollection('dashboard');
 
     return () => {
@@ -900,7 +1111,7 @@ export default function App() {
       activeViewUnsubsMapRef.current.clear();
       currentActiveViewRef.current = null;
     };
-  }, [handleEnsureCollection]);
+  }, [handleEnsureCollection, isLayoutReady]);
 
   // هل تم استلام رصيد الخزينة المشترك من Firebase؟ (نمنع الكتابة قبله حتى لا نطمس قيمة أحدث من جهاز آخر)
   const [isSettingsSynced, setIsSettingsSynced] = useState(false);
@@ -2624,6 +2835,8 @@ export default function App() {
         hasMoreClothes={hasMoreClothes}
         isLoadingMoreClothes={isLoadingMoreClothes}
         onLoadMoreClothes={loadMoreClothes}
+        onRemoteInventorySearch={handleRemoteInventorySearch}
+        onBuildInventoryIndex={backfillInventoryIndex}
         hasMoreSales={hasMoreSales}
         isLoadingMoreSales={isLoadingMoreSales}
         onLoadMoreSales={loadMoreSales}

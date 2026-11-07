@@ -1,6 +1,10 @@
-import { ref, get as rtdbGet, set as rtdbSet, remove as rtdbRemove } from 'firebase/database';
 import { get, set, del } from 'idb-keyval';
-import { rtdb, sanitizeForFirebase } from '../firebase';
+import {
+  sanitizeForFirebase,
+  writeBinaryWithMirror,
+  readBinaryWithFallback,
+  removeBinaryWithMirror
+} from '../firebase';
 
 const MAX_LRU_THUMBS = 300;
 const memoryLruThumbs = new Map<string, string>();
@@ -64,10 +68,9 @@ export const thumbStore = {
 
     const fetchPromise = (async () => {
       try {
-        const thumbRef = ref(rtdb, `clothThumbs/${id}`);
-        const snapshot = await rtdbGet(thumbRef);
-        if (snapshot.exists()) {
-          const val = snapshot.val();
+        const snapshotValue = await readBinaryWithFallback('clothThumbs', id);
+        if (snapshotValue) {
+          const val = snapshotValue;
           const thumbStr = val?.thumb || (typeof val === 'string' ? val : null);
           if (thumbStr) {
             touchLru(id, thumbStr);
@@ -98,12 +101,11 @@ export const thumbStore = {
   async saveThumb(id: string, thumbDataUrl: string): Promise<boolean> {
     if (!id || !thumbDataUrl) return false;
     try {
-      const thumbRef = ref(rtdb, `clothThumbs/${id}`);
       const payload = sanitizeForFirebase({
         thumb: thumbDataUrl,
         updatedAt: new Date().toISOString()
       });
-      await rtdbSet(thumbRef, payload);
+      await writeBinaryWithMirror('clothThumbs', id, payload);
       touchLru(id, thumbDataUrl);
       await set(`cloth_thumb_${id}`, thumbDataUrl).catch(() => {});
       return true;
@@ -119,9 +121,8 @@ export const thumbStore = {
   async hasRemoteThumb(id: string): Promise<boolean> {
     if (!id) return false;
     try {
-      const thumbRef = ref(rtdb, `clothThumbs/${id}`);
-      const snapshot = await rtdbGet(thumbRef);
-      return snapshot.exists() && !!snapshot.val()?.thumb;
+      const snapshotValue = await readBinaryWithFallback('clothThumbs', id);
+      return !!snapshotValue?.thumb;
     } catch (err) {
       return false;
     }
@@ -135,8 +136,7 @@ export const thumbStore = {
     memoryLruThumbs.delete(id);
     del(`cloth_thumb_${id}`).catch(() => {});
     try {
-      const thumbRef = ref(rtdb, `clothThumbs/${id}`);
-      await rtdbRemove(thumbRef);
+      await removeBinaryWithMirror('clothThumbs', id);
       return true;
     } catch (err) {
       return false;

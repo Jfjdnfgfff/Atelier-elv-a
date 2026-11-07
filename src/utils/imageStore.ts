@@ -1,6 +1,11 @@
 import { ref, get, set, remove as rtdbRemove } from 'firebase/database';
 import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
-import { rtdb, sanitizeForFirebase } from '../firebase';
+import {
+  sanitizeForFirebase,
+  writeBinaryWithMirror,
+  readBinaryWithFallback,
+  removeBinaryWithMirror
+} from '../firebase';
 
 export interface ImageStore {
   saveFull(id: string, dataUrl: string): Promise<boolean>;
@@ -45,12 +50,11 @@ export const thumbnailStore = {
   async saveThumb(id: string, thumbDataUrl: string): Promise<boolean> {
     if (!id || !thumbDataUrl) return false;
     try {
-      const thumbRef = ref(rtdb, `clothThumbs/${id}`);
       const payload = sanitizeForFirebase({
         thumb: thumbDataUrl,
         updatedAt: new Date().toISOString()
       });
-      await set(thumbRef, payload);
+      await writeBinaryWithMirror('clothThumbs', id, payload);
       touchThumbLru(id, thumbDataUrl);
       try {
         await idbSet(`cloth_thumb_${id}`, thumbDataUrl);
@@ -89,11 +93,10 @@ export const thumbnailStore = {
 
     // 3. Check RTDB clothThumbs/{id}
     try {
-      const thumbRef = ref(rtdb, `clothThumbs/${id}`);
-      const snapshot = await get(thumbRef);
-      if (snapshot.exists()) {
-        const val = snapshot.val();
-        const thumbDataUrl = val?.thumb || null;
+      const snapshotValue = await readBinaryWithFallback('clothThumbs', id);
+      if (snapshotValue) {
+        const val = snapshotValue;
+        const thumbDataUrl = val?.thumb || (typeof val === 'string' ? val : null);
         if (thumbDataUrl) {
           touchThumbLru(id, thumbDataUrl);
           try {
@@ -122,8 +125,7 @@ export const thumbnailStore = {
       await idbDel(`cloth_thumb_${id}`);
     } catch (e) {}
     try {
-      const thumbRef = ref(rtdb, `clothThumbs/${id}`);
-      await rtdbRemove(thumbRef);
+      await removeBinaryWithMirror('clothThumbs', id);
       return true;
     } catch (err) {
       console.error('[ThumbnailStore] Failed to remove thumb for', id, err);
@@ -136,12 +138,11 @@ export const firebaseRtdbImageStore: ImageStore = {
   async saveFull(id: string, dataUrl: string): Promise<boolean> {
     if (!id || !dataUrl) return false;
     try {
-      const imgRef = ref(rtdb, `clothImages/${id}`);
       const payload = sanitizeForFirebase({
         full: dataUrl,
         updatedAt: new Date().toISOString()
       });
-      await set(imgRef, payload);
+      await writeBinaryWithMirror('clothImages', id, payload);
       touchLru(id, dataUrl);
       return true;
     } catch (err) {
@@ -162,11 +163,10 @@ export const firebaseRtdbImageStore: ImageStore = {
     }
 
     try {
-      const imgRef = ref(rtdb, `clothImages/${id}`);
-      const snapshot = await get(imgRef);
-      if (snapshot.exists()) {
-        const val = snapshot.val();
-        const fullDataUrl = val?.full || null;
+      const snapshotValue = await readBinaryWithFallback('clothImages', id);
+      if (snapshotValue) {
+        const val = snapshotValue;
+        const fullDataUrl = val?.full || (typeof val === 'string' ? val : null);
         if (fullDataUrl) {
           touchLru(id, fullDataUrl);
         }
@@ -183,8 +183,7 @@ export const firebaseRtdbImageStore: ImageStore = {
     if (!id) return false;
     memoryLruCache.delete(id);
     try {
-      const imgRef = ref(rtdb, `clothImages/${id}`);
-      await rtdbRemove(imgRef);
+      await removeBinaryWithMirror('clothImages', id);
       return true;
     } catch (err) {
       console.error('[ImageStore] Failed to remove full image for', id, err);
