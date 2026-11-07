@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Rental, Sale, Expense, Credit, StaffPayout, MaintenanceOrder } from '../types';
+import { splitRentalIncome } from '../utils/dailyCaisseSummary';
 
 export function useDashboardStats(
   rentals: Rental[],
@@ -25,12 +26,21 @@ export function useDashboardStats(
       const paid = r.paidAmount || 0;
       totalRentalIncome += paid;
 
-      const dateStr = r.paymentDate || (r.createdAt ? r.createdAt.split('T')[0] : r.startDate) || '';
-      if (dateStr.startsWith(currentMonthStr)) {
-        monthlyRentalIncome += paid;
+      // تقسيم المدخول: دفعة الحجز في تاريخها، ودفعة التسليم في تاريخ دخولها الصندوق
+      const split = splitRentalIncome(r);
+      if (split.bookingDate.startsWith(currentMonthStr)) {
+        monthlyRentalIncome += split.bookingAmount;
       }
-      if (dateStr.startsWith(currentYearStr)) {
-        yearlyRentalIncome += paid;
+      if (split.bookingDate.startsWith(currentYearStr)) {
+        yearlyRentalIncome += split.bookingAmount;
+      }
+      if (split.handoverDate && split.handoverAmount > 0) {
+        if (split.handoverDate.startsWith(currentMonthStr)) {
+          monthlyRentalIncome += split.handoverAmount;
+        }
+        if (split.handoverDate.startsWith(currentYearStr)) {
+          yearlyRentalIncome += split.handoverAmount;
+        }
       }
 
       if (r.status !== 'returned') {

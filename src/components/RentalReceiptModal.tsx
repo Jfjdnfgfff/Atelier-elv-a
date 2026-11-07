@@ -99,6 +99,12 @@ export const RentalReceiptModal: React.FC<RentalReceiptModalProps> = ({ rental, 
             <div className="font-bold text-blue-700 mt-0.5 text-[11px]">
               تاريخ استلام المال/العربون: <span className="font-black font-mono text-blue-900">{rental.paymentDate || (rental.createdAt ? rental.createdAt.split('T')[0] : rental.startDate)}</span>
             </div>
+            {(rental.handoverCollectedAmount || 0) > 0 && (
+              <div className="font-bold text-emerald-700 mt-0.5 text-[11px]">
+                دفعة التسليم: <span className="font-black font-mono text-emerald-900">{(rental.handoverCollectedAmount || 0).toLocaleString()} دج</span>
+                {' '}— دخلت الصندوق بتاريخ <span className="font-black font-mono text-emerald-900">{rental.handoverPaymentDate || rental.handoverDate || '—'}</span>
+              </div>
+            )}
           </div>
         </div>
 

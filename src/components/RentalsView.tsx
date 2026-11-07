@@ -25,7 +25,7 @@ interface RentalsViewProps {
   onAddRental: (preselectedItemId?: string) => void;
   onEditRental: (rental: Rental) => void;
   onDeleteRental: (id: string) => void;
-  onActivateRental?: (rental: Rental, collectedAmount?: number, notes?: string, fundSource?: FundSource) => void;
+  onActivateRental?: (rental: Rental, collectedAmount?: number, notes?: string, fundSource?: FundSource, handoverPaymentDate?: string) => void;
   onOpenReturnModal: (rental: Rental) => void;
   onOpenReceiptModal: (rental: Rental) => void;
   onSendMessage: (rental: Rental) => void;
@@ -54,6 +54,8 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
   const [handoverCollectedAmount, setHandoverCollectedAmount] = useState<number>(0);
   const [handoverNotes, setHandoverNotes] = useState<string>('');
   const [handoverFundSource, setHandoverFundSource] = useState<FundSource>('daily');
+  // تاريخ دخول المبلغ المحصل في الصندوق (يوم تسجيل المدخول في حساب الدرج/الخزينة)
+  const [handoverPaymentDate, setHandoverPaymentDate] = useState<string>('');
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
@@ -81,13 +83,28 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
     setHandoverCollectedAmount(rental.remainingAmount || 0);
     setHandoverNotes('');
     setHandoverFundSource((rental.fundSource as FundSource) || 'daily');
+    // افتراضياً: المبلغ يدخل الصندوق اليوم
+    setHandoverPaymentDate(today);
+  };
+
+  const addDays = (dateStr: string, days: number): string => {
+    const base = new Date(`${dateStr}T00:00:00`);
+    if (Number.isNaN(base.getTime())) return dateStr;
+    base.setDate(base.getDate() + days);
+    return base.toISOString().split('T')[0];
   };
 
   const confirmHandover = (e: React.FormEvent) => {
     e.preventDefault();
     if (!handoverModalRental) return;
     if (onActivateRental) {
-      onActivateRental(handoverModalRental, Number(handoverCollectedAmount) || 0, handoverNotes.trim(), handoverFundSource);
+      onActivateRental(
+        handoverModalRental,
+        Number(handoverCollectedAmount) || 0,
+        handoverNotes.trim(),
+        handoverFundSource,
+        handoverPaymentDate || today
+      );
     }
     setHandoverModalRental(null);
   };
@@ -507,6 +524,15 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
                     </span>
                   </div>
 
+                  {(rental.handoverCollectedAmount || 0) > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[11px] font-medium text-emerald-700">دفعة التسليم (تاريخ دخولها الصندوق):</span>
+                      <span className="font-bold font-mono text-emerald-800 text-xs">
+                        {(rental.handoverCollectedAmount || 0).toLocaleString()} دج • {rental.handoverPaymentDate || rental.handoverDate || '—'}
+                      </span>
+                    </div>
+                  )}
+
                   {rental.cautionAmount > 0 && (
                     <div className="flex justify-between items-center pt-1 border-t border-slate-200">
                       <span className="text-[11px] font-medium text-slate-700">الضمان (Caution):</span>
@@ -661,6 +687,54 @@ export const RentalsView: React.FC<RentalsViewProps> = React.memo(({
                 <span className="text-[10px] text-slate-400 mt-1 block">
                   إذا لم يتم دفع كامل المتبقي، سيُسجل الباقي كدين متبقي في السجل تلقائياً.
                 </span>
+              </div>
+
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 space-y-1.5">
+                <label className="block text-xs font-bold text-emerald-900">
+                  تاريخ دخول المبلغ في الصندوق <span className="text-rose-600">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={handoverPaymentDate}
+                  max={today}
+                  required={Number(handoverCollectedAmount) > 0}
+                  disabled={Number(handoverCollectedAmount) <= 0}
+                  onChange={(e) => setHandoverPaymentDate(e.target.value)}
+                  className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-2 text-xs font-bold font-mono text-emerald-900 focus:outline-none focus:border-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                {Number(handoverCollectedAmount) > 0 ? (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setHandoverPaymentDate(today)}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all ${
+                        handoverPaymentDate === today
+                          ? 'bg-emerald-700 text-white border-emerald-700'
+                          : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
+                      }`}
+                    >
+                      اليوم
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHandoverPaymentDate(addDays(today, -1))}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all ${
+                        handoverPaymentDate === addDays(today, -1)
+                          ? 'bg-emerald-700 text-white border-emerald-700'
+                          : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
+                      }`}
+                    >
+                      أمس
+                    </button>
+                    <span className="text-[10px] text-emerald-700/80 font-medium">
+                      سيُحسب المبلغ في صندوق هذا التاريخ، ومعه يظهر في تقفيل اليوم.
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-[10px] text-slate-500 font-medium block">
+                    لا يوجد مبلغ محصل الآن — لن تُسجَّل أي دفعة في الصندوق عند التسليم.
+                  </span>
+                )}
               </div>
 
               <FundSourcePicker

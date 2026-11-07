@@ -101,7 +101,7 @@ export interface ViewRendererProps {
   onAddRentalWithItem: (itemId?: string) => void;
   onEditRentalModal: (rental: Rental) => void;
   onDeleteRental: (id: string) => void;
-  onActivateRental: (rental: Rental, collectedAmount?: number, handoverNotes?: string, fundSource?: FundSource) => void;
+  onActivateRental: (rental: Rental, collectedAmount?: number, handoverNotes?: string, fundSource?: FundSource, handoverPaymentDate?: string) => void;
   onOpenReceiptModal: (rental: Rental) => void;
   onScanBarcode: () => void;
 

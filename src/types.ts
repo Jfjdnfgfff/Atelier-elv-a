@@ -72,6 +72,10 @@ export interface Rental {
   handoverDate?: string; // Date when deal is finalized and dress is physically handed over
   bookingDate?: string; // Date of reservation
   paymentDate?: string; // تاريخ استلام المال / العربون / الدفعة بالضبط
+  // المبلغ المحصل عند التسليم (إتمام الصفقة) وتاريخ دخوله الصندوق ومصدره
+  handoverCollectedAmount?: number; // المبلغ المحصل نقداً عند تسليم الفستان (جزء من paidAmount)
+  handoverPaymentDate?: string; // تاريخ دخول المبلغ في الصندوق (YYYY-MM-DD) — يُحسب في صندوق هذا اليوم
+  handoverFundSource?: FundSource; // صندوق المبلغ المحصل عند التسليم: الدرج أو الخزينة
   fundSource?: FundSource; // صندوق تسجيل مدخول الكراء: صندوق اليوم (الدرج) أو الصندوق العام (الخزينة)
   conditionOnReturn?: 'perfect' | 'needs_cleaning' | 'damaged';
   penaltyAmount?: number;
